@@ -13,9 +13,14 @@
 package org.openhab.core.io.transport.mdns.internal;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+
+import javax.jmdns.ServiceInfo;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.io.transport.mdns.MDNSClient;
@@ -30,10 +35,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class starts the JmDNS and implements interface to register and
+ * This class starts the JmDNS and implements interface to register, update and
  * unregister services.
  *
  * @author Victor Belov - Initial contribution
+ * @author Karel Goderis - Add service update
  */
 @Component(immediate = true)
 public class MDNSServiceImpl implements MDNSService {
@@ -99,6 +105,25 @@ public class MDNSServiceImpl implements MDNSService {
     public void unregisterService(ServiceDescription description) {
         if (mdnsClient != null) {
             mdnsClient.unregisterService(description);
+        }
+    }
+
+    @Override
+    public void updateService(ServiceDescription description) {
+        if (mdnsClient != null) {
+            ServiceInfo[] services = mdnsClient.list(description.serviceType);
+            List<ServiceInfo> servicesToUpdate = Arrays.stream(services)
+                    .filter(c -> c.getName().contains(description.serviceName))
+                    .filter(c -> c.getPort() == description.servicePort).collect(Collectors.toList());
+
+            for (ServiceInfo serviceInfo : servicesToUpdate) {
+                try {
+                    logger.debug("Updating service {} ({})", description.serviceType, description.serviceName);
+                    serviceInfo.setText(description.serviceProperties);
+                } catch (IllegalStateException e) {
+                    logger.error("{}", e.getMessage());
+                }
+            }
         }
     }
 

@@ -35,4 +35,11 @@ public interface MDNSService {
      */
     public void unregisterService(ServiceDescription description);
 
+    /**
+     * This method updates a registered service through Bonjour/MDNS
+     *
+     * @param serviceDescription the {@link ServiceDescription} instance with all details to identify the service
+     */
+    public void updateService(ServiceDescription description);
+
 }
