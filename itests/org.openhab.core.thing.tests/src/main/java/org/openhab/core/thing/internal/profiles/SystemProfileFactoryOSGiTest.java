@@ -35,6 +35,7 @@ import org.openhab.core.thing.profiles.ProfileContext;
 import org.openhab.core.thing.profiles.ProfileType;
 import org.openhab.core.thing.profiles.ProfileTypeProvider;
 import org.openhab.core.thing.profiles.ProfileTypeUID;
+import org.openhab.core.thing.profiles.SystemProfileFactory;
 import org.openhab.core.thing.profiles.SystemProfiles;
 import org.openhab.core.thing.type.ChannelType;
 

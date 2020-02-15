@@ -22,9 +22,9 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.openhab.core.test.java.JavaOSGiTest;
-import org.openhab.core.thing.internal.profiles.SystemProfileFactory;
 import org.openhab.core.thing.profiles.ProfileType;
 import org.openhab.core.thing.profiles.ProfileTypeProvider;
+import org.openhab.core.thing.profiles.SystemProfileFactory;
 
 /**
  * Test cases for i18n of the {@link SystemProfileFactory} class.

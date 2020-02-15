@@ -10,7 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.core.thing.internal.profiles;
+package org.openhab.core.thing.profiles;
 
 import static org.openhab.core.thing.profiles.SystemProfiles.*;
 
@@ -30,14 +30,22 @@ import org.openhab.core.library.CoreItemFactory;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.DefaultSystemChannelTypeProvider;
 import org.openhab.core.thing.UID;
-import org.openhab.core.thing.profiles.Profile;
-import org.openhab.core.thing.profiles.ProfileAdvisor;
-import org.openhab.core.thing.profiles.ProfileCallback;
-import org.openhab.core.thing.profiles.ProfileContext;
-import org.openhab.core.thing.profiles.ProfileFactory;
-import org.openhab.core.thing.profiles.ProfileType;
-import org.openhab.core.thing.profiles.ProfileTypeProvider;
-import org.openhab.core.thing.profiles.ProfileTypeUID;
+import org.openhab.core.thing.internal.profiles.RawButtonOnOffSwitchProfile;
+import org.openhab.core.thing.internal.profiles.RawButtonTogglePlayerProfile;
+import org.openhab.core.thing.internal.profiles.RawButtonToggleRollershutterProfile;
+import org.openhab.core.thing.internal.profiles.RawButtonToggleSwitchProfile;
+import org.openhab.core.thing.internal.profiles.RawRockerDimmerProfile;
+import org.openhab.core.thing.internal.profiles.RawRockerNextPreviousProfile;
+import org.openhab.core.thing.internal.profiles.RawRockerOnOffProfile;
+import org.openhab.core.thing.internal.profiles.RawRockerPlayPauseProfile;
+import org.openhab.core.thing.internal.profiles.RawRockerRewindFastforwardProfile;
+import org.openhab.core.thing.internal.profiles.RawRockerStopMoveProfile;
+import org.openhab.core.thing.internal.profiles.RawRockerUpDownProfile;
+import org.openhab.core.thing.internal.profiles.SystemDefaultProfile;
+import org.openhab.core.thing.internal.profiles.SystemFollowProfile;
+import org.openhab.core.thing.internal.profiles.SystemOffsetProfile;
+import org.openhab.core.thing.internal.profiles.TimestampChangeProfile;
+import org.openhab.core.thing.internal.profiles.TimestampUpdateProfile;
 import org.openhab.core.thing.profiles.i18n.ProfileTypeI18nLocalizationService;
 import org.openhab.core.thing.type.ChannelType;
 import org.openhab.core.thing.type.ChannelTypeRegistry;
