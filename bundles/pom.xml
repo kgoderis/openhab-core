@@ -21,6 +21,9 @@
     <module>org.openhab.core.addon.eclipse</module>
     <module>org.openhab.core.addon.marketplace</module>
     <module>org.openhab.core.addon.marketplace.karaf</module>
+    <module>org.openhab.core.ai.common</module>
+    <module>org.openhab.core.ai.mcp</module>
+    <module>org.openhab.core.ai.a2a</module>
     <module>org.openhab.core.auth.jaas</module>
     <module>org.openhab.core.auth.oauth2client</module>
     <module>org.openhab.core.automation</module>

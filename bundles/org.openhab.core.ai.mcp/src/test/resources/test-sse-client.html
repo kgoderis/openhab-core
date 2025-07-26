@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP SSE Transport Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .log {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .controls {
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        input, select {
+            padding: 5px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 3px;
+            margin: 10px 0;
+        }
+        .status.connected { background-color: #d4edda; color: #155724; }
+        .status.disconnected { background-color: #f8d7da; color: #721c24; }
+        .status.connecting { background-color: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>MCP SSE Transport Test Client</h1>
+    <p>This test client validates the SSE transport implementation for MCP.</p>
+
+    <div class="container">
+        <div class="panel">
+            <h3>Connection Control</h3>
+            <div class="controls">
+                <label for="baseUrl">Base URL:</label>
+                <input type="text" id="baseUrl" value="http://localhost:8080" style="width: 200px;">
+                <br>
+                <label for="subscriptionId">Subscription ID:</label>
+                <input type="text" id="subscriptionId" placeholder="Enter subscription ID" style="width: 200px;">
+                <br>
+                <button class="btn-primary" onclick="connect()">Connect</button>
+                <button class="btn-danger" onclick="disconnect()">Disconnect</button>
+                <button class="btn-warning" onclick="clearLog()">Clear Log</button>
+            </div>
+            <div id="connectionStatus" class="status disconnected">Disconnected</div>
+        </div>
+
+        <div class="panel">
+            <h3>Event Subscription</h3>
+            <div class="controls">
+                <label for="clientId">Client ID:</label>
+                <input type="text" id="clientId" value="test-client" style="width: 150px;">
+                <br>
+                <label for="eventTypes">Event Types:</label>
+                <select id="eventTypes" multiple style="width: 200px; height: 100px;">
+                    <option value="ItemStateEvent" selected>ItemStateEvent</option>
+                    <option value="ItemCommandEvent">ItemCommandEvent</option>
+                    <option value="ThingStatusEvent">ThingStatusEvent</option>
+                    <option value="RuleStatusEvent">RuleStatusEvent</option>
+                    <option value="ChannelTriggeredEvent">ChannelTriggeredEvent</option>
+                </select>
+                <br>
+                <button class="btn-success" onclick="createSubscription()">Create Subscription</button>
+                <button class="btn-warning" onclick="listSubscriptions()">List Subscriptions</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3>Event Log</h3>
+        <div id="eventLog" class="log"></div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let isConnected = false;
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('eventLog');
+            const timestamp = new Date().toISOString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> <span style="color: ${getColor(type)};">${message}</span>`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function getColor(type) {
+            switch(type) {
+                case 'error': return '#dc3545';
+                case 'success': return '#28a745';
+                case 'warning': return '#ffc107';
+                default: return '#000';
+            }
+        }
+
+        function updateStatus(status, message) {
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.className = `status ${status}`;
+            statusElement.textContent = message;
+        }
+
+        function connect() {
+            const baseUrl = document.getElementById('baseUrl').value;
+            const subscriptionId = document.getElementById('subscriptionId').value;
+
+            if (!subscriptionId) {
+                log('Please enter a subscription ID', 'error');
+                return;
+            }
+
+            if (isConnected) {
+                disconnect();
+            }
+
+            const sseUrl = `${baseUrl}/mcp/events/${subscriptionId}`;
+            log(`Connecting to SSE endpoint: ${sseUrl}`, 'info');
+
+            try {
+                eventSource = new EventSource(sseUrl);
+                updateStatus('connecting', 'Connecting...');
+
+                eventSource.onopen = function(event) {
+                    isConnected = true;
+                    updateStatus('connected', 'Connected');
+                    log('SSE connection established', 'success');
+                };
+
+                eventSource.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`Received event: ${JSON.stringify(data, null, 2)}`, 'success');
+                    } catch (e) {
+                        log(`Received raw data: ${event.data}`, 'info');
+                    }
+                };
+
+                eventSource.onerror = function(event) {
+                    log('SSE connection error', 'error');
+                    updateStatus('disconnected', 'Connection Error');
+                    isConnected = false;
+                };
+
+            } catch (error) {
+                log(`Failed to create SSE connection: ${error.message}`, 'error');
+                updateStatus('disconnected', 'Connection Failed');
+            }
+        }
+
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            isConnected = false;
+            updateStatus('disconnected', 'Disconnected');
+            log('SSE connection closed', 'warning');
+        }
+
+        function clearLog() {
+            document.getElementById('eventLog').innerHTML = '';
+        }
+
+        async function createSubscription() {
+            const baseUrl = document.getElementById('baseUrl').value;
+            const clientId = document.getElementById('clientId').value;
+            const eventTypesSelect = document.getElementById('eventTypes');
+            const eventTypes = Array.from(eventTypesSelect.selectedOptions).map(option => option.value);
+
+            if (eventTypes.length === 0) {
+                log('Please select at least one event type', 'error');
+                return;
+            }
+
+            const subscriptionData = {
+                clientId: clientId,
+                eventTypes: eventTypes,
+                filters: {}
+            };
+
+            try {
+                log(`Creating subscription for client: ${clientId}`, 'info');
+                log(`Event types: ${eventTypes.join(', ')}`, 'info');
+
+                // Simulate subscription creation (in real implementation, this would call the MCP API)
+                const subscriptionId = 'test-subscription-' + Date.now();
+                document.getElementById('subscriptionId').value = subscriptionId;
+                
+                log(`Subscription created with ID: ${subscriptionId}`, 'success');
+                log('Note: This is a simulation. In real implementation, call the MCP subscribe API.', 'warning');
+            } catch (error) {
+                log(`Failed to create subscription: ${error.message}`, 'error');
+            }
+        }
+
+        async function listSubscriptions() {
+            const clientId = document.getElementById('clientId').value;
+            
+            try {
+                log(`Listing subscriptions for client: ${clientId}`, 'info');
+                log('Note: This is a simulation. In real implementation, call the MCP list-subscriptions API.', 'warning');
+            } catch (error) {
+                log(`Failed to list subscriptions: ${error.message}`, 'error');
+            }
+        }
+
+        // Test event simulation
+        function simulateEvent() {
+            const testEvent = {
+                type: 'ItemStateEvent',
+                topic: 'openhab/items/TestItem/state',
+                source: 'test',
+                payload: '{"value": "ON", "timestamp": "' + new Date().toISOString() + '"}'
+            };
+            log(`Simulated event: ${JSON.stringify(testEvent, null, 2)}`, 'info');
+        }
+
+        // Add test button
+        document.addEventListener('DOMContentLoaded', function() {
+            const controls = document.querySelector('.controls');
+            const testButton = document.createElement('button');
+            testButton.className = 'btn-warning';
+            testButton.textContent = 'Simulate Event';
+            testButton.onclick = simulateEvent;
+            controls.appendChild(testButton);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+    </script>
+</body>
+</html> 

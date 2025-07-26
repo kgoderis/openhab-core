@@ -1,0 +1,1045 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Create shared bundle structure (org.openhab.core.ai.common)",
+        "description": "Set up Maven project structure, OSGi bundle configuration, and basic package organization for the shared AI components bundle.",
+        "status": "in-progress",
+        "priority": "high",
+        "dependencies": [],
+        "subtasks": [
+          {
+            "id": "1.1",
+            "title": "Create Maven project structure for org.openhab.core.ai.common",
+            "description": "Set up the basic Maven project structure with proper directory layout",
+            "status": "done"
+          },
+          {
+            "id": "1.2",
+            "title": "Set up pom.xml with proper openHAB dependencies",
+            "description": "Configure Maven POM with openHAB core dependencies and proper versioning",
+            "status": "in-progress"
+          },
+          {
+            "id": "1.3",
+            "title": "Add official MCP Java SDK dependencies",
+            "description": "Add MCP Java SDK from https://github.com/modelcontextprotocol/java-sdk",
+            "status": "pending"
+          },
+          {
+            "id": "1.4",
+            "title": "Add official A2A Java SDK dependencies",
+            "description": "Add A2A Java SDK from https://github.com/a2aproject/a2a-java",
+            "status": "pending"
+          },
+          {
+            "id": "1.5",
+            "title": "Add MCP BOM (Bill of Materials) for dependency management",
+            "description": "Add MCP Bill of Materials for consistent dependency versioning",
+            "status": "pending"
+          },
+          {
+            "id": "1.6",
+            "title": "Add A2A BOM for dependency management",
+            "description": "Add A2A Bill of Materials for consistent dependency versioning",
+            "status": "pending"
+          },
+          {
+            "id": "1.7",
+            "title": "Create directory structure: src/main/java/org/openhab/core/ai/common/",
+            "description": "Create the main Java source directory structure",
+            "status": "pending"
+          },
+          {
+            "id": "1.8",
+            "title": "Create directory structure: src/main/resources/OH-INF/",
+            "description": "Create the openHAB-specific resources directory",
+            "status": "pending"
+          },
+          {
+            "id": "1.9",
+            "title": "Create directory structure: src/test/java/org/openhab/core/ai/common/",
+            "description": "Create the test Java source directory structure",
+            "status": "pending"
+          },
+          {
+            "id": "1.10",
+            "title": "Set up OSGi bundle manifest (MANIFEST.MF)",
+            "description": "Configure OSGi bundle manifest with proper headers and dependencies",
+            "status": "pending"
+          },
+          {
+            "id": "1.11",
+            "title": "Create bundle activator class",
+            "description": "Create the OSGi bundle activator for lifecycle management",
+            "status": "pending"
+          },
+          {
+            "id": "1.12",
+            "title": "Set up logging configuration",
+            "description": "Configure logging framework for the bundle",
+            "status": "pending"
+          },
+          {
+            "id": "1.13",
+            "title": "Create base package structure (auth, config, dto, integration, stub, util)",
+            "description": "Create the foundational package structure for the bundle",
+            "status": "pending"
+          },
+          {
+            "id": "1.14",
+            "title": "Create Maven module structure for multi-bundle project",
+            "description": "Set up Maven multi-module structure for the entire AI bundles project",
+            "status": "pending"
+          },
+          {
+            "id": "1.15",
+            "title": "Set up Git ignore patterns for generated files",
+            "description": "Configure .gitignore for Maven, IDE, and OSGi generated files",
+            "status": "pending"
+          },
+          {
+            "id": "1.16",
+            "title": "Create LICENSE and README files",
+            "description": "Create project license and documentation files",
+            "status": "pending"
+          },
+          {
+            "id": "1.17",
+            "title": "Set up continuous integration configuration",
+            "description": "Configure CI/CD pipeline for automated builds and testing",
+            "status": "pending"
+          },
+          {
+            "id": "1.18",
+            "title": "Create developer documentation structure",
+            "description": "Set up documentation structure for developers",
+            "status": "pending"
+          },
+          {
+            "id": "1.19",
+            "title": "Set up code formatting and style guidelines",
+            "description": "Configure code formatting tools and style guidelines",
+            "status": "pending"
+          },
+          {
+            "id": "1.20",
+            "title": "Initialize version control structure",
+            "description": "Set up version control and branching strategy",
+            "status": "pending"
+          },
+          {
+            "id": "1.21",
+            "title": "Configure Maven parent POM relationships",
+            "description": "Set up parent-child POM relationships for the multi-module project",
+            "status": "pending"
+          },
+          {
+            "id": "1.22",
+            "title": "Set up dependency management across modules",
+            "description": "Configure dependency management for consistent versions across modules",
+            "status": "pending"
+          },
+          {
+            "id": "1.23",
+            "title": "Create build profiles for different environments",
+            "description": "Set up Maven profiles for development, testing, and production",
+            "status": "pending"
+          },
+          {
+            "id": "1.24",
+            "title": "Configure Maven plugins for OSGi bundle generation",
+            "description": "Configure Maven plugins for proper OSGi bundle generation",
+            "status": "pending"
+          },
+          {
+            "id": "1.25",
+            "title": "Set up test dependency management",
+            "description": "Configure test dependencies and testing framework",
+            "status": "pending"
+          },
+          {
+            "id": "1.26",
+            "title": "Create Maven build lifecycle customization",
+            "description": "Customize Maven build lifecycle for project-specific needs",
+            "status": "pending"
+          },
+          {
+            "id": "1.27",
+            "title": "Configure artifact publishing settings",
+            "description": "Set up artifact publishing configuration for releases",
+            "status": "pending"
+          },
+          {
+            "id": "1.28",
+            "title": "Set up version management strategy",
+            "description": "Define versioning strategy and release management",
+            "status": "pending"
+          },
+          {
+            "id": "1.29",
+            "title": "Create build validation rules",
+            "description": "Set up build validation and quality gates",
+            "status": "pending"
+          },
+          {
+            "id": "1.30",
+            "title": "Set up automated dependency updates",
+            "description": "Configure automated dependency update tools and processes",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": "2",
+        "title": "Design comprehensive data models and DTOs",
+        "description": "Create data transfer objects and models for MCP and A2A protocols, openHAB entities, and configuration management.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": ["1"],
+        "subtasks": [
+          {
+            "id": "2.1",
+            "title": "Define MCP protocol message DTOs (Request, Response, Notification)",
+            "description": "Create DTOs for MCP protocol message types",
+            "status": "pending"
+          },
+          {
+            "id": "2.2",
+            "title": "Define A2A protocol message DTOs (Agent, Task, Result)",
+            "description": "Create DTOs for A2A protocol message types",
+            "status": "pending"
+          },
+          {
+            "id": "2.3",
+            "title": "Create openHAB Thing DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Things in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.4",
+            "title": "Create openHAB Item DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Items in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.5",
+            "title": "Create openHAB Channel DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Channels in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.6",
+            "title": "Create openHAB Rule DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Rules in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.7",
+            "title": "Create openHAB Script DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Scripts in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.8",
+            "title": "Create openHAB Binding DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Bindings in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.9",
+            "title": "Create openHAB Discovery DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Discovery in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.10",
+            "title": "Create openHAB Persistence DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Persistence in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.11",
+            "title": "Create openHAB Event DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Events in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.12",
+            "title": "Create openHAB Security DTO for MCP tools",
+            "description": "Design DTO for representing openHAB Security in MCP tools",
+            "status": "pending"
+          },
+          {
+            "id": "2.13",
+            "title": "Create configuration management DTOs",
+            "description": "Create DTOs for configuration management across the system",
+            "status": "pending"
+          },
+          {
+            "id": "2.14",
+            "title": "Create system management DTOs",
+            "description": "Create DTOs for system management operations",
+            "status": "pending"
+          },
+          {
+            "id": "2.15",
+            "title": "Create JSON serialization annotations",
+            "description": "Add JSON serialization annotations to all DTOs",
+            "status": "pending"
+          },
+          {
+            "id": "2.16",
+            "title": "Create DTO validation framework",
+            "description": "Implement validation framework for DTOs",
+            "status": "pending"
+          },
+          {
+            "id": "2.17",
+            "title": "Create DTO conversion utilities",
+            "description": "Create utilities for converting between DTOs and domain objects",
+            "status": "pending"
+          },
+          {
+            "id": "2.18",
+            "title": "Create DTO test fixtures",
+            "description": "Create test fixtures and builders for DTOs",
+            "status": "pending"
+          },
+          {
+            "id": "2.19",
+            "title": "Document DTO schemas and examples",
+            "description": "Create comprehensive documentation for all DTOs",
+            "status": "pending"
+          },
+          {
+            "id": "2.20",
+            "title": "Create MCP tool parameter DTOs",
+            "description": "Create DTOs for MCP tool parameters",
+            "status": "pending"
+          },
+          {
+            "id": "2.21",
+            "title": "Create MCP tool result DTOs",
+            "description": "Create DTOs for MCP tool results",
+            "status": "pending"
+          },
+          {
+            "id": "2.22",
+            "title": "Create A2A agent capability DTOs",
+            "description": "Create DTOs for A2A agent capabilities",
+            "status": "pending"
+          },
+          {
+            "id": "2.23",
+            "title": "Create A2A message routing DTOs",
+            "description": "Create DTOs for A2A message routing",
+            "status": "pending"
+          },
+          {
+            "id": "2.24",
+            "title": "Create error handling DTOs",
+            "description": "Create DTOs for error handling and reporting",
+            "status": "pending"
+          },
+          {
+            "id": "2.25",
+            "title": "Create authentication context DTOs",
+            "description": "Create DTOs for authentication context",
+            "status": "pending"
+          },
+          {
+            "id": "2.26",
+            "title": "Create authorization policy DTOs",
+            "description": "Create DTOs for authorization policies",
+            "status": "pending"
+          },
+          {
+            "id": "2.27",
+            "title": "Create audit trail DTOs",
+            "description": "Create DTOs for audit trail and logging",
+            "status": "pending"
+          },
+          {
+            "id": "2.28",
+            "title": "Create performance metrics DTOs",
+            "description": "Create DTOs for performance metrics and monitoring",
+            "status": "pending"
+          },
+          {
+            "id": "2.29",
+            "title": "Create configuration schema DTOs",
+            "description": "Create DTOs for configuration schemas",
+            "status": "pending"
+          },
+          {
+            "id": "2.30",
+            "title": "Create health check DTOs",
+            "description": "Create DTOs for health checks and system status",
+            "status": "pending"
+          },
+          {
+            "id": "2.31",
+            "title": "Create monitoring data DTOs",
+            "description": "Create DTOs for monitoring data collection",
+            "status": "pending"
+          },
+          {
+            "id": "2.32",
+            "title": "Create backup/restore DTOs",
+            "description": "Create DTOs for backup and restore operations",
+            "status": "pending"
+          },
+          {
+            "id": "2.33",
+            "title": "Create deployment status DTOs",
+            "description": "Create DTOs for deployment status tracking",
+            "status": "pending"
+          },
+          {
+            "id": "2.34",
+            "title": "Create version information DTOs",
+            "description": "Create DTOs for version information and compatibility",
+            "status": "pending"
+          },
+          {
+            "id": "2.35",
+            "title": "Create compatibility check DTOs",
+            "description": "Create DTOs for compatibility checking",
+            "status": "pending"
+          },
+          {
+            "id": "2.36",
+            "title": "Create network status DTOs",
+            "description": "Create DTOs for network status and connectivity",
+            "status": "pending"
+          },
+          {
+            "id": "2.37",
+            "title": "Create resource usage DTOs",
+            "description": "Create DTOs for resource usage monitoring",
+            "status": "pending"
+          },
+          {
+            "id": "2.38",
+            "title": "Create security policy DTOs",
+            "description": "Create DTOs for security policies",
+            "status": "pending"
+          },
+          {
+            "id": "2.39",
+            "title": "Create notification DTOs",
+            "description": "Create DTOs for notification systems",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": "3",
+        "title": "Implement security integration",
+        "description": "Implement comprehensive security features including authentication, authorization, and audit logging.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": ["1"],
+        "subtasks": [
+          {
+            "id": "3.1",
+            "title": "Research openHAB security architecture",
+            "description": "Research and understand openHAB's existing security architecture",
+            "status": "pending"
+          },
+          {
+            "id": "3.2",
+            "title": "Implement authentication interface",
+            "description": "Create authentication interface for AI bundles",
+            "status": "pending"
+          },
+          {
+            "id": "3.3",
+            "title": "Implement authorization interface",
+            "description": "Create authorization interface with role-based access control",
+            "status": "pending"
+          },
+          {
+            "id": "3.4",
+            "title": "Create JWT token management",
+            "description": "Implement JWT token creation, validation, and management",
+            "status": "pending"
+          },
+          {
+            "id": "3.5",
+            "title": "Create API key management",
+            "description": "Implement API key generation, validation, and management",
+            "status": "pending"
+          },
+          {
+            "id": "3.6",
+            "title": "Implement role-based access control (RBAC)",
+            "description": "Implement comprehensive RBAC system",
+            "status": "pending"
+          },
+          {
+            "id": "3.7",
+            "title": "Create security context utilities",
+            "description": "Create utilities for managing security context",
+            "status": "pending"
+          },
+          {
+            "id": "3.8",
+            "title": "Implement secure communication protocols",
+            "description": "Implement secure communication protocols for AI bundles",
+            "status": "pending"
+          },
+          {
+            "id": "3.9",
+            "title": "Create audit logging framework",
+            "description": "Create comprehensive audit logging framework",
+            "status": "pending"
+          },
+          {
+            "id": "3.10",
+            "title": "Implement rate limiting and throttling",
+            "description": "Implement rate limiting and throttling mechanisms",
+            "status": "pending"
+          },
+          {
+            "id": "3.11",
+            "title": "Create security configuration management",
+            "description": "Create configuration management for security settings",
+            "status": "pending"
+          },
+          {
+            "id": "3.12",
+            "title": "Implement session management",
+            "description": "Implement secure session management",
+            "status": "pending"
+          },
+          {
+            "id": "3.13",
+            "title": "Create security testing utilities",
+            "description": "Create utilities for testing security features",
+            "status": "pending"
+          },
+          {
+            "id": "3.14",
+            "title": "Document security architecture",
+            "description": "Create comprehensive security architecture documentation",
+            "status": "pending"
+          },
+          {
+            "id": "3.15",
+            "title": "Create security best practices guide",
+            "description": "Create guide for security best practices",
+            "status": "pending"
+          },
+          {
+            "id": "3.16",
+            "title": "Implement OAuth2 integration",
+            "description": "Implement OAuth2 authentication flow",
+            "status": "pending"
+          },
+          {
+            "id": "3.17",
+            "title": "Create SAML authentication support",
+            "description": "Implement SAML authentication support",
+            "status": "pending"
+          },
+          {
+            "id": "3.18",
+            "title": "Implement LDAP authentication",
+            "description": "Implement LDAP authentication integration",
+            "status": "pending"
+          },
+          {
+            "id": "3.19",
+            "title": "Create multi-factor authentication",
+            "description": "Implement multi-factor authentication (MFA)",
+            "status": "pending"
+          },
+          {
+            "id": "3.20",
+            "title": "Implement password policy enforcement",
+            "description": "Implement password policy enforcement mechanisms",
+            "status": "pending"
+          },
+          {
+            "id": "3.21",
+            "title": "Create certificate-based authentication",
+            "description": "Implement certificate-based authentication",
+            "status": "pending"
+          },
+          {
+            "id": "3.22",
+            "title": "Implement secure token storage",
+            "description": "Implement secure storage for authentication tokens",
+            "status": "pending"
+          },
+          {
+            "id": "3.23",
+            "title": "Create authentication cache management",
+            "description": "Implement authentication cache management",
+            "status": "pending"
+          },
+          {
+            "id": "3.24",
+            "title": "Implement cross-origin request security",
+            "description": "Implement CORS security policies",
+            "status": "pending"
+          },
+          {
+            "id": "3.25",
+            "title": "Create security headers management",
+            "description": "Implement security headers management",
+            "status": "pending"
+          },
+          {
+            "id": "3.26",
+            "title": "Implement encryption key management",
+            "description": "Implement encryption key management system",
+            "status": "pending"
+          },
+          {
+            "id": "3.27",
+            "title": "Create secure communication channels",
+            "description": "Implement secure communication channels",
+            "status": "pending"
+          },
+          {
+            "id": "3.28",
+            "title": "Implement intrusion detection",
+            "description": "Implement intrusion detection system",
+            "status": "pending"
+          },
+          {
+            "id": "3.29",
+            "title": "Create security monitoring alerts",
+            "description": "Implement security monitoring and alerting",
+            "status": "pending"
+          },
+          {
+            "id": "3.30",
+            "title": "Implement vulnerability scanning",
+            "description": "Implement vulnerability scanning capabilities",
+            "status": "pending"
+          },
+          {
+            "id": "3.31",
+            "title": "Create security incident response",
+            "description": "Implement security incident response procedures",
+            "status": "pending"
+          },
+          {
+            "id": "3.32",
+            "title": "Implement compliance checking",
+            "description": "Implement compliance checking mechanisms",
+            "status": "pending"
+          },
+          {
+            "id": "3.33",
+            "title": "Create security reporting framework",
+            "description": "Create framework for security reporting",
+            "status": "pending"
+          },
+          {
+            "id": "3.34",
+            "title": "Implement threat modeling",
+            "description": "Implement threat modeling framework",
+            "status": "pending"
+          },
+          {
+            "id": "3.35",
+            "title": "Create security training materials",
+            "description": "Create security training materials and documentation",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": "4",
+        "title": "Create comprehensive stub framework",
+        "description": "Design and implement a comprehensive stub framework for testing network dependencies and external services.",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": ["1"],
+        "subtasks": [
+          {
+            "id": "4.1",
+            "title": "Design stub framework architecture",
+            "description": "Design the overall architecture for the stub framework",
+            "status": "pending"
+          },
+          {
+            "id": "4.2",
+            "title": "Create HTTP client stubs",
+            "description": "Implement stubs for HTTP client operations",
+            "status": "pending"
+          },
+          {
+            "id": "4.3",
+            "title": "Create WebSocket connection stubs",
+            "description": "Implement stubs for WebSocket connections",
+            "status": "pending"
+          },
+          {
+            "id": "4.4",
+            "title": "Create MQTT broker stubs",
+            "description": "Implement stubs for MQTT broker operations",
+            "status": "pending"
+          },
+          {
+            "id": "4.5",
+            "title": "Create database connection stubs",
+            "description": "Implement stubs for database connections",
+            "status": "pending"
+          },
+          {
+            "id": "4.6",
+            "title": "Create file system operation stubs",
+            "description": "Implement stubs for file system operations",
+            "status": "pending"
+          },
+          {
+            "id": "4.7",
+            "title": "Create network protocol stubs (TCP/UDP)",
+            "description": "Implement stubs for network protocols",
+            "status": "pending"
+          },
+          {
+            "id": "4.8",
+            "title": "Create authentication service stubs",
+            "description": "Implement stubs for authentication services",
+            "status": "pending"
+          },
+          {
+            "id": "4.9",
+            "title": "Create third-party service stubs",
+            "description": "Implement stubs for third-party services",
+            "status": "pending"
+          },
+          {
+            "id": "4.10",
+            "title": "Create stub configuration management",
+            "description": "Implement configuration management for stubs",
+            "status": "pending"
+          },
+          {
+            "id": "4.11",
+            "title": "Create stub response simulation framework",
+            "description": "Create framework for simulating stub responses",
+            "status": "pending"
+          },
+          {
+            "id": "4.12",
+            "title": "Create stub performance testing utilities",
+            "description": "Create utilities for testing stub performance",
+            "status": "pending"
+          },
+          {
+            "id": "4.13",
+            "title": "Create stub debugging and logging tools",
+            "description": "Create debugging and logging tools for stubs",
+            "status": "pending"
+          },
+          {
+            "id": "4.14",
+            "title": "Document stub framework usage",
+            "description": "Create comprehensive documentation for stub framework usage",
+            "status": "pending"
+          },
+          {
+            "id": "4.15",
+            "title": "Create stub integration testing suite",
+            "description": "Create integration testing suite for stubs",
+            "status": "pending"
+          },
+          {
+            "id": "4.16",
+            "title": "Create REST API client stubs",
+            "description": "Implement stubs for REST API clients",
+            "status": "pending"
+          },
+          {
+            "id": "4.17",
+            "title": "Create GraphQL client stubs",
+            "description": "Implement stubs for GraphQL clients",
+            "status": "pending"
+          },
+          {
+            "id": "4.18",
+            "title": "Create email service stubs",
+            "description": "Implement stubs for email services",
+            "status": "pending"
+          },
+          {
+            "id": "4.19",
+            "title": "Create SMS service stubs",
+            "description": "Implement stubs for SMS services",
+            "status": "pending"
+          },
+          {
+            "id": "4.20",
+            "title": "Create push notification stubs",
+            "description": "Implement stubs for push notification services",
+            "status": "pending"
+          },
+          {
+            "id": "4.21",
+            "title": "Create cloud storage stubs",
+            "description": "Implement stubs for cloud storage services",
+            "status": "pending"
+          },
+          {
+            "id": "4.22",
+            "title": "Create payment gateway stubs",
+            "description": "Implement stubs for payment gateway services",
+            "status": "pending"
+          },
+          {
+            "id": "4.23",
+            "title": "Create social media API stubs",
+            "description": "Implement stubs for social media APIs",
+            "status": "pending"
+          },
+          {
+            "id": "4.24",
+            "title": "Create weather service stubs",
+            "description": "Implement stubs for weather services",
+            "status": "pending"
+          },
+          {
+            "id": "4.25",
+            "title": "Create mapping service stubs",
+            "description": "Implement stubs for mapping services",
+            "status": "pending"
+          },
+          {
+            "id": "4.26",
+            "title": "Create machine learning API stubs",
+            "description": "Implement stubs for machine learning APIs",
+            "status": "pending"
+          },
+          {
+            "id": "4.27",
+            "title": "Create time series database stubs",
+            "description": "Implement stubs for time series databases",
+            "status": "pending"
+          },
+          {
+            "id": "4.28",
+            "title": "Create message queue stubs",
+            "description": "Implement stubs for message queue systems",
+            "status": "pending"
+          },
+          {
+            "id": "4.29",
+            "title": "Create cache service stubs",
+            "description": "Implement stubs for cache services",
+            "status": "pending"
+          },
+          {
+            "id": "4.30",
+            "title": "Create search engine stubs",
+            "description": "Implement stubs for search engines",
+            "status": "pending"
+          },
+          {
+            "id": "4.31",
+            "title": "Create monitoring service stubs",
+            "description": "Implement stubs for monitoring services",
+            "status": "pending"
+          },
+          {
+            "id": "4.32",
+            "title": "Create logging service stubs",
+            "description": "Implement stubs for logging services",
+            "status": "pending"
+          },
+          {
+            "id": "4.33",
+            "title": "Create backup service stubs",
+            "description": "Implement stubs for backup services",
+            "status": "pending"
+          },
+          {
+            "id": "4.34",
+            "title": "Create CDN service stubs",
+            "description": "Implement stubs for CDN services",
+            "status": "pending"
+          },
+          {
+            "id": "4.35",
+            "title": "Create load balancer stubs",
+            "description": "Implement stubs for load balancers",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "id": "5",
+        "title": "Create live openHAB integration framework",
+        "description": "Design and implement framework for live openHAB integration testing and validation.",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": ["1"],
+        "subtasks": [
+          {
+            "id": "5.1",
+            "title": "Design live integration test architecture",
+            "description": "Design architecture for live integration testing",
+            "status": "pending"
+          },
+          {
+            "id": "5.2",
+            "title": "Create openHAB service discovery utilities",
+            "description": "Create utilities for discovering openHAB services",
+            "status": "pending"
+          },
+          {
+            "id": "5.3",
+            "title": "Create real service binding framework",
+            "description": "Create framework for binding to real openHAB services",
+            "status": "pending"
+          },
+          {
+            "id": "5.4",
+            "title": "Create live configuration deployment tools",
+            "description": "Create tools for deploying configurations to live openHAB",
+            "status": "pending"
+          },
+          {
+            "id": "5.5",
+            "title": "Create bundle installation utilities",
+            "description": "Create utilities for installing bundles to live openHAB",
+            "status": "pending"
+          },
+          {
+            "id": "5.6",
+            "title": "Create live system monitoring tools",
+            "description": "Create tools for monitoring live openHAB systems",
+            "status": "pending"
+          },
+          {
+            "id": "5.7",
+            "title": "Create performance measurement utilities",
+            "description": "Create utilities for measuring performance in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.8",
+            "title": "Create real-time debugging tools",
+            "description": "Create tools for real-time debugging of live systems",
+            "status": "pending"
+          },
+          {
+            "id": "5.9",
+            "title": "Create live test data management",
+            "description": "Create tools for managing test data in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.10",
+            "title": "Create integration test orchestration",
+            "description": "Create orchestration tools for integration tests",
+            "status": "pending"
+          },
+          {
+            "id": "5.11",
+            "title": "Create live system validation tools",
+            "description": "Create tools for validating live system behavior",
+            "status": "pending"
+          },
+          {
+            "id": "5.12",
+            "title": "Document live integration procedures",
+            "description": "Create documentation for live integration procedures",
+            "status": "pending"
+          },
+          {
+            "id": "5.13",
+            "title": "Create live environment setup automation",
+            "description": "Create automation for setting up live test environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.14",
+            "title": "Create real-time log analysis tools",
+            "description": "Create tools for real-time log analysis",
+            "status": "pending"
+          },
+          {
+            "id": "5.15",
+            "title": "Create live performance profiling",
+            "description": "Create tools for profiling performance in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.16",
+            "title": "Create live security testing",
+            "description": "Create tools for security testing in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.17",
+            "title": "Create live backup and restore testing",
+            "description": "Create tools for testing backup and restore in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.18",
+            "title": "Create live failover testing",
+            "description": "Create tools for testing failover in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.19",
+            "title": "Create live scalability testing",
+            "description": "Create tools for testing scalability in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.20",
+            "title": "Create live compatibility testing",
+            "description": "Create tools for testing compatibility in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.21",
+            "title": "Create live upgrade testing",
+            "description": "Create tools for testing upgrades in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.22",
+            "title": "Create live rollback testing",
+            "description": "Create tools for testing rollbacks in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.23",
+            "title": "Create live disaster recovery testing",
+            "description": "Create tools for testing disaster recovery in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.24",
+            "title": "Create live compliance testing",
+            "description": "Create tools for testing compliance in live environments",
+            "status": "pending"
+          },
+          {
+            "id": "5.25",
+            "title": "Create live user acceptance testing",
+            "description": "Create tools for user acceptance testing in live environments",
+            "status": "pending"
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-25T10:09:14.341Z",
+      "updated": "2025-07-25T10:09:14.341Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
