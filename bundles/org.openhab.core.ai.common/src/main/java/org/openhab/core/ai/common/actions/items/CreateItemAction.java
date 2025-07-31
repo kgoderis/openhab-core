@@ -184,7 +184,7 @@ public class CreateItemAction implements AIAction {
             if (validateOnly) {
                 result.put("created", false);
                 result.put("note", "Validation only - no item created");
-                result.put("itemInfo", null);
+                result.put("itemInfo", Map.of());
                 result.put("metadataSet", 0);
                 return AIActionResult.success(result, System.currentTimeMillis() - executionStartTime);
             }

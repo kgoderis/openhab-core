@@ -188,7 +188,7 @@ public class GetThingStatusAction implements AIAction {
 
                 result.put("statusDetails", statusDetails);
             } else {
-                result.put("statusDetails", null);
+                result.put("statusDetails", Map.of());
             }
 
             // Status history (real implementation)
@@ -197,7 +197,7 @@ public class GetThingStatusAction implements AIAction {
                 result.put("statusHistory", statusHistory);
                 result.put("historyEntryCount", statusHistory.size());
             } else {
-                result.put("statusHistory", null);
+                result.put("statusHistory", List.of());
                 result.put("historyEntryCount", 0);
             }
 

@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.events.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,7 @@ public class EventSSEManager {
 
     private static final Logger logger = LoggerFactory.getLogger(EventSSEManager.class);
 
-    private static volatile EventSSEManager instance;
+    private static @Nullable EventSSEManager instance;
 
     // subscriptionId -> list of SSE sinks
     private final Map<String, CopyOnWriteArrayList<SSESink>> sinks = new ConcurrentHashMap<>();

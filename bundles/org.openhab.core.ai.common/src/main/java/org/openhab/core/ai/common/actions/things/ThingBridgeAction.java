@@ -222,12 +222,12 @@ public class ThingBridgeAction implements AIAction {
             ThingUID bridgeUID = thing.getBridgeUID();
             if (bridgeUID == null) {
                 result.put("hasBridge", false);
-                result.put("bridgeUID", null);
-                result.put("bridgeDetails", null);
+                result.put("bridgeUID", "");
+                result.put("bridgeDetails", Map.of());
                 result.put("connectedThings", List.of());
                 result.put("connectedThingCount", 0);
-                result.put("bridgeStatus", null);
-                result.put("bridgeCapabilities", null);
+                result.put("bridgeStatus", Map.of());
+                result.put("bridgeCapabilities", Map.of());
                 return result;
             }
 
@@ -250,10 +250,10 @@ public class ThingBridgeAction implements AIAction {
                     bridgeDetails.put("configuration", bridge.getConfiguration().getProperties());
                     result.put("bridgeDetails", bridgeDetails);
                 } else {
-                    result.put("bridgeDetails", null);
+                    result.put("bridgeDetails", Map.of());
                 }
             } else {
-                result.put("bridgeDetails", null);
+                result.put("bridgeDetails", Map.of());
             }
 
             // Get connected things
@@ -280,10 +280,10 @@ public class ThingBridgeAction implements AIAction {
                     bridgeStatus.put("lastSeen", System.currentTimeMillis()); // Not directly available from Thing
                     result.put("bridgeStatus", bridgeStatus);
                 } else {
-                    result.put("bridgeStatus", null);
+                    result.put("bridgeStatus", Map.of());
                 }
             } else {
-                result.put("bridgeStatus", null);
+                result.put("bridgeStatus", Map.of());
             }
 
             // Get bridge capabilities
@@ -305,13 +305,13 @@ public class ThingBridgeAction implements AIAction {
                         bridgeCapabilities.put("maxConnectedThings", -1); // Not directly available
                         result.put("bridgeCapabilities", bridgeCapabilities);
                     } else {
-                        result.put("bridgeCapabilities", null);
+                        result.put("bridgeCapabilities", Map.of());
                     }
                 } else {
-                    result.put("bridgeCapabilities", null);
+                    result.put("bridgeCapabilities", Map.of());
                 }
             } else {
-                result.put("bridgeCapabilities", null);
+                result.put("bridgeCapabilities", Map.of());
             }
 
         } catch (Exception e) {

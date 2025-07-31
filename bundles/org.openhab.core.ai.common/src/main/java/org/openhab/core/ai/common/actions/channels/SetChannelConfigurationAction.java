@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -41,10 +42,10 @@ public class SetChannelConfigurationAction implements AIAction {
     private static final String CATEGORY = "channels";
 
     @Reference
-    private ThingRegistry thingRegistry;
+    private @Nullable ThingRegistry thingRegistry;
 
     @Reference
-    private ThingManager thingManager;
+    private @Nullable ThingManager thingManager;
 
     @Override
     public String getActionId() {

@@ -197,7 +197,7 @@ public class GetItemStateAction implements AIAction {
 
                 result.put("stateDetails", stateDetails);
             } else {
-                result.put("stateDetails", null);
+                result.put("stateDetails", Map.of());
             }
 
             // State history
@@ -206,7 +206,7 @@ public class GetItemStateAction implements AIAction {
                 result.put("stateHistory", stateHistory);
                 result.put("historyEntryCount", stateHistory.size());
             } else {
-                result.put("stateHistory", null);
+                result.put("stateHistory", List.of());
                 result.put("historyEntryCount", 0);
             }
 

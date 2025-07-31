@@ -206,7 +206,7 @@ public class GetThingAction implements AIAction {
                         thing.getConfiguration().getProperties().keySet().stream().collect(Collectors.toList()));
                 result.put("configuration", configInfo);
             } else {
-                result.put("configuration", null);
+                result.put("configuration", Map.of());
             }
 
             // Properties information
@@ -216,7 +216,7 @@ public class GetThingAction implements AIAction {
                 propsInfo.put("propertyKeys", thing.getProperties().keySet().stream().collect(Collectors.toList()));
                 result.put("properties", propsInfo);
             } else {
-                result.put("properties", null);
+                result.put("properties", Map.of());
             }
 
             // Channels information
@@ -226,7 +226,7 @@ public class GetThingAction implements AIAction {
                 result.put("channels", channelsInfo);
                 result.put("channelCount", channelsInfo.size());
             } else {
-                result.put("channels", null);
+                result.put("channels", List.of());
                 result.put("channelCount", 0);
             }
 
@@ -243,7 +243,7 @@ public class GetThingAction implements AIAction {
                 }
                 result.put("handler", handlerInfo);
             } else {
-                result.put("handler", null);
+                result.put("handler", Map.of());
             }
 
             long executionTime = System.currentTimeMillis() - executionStartTime;

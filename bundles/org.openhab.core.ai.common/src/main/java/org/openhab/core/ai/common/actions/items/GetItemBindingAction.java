@@ -156,9 +156,9 @@ public class GetItemBindingAction implements AIAction {
             // Check if thing registry is available
             if (thingRegistry == null) {
                 result.put("hasBinding", false);
-                result.put("bindingInfo", null);
-                result.put("thingInfo", null);
-                result.put("channelInfo", null);
+                result.put("bindingInfo", Map.of());
+                result.put("thingInfo", Map.of());
+                result.put("channelInfo", Map.of());
                 result.put("bindingStatus", "UNKNOWN");
                 result.put("note", "Thing registry not available");
                 return AIActionResult.success(result, System.currentTimeMillis() - executionStartTime);
@@ -238,9 +238,9 @@ public class GetItemBindingAction implements AIAction {
                 }
             } else {
                 result.put("hasBinding", false);
-                result.put("bindingInfo", null);
-                result.put("thingInfo", null);
-                result.put("channelInfo", null);
+                result.put("bindingInfo", Map.of());
+                result.put("thingInfo", Map.of());
+                result.put("channelInfo", Map.of());
                 result.put("bindingStatus", "UNBOUND");
                 result.put("note", "Item is not bound to any thing");
             }

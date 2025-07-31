@@ -205,8 +205,8 @@ public class SetItemMetadataAction implements AIAction {
                 result.put("previousConfiguration", existingMetadata.getConfiguration());
             } else {
                 result.put("overwritten", false);
-                result.put("previousValue", null);
-                result.put("previousConfiguration", null);
+                result.put("previousValue", "");
+                result.put("previousConfiguration", Map.of());
             }
 
             // Create new metadata

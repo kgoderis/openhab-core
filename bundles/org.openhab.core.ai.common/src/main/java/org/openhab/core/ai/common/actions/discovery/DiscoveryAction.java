@@ -87,20 +87,20 @@ public class DiscoveryAction implements AIAction {
     @Override
     public AIActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return AIActionValidationResult.invalid("Parameters cannot be null");
+            return AIActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String action = (String) parameters.get("action");
         if (action == null) {
-            return AIActionValidationResult.invalid("Missing required parameter: action");
+            return AIActionValidationResult.invalid(List.of("Missing required parameter: action"));
         }
 
         List<String> validActions = List.of("status", "info");
         if (!validActions.contains(action)) {
-            return AIActionValidationResult.invalid("Invalid action. Must be one of: " + validActions);
+            return AIActionValidationResult.invalid(List.of("Invalid action. Must be one of: " + validActions));
         }
 
-        return AIActionValidationResult.valid();
+        return AIActionValidationResult.valid(Map.of());
     }
 
     @Override
@@ -119,7 +119,7 @@ public class DiscoveryAction implements AIAction {
             long executionTime = System.currentTimeMillis() - startTime;
             logger.debug("Discovery action completed in {}ms", executionTime);
 
-            return AIActionResult.success(ACTION_ID, result, executionTime);
+            return AIActionResult.success(result, executionTime);
 
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;

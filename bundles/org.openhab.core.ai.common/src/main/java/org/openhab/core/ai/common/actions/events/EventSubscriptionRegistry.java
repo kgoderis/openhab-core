@@ -32,7 +32,7 @@ public class EventSubscriptionRegistry {
     private static final Logger logger = LoggerFactory.getLogger(EventSubscriptionRegistry.class);
 
     @Reference
-    private EventPublisher eventPublisher;
+    private @Nullable EventPublisher eventPublisher;
 
     // subscriptionId -> EventSubscriber
     private final Map<String, EventSubscriber> subscriptions = new ConcurrentHashMap<>();

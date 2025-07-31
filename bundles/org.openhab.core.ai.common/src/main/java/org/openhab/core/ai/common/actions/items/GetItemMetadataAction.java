@@ -171,7 +171,7 @@ public class GetItemMetadataAction implements AIAction {
                         result.put("metadata", metadataInfo);
                         result.put("totalMetadataEntries", 1);
                     } else {
-                        result.put("metadata", null);
+                        result.put("metadata", Map.of());
                         result.put("totalMetadataEntries", 0);
                         result.put("note", "No metadata found for namespace: " + namespace);
                     }
@@ -212,8 +212,8 @@ public class GetItemMetadataAction implements AIAction {
                 }
             } else {
                 // Fallback when metadata registry is not available
-                result.put("metadata", null);
-                result.put("allNamespaces", null);
+                result.put("metadata", Map.of());
+                result.put("allNamespaces", List.of());
                 result.put("totalMetadataEntries", 0);
                 result.put("availableNamespaces", List.of());
                 result.put("note", "Metadata registry not available");

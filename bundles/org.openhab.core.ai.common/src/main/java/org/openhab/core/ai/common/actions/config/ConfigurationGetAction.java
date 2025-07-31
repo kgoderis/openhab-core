@@ -106,9 +106,29 @@ public class ConfigurationGetAction implements AIAction {
             return AIActionValidationResult.valid(parameters);
         }
 
+        // Check for invalid parameters
+        List<String> validParams = List.of("configType", "configName", "includeContent", "includeMetadata");
+        List<String> invalidParams = new ArrayList<>();
+
+        for (String param : parameters.keySet()) {
+            if (!validParams.contains(param)) {
+                invalidParams.add(param);
+            }
+        }
+
+        if (!invalidParams.isEmpty()) {
+            return AIActionValidationResult.invalid(List.of("Invalid parameters: " + String.join(", ", invalidParams)
+                    + ". Valid parameters are: " + String.join(", ", validParams)));
+        }
+
         String configType = (String) parameters.getOrDefault("configType", "all");
         List<String> validTypes = List.of("items", "things", "rules", "scripts", "sitemaps", "persistence",
                 "transforms", "services", "all");
+
+        // Handle null configType by using default
+        if (configType == null) {
+            configType = "all";
+        }
 
         if (!validTypes.contains(configType)) {
             return AIActionValidationResult.invalid(List
@@ -122,6 +142,22 @@ public class ConfigurationGetAction implements AIAction {
     public AIActionResult execute(Map<String, Object> parameters, AIActionContext context) throws AIActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing configuration get action with parameters: {}", parameters);
+
+        // Validate parameters first
+        AIActionValidationResult validation = validateParameters(parameters);
+        if (!validation.isValid()) {
+            throw new AIActionException(ACTION_ID, "Invalid parameters: " + validation.getErrors());
+        }
+
+        // Validate context
+        if (context == null) {
+            throw new AIActionException(ACTION_ID, "Context cannot be null");
+        }
+
+        // Validate context has required fields
+        if (context.getProtocol() == null || context.getProtocol().trim().isEmpty()) {
+            throw new AIActionException(ACTION_ID, "Context protocol cannot be null or empty");
+        }
 
         try {
             String configType = (String) parameters.getOrDefault("configType", "all");
@@ -146,13 +182,38 @@ public class ConfigurationGetAction implements AIAction {
 
     @Override
     public CompletableFuture<AIActionResult> executeAsync(Map<String, Object> parameters, AIActionContext context) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return execute(parameters, context);
-            } catch (AIActionException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        // Validate parameters synchronously and complete future exceptionally for validation errors
+        AIActionValidationResult validation = validateParameters(parameters);
+        if (!validation.isValid()) {
+            CompletableFuture<AIActionResult> future = new CompletableFuture<>();
+            future.completeExceptionally(
+                    new AIActionException(ACTION_ID, "Invalid parameters: " + validation.getErrors()));
+            return future;
+        }
+
+        // Validate context and complete future exceptionally
+        if (context == null) {
+            CompletableFuture<AIActionResult> future = new CompletableFuture<>();
+            future.completeExceptionally(new AIActionException(ACTION_ID, "Context cannot be null"));
+            return future;
+        }
+
+        // Validate context has required fields
+        if (context.getProtocol() == null || context.getProtocol().trim().isEmpty()) {
+            CompletableFuture<AIActionResult> future = new CompletableFuture<>();
+            future.completeExceptionally(new AIActionException(ACTION_ID, "Context protocol cannot be null or empty"));
+            return future;
+        }
+
+        // For simple operations, complete immediately
+        try {
+            AIActionResult result = execute(parameters, context);
+            return CompletableFuture.completedFuture(result);
+        } catch (AIActionException e) {
+            CompletableFuture<AIActionResult> future = new CompletableFuture<>();
+            future.completeExceptionally(e);
+            return future;
+        }
     }
 
     @Override
@@ -171,7 +232,7 @@ public class ConfigurationGetAction implements AIAction {
 
     @Override
     public Map<String, Object> getCapabilities() {
-        return Map.of("filtering", true, "sorting", false, "pagination", false, "metadata", true, "async", true);
+        return Map.of("supportsAsync", true, "supportsValidation", true, "supportsFileAccess", true);
     }
 
     @Override

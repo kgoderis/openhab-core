@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -38,7 +39,7 @@ public class GetChannelTypeAction implements AIAction {
     private static final String CATEGORY = "channels";
 
     @Reference
-    private ChannelTypeRegistry channelTypeRegistry;
+    private @Nullable ChannelTypeRegistry channelTypeRegistry;
 
     @Override
     public String getActionId() {

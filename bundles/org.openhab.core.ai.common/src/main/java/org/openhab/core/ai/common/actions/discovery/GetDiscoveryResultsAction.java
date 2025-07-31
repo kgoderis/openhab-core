@@ -413,7 +413,7 @@ public class GetDiscoveryResultsAction implements AIAction {
         if (includeDetails) {
             // Detailed information
             result.put("representationProperty", thing.getProperties().get("representationProperty"));
-            result.put("bridgeUID", thing.getBridgeUID() != null ? thing.getBridgeUID().toString() : null);
+            result.put("bridgeUID", thing.getBridgeUID() != null ? thing.getBridgeUID().toString() : "");
 
             // Properties
             Map<String, Object> properties = new HashMap<>();

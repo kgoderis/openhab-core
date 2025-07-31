@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -44,13 +45,13 @@ public class LinkChannelAction implements AIAction {
     private static final String CATEGORY = "channels";
 
     @Reference
-    private ItemChannelLinkRegistry itemChannelLinkRegistry;
+    private @Nullable ItemChannelLinkRegistry itemChannelLinkRegistry;
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
-    private ThingRegistry thingRegistry;
+    private @Nullable ThingRegistry thingRegistry;
 
     @Override
     public String getActionId() {

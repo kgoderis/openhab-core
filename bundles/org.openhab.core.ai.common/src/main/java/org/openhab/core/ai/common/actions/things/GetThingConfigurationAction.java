@@ -154,7 +154,7 @@ public class GetThingConfigurationAction implements AIAction {
                 List<String> configurationKeys = configuration.keySet().stream().toList();
                 result.put("configurationKeys", configurationKeys);
             } else {
-                result.put("configurationKeys", null);
+                result.put("configurationKeys", List.of());
             }
 
             // Configuration schema (real implementation)
@@ -162,7 +162,7 @@ public class GetThingConfigurationAction implements AIAction {
                 Map<String, Object> configurationSchema = getRealConfigurationSchema(thing);
                 result.put("configurationSchema", configurationSchema);
             } else {
-                result.put("configurationSchema", null);
+                result.put("configurationSchema", Map.of());
             }
 
             long executionTime = System.currentTimeMillis() - executionStartTime;

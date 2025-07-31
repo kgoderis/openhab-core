@@ -246,10 +246,10 @@ public class ThingPropertiesAction implements AIAction {
                     typeProperties.put("isListed", true); // Default assumption
                     result.put("typeProperties", typeProperties);
                 } else {
-                    result.put("typeProperties", null);
+                    result.put("typeProperties", Map.of());
                 }
             } else {
-                result.put("typeProperties", null);
+                result.put("typeProperties", Map.of());
             }
 
             // Binding properties
@@ -264,7 +264,7 @@ public class ThingPropertiesAction implements AIAction {
                 bindingProperties.put("bindingDescription", "Binding information not directly available");
                 result.put("bindingProperties", bindingProperties);
             } else {
-                result.put("bindingProperties", null);
+                result.put("bindingProperties", Map.of());
             }
 
             // Metadata
@@ -281,7 +281,7 @@ public class ThingPropertiesAction implements AIAction {
                 metadata.put("softwareVersion", thing.getProperties().get("softwareVersion"));
                 result.put("metadata", metadata);
             } else {
-                result.put("metadata", null);
+                result.put("metadata", Map.of());
             }
 
             // Channel properties
@@ -301,7 +301,7 @@ public class ThingPropertiesAction implements AIAction {
                 result.put("channelProperties", channelProperties);
                 result.put("channelCount", channelProperties.size());
             } else {
-                result.put("channelProperties", null);
+                result.put("channelProperties", Map.of());
                 result.put("channelCount", 0);
             }
 

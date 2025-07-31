@@ -1,0 +1,1 @@
+rule "Test Rule" when Item TestSwitch changed then logInfo("test", "Item changed") end

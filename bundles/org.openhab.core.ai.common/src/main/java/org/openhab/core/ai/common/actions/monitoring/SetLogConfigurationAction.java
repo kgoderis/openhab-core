@@ -231,7 +231,7 @@ public class SetLogConfigurationAction implements AIAction {
             result.put("action", action);
             result.put("success", success);
             result.put("changes", changes);
-            result.put("backupFile", backupFile != null ? backupFile.toString() : null);
+            result.put("backupFile", backupFile != null ? backupFile.toString() : "");
             result.put("configFile", logbackConfig.toString());
             result.put("restartRequired", restartRequired);
             result.put("timestamp", Instant.now().toString());

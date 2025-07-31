@@ -566,7 +566,7 @@ public class ScriptLibraryAction implements AIAction {
             result.put("message", "Library analysis completed successfully");
         } else {
             result.put("message", "Library not found");
-            result.put("libraryInfo", null);
+            result.put("libraryInfo", Map.of());
         }
 
         return result;

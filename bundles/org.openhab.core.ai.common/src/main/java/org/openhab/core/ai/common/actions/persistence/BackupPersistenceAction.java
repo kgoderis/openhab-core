@@ -15,6 +15,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -45,7 +46,7 @@ public class BackupPersistenceAction implements AIAction {
     private static final String CATEGORY = "persistence";
 
     @Reference
-    private PersistenceServiceRegistry persistenceServiceRegistry;
+    private @Nullable PersistenceServiceRegistry persistenceServiceRegistry;
 
     @Override
     public String getActionId() {

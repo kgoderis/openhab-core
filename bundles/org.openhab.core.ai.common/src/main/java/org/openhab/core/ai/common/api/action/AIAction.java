@@ -3,12 +3,15 @@ package org.openhab.core.ai.common.api.action;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  * Unified interface for AI actions that can be executed by both MCP and A2A protocols.
  * This serves as the common foundation for all AI capabilities in openHAB.
  * 
  * 
  */
+@NonNullByDefault
 public interface AIAction {
 
     // ===== CORE IDENTIFICATION =====

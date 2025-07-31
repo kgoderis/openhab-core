@@ -1,8 +1,12 @@
 package org.openhab.core.ai.common.api.action;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.auth.AIAuthenticationContext;
 
 /**
@@ -10,6 +14,7 @@ import org.openhab.core.ai.common.auth.AIAuthenticationContext;
  * 
  * 
  */
+@NonNullByDefault
 public class AIActionContext {
 
     // Protocol identification
@@ -32,7 +37,9 @@ public class AIActionContext {
         this.protocol = builder.protocol;
         this.clientId = builder.clientId;
         this.sessionId = builder.sessionId;
-        this.authContext = builder.authContext;
+        this.authContext = builder.authContext != null ? builder.authContext
+                : new AIAuthenticationContext("default", "none", Map.of(), Set.of(), Instant.now(), null,
+                        "default-session");
         this.protocolContext = builder.protocolContext;
         this.executionStartTime = builder.executionStartTime;
         this.correlationId = builder.correlationId;
@@ -76,14 +83,14 @@ public class AIActionContext {
      * Builder for AIActionContext.
      */
     public static class Builder {
-        private String protocol;
-        private String clientId;
-        private String sessionId;
-        private AIAuthenticationContext authContext;
+        private String protocol = "";
+        private String clientId = "";
+        private String sessionId = "";
+        private @Nullable AIAuthenticationContext authContext;
         private Map<String, Object> protocolContext = Map.of();
         private long executionStartTime = System.currentTimeMillis();
-        private String correlationId;
-        private String priority;
+        private String correlationId = "";
+        private String priority = "";
 
         public Builder protocol(String protocol) {
             this.protocol = protocol;

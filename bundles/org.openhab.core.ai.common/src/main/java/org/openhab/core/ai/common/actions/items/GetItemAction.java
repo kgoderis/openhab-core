@@ -211,7 +211,7 @@ public class GetItemAction implements AIAction {
                         .map(metadata -> metadata.getUID().getNamespace()).distinct().collect(Collectors.toList()));
                 result.put("metadata", metadataInfo);
             } else {
-                result.put("metadata", null);
+                result.put("metadata", Map.of());
             }
 
             // Group membership information
@@ -226,7 +226,7 @@ public class GetItemAction implements AIAction {
                 groupsInfo.put("totalGroups", groupMemberships.size());
                 result.put("groups", groupsInfo);
             } else {
-                result.put("groups", null);
+                result.put("groups", List.of());
             }
 
             // Binding information
@@ -266,7 +266,7 @@ public class GetItemAction implements AIAction {
 
                 result.put("binding", bindingInfo);
             } else {
-                result.put("binding", null);
+                result.put("binding", Map.of());
             }
 
             long executionTime = System.currentTimeMillis() - executionStartTime;

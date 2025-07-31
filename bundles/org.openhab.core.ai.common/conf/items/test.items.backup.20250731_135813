@@ -1,0 +1,1 @@
+Switch TestSwitch { channel="binding:thing:channel" }

@@ -167,9 +167,9 @@ public class StopDiscoveryAction implements AIAction {
 
         try {
             // Extract parameters
-            String discoveryId = (String) parameters.getOrDefault("discoveryId", null);
-            String bindingId = (String) parameters.getOrDefault("bindingId", null);
-            String protocol = (String) parameters.getOrDefault("protocol", null);
+            String discoveryId = (String) parameters.getOrDefault("discoveryId", "");
+            String bindingId = (String) parameters.getOrDefault("bindingId", "");
+            String protocol = (String) parameters.getOrDefault("protocol", "");
             boolean force = (Boolean) parameters.getOrDefault("force", false);
             boolean saveResults = (Boolean) parameters.getOrDefault("saveResults", true);
             boolean clearQueue = (Boolean) parameters.getOrDefault("clearQueue", false);
@@ -240,14 +240,14 @@ public class StopDiscoveryAction implements AIAction {
 
                     // Match by discovery ID, binding ID, or protocol
                     boolean shouldStop = false;
-                    if (discoveryId != null && thing.getUID().getId().equals(discoveryId)) {
+                    if (!discoveryId.isEmpty() && thing.getUID().getId().equals(discoveryId)) {
                         shouldStop = true;
                         stoppedSessions.add(discoveryId);
-                    } else if (bindingId != null && serviceBindingId.contains(bindingId)) {
+                    } else if (!bindingId.isEmpty() && serviceBindingId.contains(bindingId)) {
                         shouldStop = true;
                         targetBindingId = bindingId;
                         stoppedSessions.add("discovery_" + bindingId + "_" + thing.getUID().getId());
-                    } else if (protocol != null && serviceBindingId.contains(protocol)) {
+                    } else if (!protocol.isEmpty() && serviceBindingId.contains(protocol)) {
                         shouldStop = true;
                         targetProtocol = protocol;
                         stoppedSessions.add("discovery_" + protocol + "_" + thing.getUID().getId());
@@ -270,11 +270,11 @@ public class StopDiscoveryAction implements AIAction {
 
         // Handle cases where no specific discovery service is found
         if (!discoveryServiceFound) {
-            if (discoveryId != null) {
+            if (!discoveryId.isEmpty()) {
                 logger.warn("Discovery session not found: {}", discoveryId);
-            } else if (bindingId != null) {
+            } else if (!bindingId.isEmpty()) {
                 logger.warn("No discovery service found for binding: {}", bindingId);
-            } else if (protocol != null) {
+            } else if (!protocol.isEmpty()) {
                 logger.warn("No discovery service found for protocol: {}", protocol);
             }
         }
@@ -296,8 +296,8 @@ public class StopDiscoveryAction implements AIAction {
 
         Map<String, Object> result = new HashMap<>();
         result.put("stoppedSessions", stoppedSessions);
-        result.put("bindingId", targetBindingId);
-        result.put("protocol", targetProtocol);
+        result.put("bindingId", targetBindingId != null ? targetBindingId : "");
+        result.put("protocol", targetProtocol != null ? targetProtocol : "");
         result.put("stopTime", Instant.now().toString());
         result.put("savedResults", saveResults);
         result.put("clearedQueue", clearQueue);
@@ -306,7 +306,6 @@ public class StopDiscoveryAction implements AIAction {
                 discoveryServiceFound
                         ? "Discovery stopped successfully. Stopped " + stoppedSessions.size() + " sessions."
                         : "No discovery services found to stop.");
-
         return result;
     }
 }

@@ -180,8 +180,8 @@ public class UpdateItemAction implements AIAction {
             if (validateOnly) {
                 result.put("updated", false);
                 result.put("note", "Validation only - no changes made");
-                result.put("newInfo", null);
-                result.put("changes", null);
+                result.put("newInfo", Map.of());
+                result.put("changes", Map.of());
                 result.put("metadataUpdated", 0);
                 return AIActionResult.success(result, System.currentTimeMillis() - executionStartTime);
             }
