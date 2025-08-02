@@ -13,7 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.a2a.internal.A2ARestEndpoint;
 import org.openhab.core.ai.a2a.internal.A2AServerManager;
 import org.openhab.core.ai.a2a.internal.A2ASkillRegistry;
-import org.openhab.core.ai.common.api.action.AIActionRegistry;
+import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.openhab.core.service.ReadyService;
 import org.osgi.framework.BundleContext;
 

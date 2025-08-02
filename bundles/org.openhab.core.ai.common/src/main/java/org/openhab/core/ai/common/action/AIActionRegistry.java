@@ -1,4 +1,4 @@
-package org.openhab.core.ai.common.api.action;
+package org.openhab.core.ai.common.action;
 
 import java.util.Collection;
 import java.util.Map;
@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.api.action.AIAction;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;

@@ -5,11 +5,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.a2a.api.A2ASkillException;
-import org.openhab.core.ai.a2a.api.A2ASkillResult;
+import org.openhab.core.ai.a2a.api.skill.A2ASkillException;
+import org.openhab.core.ai.a2a.api.skill.A2ASkillResult;
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionContext;
-import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,7 +1,7 @@
 package org.openhab.core.ai.a2a.internal;
 
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.api.action.AIActionRegistry;
+import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;

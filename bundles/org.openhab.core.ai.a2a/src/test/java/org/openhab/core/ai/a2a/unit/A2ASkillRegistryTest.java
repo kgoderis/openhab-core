@@ -11,10 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.a2a.api.A2ASkillException;
+import org.openhab.core.ai.a2a.api.skill.A2ASkillException;
 import org.openhab.core.ai.a2a.internal.A2ASkillRegistry;
+import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionRegistry;
 import org.openhab.core.service.ReadyService;
 
 import io.a2a.spec.AgentSkill;

@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionRegistry;
 import org.openhab.core.ai.mcp.api.MCPTool;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;

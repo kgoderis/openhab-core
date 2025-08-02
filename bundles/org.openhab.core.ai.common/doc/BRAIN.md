@@ -29,7 +29,106 @@
 
   LLM Brain Integration Architecture
 
-  Option 1: Embedded LLM Brain (Recommended)
+## Unified Tool Execution Architecture
+
+The openHAB AI system implements a **unified architecture** where all tool execution flows through the AIAction interface, regardless of the LLM type or protocol. This eliminates redundancy and creates a consistent execution model.
+
+### Architecture Principles
+
+1. **Single Execution Path**: All tool execution goes through `AIAction` → `AIActionResult`
+2. **Protocol Agnostic**: Same flow for MCP, A2A, and remote LLM tool calls
+3. **No Redundant Layers**: Eliminated `LLMToolCall` and `LLMTool` classes
+4. **Direct Translation**: Remote LLM responses translate directly to AIActions
+
+### Tool Execution Flow
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   LLM Response  │ →  │  Parse & Map    │ →  │  AIAction       │
+│                 │    │                 │    │  Execution      │
+│ • Local LLM     │    │ • Tool names    │    │ • Direct call   │
+│ • Remote LLM    │    │ • Parameters    │    │ • AIActionResult│
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### Implementation Strategy
+
+#### Local LLMs (Ollama, LocalAI, vLLM)
+- **Direct MCP Integration**: Local LLM connects to MCP server
+- **No Tool Call Objects**: MCP protocol handles tool execution directly
+- **Text-Based Parsing**: For LLMs without native function calling
+
+#### Remote LLMs (OpenAI, Anthropic, Google)
+- **Direct Translation**: Remote LLM tool calls → AIAction execution
+- **No Intermediate Objects**: Eliminated `LLMToolCall` and `LLMToolResult`
+- **Unified Results**: All results use `AIActionResult` format
+
+### Code Example: Remote LLM Integration
+
+```java
+public class OpenAIProviderService {
+    
+    public CompletableFuture<LLMResponse> completeWithTools(String prompt, List<AIAction> availableActions) {
+        // 1. Convert AIActions to OpenAI function descriptions
+        List<Function> functions = convertAIActionsToFunctions(availableActions);
+        
+        // 2. Call OpenAI with function descriptions
+        ChatCompletion response = openaiClient.chat(prompt, functions);
+        
+        // 3. Parse tool calls and execute AIActions directly
+        List<AIActionResult> toolResults = executeToolCalls(response.getToolCalls());
+        
+        // 4. Return LLMResponse with content only (no tool calls)
+        return LLMResponse.builder()
+            .content(response.getContent())
+            .build();
+    }
+    
+    private List<AIActionResult> executeToolCalls(List<ToolCall> toolCalls) {
+        return toolCalls.stream()
+            .map(this::executeToolCall)
+            .collect(Collectors.toList());
+    }
+    
+    private AIActionResult executeToolCall(ToolCall toolCall) {
+        // Direct translation: ToolCall → AIAction → AIActionResult
+        AIAction action = actionRegistry.getAction(toolCall.getFunction().getName());
+        Map<String, Object> args = parseArguments(toolCall.getFunction().getArguments());
+        return action.execute(args, context);
+    }
+}
+```
+
+### Benefits of Unified Architecture
+
+1. **Simplified Codebase**: Removed redundant `LLMToolCall` and `LLMTool` classes
+2. **Consistent Interface**: All tool execution uses `AIAction` interface
+3. **Easier Maintenance**: Single execution path to maintain
+4. **Better Performance**: No intermediate object creation/destruction
+5. **Clear Separation**: LLM layer handles text generation, AIAction layer handles execution
+
+### Removed Components
+
+- ❌ `LLMToolCall` - Not needed, direct AIAction execution
+- ❌ `LLMTool` - Not needed, AIAction provides tool definitions
+- ❌ `toolCalls` field in `LLMResponse` - Not needed, direct execution
+- ❌ `completeWithTools()` method in `LLMClient` - Not needed, handled by providers
+
+### Current Architecture
+
+```
+LLMClient (text generation only)
+    ↓
+LLMResponse (content only)
+    ↓
+Remote LLM Provider (handles tool calling)
+    ↓
+AIAction (direct execution)
+    ↓
+AIActionResult (unified result format)
+```
+
+Option 1: Embedded LLM Brain (Recommended)
 
   @Component
   public class OpenHABAutonomousAgent {

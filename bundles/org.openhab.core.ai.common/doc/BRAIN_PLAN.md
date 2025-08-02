@@ -20,6 +20,252 @@ This document provides a detailed, class-level implementation plan for transform
 
 ---
 
+## Naming Convention Standards
+
+### **Core Principle: Domain-Driven Naming with Clear Hierarchy**
+
+The naming convention reflects the **shared brain architecture** where openHAB becomes an intelligent agent with autonomous reasoning capabilities, while maintaining clear separation between different functional domains.
+
+### **1. Primary Naming Patterns**
+
+#### **A. LLM Brain Core Components (LLM* prefix)**
+- **Purpose**: Core LLM integration and reasoning engine
+- **Pattern**: `LLM[Component][Type]`
+- **Examples**:
+  - `LLMClient` - Base interface for LLM providers
+  - `LLMProviderFactory` - Factory for creating LLM clients
+  - `LLMReasoningEngine` - Core reasoning engine
+  - `LLMConfigurationService` - Configuration management
+  - `LLMHealthMonitor` - Health and performance monitoring
+  - `LLMResponse` - Response data structures (content only, no tool calls)
+  - `LLMParameters` - Request parameters
+  - `LLMStreamHandler` - Streaming response handler
+  - `LLMRateLimitInfo` - Rate limiting information
+
+#### **B. AI Action Framework (AI* prefix)**
+- **Purpose**: Action execution and management framework
+- **Pattern**: `AI[Component][Type]`
+- **Examples**:
+  - `AIAction` - Base action interface
+  - `AIActionRegistry` - Action registration and discovery
+  - `AIActionContext` - Execution context
+  - `AIActionResult` - Action execution results
+  - `AIAuthenticationManager` - Authentication management
+  - `AIConfigurationService` - AI system configuration
+
+#### **C. Autonomous Agent Components (Agent* prefix)**
+- **Purpose**: Autonomous reasoning and decision-making agents
+- **Pattern**: `Agent[Component][Type]`
+- **Examples**:
+  - `AgentManager` - Agent lifecycle management
+  - `AgentContext` - Agent execution context
+  - `AgentConfiguration` - Agent configuration
+  - `AgentCoordinationManager` - Inter-agent coordination
+  - `AgentLearningEngine` - Learning and adaptation
+
+#### **D. Context and Memory Components (Context* prefix)**
+- **Purpose**: Context management and memory systems
+- **Pattern**: `Context[Component][Type]`
+- **Examples**:
+  - `ContextMemoryManager` - Memory and context management
+  - `ContextStore` - Context storage and retrieval
+  - `ContextBuilder` - Context construction
+  - `ContextAnalyzer` - Context analysis
+
+#### **E. Reasoning and Planning Components (Reasoning* prefix)**
+- **Purpose**: Reasoning, planning, and decision-making
+- **Pattern**: `Reasoning[Component][Type]`
+- **Examples**:
+  - `ReasoningEngine` - Core reasoning engine
+  - `ReasoningMonitor` - Reasoning monitoring
+  - `ReasoningResult` - Reasoning outcomes
+  - `ReasoningContext` - Reasoning context
+
+### **2. Secondary Naming Patterns**
+
+#### **A. Event Processing (Event* prefix)**
+- **Purpose**: Event handling and processing
+- **Pattern**: `Event[Component][Type]`
+- **Examples**:
+  - `EventProcessor` - Event processing pipeline
+  - `EventFilter` - Event filtering
+  - `EventEnricher` - Event enrichment
+
+#### **B. Learning and Feedback (Learning* prefix)**
+- **Purpose**: Learning systems and feedback processing
+- **Pattern**: `Learning[Component][Type]`
+- **Examples**:
+  - `LearningEngine` - Learning algorithms
+  - `LearningMonitor` - Learning monitoring
+  - `LearningContext` - Learning context
+
+#### **C. Monitoring and Optimization (Monitor* prefix)**
+- **Purpose**: System monitoring and optimization
+- **Pattern**: `Monitor[Component][Type]`
+- **Examples**:
+  - `MonitorService` - Monitoring service
+  - `MonitorMetrics` - Performance metrics
+  - `MonitorAlert` - Alert management
+
+### **3. Provider-Specific Naming**
+
+#### **A. LLM Provider Clients (Provider* prefix)**
+- **Purpose**: Specific LLM provider implementations
+- **Pattern**: `[Provider]Client`
+- **Examples**:
+  - `OpenAIClient` - OpenAI provider
+  - `AnthropicClient` - Anthropic provider
+  - `OllamaClient` - Ollama local provider
+  - `LocalAIClient` - LocalAI provider
+
+#### **B. Provider Configuration (Provider*Configuration)**
+- **Purpose**: Provider-specific configuration
+- **Pattern**: `[Provider]Configuration`
+- **Examples**:
+  - `OpenAIConfiguration`
+  - `AnthropicConfiguration`
+  - `OllamaConfiguration`
+
+### **4. Utility and Support Classes**
+
+#### **A. Utility Classes (no prefix)**
+- **Purpose**: General utilities and helpers
+- **Pattern**: `[Functionality][Type]`
+- **Examples**:
+  - `AIAction` - Tool execution (replaces ToolCall)
+  - `PromptBuilder` - Prompt construction
+  - `ResponseParser` - Response parsing
+  - `ValidationUtils` - Validation utilities
+
+#### **B. Exception Classes (Exception suffix)**
+- **Purpose**: Exception handling
+- **Pattern**: `[Component]Exception`
+- **Examples**:
+  - `LLMException` - LLM-related exceptions
+  - `AIActionException` - Action execution exceptions
+  - `AgentException` - Agent-related exceptions
+
+### **5. Package Structure Alignment**
+
+```
+org.openhab.core.ai.common/
+├── llm/           # LLM* classes
+├── actions/       # AI* action classes
+├── agents/        # Agent* classes
+├── context/       # Context* classes
+├── reasoning/     # Reasoning* classes
+├── events/        # Event* classes
+├── learning/      # Learning* classes
+├── monitoring/    # Monitor* classes
+├── providers/     # Provider-specific classes
+└── util/          # Utility classes (no prefix)
+```
+
+### **6. Implementation Guidelines**
+
+#### **A. Interface vs Implementation Naming**
+- **Interfaces**: `[Component]` (e.g., `LLMClient`, `AIAction`)
+- **Implementations**: `[Component]Impl` or descriptive name (e.g., `OpenAIClient`, `EnergyAgent`)
+
+#### **B. Abstract Base Classes**
+- **Pattern**: `Abstract[Component]` or `Base[Component]`
+- **Examples**: `BaseLLMConfiguration`, `AbstractAIAction`
+
+### **7. Migration Strategy**
+
+#### **A. Existing Classes to Rename**
+Based on the current codebase analysis:
+
+**Current → Proposed**
+- `ToolCall` → `AIAction` (unified tool execution)
+- `AICommonBundleActivator` → `AICommonBundleActivator` (keep as bundle-specific)
+- `AIAuthenticationManager` → `AIAuthenticationManager` (keep as AI* pattern)
+- `LLMProviderFactory` → `LLMProviderFactory` (keep as LLM* pattern)
+
+#### **B. New Classes Following Convention**
+- `LLMReasoningEngine` - Core reasoning engine
+- `AgentManager` - Agent lifecycle management
+- `ContextMemoryManager` - Context and memory management
+- `ReasoningMonitor` - Reasoning monitoring
+- `LearningEngine` - Learning and adaptation
+
+### **8. Benefits of This Convention**
+
+#### **A. Clear Domain Separation**
+- **LLM***: Core LLM integration and reasoning
+- **AI***: Action framework and execution
+- **Agent***: Autonomous agent management
+- **Context***: Context and memory systems
+- **Reasoning***: Reasoning and planning
+- **No prefix**: Utilities and general support
+
+#### **B. Scalability and Extensibility**
+- Easy to add new providers (e.g., `MistralClient`)
+- Clear patterns for new agent types (e.g., `SecurityAgent`, `ComfortAgent`)
+- Consistent naming for new reasoning components
+
+#### **C. Alignment with BRAIN Architecture**
+- Reflects the shared brain concept
+- Supports multi-agent coordination
+- Enables autonomous reasoning capabilities
+- Maintains clear separation of concerns
+
+### **9. Summary**
+
+This naming convention provides:
+
+1. **Clear Hierarchy**: LLM* → AI* → Agent* → Context* → Reasoning*
+2. **Domain Separation**: Each prefix represents a distinct functional domain
+3. **Scalability**: Easy to extend with new components following established patterns
+4. **Alignment**: Matches the BRAIN architecture vision of autonomous reasoning
+5. **Consistency**: Follows established openHAB naming patterns while being AI-specific
+
+The convention supports the transformation of openHAB from a passive tool provider to an intelligent, autonomous system with embedded LLM reasoning capabilities, while maintaining clear organization and extensibility.
+
+---
+
+## Unified Tool Execution Architecture
+
+### **Architecture Overview**
+
+The openHAB AI system implements a **unified tool execution architecture** that eliminates redundancy and provides a consistent execution model across all LLM types and protocols.
+
+### **Key Design Decisions**
+
+1. **Single Execution Path**: All tool execution flows through `AIAction` → `AIActionResult`
+2. **Protocol Agnostic**: Same execution model for MCP, A2A, and remote LLM tool calls
+3. **No Redundant Layers**: Removed `LLMToolCall` and `LLMTool` classes
+4. **Direct Translation**: Remote LLM responses translate directly to AIActions
+
+### **Implementation Strategy**
+
+#### **Local LLMs (Ollama, LocalAI, vLLM)**
+- **Direct MCP Integration**: Local LLM connects to MCP server
+- **No Tool Call Objects**: MCP protocol handles tool execution directly
+- **Text-Based Parsing**: For LLMs without native function calling
+
+#### **Remote LLMs (OpenAI, Anthropic, Google)**
+- **Direct Translation**: Remote LLM tool calls → AIAction execution
+- **No Intermediate Objects**: Eliminated `LLMToolCall` and `LLMToolResult`
+- **Unified Results**: All results use `AIActionResult` format
+
+### **Removed Components**
+
+- ❌ `LLMToolCall` - Not needed, direct AIAction execution
+- ❌ `LLMTool` - Not needed, AIAction provides tool definitions
+- ❌ `toolCalls` field in `LLMResponse` - Not needed, direct execution
+- ❌ `completeWithTools()` method in `LLMClient` - Not needed, handled by providers
+
+### **Benefits**
+
+1. **Simplified Codebase**: Removed redundant classes and methods
+2. **Consistent Interface**: All tool execution uses `AIAction` interface
+3. **Easier Maintenance**: Single execution path to maintain
+4. **Better Performance**: No intermediate object creation/destruction
+5. **Clear Separation**: LLM layer handles text generation, AIAction layer handles execution
+
+---
+
 ## Phase 1: Core LLM Brain Infrastructure
 
 ### 1.1 Comprehensive LLM Provider Integration Framework
@@ -30,11 +276,20 @@ This document provides a detailed, class-level implementation plan for transform
 ```java
 public interface LLMClient {
     CompletableFuture<LLMResponse> complete(String prompt, LLMParameters params);
-    CompletableFuture<LLMResponse> completeWithTools(String prompt, List<Tool> tools, LLMParameters params);
+    CompletableFuture<LLMResponse> completeWithStreaming(String prompt, LLMParameters params, LLMStreamHandler handler);
     boolean isAvailable();
     LLMProviderInfo getProviderInfo();
     LLMHealthStatus getHealthStatus();
-    CompletableFuture<LLMResponse> completeWithStreaming(String prompt, LLMParameters params, StreamHandler handler);
+    LLMProviderType getProviderType();
+    String getModelName();
+    CompletableFuture<Boolean> testConnection();
+    double estimateCost(String prompt, LLMParameters params);
+    int getMaxTokens();
+    double getCostPer1kTokens();
+    boolean supportsFunctionCalling();
+    boolean supportsStreaming();
+    boolean supportsMultimodal();
+    @Nullable LLMRateLimitInfo getRateLimitInfo();
 }
 ```
 

@@ -7,8 +7,8 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.common.action.AIActionResult;
 import org.openhab.core.ai.common.actions.monitoring.*;
-import org.openhab.core.ai.common.api.action.AIActionResult;
 
 /**
  * Integration tests for Monitoring-related AIActions using mocked openHAB services.

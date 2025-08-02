@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.common.action.AIActionResult;
 import org.openhab.core.ai.common.actions.addons.*;
 import org.openhab.core.ai.common.actions.analytics.*;
 import org.openhab.core.ai.common.actions.automation.*;
@@ -27,7 +28,6 @@ import org.openhab.core.ai.common.actions.scripts.*;
 import org.openhab.core.ai.common.actions.security.*;
 import org.openhab.core.ai.common.actions.system.*;
 import org.openhab.core.ai.common.actions.things.*;
-import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.common.integration.service.BaseAIActionIntegrationTest;
 
 /**

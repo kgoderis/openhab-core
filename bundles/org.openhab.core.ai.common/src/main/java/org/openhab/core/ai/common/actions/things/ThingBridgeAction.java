@@ -7,12 +7,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionMetadata;
+import org.openhab.core.ai.common.action.AIActionResult;
+import org.openhab.core.ai.common.action.AIActionValidationResult;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
-import org.openhab.core.ai.common.api.action.AIActionMetadata;
-import org.openhab.core.ai.common.api.action.AIActionResult;
-import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.ThingUID;

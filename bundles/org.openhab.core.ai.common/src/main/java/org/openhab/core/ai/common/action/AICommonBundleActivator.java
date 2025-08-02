@@ -1,4 +1,4 @@
-package org.openhab.core.ai.common.internal;
+package org.openhab.core.ai.common.action;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;

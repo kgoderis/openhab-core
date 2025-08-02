@@ -4,7 +4,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.api.action.AIActionRegistry;
+import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.openhab.core.service.ReadyService;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Reference;

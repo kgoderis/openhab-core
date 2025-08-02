@@ -13,7 +13,7 @@ import org.openhab.core.ai.a2a.internal.A2AOpenHABPersistenceManager;
 import org.openhab.core.ai.a2a.internal.A2ASecurityManager;
 import org.openhab.core.ai.a2a.internal.A2AServerManager;
 import org.openhab.core.ai.a2a.internal.A2ASkillRegistry;
-import org.openhab.core.ai.common.api.action.AIActionRegistry;
+import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.openhab.core.ai.common.config.AIConfigurationService;
 import org.openhab.core.service.ReadyService;
 

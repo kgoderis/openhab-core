@@ -5,12 +5,12 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionMetadata;
+import org.openhab.core.ai.common.action.AIActionResult;
+import org.openhab.core.ai.common.action.AIActionValidationResult;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
-import org.openhab.core.ai.common.api.action.AIActionMetadata;
-import org.openhab.core.ai.common.api.action.AIActionResult;
-import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.automation.Condition;
 import org.openhab.core.automation.Rule;
 import org.openhab.core.automation.RuleRegistry;

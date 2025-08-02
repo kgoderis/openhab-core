@@ -4,9 +4,9 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionContext;
-import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.mcp.api.MCPTool;
 import org.openhab.core.ai.mcp.api.MCPToolContext;
 import org.openhab.core.ai.mcp.api.MCPToolException;

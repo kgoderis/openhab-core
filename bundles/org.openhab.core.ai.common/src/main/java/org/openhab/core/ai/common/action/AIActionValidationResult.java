@@ -1,4 +1,4 @@
-package org.openhab.core.ai.common.api.action;
+package org.openhab.core.ai.common.action;
 
 import java.util.List;
 import java.util.Map;

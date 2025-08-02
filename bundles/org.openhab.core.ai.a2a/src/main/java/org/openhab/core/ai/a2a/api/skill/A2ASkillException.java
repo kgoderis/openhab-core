@@ -1,4 +1,4 @@
-package org.openhab.core.ai.a2a.api;
+package org.openhab.core.ai.a2a.api.skill;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 

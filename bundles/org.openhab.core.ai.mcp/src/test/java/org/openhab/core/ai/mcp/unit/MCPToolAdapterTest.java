@@ -8,9 +8,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionContext;
-import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.mcp.api.MCPToolContext;
 import org.openhab.core.ai.mcp.api.MCPToolException;
 import org.openhab.core.ai.mcp.api.MCPToolResult;

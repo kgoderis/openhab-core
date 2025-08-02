@@ -6,8 +6,8 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.common.action.AIActionResult;
 import org.openhab.core.ai.common.actions.config.*;
-import org.openhab.core.ai.common.api.action.AIActionResult;
 
 /**
  * Integration tests for Config-related AIActions using mocked openHAB services.

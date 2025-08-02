@@ -9,12 +9,12 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionMetadata;
+import org.openhab.core.ai.common.action.AIActionResult;
+import org.openhab.core.ai.common.action.AIActionValidationResult;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
-import org.openhab.core.ai.common.api.action.AIActionMetadata;
-import org.openhab.core.ai.common.api.action.AIActionResult;
-import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingManager;

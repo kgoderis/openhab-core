@@ -12,7 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.a2a.internal.A2AAgentExecutor;
 import org.openhab.core.ai.a2a.internal.A2ASecurityManager;
-import org.openhab.core.ai.common.api.action.AIActionRegistry;
+import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.osgi.framework.BundleContext;
 
 import io.a2a.server.agentexecution.RequestContext;

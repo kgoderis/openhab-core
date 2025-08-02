@@ -4,6 +4,10 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionMetadata;
+import org.openhab.core.ai.common.action.AIActionResult;
+import org.openhab.core.ai.common.action.AIActionValidationResult;
 
 /**
  * Unified interface for AI actions that can be executed by both MCP and A2A protocols.

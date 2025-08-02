@@ -9,12 +9,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SubmissionPublisher;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionRegistry;
+import org.openhab.core.ai.common.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionContext;
-import org.openhab.core.ai.common.api.action.AIActionRegistry;
-import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.common.config.AIConfigurationService;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
@@ -55,18 +54,20 @@ import io.a2a.spec.TaskStatusUpdateEvent;
 /**
  * Server manager for A2A operations.
  * 
- * <p><strong>Note on @NonNullByDefault:</strong> This class intentionally does not use @NonNullByDefault
+ * <p>
+ * <strong>Note on @NonNullByDefault:</strong> This class intentionally does not use @NonNullByDefault
  * to maintain compatibility with the A2A SDK interfaces. The A2A SDK (version 0.2.5) does not use
  * nullability annotations on its interface methods, which would conflict with @NonNullByDefault's
  * strict null safety requirements. Instead, this class uses explicit @NonNull and @Nullable annotations
  * where appropriate to provide null safety while maintaining SDK compatibility.
  * 
- * <p>Key compatibility considerations:
+ * <p>
+ * Key compatibility considerations:
  * <ul>
- *   <li>A2A SDK interfaces (RequestHandler, TaskStore) have parameters that can be null</li>
- *   <li>Return types in A2A SDK interfaces are not annotated with nullability</li>
- *   <li>@NonNullByDefault would require all parameters to be @NonNull, breaking SDK compatibility</li>
- *   <li>Explicit annotations provide better control over null safety without breaking SDK contracts</li>
+ * <li>A2A SDK interfaces (RequestHandler, TaskStore) have parameters that can be null</li>
+ * <li>Return types in A2A SDK interfaces are not annotated with nullability</li>
+ * <li>@NonNullByDefault would require all parameters to be @NonNull, breaking SDK compatibility</li>
+ * <li>Explicit annotations provide better control over null safety without breaking SDK contracts</li>
  * </ul>
  * 
  * @author AI Assistant
@@ -207,400 +208,387 @@ public class A2AServerManager implements ReadyTracker, RequestHandler {
         };
     }
 
+    @Override
+    public EventKind onMessageSend(@Nullable MessageSendParams params) throws JSONRPCError {
+        logger.debug("Processing message send request: {}", params);
 
-            @Override
-            public EventKind onMessageSend(@Nullable MessageSendParams params) throws JSONRPCError {
-                logger.debug("Processing message send request: {}", params);
+        if (params == null) {
+            throw new JSONRPCError(-32602, "MessageSendParams cannot be null", null);
+        }
 
-                if (params == null) {
-                    throw new JSONRPCError(-32602, "MessageSendParams cannot be null", null);
-                }
+        try {
+            // Create a task for this message
+            Task task = createTaskFromMessage(params);
+            taskStore.save(task);
 
+            // Execute the task asynchronously using SDK patterns
+            ExecutorService executor = asyncExecutor;
+            if (executor == null) {
+                logger.error("Async executor not available");
+                throw new JSONRPCError(-32603, "Internal error: executor not available", null);
+            }
+            CompletableFuture.runAsync(() -> {
                 try {
-                    // Create a task for this message
-                    Task task = createTaskFromMessage(params);
-                    taskStore.save(task);
+                    logger.debug("Executing task: {}", task.getId());
 
-                    // Execute the task asynchronously using SDK patterns
-                    ExecutorService executor = asyncExecutor;
-                    if (executor == null) {
-                        logger.error("Async executor not available");
-                        throw new JSONRPCError(-32603, "Internal error: executor not available", null);
-                    }
-                    CompletableFuture.runAsync(() -> {
-                        try {
-                            logger.debug("Executing task: {}", task.getId());
+                    // Publish task status update using SDK patterns
+                    publishTaskStatusUpdate(task.getId(), TaskState.WORKING, "Task started");
 
-                            // Publish task status update using SDK patterns
-                            publishTaskStatusUpdate(task.getId(), TaskState.WORKING, "Task started");
+                    // Extract action information from the message
+                    String actionId = extractActionIdFromMessage(params.message());
+                    Map<String, Object> parameters = extractParametersFromMessage(params.message());
 
-                            // Extract action information from the message
-                            String actionId = extractActionIdFromMessage(params.message());
-                            Map<String, Object> parameters = extractParametersFromMessage(params.message());
+                    // Execute the actual AI action
+                    AIActionResult result = executeAIAction(actionId, parameters, task.getId());
 
-                            // Execute the actual AI action
-                            AIActionResult result = executeAIAction(actionId, parameters, task.getId());
+                    if (result.isSuccess()) {
+                        // Publish success status
+                        publishTaskStatusUpdate(task.getId(), TaskState.COMPLETED, "Task completed successfully");
 
-                            if (result.isSuccess()) {
-                                // Publish success status
-                                publishTaskStatusUpdate(task.getId(), TaskState.COMPLETED,
-                                        "Task completed successfully");
-
-                                // Update task with result
-                                updateTaskWithResult(task.getId(), result);
-                            } else {
-                                // Publish failure status
-                                String errorMessage = result.getMessage() != null ? result.getMessage()
-                                        : "Task execution failed";
-                                publishTaskStatusUpdate(task.getId(), TaskState.FAILED, errorMessage);
-                            }
-
-                        } catch (Exception e) {
-                            logger.error("Error executing task: {}", task.getId(), e);
-                            publishTaskStatusUpdate(task.getId(), TaskState.FAILED, "Task failed: " + e.getMessage());
-                        }
-                    }, executor);
-
-                    // Return SDK event kind
-                    return new EventKind() {
-                        @Override
-                        public String getKind() {
-                            return "task.created";
-                        }
-                    };
-                } catch (Exception e) {
-                    logger.error("Error processing message send request", e);
-                    throw new JSONRPCError(-32603, "Internal error: " + e.getMessage(), null);
-                }
-            }
-
-            @Override
-            public Task onGetTask(@Nullable TaskQueryParams params) throws JSONRPCError {
-                logger.debug("Getting task: {}", params != null ? params.id() : "null");
-
-                if (params == null) {
-                    throw new JSONRPCError(-32602, "TaskQueryParams cannot be null", null);
-                }
-
-                Task task = taskStore.get(params.id());
-                if (task == null) {
-                    throw new JSONRPCError(-32001, "Task not found: " + params.id(), null);
-                }
-                return task; // task is guaranteed to be non-null here
-            }
-
-            @Override
-            public Task onCancelTask(@Nullable TaskIdParams params) throws JSONRPCError {
-                logger.debug("Cancelling task: {}", params != null ? params.id() : "null");
-
-                if (params == null) {
-                    throw new JSONRPCError(-32602, "TaskIdParams cannot be null", null);
-                }
-
-                Task task = taskStore.get(params.id());
-                if (task == null) {
-                    throw new JSONRPCError(-32001, "Task not found: " + params.id(), null);
-                }
-
-                try {
-                    // Cancel the task in the agent executor
-                    // Note: A2AAgentExecutor.cancel() requires RequestContext and EventQueue
-                    // This is a simplified implementation - in practice, we'd need to create proper context
-                    logger.debug("Task cancellation requested for: {}", params.id());
-
-                    // Publish cancellation status using SDK patterns
-                    publishTaskStatusUpdate(params.id(), TaskState.CANCELED, "Task cancelled");
-
-                    taskStore.delete(params.id());
-                    return task; // task is guaranteed to be non-null here
-                } catch (Exception e) {
-                    logger.error("Error cancelling task: {}", params.id(), e);
-                    throw new JSONRPCError(-32603, "Internal error: " + e.getMessage(), null);
-                }
-            }
-
-            // Implement streaming using SDK patterns
-            @Override
-            public java.util.concurrent.Flow.Publisher<io.a2a.spec.StreamingEventKind> onMessageSendStream(
-                    @Nullable MessageSendParams params) throws JSONRPCError {
-                logger.debug("Processing streaming message send request: {}", params);
-
-                if (params == null) {
-                    throw new JSONRPCError(-32602, "MessageSendParams cannot be null", null);
-                }
-
-                // Create streaming publisher using SDK patterns
-                String streamId = "stream-" + System.currentTimeMillis();
-                SubmissionPublisher<StreamingEventKind> publisher = new SubmissionPublisher<>();
-                streamingPublishers.put(streamId, publisher);
-
-                // Create a task for this message
-                Task task = createTaskFromMessage(params);
-                if (taskStore != null) {
-                    taskStore.save(task);
-                }
-
-                // Execute the task asynchronously and stream updates using SDK patterns
-                ExecutorService executor = asyncExecutor;
-                if (executor == null) {
-                    logger.error("Async executor not available for streaming");
-                    // Send error status and close publisher instead of throwing
-                    publishStreamingTaskStatus(publisher, task.getId(), TaskState.FAILED,
-                            "Internal error: executor not available");
-                    publisher.close();
-                    streamingPublishers.remove(streamId);
-                    // Return the publisher instead of throwing - it will emit the error status
-                    return publisher;
-                }
-
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        logger.debug("Executing streaming task: {}", task.getId());
-
-                        // Send initial status update using SDK patterns
-                        publishStreamingTaskStatus(publisher, task.getId(), TaskState.WORKING, "Task started");
-
-                        // Extract action information from the message
-                        String actionId = extractActionIdFromMessage(params.message());
-                        Map<String, Object> parameters = extractParametersFromMessage(params.message());
-
-                        // Execute the actual AI action with streaming updates
-                        AIActionResult result = executeAIActionWithStreaming(actionId, parameters, task.getId(),
-                                publisher);
-
-                        if (result.isSuccess()) {
-                            // Send completion status using SDK patterns
-                            publishStreamingTaskStatus(publisher, task.getId(), TaskState.COMPLETED,
-                                    "Task completed successfully");
-
-                            // Update task with result
-                            updateTaskWithResult(task.getId(), result);
-                        } else {
-                            // Send error status using SDK patterns
-                            String errorMessage = result.getMessage() != null ? result.getMessage()
-                                    : "Task execution failed";
-                            publishStreamingTaskStatus(publisher, task.getId(), TaskState.FAILED, errorMessage);
-                        }
-
-                        // Close the publisher
-                        publisher.close();
-                        streamingPublishers.remove(streamId);
-
-                    } catch (Exception e) {
-                        logger.error("Error in streaming task execution: {}", task.getId(), e);
-
-                        // Send error status using SDK patterns
-                        publishStreamingTaskStatus(publisher, task.getId(), TaskState.FAILED,
-                                "Task failed: " + e.getMessage());
-                        publisher.close();
-                        streamingPublishers.remove(streamId);
-                    }
-                }, executor);
-
-                // Always return the publisher - it will handle errors by emitting error events
-                return publisher;
-            }
-
-            // Implement push notification configuration using SDK patterns
-            @Override
-            public TaskPushNotificationConfig onSetTaskPushNotificationConfig(
-                    @Nullable TaskPushNotificationConfig config) throws JSONRPCError {
-                logger.debug("Setting task push notification config: {}", config);
-
-                if (config == null) {
-                    throw new JSONRPCError(-32602, "TaskPushNotificationConfig cannot be null", null);
-                }
-
-                try {
-                    // Convert TaskPushNotificationConfig to Map for storage
-                    Map<String, Object> pushConfig = new HashMap<>();
-                    pushConfig.put("taskId", config.taskId());
-                    pushConfig.put("pushNotificationConfig", config.pushNotificationConfig());
-                    pushConfig.put("timestamp", System.currentTimeMillis());
-
-                    // Save to persistent storage
-                    persistenceManager.savePushNotificationConfig(config.taskId(), pushConfig);
-
-                    logger.info("A2A Push notification config saved: taskId={}", config.taskId());
-
-                    return config;
-
-                } catch (Exception e) {
-                    logger.error("Error saving push notification config: {}", config.taskId(), e);
-                    throw new JSONRPCError(-32001, "Failed to save push notification config", null);
-                }
-            }
-
-            @Override
-            public TaskPushNotificationConfig onGetTaskPushNotificationConfig(
-                    @Nullable GetTaskPushNotificationConfigParams params) throws JSONRPCError {
-                logger.debug("Getting task push notification config for task: {}",
-                        params != null ? params.id() : "null");
-
-                if (params == null) {
-                    throw new JSONRPCError(-32602, "GetTaskPushNotificationConfigParams cannot be null", null);
-                }
-
-                try {
-                    // Load from persistent storage
-                    Map<String, Object> storedConfig = persistenceManager.loadPushNotificationConfig(params.id());
-
-                    if (!storedConfig.isEmpty()) {
-                        // Reconstruct TaskPushNotificationConfig from stored data
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> pushConfigData = (Map<String, Object>) storedConfig
-                                .get("pushNotificationConfig");
-
-                        if (pushConfigData != null) {
-                            // For now, return a default configuration since we can't reconstruct the SDK objects
-                            // In a real implementation, you would need to know the exact SDK API
-                            logger.debug("Found stored push notification config for taskId={}, returning default",
-                                    params.id());
-                            return createDefaultTaskPushNotificationConfig(params.id());
-                        }
-                    }
-
-                    // Return default configuration if not found in storage
-                    logger.debug("No stored push notification config found, returning default for taskId={}",
-                            params.id());
-                    return createDefaultTaskPushNotificationConfig(params.id());
-
-                } catch (Exception e) {
-                    logger.error("Error loading push notification config: {}", params.id(), e);
-                    throw new JSONRPCError(-32001, "Failed to load push notification config", null);
-                }
-            }
-
-            // Implement push notification configuration listing
-            @Override
-            public java.util.List<TaskPushNotificationConfig> onListTaskPushNotificationConfig(
-                    @Nullable ListTaskPushNotificationConfigParams params) throws JSONRPCError {
-                logger.debug("Listing task push notification configs for task: {}",
-                        params != null ? params.id() : "null");
-
-                if (params == null) {
-                    throw new JSONRPCError(-32602, "ListTaskPushNotificationConfigParams cannot be null", null);
-                }
-
-                List<TaskPushNotificationConfig> configs = new ArrayList<>();
-
-                try {
-                    // Load all push notification configs from storage
-                    if (persistenceManager != null) {
-                        List<Map<String, Object>> storedConfigs = persistenceManager.loadAllPushNotificationConfigs();
-
-                        for (Map<String, Object> storedConfig : storedConfigs) {
-                            String taskId = (String) storedConfig.get("taskId");
-
-                            // Filter by task ID if specified
-                            if (params.id() != null && !params.id().equals(taskId)) {
-                                continue;
-                            }
-
-                            // Create default config for each stored entry
-                            TaskPushNotificationConfig config = createDefaultTaskPushNotificationConfig(taskId);
-                            configs.add(config);
-                        }
-                    }
-
-                    logger.debug("Listed {} push notification configs for task: {}", configs.size(), params.id());
-
-                } catch (Exception e) {
-                    logger.error("Error listing push notification configs for task: {}", params.id(), e);
-                    // Don't throw exception, just return empty list with error logged
-                }
-
-                // Always return a non-null list (empty if there was an error)
-                return configs;
-            }
-
-            // Implement push notification configuration deletion
-            @Override
-            public void onDeleteTaskPushNotificationConfig(@Nullable DeleteTaskPushNotificationConfigParams params)
-                    throws JSONRPCError {
-                logger.debug("Deleting task push notification config: {} for task: {}",
-                        params != null ? params.id() : "null", params != null ? params.id() : "null");
-
-                if (params == null) {
-                    throw new JSONRPCError(-32602, "DeleteTaskPushNotificationConfigParams cannot be null", null);
-                }
-
-                try {
-                    // Delete from persistent storage
-                    persistenceManager.deletePushNotificationConfig(params.id());
-
-                    logger.info("A2A Push notification config deleted: taskId={}", params.id());
-
-                } catch (Exception e) {
-                    logger.error("Error deleting push notification config: {}", params.id(), e);
-                    throw new JSONRPCError(-32001, "Failed to delete push notification config", null);
-                }
-            }
-
-            // Implement task resubscription using SDK patterns
-            @Override
-            public java.util.concurrent.Flow.Publisher<io.a2a.spec.StreamingEventKind> onResubscribeToTask(
-                    @Nullable TaskIdParams params) throws JSONRPCError {
-                logger.debug("Resubscribing to task: {}", params != null ? params.id() : "null");
-
-                if (params == null) {
-                    throw new JSONRPCError(-32602, "TaskIdParams cannot be null", null);
-                }
-
-                // Create streaming publisher for resubscription using SDK patterns
-                SubmissionPublisher<StreamingEventKind> publisher = new SubmissionPublisher<>();
-                streamingPublishers.put(params.id(), publisher);
-
-                // Check if task exists
-                if (taskStore != null) {
-                    Task task = taskStore.get(params.id());
-                    if (task != null) {
-                        // Send current task status using SDK patterns
-                        publishStreamingTaskStatus(publisher, params.id(), task.getStatus().state(),
-                                "Task resubscription");
+                        // Update task with result
+                        updateTaskWithResult(task.getId(), result);
                     } else {
-                        // Task not found, send error status
-                        publishStreamingTaskStatus(publisher, params.id(), TaskState.FAILED,
-                                "Task not found: " + params.id());
-                        logger.warn("Task not found for resubscription: {}", params.id());
+                        // Publish failure status
+                        String errorMessage = result.getMessage() != null ? result.getMessage()
+                                : "Task execution failed";
+                        publishTaskStatusUpdate(task.getId(), TaskState.FAILED, errorMessage);
                     }
-                } else {
-                    // TaskStore not available, send error status
-                    publishStreamingTaskStatus(publisher, params.id(), TaskState.FAILED, "TaskStore not available");
-                    logger.error("TaskStore not available for resubscription");
-                }
 
-                // Always return the publisher - it will handle errors by emitting error events
-                return publisher;
-            }
-
-            // Helper method to create default TaskPushNotificationConfig
-            private TaskPushNotificationConfig createDefaultTaskPushNotificationConfig(String taskId) {
-                // Create a default PushNotificationConfig - this is a placeholder
-                // In a real implementation, you would need to know the exact SDK API
-                PushNotificationConfig defaultPushConfig = createDefaultPushNotificationConfig();
-                return new TaskPushNotificationConfig(taskId, defaultPushConfig);
-            }
-
-            // Helper method to create default PushNotificationConfig
-            private PushNotificationConfig createDefaultPushNotificationConfig() {
-                // Create a default push notification configuration
-                // This is a simplified implementation - in a real scenario, you'd use the actual SDK constructors
-                try {
-                    // Create default authentication info
-                    List<String> schemes = List.of("basic");
-                    PushNotificationAuthenticationInfo authInfo = new PushNotificationAuthenticationInfo(schemes,
-                            "default-credentials");
-
-                    // Create default push notification config
-                    return new PushNotificationConfig("default-url", "default-token", authInfo, "default-id");
                 } catch (Exception e) {
-                    logger.error("Error creating default push notification config", e);
-                    // If we can't create a proper config, throw an exception rather than returning null
-                    throw new RuntimeException("Failed to create default push notification config", e);
+                    logger.error("Error executing task: {}", task.getId(), e);
+                    publishTaskStatusUpdate(task.getId(), TaskState.FAILED, "Task failed: " + e.getMessage());
+                }
+            }, executor);
+
+            // Return SDK event kind
+            return new EventKind() {
+                @Override
+                public String getKind() {
+                    return "task.created";
+                }
+            };
+        } catch (Exception e) {
+            logger.error("Error processing message send request", e);
+            throw new JSONRPCError(-32603, "Internal error: " + e.getMessage(), null);
+        }
+    }
+
+    @Override
+    public Task onGetTask(@Nullable TaskQueryParams params) throws JSONRPCError {
+        logger.debug("Getting task: {}", params != null ? params.id() : "null");
+
+        if (params == null) {
+            throw new JSONRPCError(-32602, "TaskQueryParams cannot be null", null);
+        }
+
+        Task task = taskStore.get(params.id());
+        if (task == null) {
+            throw new JSONRPCError(-32001, "Task not found: " + params.id(), null);
+        }
+        return task; // task is guaranteed to be non-null here
+    }
+
+    @Override
+    public Task onCancelTask(@Nullable TaskIdParams params) throws JSONRPCError {
+        logger.debug("Cancelling task: {}", params != null ? params.id() : "null");
+
+        if (params == null) {
+            throw new JSONRPCError(-32602, "TaskIdParams cannot be null", null);
+        }
+
+        Task task = taskStore.get(params.id());
+        if (task == null) {
+            throw new JSONRPCError(-32001, "Task not found: " + params.id(), null);
+        }
+
+        try {
+            // Cancel the task in the agent executor
+            // Note: A2AAgentExecutor.cancel() requires RequestContext and EventQueue
+            // This is a simplified implementation - in practice, we'd need to create proper context
+            logger.debug("Task cancellation requested for: {}", params.id());
+
+            // Publish cancellation status using SDK patterns
+            publishTaskStatusUpdate(params.id(), TaskState.CANCELED, "Task cancelled");
+
+            taskStore.delete(params.id());
+            return task; // task is guaranteed to be non-null here
+        } catch (Exception e) {
+            logger.error("Error cancelling task: {}", params.id(), e);
+            throw new JSONRPCError(-32603, "Internal error: " + e.getMessage(), null);
+        }
+    }
+
+    // Implement streaming using SDK patterns
+    @Override
+    public java.util.concurrent.Flow.Publisher<io.a2a.spec.StreamingEventKind> onMessageSendStream(
+            @Nullable MessageSendParams params) throws JSONRPCError {
+        logger.debug("Processing streaming message send request: {}", params);
+
+        if (params == null) {
+            throw new JSONRPCError(-32602, "MessageSendParams cannot be null", null);
+        }
+
+        // Create streaming publisher using SDK patterns
+        String streamId = "stream-" + System.currentTimeMillis();
+        SubmissionPublisher<StreamingEventKind> publisher = new SubmissionPublisher<>();
+        streamingPublishers.put(streamId, publisher);
+
+        // Create a task for this message
+        Task task = createTaskFromMessage(params);
+        if (taskStore != null) {
+            taskStore.save(task);
+        }
+
+        // Execute the task asynchronously and stream updates using SDK patterns
+        ExecutorService executor = asyncExecutor;
+        if (executor == null) {
+            logger.error("Async executor not available for streaming");
+            // Send error status and close publisher instead of throwing
+            publishStreamingTaskStatus(publisher, task.getId(), TaskState.FAILED,
+                    "Internal error: executor not available");
+            publisher.close();
+            streamingPublishers.remove(streamId);
+            // Return the publisher instead of throwing - it will emit the error status
+            return publisher;
+        }
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                logger.debug("Executing streaming task: {}", task.getId());
+
+                // Send initial status update using SDK patterns
+                publishStreamingTaskStatus(publisher, task.getId(), TaskState.WORKING, "Task started");
+
+                // Extract action information from the message
+                String actionId = extractActionIdFromMessage(params.message());
+                Map<String, Object> parameters = extractParametersFromMessage(params.message());
+
+                // Execute the actual AI action with streaming updates
+                AIActionResult result = executeAIActionWithStreaming(actionId, parameters, task.getId(), publisher);
+
+                if (result.isSuccess()) {
+                    // Send completion status using SDK patterns
+                    publishStreamingTaskStatus(publisher, task.getId(), TaskState.COMPLETED,
+                            "Task completed successfully");
+
+                    // Update task with result
+                    updateTaskWithResult(task.getId(), result);
+                } else {
+                    // Send error status using SDK patterns
+                    String errorMessage = result.getMessage() != null ? result.getMessage() : "Task execution failed";
+                    publishStreamingTaskStatus(publisher, task.getId(), TaskState.FAILED, errorMessage);
+                }
+
+                // Close the publisher
+                publisher.close();
+                streamingPublishers.remove(streamId);
+
+            } catch (Exception e) {
+                logger.error("Error in streaming task execution: {}", task.getId(), e);
+
+                // Send error status using SDK patterns
+                publishStreamingTaskStatus(publisher, task.getId(), TaskState.FAILED, "Task failed: " + e.getMessage());
+                publisher.close();
+                streamingPublishers.remove(streamId);
+            }
+        }, executor);
+
+        // Always return the publisher - it will handle errors by emitting error events
+        return publisher;
+    }
+
+    // Implement push notification configuration using SDK patterns
+    @Override
+    public TaskPushNotificationConfig onSetTaskPushNotificationConfig(@Nullable TaskPushNotificationConfig config)
+            throws JSONRPCError {
+        logger.debug("Setting task push notification config: {}", config);
+
+        if (config == null) {
+            throw new JSONRPCError(-32602, "TaskPushNotificationConfig cannot be null", null);
+        }
+
+        try {
+            // Convert TaskPushNotificationConfig to Map for storage
+            Map<String, Object> pushConfig = new HashMap<>();
+            pushConfig.put("taskId", config.taskId());
+            pushConfig.put("pushNotificationConfig", config.pushNotificationConfig());
+            pushConfig.put("timestamp", System.currentTimeMillis());
+
+            // Save to persistent storage
+            persistenceManager.savePushNotificationConfig(config.taskId(), pushConfig);
+
+            logger.info("A2A Push notification config saved: taskId={}", config.taskId());
+
+            return config;
+
+        } catch (Exception e) {
+            logger.error("Error saving push notification config: {}", config.taskId(), e);
+            throw new JSONRPCError(-32001, "Failed to save push notification config", null);
+        }
+    }
+
+    @Override
+    public TaskPushNotificationConfig onGetTaskPushNotificationConfig(
+            @Nullable GetTaskPushNotificationConfigParams params) throws JSONRPCError {
+        logger.debug("Getting task push notification config for task: {}", params != null ? params.id() : "null");
+
+        if (params == null) {
+            throw new JSONRPCError(-32602, "GetTaskPushNotificationConfigParams cannot be null", null);
+        }
+
+        try {
+            // Load from persistent storage
+            Map<String, Object> storedConfig = persistenceManager.loadPushNotificationConfig(params.id());
+
+            if (!storedConfig.isEmpty()) {
+                // Reconstruct TaskPushNotificationConfig from stored data
+                @SuppressWarnings("unchecked")
+                Map<String, Object> pushConfigData = (Map<String, Object>) storedConfig.get("pushNotificationConfig");
+
+                if (pushConfigData != null) {
+                    // For now, return a default configuration since we can't reconstruct the SDK objects
+                    // In a real implementation, you would need to know the exact SDK API
+                    logger.debug("Found stored push notification config for taskId={}, returning default", params.id());
+                    return createDefaultTaskPushNotificationConfig(params.id());
                 }
             }
-        
+
+            // Return default configuration if not found in storage
+            logger.debug("No stored push notification config found, returning default for taskId={}", params.id());
+            return createDefaultTaskPushNotificationConfig(params.id());
+
+        } catch (Exception e) {
+            logger.error("Error loading push notification config: {}", params.id(), e);
+            throw new JSONRPCError(-32001, "Failed to load push notification config", null);
+        }
+    }
+
+    // Implement push notification configuration listing
+    @Override
+    public java.util.List<TaskPushNotificationConfig> onListTaskPushNotificationConfig(
+            @Nullable ListTaskPushNotificationConfigParams params) throws JSONRPCError {
+        logger.debug("Listing task push notification configs for task: {}", params != null ? params.id() : "null");
+
+        if (params == null) {
+            throw new JSONRPCError(-32602, "ListTaskPushNotificationConfigParams cannot be null", null);
+        }
+
+        List<TaskPushNotificationConfig> configs = new ArrayList<>();
+
+        try {
+            // Load all push notification configs from storage
+            if (persistenceManager != null) {
+                List<Map<String, Object>> storedConfigs = persistenceManager.loadAllPushNotificationConfigs();
+
+                for (Map<String, Object> storedConfig : storedConfigs) {
+                    String taskId = (String) storedConfig.get("taskId");
+
+                    // Filter by task ID if specified
+                    if (params.id() != null && !params.id().equals(taskId)) {
+                        continue;
+                    }
+
+                    // Create default config for each stored entry
+                    TaskPushNotificationConfig config = createDefaultTaskPushNotificationConfig(taskId);
+                    configs.add(config);
+                }
+            }
+
+            logger.debug("Listed {} push notification configs for task: {}", configs.size(), params.id());
+
+        } catch (Exception e) {
+            logger.error("Error listing push notification configs for task: {}", params.id(), e);
+            // Don't throw exception, just return empty list with error logged
+        }
+
+        // Always return a non-null list (empty if there was an error)
+        return configs;
+    }
+
+    // Implement push notification configuration deletion
+    @Override
+    public void onDeleteTaskPushNotificationConfig(@Nullable DeleteTaskPushNotificationConfigParams params)
+            throws JSONRPCError {
+        logger.debug("Deleting task push notification config: {} for task: {}", params != null ? params.id() : "null",
+                params != null ? params.id() : "null");
+
+        if (params == null) {
+            throw new JSONRPCError(-32602, "DeleteTaskPushNotificationConfigParams cannot be null", null);
+        }
+
+        try {
+            // Delete from persistent storage
+            persistenceManager.deletePushNotificationConfig(params.id());
+
+            logger.info("A2A Push notification config deleted: taskId={}", params.id());
+
+        } catch (Exception e) {
+            logger.error("Error deleting push notification config: {}", params.id(), e);
+            throw new JSONRPCError(-32001, "Failed to delete push notification config", null);
+        }
+    }
+
+    // Implement task resubscription using SDK patterns
+    @Override
+    public java.util.concurrent.Flow.Publisher<io.a2a.spec.StreamingEventKind> onResubscribeToTask(
+            @Nullable TaskIdParams params) throws JSONRPCError {
+        logger.debug("Resubscribing to task: {}", params != null ? params.id() : "null");
+
+        if (params == null) {
+            throw new JSONRPCError(-32602, "TaskIdParams cannot be null", null);
+        }
+
+        // Create streaming publisher for resubscription using SDK patterns
+        SubmissionPublisher<StreamingEventKind> publisher = new SubmissionPublisher<>();
+        streamingPublishers.put(params.id(), publisher);
+
+        // Check if task exists
+        if (taskStore != null) {
+            Task task = taskStore.get(params.id());
+            if (task != null) {
+                // Send current task status using SDK patterns
+                publishStreamingTaskStatus(publisher, params.id(), task.getStatus().state(), "Task resubscription");
+            } else {
+                // Task not found, send error status
+                publishStreamingTaskStatus(publisher, params.id(), TaskState.FAILED, "Task not found: " + params.id());
+                logger.warn("Task not found for resubscription: {}", params.id());
+            }
+        } else {
+            // TaskStore not available, send error status
+            publishStreamingTaskStatus(publisher, params.id(), TaskState.FAILED, "TaskStore not available");
+            logger.error("TaskStore not available for resubscription");
+        }
+
+        // Always return the publisher - it will handle errors by emitting error events
+        return publisher;
+    }
+
+    // Helper method to create default TaskPushNotificationConfig
+    private TaskPushNotificationConfig createDefaultTaskPushNotificationConfig(String taskId) {
+        // Create a default PushNotificationConfig - this is a placeholder
+        // In a real implementation, you would need to know the exact SDK API
+        PushNotificationConfig defaultPushConfig = createDefaultPushNotificationConfig();
+        return new TaskPushNotificationConfig(taskId, defaultPushConfig);
+    }
+
+    // Helper method to create default PushNotificationConfig
+    private PushNotificationConfig createDefaultPushNotificationConfig() {
+        // Create a default push notification configuration
+        // This is a simplified implementation - in a real scenario, you'd use the actual SDK constructors
+        try {
+            // Create default authentication info
+            List<String> schemes = List.of("basic");
+            PushNotificationAuthenticationInfo authInfo = new PushNotificationAuthenticationInfo(schemes,
+                    "default-credentials");
+
+            // Create default push notification config
+            return new PushNotificationConfig("default-url", "default-token", authInfo, "default-id");
+        } catch (Exception e) {
+            logger.error("Error creating default push notification config", e);
+            // If we can't create a proper config, throw an exception rather than returning null
+            throw new RuntimeException("Failed to create default push notification config", e);
+        }
+    }
 
     private void publishTaskStatusUpdate(String taskId, TaskState state, String message) {
         try {

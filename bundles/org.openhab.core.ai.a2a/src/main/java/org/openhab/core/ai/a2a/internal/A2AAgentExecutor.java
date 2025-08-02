@@ -8,10 +8,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionRegistry;
+import org.openhab.core.ai.common.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionContext;
-import org.openhab.core.ai.common.api.action.AIActionRegistry;
-import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.common.auth.AIAuthenticationContext;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;

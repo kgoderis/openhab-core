@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.a2a.api.A2ASkillException;
-import org.openhab.core.ai.a2a.api.A2ASkillResult;
+import org.openhab.core.ai.a2a.api.skill.A2ASkillException;
+import org.openhab.core.ai.a2a.api.skill.A2ASkillResult;
 import org.openhab.core.ai.a2a.internal.A2ASkillAdapter;
+import org.openhab.core.ai.common.action.AIActionContext;
+import org.openhab.core.ai.common.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIAction;
-import org.openhab.core.ai.common.api.action.AIActionContext;
-import org.openhab.core.ai.common.api.action.AIActionResult;
 
 import io.a2a.spec.Message;
 import io.a2a.spec.TextPart;
