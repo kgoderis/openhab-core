@@ -25,18 +25,19 @@ import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
 import org.openhab.core.persistence.QueryablePersistenceService;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for performing cleanup operations on persistence services.
- *
- * This action allows cleaning up old data, optimizing storage, and
- * maintaining persistence service performance.
+ * Action for cleaning up persistence data in openHAB.
+ * 
+ * This action provides functionality to clean up
+ * and maintain persistence data.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class CleanupPersistenceAction implements AIAction {
 

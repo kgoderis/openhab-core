@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -16,23 +18,26 @@ import org.openhab.core.items.GroupItem;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to retrieve group information for items
+ * Action for getting item groups in openHAB.
  * 
+ * This action provides functionality to retrieve
+ * group information for items.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class GetItemGroupsAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(GetItemGroupsAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Override
     public String getActionId() {
@@ -161,8 +166,17 @@ public class GetItemGroupsAction implements AIAction {
                     if (groupItem instanceof GroupItem group) {
                         Map<String, Object> groupInfo = new HashMap<>();
                         groupInfo.put("type", group.getType());
-                        groupInfo.put("baseItem", group.getBaseItem() != null ? group.getBaseItem().getType() : null);
-                        groupInfo.put("function", group.getFunction() != null ? group.getFunction().toString() : null);
+                        String baseItemType = "";
+                        if (group.getBaseItem() != null) {
+                            baseItemType = group.getBaseItem().getType();
+                        }
+                        groupInfo.put("baseItem", baseItemType);
+
+                        String function = "";
+                        if (group.getFunction() != null) {
+                            function = group.getFunction().toString();
+                        }
+                        groupInfo.put("function", function);
 
                         if (includeGroupMembers) {
                             List<String> memberNames = group.getMembers().stream().map(Item::getName)

@@ -4,15 +4,19 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
- * Configuration class for MCP server instances.
+ * Configuration for MCP server.
  * 
- * This class encapsulates all configuration parameters needed
- * to create and manage an MCP server instance.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class MCPServerConfiguration {
+
+    // TODO : Check if all these fields are effectively used in the code
 
     private final String serverId;
     private final String serverName;
@@ -612,7 +616,7 @@ public class MCPServerConfiguration {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o)
             return true;
         if (o == null || getClass() != o.getClass())
@@ -641,7 +645,7 @@ public class MCPServerConfiguration {
      * Builder class for MCPServerConfiguration.
      */
     public static class Builder {
-        private String serverId;
+        private String serverId = "default-server-id";
         private String serverName = "openHAB MCP Server";
         private String serverVersion = "1.0.0";
         private MCPTransportType transportType = MCPTransportType.STDIO;
@@ -664,7 +668,7 @@ public class MCPServerConfiguration {
 
         // Security configuration
         private boolean enableAuthentication = false;
-        private String authToken = null;
+        private String authToken = "";
         private int maxConnections = 100;
         private int rateLimitPerMinute = 1000;
         private boolean enableRequestValidation = true;
@@ -675,23 +679,23 @@ public class MCPServerConfiguration {
         private boolean enableFallbackAuth = true;
 
         // OAuth 2.1 configuration
-        private String oauthIssuerUrl = null;
-        private String oauthClientId = null;
-        private String oauthClientSecret = null;
-        private String oauthRedirectUri = null;
+        private String oauthIssuerUrl = "";
+        private String oauthClientId = "";
+        private String oauthClientSecret = "";
+        private String oauthRedirectUri = "";
         private boolean oauthPkceEnabled = true;
 
         // openHAB users authentication
-        private String openhabUsersFile = null; // Default: OpenHAB.getConfigFolder() + "/users.properties"
+        private String openhabUsersFile = ""; // Default: OpenHAB.getConfigFolder() + "/users.properties"
         private boolean openhabUsersEnabled = true;
 
         // API key authentication
         private String apiKeyHeader = "X-API-Key";
-        private String apiKeyValue = null;
+        private String apiKeyValue = "";
         private boolean apiKeyEnabled = false;
 
         // JWT authentication
-        private String jwtSecret = null;
+        private String jwtSecret = "";
         private String jwtIssuer = "openhab-mcp";
         private int jwtExpirationMinutes = 60;
         private boolean jwtEnabled = false;

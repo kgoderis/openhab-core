@@ -323,16 +323,19 @@ public class ListThingsAction implements AIAction {
         Map<String, Object> thingMap = new HashMap<>();
         thingMap.put("uid", thing.getUID().toString());
         thingMap.put("thingTypeUID", thing.getThingTypeUID().toString());
-        thingMap.put("label", thing.getLabel() != null ? thing.getLabel() : "");
+        String label = thing.getLabel() != null ? thing.getLabel() : "";
+        thingMap.put("label", label);
         thingMap.put("status", thing.getStatus().toString());
+        String description = thing.getStatusInfo().getDescription();
         thingMap.put("statusInfo",
                 Map.of("status", thing.getStatusInfo().getStatus().toString(), "statusDetail",
                         thing.getStatusInfo().getStatusDetail().toString(), "description",
-                        thing.getStatusInfo().getDescription() != null ? thing.getStatusInfo().getDescription() : ""));
+                        description != null ? description : ""));
 
         ThingUID bridgeUID = thing.getBridgeUID();
-        thingMap.put("bridgeUID", bridgeUID != null ? bridgeUID.toString() : null);
-        thingMap.put("location", thing.getLocation() != null ? thing.getLocation() : "");
+        thingMap.put("bridgeUID", bridgeUID != null ? bridgeUID.toString() : "");
+        String location = thing.getLocation();
+        thingMap.put("location", location != null ? location : "");
         thingMap.put("enabled", thing.isEnabled());
 
         if (includeChannels) {
@@ -362,7 +365,7 @@ public class ListThingsAction implements AIAction {
         channelMap.put("id", channel.getUID().getId());
         channelMap.put("label", channel.getLabel() != null ? channel.getLabel() : "");
         channelMap.put("description", channel.getDescription() != null ? channel.getDescription() : "");
-        channelMap.put("type", channel.getChannelTypeUID() != null ? channel.getChannelTypeUID().toString() : null);
+        channelMap.put("type", channel.getChannelTypeUID() != null ? channel.getChannelTypeUID().toString() : "");
         channelMap.put("kind", channel.getKind().toString());
         channelMap.put("defaultTags", channel.getDefaultTags());
 

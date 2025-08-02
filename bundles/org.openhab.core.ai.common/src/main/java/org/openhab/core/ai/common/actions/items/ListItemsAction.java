@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -35,18 +37,19 @@ import org.slf4j.LoggerFactory;
  * 
  */
 @Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class ListItemsAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(ListItemsAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
-    private ItemChannelLinkRegistry itemChannelLinkRegistry;
+    private @Nullable ItemChannelLinkRegistry itemChannelLinkRegistry;
 
     @Reference
-    private MetadataRegistry metadataRegistry;
+    private @Nullable MetadataRegistry metadataRegistry;
 
     @Override
     public String getActionId() {
@@ -310,8 +313,10 @@ public class ListItemsAction implements AIAction {
         Map<String, Object> itemMap = new HashMap<>();
         itemMap.put("name", item.getName());
         itemMap.put("type", item.getType());
-        itemMap.put("label", item.getLabel() != null ? item.getLabel() : "");
-        itemMap.put("category", item.getCategory() != null ? item.getCategory() : "");
+        String label = item.getLabel() != null ? item.getLabel() : "";
+        itemMap.put("label", label);
+        String category = item.getCategory() != null ? item.getCategory() : "";
+        itemMap.put("category", category);
 
         if (includeState) {
             State currentState = item.getState();

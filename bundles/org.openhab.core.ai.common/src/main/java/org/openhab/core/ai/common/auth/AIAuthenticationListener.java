@@ -1,5 +1,7 @@
 package org.openhab.core.ai.common.auth;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  * Listener interface for authentication events in AI protocols.
  * 
@@ -8,6 +10,7 @@ package org.openhab.core.ai.common.auth;
  * 
  * 
  */
+@NonNullByDefault
 public interface AIAuthenticationListener {
 
     /**

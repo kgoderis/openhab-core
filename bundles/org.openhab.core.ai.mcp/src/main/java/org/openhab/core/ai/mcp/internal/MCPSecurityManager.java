@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.auth.AIAuditLogger;
 import org.openhab.core.ai.common.auth.AIAuthenticationContext;
 import org.openhab.core.ai.common.auth.AIAuthenticationManager;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
  * 
  * 
  */
+@NonNullByDefault
 public class MCPSecurityManager {
 
     private static final Logger logger = LoggerFactory.getLogger(MCPSecurityManager.class);
@@ -47,6 +49,7 @@ public class MCPSecurityManager {
     private final Map<String, Long> blockedUntil = new ConcurrentHashMap<>();
 
     // MCP-specific permissions
+    // TODO : Check if these permissions are effectively used in the code
     private static final String PERMISSION_MCP_CONNECT = "mcp:connect";
     private static final String PERMISSION_MCP_TOOLS = "mcp:tools";
     private static final String PERMISSION_MCP_READ = "mcp:read";
@@ -115,6 +118,12 @@ public class MCPSecurityManager {
      * @return Authentication context if successful
      */
     public Optional<AIAuthenticationContext> authenticateClient(Map<String, String> credentials, String clientId) {
+        // Validate input parameters
+        if (clientId == null) {
+            logger.warn("Authentication attempt with null client ID");
+            return Optional.empty();
+        }
+
         if (!config.isEnableAuthentication()) {
             logger.debug("Authentication disabled, allowing client: {}", clientId);
             return Optional.empty();
@@ -235,6 +244,12 @@ public class MCPSecurityManager {
      * @return Authentication context if successful
      */
     public Optional<AIAuthenticationContext> authenticateWithJWT(String jwtToken, String clientId) {
+        // Validate input parameters
+        if (clientId == null) {
+            logger.warn("JWT authentication attempt with null client ID");
+            return Optional.empty();
+        }
+
         if (!config.isEnableAuthentication()) {
             logger.debug("Authentication disabled, allowing client: {}", clientId);
             return Optional.empty();
@@ -284,6 +299,12 @@ public class MCPSecurityManager {
      * @return true if request is allowed
      */
     public boolean validateRequest(String clientId, String requestType) {
+        // Validate input parameters
+        if (clientId == null) {
+            logger.warn("Request validation attempt with null client ID");
+            return false;
+        }
+
         // Check rate limiting
         if (!checkRateLimit(clientId)) {
             logger.warn("Rate limit exceeded for client: {}", clientId);
@@ -418,6 +439,11 @@ public class MCPSecurityManager {
      * @return true if client is blocked
      */
     public boolean isClientBlocked(String clientId) {
+        // Validate input parameter
+        if (clientId == null) {
+            return false; // Cannot determine if null client is blocked
+        }
+
         Long blockedUntilTime = blockedUntil.get(clientId);
         if (blockedUntilTime != null && System.currentTimeMillis() < blockedUntilTime) {
             return true;

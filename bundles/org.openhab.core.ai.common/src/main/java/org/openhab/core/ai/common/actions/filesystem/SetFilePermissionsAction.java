@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -26,6 +27,7 @@ import org.slf4j.LoggerFactory;
  * Action to set file permissions for a specified file or directory.
  * Only operates within the openHAB root folder for security.
  */
+@NonNullByDefault
 public class SetFilePermissionsAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(SetFilePermissionsAction.class);

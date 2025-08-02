@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.mcp.api.MCPTool;
 import org.openhab.core.ai.mcp.api.MCPToolContext;
@@ -26,15 +27,15 @@ import org.osgi.framework.ServiceReference;
 import org.osgi.framework.startlevel.BundleStartLevel;
 import org.osgi.framework.startlevel.FrameworkStartLevel;
 import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.packageadmin.PackageAdmin;
 
 /**
- * MCP Tool for managing the Karaf runtime container.
+ * Karaf management tool for MCP.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = MCPTool.class)
+@NonNullByDefault
 public class KarafManagementTool implements MCPTool {
 
     private static final String TOOL_ID = "openhab.karaf.management";
@@ -355,14 +356,46 @@ public class KarafManagementTool implements MCPTool {
         RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
 
         Map<String, Object> systemInfo = new HashMap<>();
-        systemInfo.put("javaVersion", System.getProperty("java.version"));
-        systemInfo.put("javaVendor", System.getProperty("java.vendor"));
-        systemInfo.put("osName", System.getProperty("os.name"));
-        systemInfo.put("osVersion", System.getProperty("os.version"));
-        systemInfo.put("osArch", System.getProperty("os.arch"));
-        systemInfo.put("vmName", runtimeBean.getVmName());
-        systemInfo.put("vmVersion", runtimeBean.getVmVersion());
-        systemInfo.put("vmVendor", runtimeBean.getVmVendor());
+        String javaVersion = System.getProperty("java.version");
+        if (javaVersion == null) {
+            javaVersion = "unknown";
+        }
+        String javaVendor = System.getProperty("java.vendor");
+        if (javaVendor == null) {
+            javaVendor = "unknown";
+        }
+        String osName = System.getProperty("os.name");
+        if (osName == null) {
+            osName = "unknown";
+        }
+        String osVersion = System.getProperty("os.version");
+        if (osVersion == null) {
+            osVersion = "unknown";
+        }
+        String osArch = System.getProperty("os.arch");
+        if (osArch == null) {
+            osArch = "unknown";
+        }
+        systemInfo.put("javaVersion", javaVersion);
+        systemInfo.put("javaVendor", javaVendor);
+        systemInfo.put("osName", osName);
+        systemInfo.put("osVersion", osVersion);
+        systemInfo.put("osArch", osArch);
+        String vmName = runtimeBean.getVmName();
+        if (vmName == null) {
+            vmName = "unknown";
+        }
+        String vmVersion = runtimeBean.getVmVersion();
+        if (vmVersion == null) {
+            vmVersion = "unknown";
+        }
+        String vmVendor = runtimeBean.getVmVendor();
+        if (vmVendor == null) {
+            vmVendor = "unknown";
+        }
+        systemInfo.put("vmName", vmName);
+        systemInfo.put("vmVersion", vmVersion);
+        systemInfo.put("vmVendor", vmVendor);
         systemInfo.put("uptime", runtimeBean.getUptime());
         systemInfo.put("startTime", runtimeBean.getStartTime());
         systemInfo.put("totalBundles", bundleContext.getBundles().length);

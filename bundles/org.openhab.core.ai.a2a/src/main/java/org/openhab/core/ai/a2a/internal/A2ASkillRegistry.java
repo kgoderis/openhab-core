@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.a2a.api.A2ASkillException;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionRegistry;
@@ -14,7 +16,6 @@ import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
 import org.openhab.core.service.ReadyService.ReadyTracker;
 import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -24,15 +25,12 @@ import io.a2a.spec.AgentSkill;
 import io.a2a.spec.Message;
 
 /**
- * A2A Skill Registry implementation for OpenHAB using SDK patterns.
+ * Skill registry for A2A operations.
  * 
- * This class manages the registration and execution of A2A skills,
- * bridging AI actions from the ai.common bundle to the A2A protocol.
- * Enhanced with SDK utilities and patterns for better integration.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = A2ASkillRegistry.class, immediate = true)
+@NonNullByDefault
 public class A2ASkillRegistry implements ReadyTracker {
 
     private static final Logger logger = LoggerFactory.getLogger(A2ASkillRegistry.class);
@@ -41,10 +39,10 @@ public class A2ASkillRegistry implements ReadyTracker {
     public static final ReadyMarker A2A_SKILLS_READY = new ReadyMarker("a2a", "skills");
 
     @Reference
-    private ReadyService readyService;
+    private @Nullable ReadyService readyService;
 
     @Reference
-    private AIActionRegistry actionRegistry;
+    private @Nullable AIActionRegistry actionRegistry;
 
     // Skill registry using SDK patterns
     private final ConcurrentHashMap<String, A2ASkillAdapter> skillAdapters = new ConcurrentHashMap<>();
@@ -64,7 +62,9 @@ public class A2ASkillRegistry implements ReadyTracker {
         logger.debug("A2A Skill Registry activated with SDK patterns");
 
         // Register as a tracker
-        readyService.registerTracker(this);
+        if (readyService != null) {
+            readyService.registerTracker(this);
+        }
 
         // Initialize skill registry
         initializeSkillRegistry();
@@ -75,10 +75,10 @@ public class A2ASkillRegistry implements ReadyTracker {
         logger.debug("A2A Skill Registry deactivated");
 
         // Unregister tracker
-        readyService.unregisterTracker(this);
-
-        // Unmark ready marker
-        readyService.unmarkReady(A2A_SKILLS_READY);
+        if (readyService != null) {
+            readyService.unregisterTracker(this);
+            readyService.unmarkReady(A2A_SKILLS_READY);
+        }
 
         // Clean up registrations
         skillAdapters.clear();
@@ -95,7 +95,9 @@ public class A2ASkillRegistry implements ReadyTracker {
             registerAIActionsAsSkills();
 
             // Mark skills as ready
-            readyService.markReady(A2A_SKILLS_READY);
+            if (readyService != null) {
+                readyService.markReady(A2A_SKILLS_READY);
+            }
             logger.info("A2A skill registry initialized with {} skills", skillAdapters.size());
 
         } catch (Exception e) {
@@ -107,7 +109,7 @@ public class A2ASkillRegistry implements ReadyTracker {
         logger.debug("Registering AI actions as A2A skills using SDK patterns");
 
         // Get all available AI actions
-        Map<String, AIAction> actions = actionRegistry.getAllActions();
+        Map<String, AIAction> actions = actionRegistry != null ? actionRegistry.getAllActions() : new HashMap<>();
 
         for (AIAction action : actions.values()) {
             try {
@@ -325,7 +327,7 @@ public class A2ASkillRegistry implements ReadyTracker {
     }
 
     public boolean isSkillReady(String skillId) {
-        return skillAdapters.containsKey(skillId) && readyService.isReady(A2A_SKILLS_READY);
+        return skillAdapters.containsKey(skillId) && readyService != null && readyService.isReady(A2A_SKILLS_READY);
     }
 
     @Override
@@ -344,7 +346,9 @@ public class A2ASkillRegistry implements ReadyTracker {
 
         // If AI action registry becomes unavailable, unmark skills as ready
         if (isAIActionRegistryMarker(readyMarker)) {
-            readyService.unmarkReady(A2A_SKILLS_READY);
+            if (readyService != null) {
+                readyService.unmarkReady(A2A_SKILLS_READY);
+            }
         }
     }
 
@@ -358,7 +362,7 @@ public class A2ASkillRegistry implements ReadyTracker {
 
         // Check if AI action registry is ready
         ReadyMarker aiActionsReady = new ReadyMarker("ai", "actions");
-        boolean actionsReady = readyService.isReady(aiActionsReady);
+        boolean actionsReady = readyService != null && readyService.isReady(aiActionsReady);
 
         if (actionsReady) {
             logger.debug("AI actions are ready, initializing A2A skills");
@@ -373,11 +377,11 @@ public class A2ASkillRegistry implements ReadyTracker {
         return new ArrayList<>(skillAdapters.keySet());
     }
 
-    public A2ASkillAdapter getSkillAdapter(String skillId) {
+    public @Nullable A2ASkillAdapter getSkillAdapter(String skillId) {
         return skillAdapters.get(skillId);
     }
 
-    public Map<String, Object> getSkillMetadata(String skillId) {
+    public @Nullable Map<String, Object> getSkillMetadata(String skillId) {
         return skillMetadata.get(skillId);
     }
 

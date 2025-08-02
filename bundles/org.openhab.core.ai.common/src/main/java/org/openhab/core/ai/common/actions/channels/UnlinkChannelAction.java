@@ -19,17 +19,19 @@ import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.link.ItemChannelLink;
 import org.openhab.core.thing.link.ItemChannelLinkRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for unlinking a channel from an item.
+ * Action for unlinking channels from items in openHAB.
  * 
- * This action removes the link between a channel and an item.
+ * This action provides functionality to remove links
+ * between channels and items.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class UnlinkChannelAction implements AIAction {
 

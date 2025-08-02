@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
  * 
  * 
  */
+@NonNullByDefault
 public class WriteFileAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(WriteFileAction.class);
@@ -189,7 +191,11 @@ public class WriteFileAction implements AIAction {
             Map<String, Object> result = new HashMap<>();
 
             // Extract parameters with defaults
-            String path = (String) parameters.get("path");
+            Object pathObj = parameters.get("path");
+            if (pathObj == null) {
+                throw new AIActionException(ACTION_ID, "Path parameter is required");
+            }
+            String path = (String) pathObj;
             String content = (String) parameters.get("content");
             String encoding = (String) parameters.getOrDefault("encoding", "UTF-8");
             String mode = (String) parameters.getOrDefault("mode", "overwrite");
@@ -259,27 +265,31 @@ public class WriteFileAction implements AIAction {
 
             // Build result
             result.put("timestamp", Instant.now().toString());
-            result.put("path", filePath.toString());
+            result.put("path", filePath != null && filePath.toString() != null ? filePath.toString() : "");
             result.put("size", bytesWritten);
             result.put("encoding", encoding);
             result.put("mode", mode);
             result.put("backupCreated", backupPath != null);
             if (backupPath != null) {
-                result.put("backupPath", backupPath);
+                result.put("backupPath", backupPath != null ? backupPath : "");
             }
 
-            logger.debug("WriteFileAction completed successfully. Wrote {} bytes to {}", bytesWritten, path);
+            logger.debug("WriteFileAction completed successfully. Wrote {} bytes to {}", bytesWritten,
+                    filePath.toString());
             return AIActionResult.success(result, System.currentTimeMillis());
 
         } catch (SecurityException e) {
-            logger.error("Security violation in WriteFileAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Security violation";
+            logger.error("Security violation in WriteFileAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, errorMessage);
         } catch (IOException e) {
-            logger.error("IO error in WriteFileAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, "Failed to write file: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "IO error";
+            logger.error("IO error in WriteFileAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, "Failed to write file: " + errorMessage);
         } catch (Exception e) {
-            logger.error("Unexpected error in WriteFileAction: {}", e.getMessage(), e);
-            throw new AIActionException(ACTION_ID, "Unexpected error: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            logger.error("Unexpected error in WriteFileAction: {}", errorMessage, e);
+            throw new AIActionException(ACTION_ID, "Unexpected error: " + errorMessage);
         }
     }
 

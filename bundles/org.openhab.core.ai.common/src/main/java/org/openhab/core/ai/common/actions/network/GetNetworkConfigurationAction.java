@@ -73,8 +73,8 @@ public class GetNetworkConfigurationAction implements AIAction {
                 Map.of("type", "boolean", "description", "Include routing table information", "default", true));
         properties.put("includeInterfaceConfig",
                 Map.of("type", "boolean", "description", "Include detailed interface configuration", "default", true));
-        properties.put("interfaceName", Map.of("type", "string", "description",
-                "Specific interface name to query (optional)", "default", null));
+        properties.put("interfaceName",
+                Map.of("type", "string", "description", "Specific interface name to query (optional)"));
 
         schema.put("properties", properties);
         schema.put("required", List.of());
@@ -240,7 +240,7 @@ public class GetNetworkConfigurationAction implements AIAction {
                     Map<String, Object> addressInfo = new HashMap<>();
                     addressInfo.put("address", addr.getAddress().getHostAddress());
                     addressInfo.put("broadcast",
-                            addr.getBroadcast() != null ? addr.getBroadcast().getHostAddress() : null);
+                            addr.getBroadcast() != null ? addr.getBroadcast().getHostAddress() : "");
                     addressInfo.put("prefixLength", addr.getNetworkPrefixLength());
                     addressInfo.put("networkAddress",
                             getNetworkAddress(addr.getAddress(), addr.getNetworkPrefixLength()));

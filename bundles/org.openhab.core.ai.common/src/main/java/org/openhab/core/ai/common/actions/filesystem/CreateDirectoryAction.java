@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
  * 
  * 
  */
+@NonNullByDefault
 public class CreateDirectoryAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(CreateDirectoryAction.class);
@@ -151,7 +153,11 @@ public class CreateDirectoryAction implements AIAction {
             Map<String, Object> result = new HashMap<>();
 
             // Extract parameters with defaults
-            String path = (String) parameters.get("path");
+            Object pathObj = parameters.get("path");
+            if (pathObj == null) {
+                throw new AIActionException(ACTION_ID, "Path parameter is required");
+            }
+            String path = (String) pathObj;
             Boolean createParents = (Boolean) parameters.getOrDefault("createParents", true);
             String mode = (String) parameters.getOrDefault("mode", "create_if_missing");
             String permissions = (String) parameters.getOrDefault("permissions", "755");
@@ -210,25 +216,29 @@ public class CreateDirectoryAction implements AIAction {
 
             // Build result
             result.put("timestamp", Instant.now().toString());
-            result.put("path", dirPath.toString());
+            result.put("path", dirPath != null && dirPath.toString() != null ? dirPath.toString() : "");
             result.put("created", created);
             result.put("existed", existed);
             result.put("mode", mode);
             result.put("permissions", permissions);
             result.put("parentDirectoriesCreated", parentDirectoriesCreated);
 
-            logger.debug("CreateDirectoryAction completed successfully. Directory: {}, Created: {}", path, created);
+            logger.debug("CreateDirectoryAction completed successfully. Directory: {}, Created: {}", dirPath.toString(),
+                    created);
             return AIActionResult.success(result, System.currentTimeMillis());
 
         } catch (SecurityException e) {
-            logger.error("Security violation in CreateDirectoryAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Security violation";
+            logger.error("Security violation in CreateDirectoryAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, errorMessage);
         } catch (IOException e) {
-            logger.error("IO error in CreateDirectoryAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, "Failed to create directory: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "IO error";
+            logger.error("IO error in CreateDirectoryAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, "Failed to create directory: " + errorMessage);
         } catch (Exception e) {
-            logger.error("Unexpected error in CreateDirectoryAction: {}", e.getMessage(), e);
-            throw new AIActionException(ACTION_ID, "Unexpected error: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            logger.error("Unexpected error in CreateDirectoryAction: {}", errorMessage, e);
+            throw new AIActionException(ACTION_ID, "Unexpected error: " + errorMessage);
         }
     }
 

@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.mcp.api.MCPTool;
 import org.openhab.core.ai.mcp.api.MCPToolContext;
 import org.openhab.core.ai.mcp.api.MCPToolException;
@@ -16,11 +17,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Prompt management tool for MCP.
  * 
- * This tool provides operations for managing prompts in the openHAB system,
- * including listing, getting, and managing prompt specifications.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class PromptManagementTool implements MCPTool {
 
     private static final Logger logger = LoggerFactory.getLogger(PromptManagementTool.class);

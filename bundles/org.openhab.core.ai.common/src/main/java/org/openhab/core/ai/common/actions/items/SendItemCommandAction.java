@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -21,23 +22,26 @@ import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.TypeParser;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to send a command to a specific item
+ * Action for sending item commands in openHAB.
  * 
+ * This action provides functionality to send commands
+ * to items for control and automation.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class SendItemCommandAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(SendItemCommandAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
     private @Nullable EventPublisher eventPublisher;

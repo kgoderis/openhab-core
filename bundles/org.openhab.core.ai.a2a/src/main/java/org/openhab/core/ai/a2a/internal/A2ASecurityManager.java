@@ -6,12 +6,13 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.auth.AIAuditLogger;
 import org.openhab.core.ai.common.auth.AIAuthenticationContext;
 import org.openhab.core.ai.common.auth.AIAuthenticationManager;
 import org.openhab.core.ai.common.auth.AIRoleBasedAccessControl;
 import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -20,28 +21,25 @@ import org.slf4j.LoggerFactory;
 import io.a2a.spec.Message;
 
 /**
- * Security manager for A2A server integration with ai.common bundle.
+ * Security manager for A2A operations.
  * 
- * This class provides authentication, authorization, rate limiting, and
- * request validation for A2A server operations. It orchestrates the
- * ai.common authentication providers and adds A2A-specific security features.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = A2ASecurityManager.class, immediate = true)
+@NonNullByDefault
 public class A2ASecurityManager {
 
     private static final Logger logger = LoggerFactory.getLogger(A2ASecurityManager.class);
 
     // Core ai.common components
     @Reference
-    private AIAuthenticationManager authManager;
+    private @Nullable AIAuthenticationManager authManager;
 
     @Reference
-    private AIRoleBasedAccessControl rbac;
+    private @Nullable AIRoleBasedAccessControl rbac;
 
     @Reference
-    private AIAuditLogger auditLogger;
+    private @Nullable AIAuditLogger auditLogger;
 
     // A2A-specific configuration
     private final A2AServerConfiguration config;
@@ -101,71 +99,74 @@ public class A2ASecurityManager {
         // Check if client is blocked
         if (isClientBlocked(clientId)) {
             logger.warn("Blocked client attempted authentication: {}", clientId);
-            auditLogger.logSecurityViolation(clientId, "BLOCKED_CLIENT", "Client is blocked", "a2a", Instant.now());
+            return Optional.empty();
+        }
+
+        // Check rate limiting
+        if (!checkRateLimit(clientId)) {
+            logger.warn("Rate limit exceeded for client: {}", clientId);
+            return Optional.empty();
+        }
+
+        // Authenticate using ai.common authentication manager
+        if (authManager == null) {
+            logger.error("Authentication manager not available");
             return Optional.empty();
         }
 
         try {
-            // Use ai.common authentication manager for authentication
-            Optional<AIAuthenticationContext> context = authManager.authenticate(credentials, "a2a", clientId);
-
-            if (context.isPresent()) {
-                logger.info("A2A client authenticated successfully for client: {}", clientId);
+            Optional<AIAuthenticationContext> authContext = authManager.authenticate(credentials, "a2a", clientId);
+            if (authContext.isPresent()) {
                 resetFailedAttempts(clientId);
-
-                // Log successful authentication
-                auditLogger.logAuthenticationSuccess(clientId, "a2a", context.get().getPrincipalId(), Instant.now());
-
-                return context;
+                logger.debug("Successfully authenticated client: {}", clientId);
+                return authContext;
+            } else {
+                handleFailedAuthentication(clientId);
+                logger.warn("Authentication failed for client: {}", clientId);
+                return Optional.empty();
             }
-
-            handleFailedAuthentication(clientId);
-            return Optional.empty();
-
         } catch (Exception e) {
-            logger.error("A2A authentication error for client: {}", clientId, e);
             handleFailedAuthentication(clientId);
+            logger.error("Authentication error for client: {}", clientId, e);
             return Optional.empty();
         }
     }
 
     /**
-     * Check if client has permission for a specific A2A operation.
-     * 
+     * Check if the authenticated context has the specified A2A permission.
+     *
      * @param context Authentication context
      * @param permission Permission to check
      * @return true if permission is granted
      */
     public boolean hasA2APermission(AIAuthenticationContext context, String permission) {
         if (context == null) {
-            return !config.isEnableAuthentication();
+            logger.warn("Cannot check permission for null authentication context");
+            return false;
         }
 
-        String principalId = context.getPrincipalId();
-
-        // Use ai.common authentication manager for permission checking
-        boolean hasPermission = authManager.hasPermission(principalId, permission, "a2a");
-
-        // Log permission check
-        auditLogger.logPermissionCheck(principalId, permission, "a2a", hasPermission, Instant.now());
-
-        if (!hasPermission) {
-            logger.warn("A2A permission denied: {} for principal: {}", permission, principalId);
+        if (rbac == null) {
+            logger.error("Role-based access control not available");
+            return false;
         }
 
-        return hasPermission;
+        try {
+            return rbac.hasPermission(context.getPrincipalId(), permission, "a2a");
+        } catch (Exception e) {
+            logger.error("Error checking permission: {}", permission, e);
+            return false;
+        }
     }
 
     /**
-     * Check if client has A2A-specific permission.
-     * 
+     * Check if the authenticated context has the specified A2A permission.
+     *
      * @param context Authentication context
-     * @param a2aPermission A2A permission to check (connect, execute, read, write, admin)
+     * @param a2aPermission A2A permission to check
      * @return true if permission is granted
      */
     public boolean hasA2APermission(AIAuthenticationContext context, A2APermission a2aPermission) {
-        String fullPermission = "a2a:" + a2aPermission.getPermission();
-        return hasA2APermission(context, fullPermission);
+        return hasA2APermission(context, "a2a:" + a2aPermission.getPermission());
     }
 
     /**
@@ -179,7 +180,6 @@ public class A2ASecurityManager {
         // Check rate limiting
         if (!checkRateLimit(clientId)) {
             logger.warn("A2A rate limit exceeded for client: {}", clientId);
-            auditLogger.logSecurityViolation(clientId, "RATE_LIMIT", "Rate limit exceeded", "a2a", Instant.now());
             return false;
         }
 
@@ -187,8 +187,6 @@ public class A2ASecurityManager {
         if (config.isEnableRequestValidation()) {
             if (!validateRequestFormat(requestType)) {
                 logger.warn("Invalid A2A request format from client: {}", clientId);
-                auditLogger.logSecurityViolation(clientId, "INVALID_REQUEST", "Invalid request format", "a2a",
-                        Instant.now());
                 return false;
             }
         }
@@ -225,7 +223,7 @@ public class A2ASecurityManager {
     public SecurityStatistics getSecurityStatistics() {
         return new SecurityStatistics(requestCounters.size(), failedAttempts.size(), blockedUntil.size(),
                 config.isEnableAuthentication(), config.isEnableRequestValidation(), config.getMaxConnections(),
-                config.getRateLimitPerMinute(), authManager.getActiveSessions().size());
+                config.getRateLimitPerMinute(), authManager == null ? 0 : authManager.getActiveSessions().size());
     }
 
     /**
@@ -290,7 +288,9 @@ public class A2ASecurityManager {
         int attempts = failedAttempts.compute(clientId, (k, v) -> v == null ? 1 : v + 1);
 
         // Log failed authentication attempt
-        auditLogger.logAuthenticationFailure(clientId, "a2a", "Invalid credentials", Instant.now());
+        if (auditLogger != null) {
+            auditLogger.logAuthenticationFailure(clientId, "a2a", "Invalid credentials", Instant.now());
+        }
 
         if (attempts >= 5) { // Block after 5 failed attempts
             long blockUntil = System.currentTimeMillis() + (15 * 60 * 1000); // 15 minutes
@@ -299,8 +299,10 @@ public class A2ASecurityManager {
                     Instant.ofEpochMilli(blockUntil));
 
             // Log security violation
-            auditLogger.logSecurityViolation(clientId, "ACCOUNT_LOCKOUT", "Account locked due to failed attempts",
-                    "a2a", Instant.now());
+            if (auditLogger != null) {
+                auditLogger.logSecurityViolation(clientId, "ACCOUNT_LOCKOUT", "Account locked due to failed attempts",
+                        "a2a", Instant.now());
+            }
         }
     }
 
@@ -360,7 +362,7 @@ public class A2ASecurityManager {
      * 
      * @return Authentication manager
      */
-    public AIAuthenticationManager getAuthenticationManager() {
+    public @Nullable AIAuthenticationManager getAuthenticationManager() {
         return authManager;
     }
 
@@ -369,7 +371,7 @@ public class A2ASecurityManager {
      * 
      * @return RBAC system
      */
-    public AIRoleBasedAccessControl getRoleBasedAccessControl() {
+    public @Nullable AIRoleBasedAccessControl getRoleBasedAccessControl() {
         return rbac;
     }
 
@@ -378,7 +380,7 @@ public class A2ASecurityManager {
      * 
      * @return Audit logger
      */
-    public AIAuditLogger getAuditLogger() {
+    public @Nullable AIAuditLogger getAuditLogger() {
         return auditLogger;
     }
 

@@ -6,22 +6,28 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
- * Authentication context for AI protocols.
+ * Authentication context for AI service requests.
  * 
- * This class encapsulates authentication information and state for both
- * MCP and A2A protocol communications.
+ * This class encapsulates authentication information including user identity,
+ * permissions, and session details for AI protocol requests.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class AIAuthenticationContext {
 
     private final String principalId;
     private final String authenticationScheme;
     private final Map<String, String> credentials;
     private final Set<String> permissions;
-    private final Instant issuedAt;
-    private final Instant expiresAt;
+    private final @NonNull Instant issuedAt;
+    private final @Nullable Instant expiresAt;
     private final String sessionId;
 
     /**
@@ -36,7 +42,7 @@ public class AIAuthenticationContext {
      * @param sessionId Unique session identifier
      */
     public AIAuthenticationContext(String principalId, String authenticationScheme, Map<String, String> credentials,
-            Set<String> permissions, Instant issuedAt, Instant expiresAt, String sessionId) {
+            Set<String> permissions, Instant issuedAt, @Nullable Instant expiresAt, String sessionId) {
         this.principalId = Objects.requireNonNull(principalId, "Principal ID cannot be null");
         this.authenticationScheme = Objects.requireNonNull(authenticationScheme,
                 "Authentication scheme cannot be null");
@@ -127,7 +133,8 @@ public class AIAuthenticationContext {
      * @return true if expired, false otherwise
      */
     public boolean isExpired() {
-        return expiresAt != null && Instant.now().isAfter(expiresAt);
+        Instant expiry = expiresAt;
+        return expiry != null && Instant.now().isAfter(expiry);
     }
 
     /**
@@ -149,7 +156,7 @@ public class AIAuthenticationContext {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o)
             return true;
         if (o == null || getClass() != o.getClass())
@@ -165,8 +172,9 @@ public class AIAuthenticationContext {
 
     @Override
     public String toString() {
+        String expiresAtStr = expiresAt != null ? expiresAt.toString() : "null";
         return "AIAuthenticationContext{" + "principalId='" + principalId + '\'' + ", authenticationScheme='"
                 + authenticationScheme + '\'' + ", permissions=" + permissions + ", issuedAt=" + issuedAt
-                + ", expiresAt=" + expiresAt + ", sessionId='" + sessionId + '\'' + ", valid=" + isValid() + '}';
+                + ", expiresAt=" + expiresAtStr + ", sessionId='" + sessionId + '\'' + ", valid=" + isValid() + '}';
     }
 }

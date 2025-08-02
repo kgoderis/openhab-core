@@ -18,18 +18,19 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
 import org.openhab.core.persistence.QueryablePersistenceService;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving detailed information about a specific persistence service.
- *
- * This action provides comprehensive information about a persistence service
- * including its configuration, status, capabilities, and performance metrics.
+ * Action for getting persistence service information in openHAB.
+ * 
+ * This action provides functionality to retrieve
+ * information about persistence services.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetPersistenceServiceAction implements AIAction {
 
@@ -246,7 +247,14 @@ public class GetPersistenceServiceAction implements AIAction {
                 return createJDBCService(includeConfiguration, includeStatus, includeCapabilities, includeMetrics,
                         includeHistory);
             default:
-                return null;
+                Map<String, Object> defaultService = new HashMap<>();
+                defaultService.put("serviceId", serviceId);
+                defaultService.put("name", "Unknown Service");
+                defaultService.put("description", "Unknown persistence service");
+                defaultService.put("type", "unknown");
+                defaultService.put("status", "unknown");
+                defaultService.put("version", "unknown");
+                return defaultService;
         }
     }
 
@@ -391,7 +399,7 @@ public class GetPersistenceServiceAction implements AIAction {
         if (includeStatus) {
             Map<String, Object> status = new HashMap<>();
             status.put("connected", false);
-            status.put("lastUpdate", null);
+            status.put("lastUpdate", "N/A");
             status.put("itemCount", 0);
             status.put("dataPoints", 0);
             status.put("databaseSize", "0MB");
@@ -449,7 +457,7 @@ public class GetPersistenceServiceAction implements AIAction {
         if (includeStatus) {
             Map<String, Object> status = new HashMap<>();
             status.put("connected", false);
-            status.put("lastUpdate", null);
+            status.put("lastUpdate", "N/A");
             status.put("itemCount", 0);
             status.put("dataPoints", 0);
             status.put("databaseSize", "0MB");

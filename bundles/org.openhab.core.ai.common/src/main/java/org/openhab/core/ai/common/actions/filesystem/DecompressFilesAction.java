@@ -14,6 +14,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -24,9 +25,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to decompress files from a ZIP archive.
- * Only operates within the openHAB root folder for security.
+ * Action for decompressing files in openHAB.
+ * 
+ * This action provides functionality to decompress
+ * archive files and extract their contents.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class DecompressFilesAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(DecompressFilesAction.class);

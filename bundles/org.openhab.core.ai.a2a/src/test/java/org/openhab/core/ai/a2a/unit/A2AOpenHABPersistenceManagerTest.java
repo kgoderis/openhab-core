@@ -84,7 +84,7 @@ class A2AOpenHABPersistenceManagerTest {
         // Setup persistence service mocks
         when(mockPersistenceServiceRegistry.get("mapdb")).thenReturn(mockPersistenceService);
         when(mockPersistenceService.getId()).thenReturn("mapdb");
-        
+
         // Setup mockTask
         when(mockTask.getId()).thenReturn("test-task-1");
         Map<String, Object> metadata = new HashMap<>();
@@ -487,11 +487,11 @@ class A2AOpenHABPersistenceManagerTest {
     private Task createTestTask(String taskId, String actionId) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("actionId", actionId);
-        
+
         Task mockTask = mock(Task.class);
         when(mockTask.getId()).thenReturn(taskId);
         when(mockTask.getMetadata()).thenReturn(metadata);
-        
+
         return mockTask;
     }
 }

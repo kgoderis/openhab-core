@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -31,6 +33,7 @@ import org.osgi.service.component.annotations.Reference;
  * 
  */
 @Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class ChannelLinkAction implements AIAction {
 
     private static final String ACTION_ID = "openhab.channels.link";
@@ -40,13 +43,13 @@ public class ChannelLinkAction implements AIAction {
     private static final String VERSION = "1.0.0";
 
     @Reference
-    private ThingRegistry thingRegistry;
+    private @Nullable ThingRegistry thingRegistry;
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
-    private ItemChannelLinkRegistry itemChannelLinkRegistry;
+    private @Nullable ItemChannelLinkRegistry itemChannelLinkRegistry;
 
     @Override
     public String getActionId() {
@@ -228,6 +231,7 @@ public class ChannelLinkAction implements AIAction {
         ChannelUID channelUIDObj = new ChannelUID(channelUID);
 
         // Validate channel exists
+        @Nullable
         Channel channel = findChannel(channelUIDObj);
         if (channel == null) {
             throw new AIActionException(ACTION_ID, "Channel not found: " + channelUID, "RESOURCE_NOT_FOUND");
@@ -258,7 +262,7 @@ public class ChannelLinkAction implements AIAction {
         }
     }
 
-    private Channel findChannel(ChannelUID channelUID) {
+    private @Nullable Channel findChannel(ChannelUID channelUID) {
         if (thingRegistry == null)
             return null;
 

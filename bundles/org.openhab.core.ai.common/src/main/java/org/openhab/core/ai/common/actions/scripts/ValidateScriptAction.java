@@ -260,7 +260,9 @@ public class ValidateScriptAction implements AIAction {
                 validationResults.put("syntax", syntaxValidation);
 
                 if (!(Boolean) syntaxValidation.get("valid")) {
-                    issues.add(Map.of("type", "syntax", "message", syntaxValidation.get("error"), "severity", "error"));
+                    Object error = syntaxValidation.get("error");
+                    String errorStr = error != null ? error.toString() : "Unknown syntax error";
+                    issues.add(Map.of("type", "syntax", "message", errorStr, "severity", "error"));
                 }
             }
 

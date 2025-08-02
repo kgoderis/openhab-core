@@ -2,14 +2,18 @@ package org.openhab.core.ai.common.auth;
 
 import java.time.Instant;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
- * Audit logger interface for AI authentication events.
+ * Audit logger for AI authentication and authorization events.
  * 
- * This interface defines methods for logging security-related events
- * in AI protocol implementations for compliance and monitoring.
+ * This interface provides comprehensive logging of security events including
+ * authentication attempts, authorization decisions, and security violations.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public interface AIAuditLogger {
 
     /**

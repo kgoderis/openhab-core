@@ -18,18 +18,19 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.config.core.ConfigurableService;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving configuration information for persistence services.
- *
- * This action provides detailed configuration information for persistence
- * services including settings, parameters, and configuration files.
+ * Action for getting persistence configuration in openHAB.
+ * 
+ * This action provides functionality to retrieve
+ * configuration for persistence services.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetPersistenceConfigurationAction implements AIAction {
 

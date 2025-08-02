@@ -71,7 +71,7 @@ public class DiskInfoAction implements AIAction {
         properties.put("includeOpenHABPaths",
                 Map.of("type", "boolean", "description", "Include openHAB-specific path analysis", "default", true));
         properties.put("path",
-                Map.of("type", "string", "description", "Specific path to analyze (optional)", "default", null));
+                Map.of("type", "string", "description", "Specific path to analyze (optional)", "default", ""));
 
         schema.put("properties", properties);
         schema.put("additionalProperties", false);

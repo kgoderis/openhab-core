@@ -17,18 +17,19 @@ import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for starting device discovery processes in openHAB.
- *
- * This action allows starting discovery for various device types
- * and protocols with configurable parameters and timeouts.
+ * Action for starting discovery processes in openHAB.
+ * 
+ * This action provides functionality to start device
+ * discovery processes for specific bindings.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class StartDiscoveryAction implements AIAction {
 

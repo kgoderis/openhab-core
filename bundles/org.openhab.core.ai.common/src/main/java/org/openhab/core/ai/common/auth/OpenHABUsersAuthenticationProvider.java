@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.OpenHAB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
  * 
  * 
  */
+@NonNullByDefault
 public class OpenHABUsersAuthenticationProvider implements AIAuthenticationProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenHABUsersAuthenticationProvider.class);

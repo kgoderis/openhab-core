@@ -3,6 +3,7 @@ package org.openhab.core.ai.mcp.internal;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
  * 
  */
 @Component(service = MCPLoggingManager.class)
+@NonNullByDefault
 public class MCPLoggingManager {
 
     private static final Logger logger = LoggerFactory.getLogger(MCPLoggingManager.class);

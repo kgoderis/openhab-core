@@ -3,11 +3,18 @@ package org.openhab.core.ai.common.api.action;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
- * Result of parameter validation for AI actions.
+ * Result of AI action parameter validation.
  * 
+ * This class provides validation results including whether the validation
+ * passed, any error messages, and suggestions for fixing validation issues.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class AIActionValidationResult {
 
     private final boolean valid;

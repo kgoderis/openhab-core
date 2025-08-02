@@ -17,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -27,13 +28,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AI Action for listing files and directories within the openHAB root folder.
+ * Action for listing files in openHAB.
  * 
- * This action provides secure file system listing capabilities, ensuring operations
- * only work within the openHAB configuration and user data directories.
+ * This action provides functionality to list files
+ * and directories with various options.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class ListFilesAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(ListFilesAction.class);
@@ -97,10 +100,10 @@ public class ListFilesAction implements AIAction {
         // Validate path if provided
         if (parameters.containsKey("path")) {
             String path = (String) parameters.get("path");
-            if (path != null && !path.trim().isEmpty()) {
-                if (!FileSystemSecurityUtils.isPathAllowed(path)) {
-                    errors.add("Path is not within allowed openHAB directories: " + path);
-                }
+            if (path == null || path.trim().isEmpty()) {
+                errors.add("path cannot be empty");
+            } else if (!FileSystemSecurityUtils.isPathAllowed(path)) {
+                errors.add("Path is not within allowed openHAB directories: " + path);
             }
         }
 
@@ -156,7 +159,8 @@ public class ListFilesAction implements AIAction {
             Map<String, Object> result = new HashMap<>();
 
             // Extract parameters with defaults
-            String path = (String) parameters.getOrDefault("path", ".");
+            Object pathObj = parameters.get("path");
+            String path = pathObj != null ? (String) pathObj : ".";
             Boolean recursive = (Boolean) parameters.getOrDefault("recursive", false);
             Boolean includeHidden = (Boolean) parameters.getOrDefault("includeHidden", false);
             Integer maxDepth = (Integer) parameters.getOrDefault("maxDepth", 10);
@@ -183,7 +187,8 @@ public class ListFilesAction implements AIAction {
 
             // Build result
             result.put("timestamp", Instant.now().toString());
-            result.put("path", directoryPath.toString());
+            result.put("path",
+                    directoryPath != null && directoryPath.toString() != null ? directoryPath.toString() : "");
             result.put("recursive", recursive);
             result.put("includeHidden", includeHidden);
             result.put("maxDepth", maxDepth);
@@ -207,18 +212,22 @@ public class ListFilesAction implements AIAction {
             summary.put("totalItems", files.size());
             result.put("summary", summary);
 
-            logger.debug("ListFilesAction completed successfully. Found {} items in {}", files.size(), path);
+            logger.debug("ListFilesAction completed successfully. Found {} items in {}", files.size(),
+                    directoryPath.toString());
             return AIActionResult.success(result, System.currentTimeMillis());
 
         } catch (SecurityException e) {
-            logger.error("Security violation in ListFilesAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Security violation";
+            logger.error("Security violation in ListFilesAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, errorMessage);
         } catch (IOException e) {
-            logger.error("IO error in ListFilesAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, "Failed to list files: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "IO error";
+            logger.error("IO error in ListFilesAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, "Failed to list files: " + errorMessage);
         } catch (Exception e) {
-            logger.error("Unexpected error in ListFilesAction: {}", e.getMessage(), e);
-            throw new AIActionException(ACTION_ID, "Unexpected error: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            logger.error("Unexpected error in ListFilesAction: {}", errorMessage, e);
+            throw new AIActionException(ACTION_ID, "Unexpected error: " + errorMessage);
         }
     }
 

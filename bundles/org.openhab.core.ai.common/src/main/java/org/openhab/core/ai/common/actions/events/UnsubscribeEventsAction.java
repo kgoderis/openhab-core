@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -11,21 +12,20 @@ import org.openhab.core.ai.common.api.action.AIActionException;
 import org.openhab.core.ai.common.api.action.AIActionMetadata;
 import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIActionValidationResult;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for unsubscribing from events from the openHAB EventBus.
+ * Action for unsubscribing from events in openHAB.
  * 
- * This action provides functionality to:
- * - Remove event subscriptions
- * - Clean up SSE connections
- * - Manage subscription lifecycle
- * - Validate subscription removal
+ * This action provides functionality to unsubscribe from
+ * event subscriptions and stop receiving notifications.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class UnsubscribeEventsAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(UnsubscribeEventsAction.class);

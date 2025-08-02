@@ -256,7 +256,8 @@ public class GetNetworkPortsAction implements AIAction {
         } catch (Exception e) {
             portInfo.put("open", false);
             portInfo.put("status", "CLOSED");
-            portInfo.put("error", e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            portInfo.put("error", errorMessage);
 
             if (includeServiceInfo) {
                 portInfo.put("service", getServiceName(port));

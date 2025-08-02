@@ -2,14 +2,18 @@ package org.openhab.core.ai.common.auth;
 
 import java.util.Set;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
- * Role-Based Access Control interface for AI protocols.
+ * Role-based access control for AI services.
  * 
- * This interface defines the contract for managing roles, permissions,
- * and access control in AI protocol implementations.
+ * This class provides role-based authorization for AI protocol access,
+ * managing roles, permissions, and access control decisions.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public interface AIRoleBasedAccessControl {
 
     /**

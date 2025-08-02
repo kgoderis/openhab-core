@@ -1,24 +1,25 @@
 package org.openhab.core.ai.mcp.internal;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * OSGi Bundle Activator for the openHAB MCP (Model Context Protocol) bundle.
+ * Bundle activator for MCP bundle.
  * 
- * This activator manages the lifecycle of the MCP server infrastructure,
- * including connection handling, service registration, and cleanup.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class MCPBundleActivator implements BundleActivator {
 
     private static final Logger logger = LoggerFactory.getLogger(MCPBundleActivator.class);
 
     @Override
-    public void start(BundleContext bundleContext) throws Exception {
+    public void start(@Nullable BundleContext bundleContext) throws Exception {
         logger.info("Starting openHAB MCP bundle (SDK)");
 
         try {
@@ -30,7 +31,7 @@ public class MCPBundleActivator implements BundleActivator {
     }
 
     @Override
-    public void stop(BundleContext bundleContext) throws Exception {
+    public void stop(@Nullable BundleContext bundleContext) throws Exception {
         logger.info("Stopping openHAB MCP bundle (SDK)");
 
         try {

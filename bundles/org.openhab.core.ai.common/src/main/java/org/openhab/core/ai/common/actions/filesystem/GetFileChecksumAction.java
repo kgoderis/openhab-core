@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -23,9 +24,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to calculate file checksums using various algorithms.
- * Only operates within the openHAB root folder for security.
+ * Action for getting file checksums in openHAB.
+ * 
+ * This action provides functionality to calculate
+ * checksums for files using various algorithms.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class GetFileChecksumAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(GetFileChecksumAction.class);

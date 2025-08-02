@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git rm:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:modelcontextprotocol.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.spring.io)",
+      "WebFetch(domain:www.danvega.dev)",
+      "WebFetch(domain:spring.io)",
+      "WebFetch(domain:mvnrepository.com)"
+    ],
+    "deny": []
+  }
+}

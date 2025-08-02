@@ -2,10 +2,11 @@ package org.openhab.core.ai.a2a.internal;
 
 import java.util.Map;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIActionRegistry;
 import org.openhab.core.service.ReadyService;
 import org.osgi.framework.BundleContext;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,35 +27,29 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
 /**
- * OpenHAB REST Endpoint that provides A2A protocol endpoints using the official A2A SDK.
+ * REST endpoint for A2A operations.
  * 
- * This endpoint implements the standard A2A protocol endpoints for agent
- * communication and action execution using the official A2A Java SDK.
- * 
- * Compatible with openHAB's REST server using OSGi component registration.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = Object.class, property = { "service.exported.interfaces=*",
-        "service.exported.configs=org.apache.cxf.rs", "org.apache.cxf.rs.address=/a2a" })
-@Path("/")
+@NonNullByDefault
 public class A2ARestEndpoint {
 
     private static final Logger logger = LoggerFactory.getLogger(A2ARestEndpoint.class);
 
     @Reference
-    private AIActionRegistry actionRegistry;
+    private @Nullable AIActionRegistry actionRegistry;
 
     @Reference
-    private A2ASkillRegistry skillRegistry;
+    private @Nullable A2ASkillRegistry skillRegistry;
 
     @Reference
-    private BundleContext bundleContext;
+    private @Nullable BundleContext bundleContext;
 
     @Reference
-    private ReadyService readyService;
+    private @Nullable ReadyService readyService;
 
-    private A2AServerManager serverManager;
+    private @Nullable A2AServerManager serverManager;
 
     /**
      * Initialize the server manager.
@@ -65,6 +60,11 @@ public class A2ARestEndpoint {
         }
 
         // Wait for A2A server to be ready
+        if (readyService == null) {
+            logger.error("ReadyService not available");
+            throw new RuntimeException("ReadyService not available");
+        }
+
         if (!readyService.isReady(A2AServerManager.A2A_SERVER_READY)) {
             logger.warn("A2A Server not ready - waiting for core services");
             throw new RuntimeException("A2A Server not ready - please wait for core services to initialize");
@@ -72,6 +72,11 @@ public class A2ARestEndpoint {
 
         // Get the server manager service
         try {
+            if (bundleContext == null) {
+                logger.error("BundleContext not available");
+                throw new RuntimeException("BundleContext not available");
+            }
+
             serverManager = bundleContext.getService(bundleContext.getServiceReference(A2AServerManager.class));
             if (serverManager == null) {
                 throw new RuntimeException("A2A Server Manager service not available");

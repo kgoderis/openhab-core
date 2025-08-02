@@ -1,36 +1,28 @@
 package org.openhab.core.ai.mcp.internal;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 
 /**
- * HTTP endpoint for health checks and metrics.
- * Provides /health and /metrics endpoints for monitoring the MCP server.
+ * Health metrics endpoint for MCP operations.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class HealthMetricsEndpoint {
-    private static final Logger logger = LoggerFactory.getLogger(HealthMetricsEndpoint.class);
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(HealthMetricsEndpoint.class);
 
     private final MCPServer serverInstance;
     private final MCPServerConfiguration config;
-    private final HttpServer httpServer;
-    private final ScheduledExecutorService executor;
+    private final com.sun.net.httpserver.HttpServer httpServer;
+    private final java.util.concurrent.ScheduledExecutorService executor;
 
     // Metrics counters
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong totalErrors = new AtomicLong(0);
+    private final java.util.concurrent.atomic.AtomicLong totalRequests = new java.util.concurrent.atomic.AtomicLong(0);
+    private final java.util.concurrent.atomic.AtomicLong totalErrors = new java.util.concurrent.atomic.AtomicLong(0);
     private final long startTime = System.currentTimeMillis();
 
     public HealthMetricsEndpoint(MCPServer serverInstance, MCPServerConfiguration config) throws IOException {
@@ -39,7 +31,7 @@ public class HealthMetricsEndpoint {
 
         // Create HTTP server on port 8080 (configurable)
         int port = 8080; // TODO: Make configurable
-        this.httpServer = HttpServer.create(new InetSocketAddress(port), 0);
+        this.httpServer = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(port), 0);
 
         // Set up endpoints
         if (config.isEnableHealthChecks()) {
@@ -53,12 +45,12 @@ public class HealthMetricsEndpoint {
         }
 
         // Create executor for background tasks
-        this.executor = Executors.newScheduledThreadPool(1);
+        this.executor = java.util.concurrent.Executors.newScheduledThreadPool(1);
 
         // Start health check scheduler if enabled
         if (config.isEnableHealthChecks()) {
             executor.scheduleAtFixedRate(this::performHealthCheck, config.getHealthCheckInterval(),
-                    config.getHealthCheckInterval(), TimeUnit.MILLISECONDS);
+                    config.getHealthCheckInterval(), java.util.concurrent.TimeUnit.MILLISECONDS);
         }
     }
 
@@ -74,7 +66,7 @@ public class HealthMetricsEndpoint {
         if (executor != null) {
             executor.shutdown();
             try {
-                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                if (!executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
                     executor.shutdownNow();
                 }
             } catch (InterruptedException e) {
@@ -96,9 +88,9 @@ public class HealthMetricsEndpoint {
         }
     }
 
-    private class HealthHandler implements HttpHandler {
+    private class HealthHandler implements com.sun.net.httpserver.HttpHandler {
         @Override
-        public void handle(HttpExchange exchange) throws IOException {
+        public void handle(com.sun.net.httpserver.@Nullable HttpExchange exchange) throws IOException {
             try {
                 totalRequests.incrementAndGet();
 
@@ -163,11 +155,11 @@ public class HealthMetricsEndpoint {
                 response.append("  \"timestamp\": \"").append(java.time.Instant.now()).append("\"\n");
                 response.append("}");
 
-                byte[] responseBytes = response.toString().getBytes(StandardCharsets.UTF_8);
+                byte[] responseBytes = response.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
                 exchange.sendResponseHeaders(healthy ? 200 : 503, responseBytes.length);
 
-                try (OutputStream os = exchange.getResponseBody()) {
+                try (java.io.OutputStream os = exchange.getResponseBody()) {
                     os.write(responseBytes);
                 }
 
@@ -175,19 +167,19 @@ public class HealthMetricsEndpoint {
                 totalErrors.incrementAndGet();
                 logger.error("Error handling health check request", e);
                 String errorResponse = "{\"error\": \"Internal server error\"}";
-                byte[] responseBytes = errorResponse.getBytes(StandardCharsets.UTF_8);
+                byte[] responseBytes = errorResponse.getBytes(java.nio.charset.StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
                 exchange.sendResponseHeaders(500, responseBytes.length);
-                try (OutputStream os = exchange.getResponseBody()) {
+                try (java.io.OutputStream os = exchange.getResponseBody()) {
                     os.write(responseBytes);
                 }
             }
         }
     }
 
-    private class MetricsHandler implements HttpHandler {
+    private class MetricsHandler implements com.sun.net.httpserver.HttpHandler {
         @Override
-        public void handle(HttpExchange exchange) throws IOException {
+        public void handle(com.sun.net.httpserver.@Nullable HttpExchange exchange) throws IOException {
             try {
                 totalRequests.incrementAndGet();
 
@@ -259,11 +251,11 @@ public class HealthMetricsEndpoint {
                     }
                 }
 
-                byte[] responseBytes = response.toString().getBytes(StandardCharsets.UTF_8);
+                byte[] responseBytes = response.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().add("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
                 exchange.sendResponseHeaders(200, responseBytes.length);
 
-                try (OutputStream os = exchange.getResponseBody()) {
+                try (java.io.OutputStream os = exchange.getResponseBody()) {
                     os.write(responseBytes);
                 }
 

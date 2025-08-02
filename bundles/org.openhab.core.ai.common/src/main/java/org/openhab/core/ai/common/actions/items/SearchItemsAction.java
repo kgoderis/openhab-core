@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -17,23 +18,26 @@ import org.openhab.core.items.GroupItem;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.MetadataRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to search for items based on various criteria
+ * Action for searching items in openHAB.
  * 
+ * This action provides functionality to search for
+ * items using various criteria.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class SearchItemsAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchItemsAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
     private @Nullable MetadataRegistry metadataRegistry;
@@ -331,8 +335,17 @@ public class SearchItemsAction implements AIAction {
         Map<String, Object> itemResult = new HashMap<>();
         itemResult.put("name", item.getName());
         itemResult.put("type", item.getType());
-        itemResult.put("label", item.getLabel());
-        itemResult.put("category", item.getCategory());
+        String itemLabel = "";
+        if (item.getLabel() != null) {
+            itemLabel = item.getLabel();
+        }
+        itemResult.put("label", itemLabel);
+
+        String itemCategory = "";
+        if (item.getCategory() != null) {
+            itemCategory = item.getCategory();
+        }
+        itemResult.put("category", itemCategory);
         itemResult.put("state", item.getState() != null ? item.getState().toString() : "NULL");
 
         if (includeDetails) {
@@ -343,7 +356,11 @@ public class SearchItemsAction implements AIAction {
 
             if (item instanceof GroupItem groupItem) {
                 details.put("memberCount", groupItem.getMembers().size());
-                details.put("baseItemType", groupItem.getBaseItem() != null ? groupItem.getBaseItem().getType() : null);
+                String baseItemType = "";
+                if (groupItem.getBaseItem() != null) {
+                    baseItemType = groupItem.getBaseItem().getType();
+                }
+                details.put("baseItemType", baseItemType);
             }
 
             itemResult.put("details", details);

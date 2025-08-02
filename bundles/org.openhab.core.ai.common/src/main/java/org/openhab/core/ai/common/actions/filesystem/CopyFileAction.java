@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Karel Goderis
  */
+@NonNullByDefault
 public class CopyFileAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(CopyFileAction.class);

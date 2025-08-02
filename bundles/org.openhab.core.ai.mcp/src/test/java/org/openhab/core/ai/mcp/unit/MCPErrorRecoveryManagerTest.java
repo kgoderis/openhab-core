@@ -221,6 +221,7 @@ class MCPErrorRecoveryManagerTest {
     @Test
     void testErrorInfoCreation() {
         // Test creating ErrorInfo objects with null circuit breaker state
+        // The constructor should handle null values gracefully
         MCPErrorRecoveryManager.ErrorInfo errorInfo = new MCPErrorRecoveryManager.ErrorInfo(5,
                 System.currentTimeMillis(), "Test error", null);
 
@@ -228,7 +229,8 @@ class MCPErrorRecoveryManagerTest {
         assertEquals(5, errorInfo.getCount());
         assertNotNull(errorInfo.getLastErrorTime());
         assertEquals("Test error", errorInfo.getLastErrorMessage());
-        assertNull(errorInfo.getCircuitBreakerState());
+        // The constructor should provide a default state when null is passed
+        assertNotNull(errorInfo.getCircuitBreakerState());
     }
 
     @Test

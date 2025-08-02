@@ -6,22 +6,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
 import org.openhab.core.ai.common.api.action.AIActionMetadata;
 import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIActionValidationResult;
-import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for basic discovery operations - simplified version for current openHAB build.
+ * Base discovery action for openHAB.
  * 
+ * This action provides basic discovery functionality
+ * for managing device discovery processes.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class DiscoveryAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(DiscoveryAction.class);

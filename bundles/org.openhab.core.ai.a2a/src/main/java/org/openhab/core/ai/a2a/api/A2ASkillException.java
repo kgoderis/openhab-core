@@ -1,13 +1,14 @@
 package org.openhab.core.ai.a2a.api;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
- * Exception thrown during A2A skill execution.
+ * Exception thrown by A2A skills during execution.
  * 
- * This exception is thrown when an A2A skill fails to execute properly,
- * either due to invalid parameters, execution errors, or other issues.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class A2ASkillException extends Exception {
 
     private static final long serialVersionUID = 1L;

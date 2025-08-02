@@ -1,10 +1,17 @@
 package org.openhab.core.ai.common.api.action;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
- * Exception thrown when AI action execution fails.
+ * Exception thrown when an AI action fails to execute.
  * 
+ * This exception provides detailed error information including error codes,
+ * messages, and context about what went wrong during action execution.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class AIActionException extends Exception {
 
     private final String actionId;

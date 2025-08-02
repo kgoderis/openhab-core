@@ -184,7 +184,7 @@ public class TestConnectivityAction implements AIAction {
 
             // Generate summary
             result.put("summary", generateSummary(hostTests, portTests,
-                    includeDNS ? (List<Map<String, Object>>) result.get("dnsTests") : null));
+                    includeDNS ? (List<Map<String, Object>>) result.get("dnsTests") : List.of()));
             result.put("overallStatus", determineOverallStatus(hostTests, portTests));
             result.put("timestamp", java.time.Instant.now().toString());
 
@@ -251,8 +251,9 @@ public class TestConnectivityAction implements AIAction {
             } catch (Exception e) {
                 testResult.put("reachable", false);
                 testResult.put("status", "ERROR");
-                testResult.put("error", e.getMessage());
-                logger.debug("Connectivity test failed for {}: {}", host, e.getMessage());
+                String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+                testResult.put("error", errorMessage);
+                logger.debug("Connectivity test failed for {}: {}", host, errorMessage);
             }
 
             results.add(testResult);
@@ -282,8 +283,9 @@ public class TestConnectivityAction implements AIAction {
                 } catch (Exception e) {
                     testResult.put("reachable", false);
                     testResult.put("status", "FAILED");
-                    testResult.put("error", e.getMessage());
-                    logger.debug("Port test failed for {}:{} - {}", host, port, e.getMessage());
+                    String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+                    testResult.put("error", errorMessage);
+                    logger.debug("Port test failed for {}:{} - {}", host, port, errorMessage);
                 }
 
                 results.add(testResult);
@@ -314,8 +316,9 @@ public class TestConnectivityAction implements AIAction {
             } catch (Exception e) {
                 testResult.put("resolved", false);
                 testResult.put("status", "FAILED");
-                testResult.put("error", e.getMessage());
-                logger.debug("DNS resolution failed for {}: {}", host, e.getMessage());
+                String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+                testResult.put("error", errorMessage);
+                logger.debug("DNS resolution failed for {}: {}", host, errorMessage);
             }
 
             results.add(testResult);

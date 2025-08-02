@@ -4,18 +4,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Data Transfer Object for MCP (Model Context Protocol) requests.
+ * MCP request DTO.
  * 
- * This class represents the base structure for all MCP protocol requests
- * following the JSON-RPC 2.0 specification with MCP extensions.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@NonNullByDefault
 public class MCPRequest {
 
     @JsonProperty("jsonrpc")
@@ -107,7 +107,7 @@ public class MCPRequest {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o)
             return true;
         if (o == null || getClass() != o.getClass())

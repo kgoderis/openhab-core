@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -21,23 +22,26 @@ import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.binding.ThingHandler;
 import org.openhab.core.thing.type.ChannelType;
 import org.openhab.core.thing.type.ChannelTypeRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to retrieve binding information for items
+ * Action for getting item binding information in openHAB.
  * 
+ * This action provides functionality to retrieve
+ * binding information for items.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class GetItemBindingAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(GetItemBindingAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
     private @Nullable ThingRegistry thingRegistry;
@@ -195,10 +199,29 @@ public class GetItemBindingAction implements AIAction {
                 if (includeThingDetails) {
                     Map<String, Object> thingInfo = new HashMap<>();
                     thingInfo.put("thingUID", thing.getUID().toString());
-                    thingInfo.put("label", thing.getLabel());
-                    thingInfo.put("location", thing.getLocation());
-                    thingInfo.put("status", thing.getStatus().toString());
-                    thingInfo.put("statusInfo", thing.getStatusInfo().toString());
+                    String thingLabel = "";
+                    if (thing.getLabel() != null) {
+                        thingLabel = thing.getLabel();
+                    }
+                    thingInfo.put("label", thingLabel);
+
+                    String thingLocation = "";
+                    if (thing.getLocation() != null) {
+                        thingLocation = thing.getLocation();
+                    }
+                    thingInfo.put("location", thingLocation);
+
+                    String thingStatus = "";
+                    if (thing.getStatus() != null) {
+                        thingStatus = thing.getStatus().toString();
+                    }
+                    thingInfo.put("status", thingStatus);
+
+                    String thingStatusInfo = "";
+                    if (thing.getStatusInfo() != null) {
+                        thingStatusInfo = thing.getStatusInfo().toString();
+                    }
+                    thingInfo.put("statusInfo", thingStatusInfo);
                     thingInfo.put("properties", thing.getProperties());
                     thingInfo.put("configuration", thing.getConfiguration().getProperties());
                     result.put("thingInfo", thingInfo);
@@ -207,8 +230,17 @@ public class GetItemBindingAction implements AIAction {
                 if (includeChannelDetails) {
                     Map<String, Object> channelInfo = new HashMap<>();
                     channelInfo.put("channelUID", channel.getUID().toString());
-                    channelInfo.put("label", channel.getLabel());
-                    channelInfo.put("description", channel.getDescription());
+                    String channelLabel = "";
+                    if (channel.getLabel() != null) {
+                        channelLabel = channel.getLabel();
+                    }
+                    channelInfo.put("label", channelLabel);
+
+                    String channelDescription = "";
+                    if (channel.getDescription() != null) {
+                        channelDescription = channel.getDescription();
+                    }
+                    channelInfo.put("description", channelDescription);
                     channelInfo.put("properties", channel.getProperties());
                     channelInfo.put("configuration", channel.getConfiguration().getProperties());
 
@@ -216,10 +248,29 @@ public class GetItemBindingAction implements AIAction {
                     if (channelTypeRegistry != null) {
                         ChannelType channelType = channelTypeRegistry.getChannelType(channel.getChannelTypeUID());
                         if (channelType != null) {
-                            channelInfo.put("channelType", channelType.getLabel());
-                            channelInfo.put("channelDescription", channelType.getDescription());
-                            channelInfo.put("category", channelType.getCategory());
-                            channelInfo.put("itemType", channelType.getItemType());
+                            String channelTypeLabel = "";
+                            if (channelType.getLabel() != null) {
+                                channelTypeLabel = channelType.getLabel();
+                            }
+                            channelInfo.put("channelType", channelTypeLabel);
+
+                            String channelTypeDescription = "";
+                            if (channelType.getDescription() != null) {
+                                channelTypeDescription = channelType.getDescription();
+                            }
+                            channelInfo.put("channelDescription", channelTypeDescription);
+
+                            String channelTypeCategory = "";
+                            if (channelType.getCategory() != null) {
+                                channelTypeCategory = channelType.getCategory();
+                            }
+                            channelInfo.put("category", channelTypeCategory);
+
+                            String channelTypeItemType = "";
+                            if (channelType.getItemType() != null) {
+                                channelTypeItemType = channelType.getItemType();
+                            }
+                            channelInfo.put("itemType", channelTypeItemType);
                         }
                     }
 

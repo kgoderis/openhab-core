@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.actions.events.EventSubscriptionRegistry.SubscriptionInfo;
 import org.openhab.core.ai.common.api.action.AIAction;
@@ -14,22 +15,20 @@ import org.openhab.core.ai.common.api.action.AIActionException;
 import org.openhab.core.ai.common.api.action.AIActionMetadata;
 import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIActionValidationResult;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for subscribing to events from the openHAB EventBus via SSE.
+ * Action for subscribing to events in openHAB.
  * 
- * This action provides functionality to:
- * - Subscribe to specific event types
- * - Set up event filters and criteria
- * - Manage event subscriptions
- * - Configure subscription parameters
- * - Return SSE endpoint URL for real-time event streaming
+ * This action provides functionality to subscribe to
+ * specific event types and receive notifications.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class SubscribeEventsAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(SubscribeEventsAction.class);
@@ -229,7 +228,8 @@ public class SubscribeEventsAction implements AIAction {
             result.put("subscriptionId", subscriptionInfo.getSubscriptionId());
             result.put("sseUrl", subscriptionInfo.getSseUrl());
             result.put("eventTypes", subscriptionInfo.getEventTypes());
-            result.put("filters", subscriptionInfo.getFilters());
+            Map<String, String> subscriptionFilters = subscriptionInfo.getFilters();
+            result.put("filters", subscriptionFilters != null ? subscriptionFilters : Map.of());
             result.put("status", "active");
             result.put("message", "Successfully subscribed to events");
 

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -30,15 +31,16 @@ import org.slf4j.LoggerFactory;
  * 
  */
 @Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class CreateItemAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(CreateItemAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
-    private ItemBuilderFactory itemBuilderFactory;
+    private @Nullable ItemBuilderFactory itemBuilderFactory;
 
     @Reference
     private @Nullable MetadataRegistry metadataRegistry;
@@ -176,8 +178,11 @@ public class CreateItemAction implements AIAction {
             logger.debug("Creating item: {} of type: {} validateOnly: {}", itemName, itemType, validateOnly);
 
             Map<String, Object> result = new HashMap<>();
-            result.put("itemName", itemName);
-            result.put("itemType", itemType);
+            String safeItemName = itemName != null ? itemName : "";
+            result.put("itemName", safeItemName);
+
+            String safeItemType = itemType != null ? itemType : "";
+            result.put("itemType", safeItemType);
             result.put("success", true);
             result.put("timestamp", System.currentTimeMillis());
 
@@ -245,8 +250,17 @@ public class CreateItemAction implements AIAction {
             Map<String, Object> itemInfo = new HashMap<>();
             itemInfo.put("name", item.getName());
             itemInfo.put("type", item.getType());
-            itemInfo.put("label", item.getLabel());
-            itemInfo.put("category", item.getCategory());
+            String itemLabel = "";
+            if (item.getLabel() != null) {
+                itemLabel = item.getLabel();
+            }
+            itemInfo.put("label", itemLabel);
+
+            String itemCategory = "";
+            if (item.getCategory() != null) {
+                itemCategory = item.getCategory();
+            }
+            itemInfo.put("category", itemCategory);
             itemInfo.put("groups", item.getGroupNames());
             itemInfo.put("tags", item.getTags());
             itemInfo.put("state", item.getState() != null ? item.getState().toString() : "NULL");

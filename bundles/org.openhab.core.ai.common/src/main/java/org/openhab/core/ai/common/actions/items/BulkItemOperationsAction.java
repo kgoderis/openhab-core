@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -22,29 +23,32 @@ import org.openhab.core.items.events.ItemStateEvent;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.TypeParser;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to perform bulk operations on multiple items
+ * Action for bulk item operations in openHAB.
  * 
+ * This action provides functionality to perform
+ * operations on multiple items at once.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class BulkItemOperationsAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(BulkItemOperationsAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
     private @Nullable MetadataRegistry metadataRegistry;
 
     @Reference
-    private org.openhab.core.events.EventPublisher eventPublisher;
+    private org.openhab.core.events.@Nullable EventPublisher eventPublisher;
 
     @Override
     public String getActionId() {
@@ -354,11 +358,13 @@ public class BulkItemOperationsAction implements AIAction {
                 result.put("newState", newState.toString());
             } else {
                 result.put("success", false);
-                result.put("error", "Failed to parse state value: " + value);
+                String errorValue = value != null ? value : "null";
+                result.put("error", "Failed to parse state value: " + errorValue);
             }
         } catch (Exception e) {
             result.put("success", false);
-            result.put("error", e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            result.put("error", errorMessage);
         }
 
         return result;
@@ -382,11 +388,13 @@ public class BulkItemOperationsAction implements AIAction {
                 result.put("command", newCommand.toString());
             } else {
                 result.put("success", false);
-                result.put("error", "Failed to parse command value: " + value);
+                String errorValue = value != null ? value : "null";
+                result.put("error", "Failed to parse command value: " + errorValue);
             }
         } catch (Exception e) {
             result.put("success", false);
-            result.put("error", e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            result.put("error", errorMessage);
         }
 
         return result;
@@ -415,10 +423,12 @@ public class BulkItemOperationsAction implements AIAction {
 
             result.put("success", true);
             result.put("namespace", namespace);
-            result.put("value", metadataValue);
+            String safeMetadataValue = metadataValue != null ? metadataValue : "";
+            result.put("value", safeMetadataValue);
         } catch (Exception e) {
             result.put("success", false);
-            result.put("error", e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            result.put("error", errorMessage);
         }
 
         return result;
@@ -466,7 +476,8 @@ public class BulkItemOperationsAction implements AIAction {
             result.put("tagsSet", tagsSet);
         } catch (Exception e) {
             result.put("success", false);
-            result.put("error", e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            result.put("error", errorMessage);
         }
 
         return result;

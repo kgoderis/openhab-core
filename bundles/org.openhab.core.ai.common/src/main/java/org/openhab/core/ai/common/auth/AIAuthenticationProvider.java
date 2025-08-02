@@ -3,14 +3,18 @@ package org.openhab.core.ai.common.auth;
 import java.util.Map;
 import java.util.Optional;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
- * Authentication provider interface for AI protocols (MCP and A2A).
+ * Authentication provider interface for AI services.
  * 
- * This interface defines the contract for authenticating requests and managing
- * security contexts for both Model Context Protocol and Agent-to-Agent communications.
+ * This interface defines the contract for authentication providers
+ * that can authenticate users for AI protocol access.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public interface AIAuthenticationProvider {
 
     /**

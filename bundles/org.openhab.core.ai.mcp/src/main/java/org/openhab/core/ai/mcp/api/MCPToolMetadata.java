@@ -1,5 +1,14 @@
 package org.openhab.core.ai.mcp.api;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
+/**
+ * Metadata information for MCP tools.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
+ */
+@NonNullByDefault
 public class MCPToolMetadata {
     private final String version;
     private final String author;
@@ -29,8 +38,8 @@ public class MCPToolMetadata {
 
     public static class Builder {
         private String version = "1.0.0";
-        private String author;
-        private String description;
+        private String author = "Unknown";
+        private String description = "No description provided";
 
         public Builder version(String version) {
             this.version = version;

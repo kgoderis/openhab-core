@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -25,13 +26,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AI Action for reading file contents within the openHAB root folder.
+ * Action for reading files in openHAB.
  * 
- * This action provides secure file reading capabilities, ensuring operations
- * only work within the openHAB configuration and user data directories.
+ * This action provides functionality to read content
+ * from files with various options.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class ReadFileAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(ReadFileAction.class);
@@ -198,7 +201,11 @@ public class ReadFileAction implements AIAction {
             Map<String, Object> result = new HashMap<>();
 
             // Extract parameters with defaults
-            String path = (String) parameters.get("path");
+            Object pathObj = parameters.get("path");
+            if (pathObj == null) {
+                throw new AIActionException(ACTION_ID, "Path parameter is required");
+            }
+            String path = (String) pathObj;
             String encoding = (String) parameters.getOrDefault("encoding", "UTF-8");
             Integer maxSize = (Integer) parameters.getOrDefault("maxSize", 10485760);
             Boolean includeMetadata = (Boolean) parameters.getOrDefault("includeMetadata", true);
@@ -253,7 +260,7 @@ public class ReadFileAction implements AIAction {
 
             // Build result
             result.put("timestamp", Instant.now().toString());
-            result.put("path", filePath.toString());
+            result.put("path", filePath != null && filePath.toString() != null ? filePath.toString() : "");
             result.put("content", content);
             result.put("encoding", encoding);
             result.put("size", fileSize);
@@ -288,18 +295,21 @@ public class ReadFileAction implements AIAction {
                 result.put("metadata", metadata);
             }
 
-            logger.debug("ReadFileAction completed successfully. Read {} bytes from {}", fileSize, path);
+            logger.debug("ReadFileAction completed successfully. Read {} bytes from {}", fileSize, filePath.toString());
             return AIActionResult.success(result, System.currentTimeMillis());
 
         } catch (SecurityException e) {
-            logger.error("Security violation in ReadFileAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Security violation";
+            logger.error("Security violation in ReadFileAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, errorMessage);
         } catch (IOException e) {
-            logger.error("IO error in ReadFileAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, "Failed to read file: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "IO error";
+            logger.error("IO error in ReadFileAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, "Failed to read file: " + errorMessage);
         } catch (Exception e) {
-            logger.error("Unexpected error in ReadFileAction: {}", e.getMessage(), e);
-            throw new AIActionException(ACTION_ID, "Unexpected error: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            logger.error("Unexpected error in ReadFileAction: {}", errorMessage, e);
+            throw new AIActionException(ACTION_ID, "Unexpected error: " + errorMessage);
         }
     }
 

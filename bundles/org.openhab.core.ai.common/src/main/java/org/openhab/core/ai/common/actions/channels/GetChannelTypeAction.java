@@ -18,18 +18,19 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.thing.type.ChannelType;
 import org.openhab.core.thing.type.ChannelTypeRegistry;
 import org.openhab.core.thing.type.ChannelTypeUID;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving information about a channel type.
+ * Action for retrieving channel type information in openHAB.
  * 
- * This action provides detailed information about a channel type including
- * its properties, capabilities, and metadata.
+ * This action provides functionality to get detailed information
+ * about channel types including their properties and capabilities.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetChannelTypeAction implements AIAction {
 
@@ -208,13 +209,32 @@ public class GetChannelTypeAction implements AIAction {
             // Basic information
             Map<String, Object> basicInfo = new HashMap<>();
             basicInfo.put("uid", channelType.getUID().toString());
-            basicInfo.put("label", channelType.getLabel());
-            basicInfo.put("description", channelType.getDescription());
-            basicInfo.put("category", channelType.getCategory());
+            String channelTypeLabel = "";
+            if (channelType.getLabel() != null) {
+                channelTypeLabel = channelType.getLabel();
+            }
+            basicInfo.put("label", channelTypeLabel);
+            String channelTypeDescription = "";
+            if (channelType.getDescription() != null) {
+                channelTypeDescription = channelType.getDescription();
+            }
+            basicInfo.put("description", channelTypeDescription);
+            String channelTypeCategory = "";
+            if (channelType.getCategory() != null) {
+                channelTypeCategory = channelType.getCategory();
+            }
+            basicInfo.put("category", channelTypeCategory);
             basicInfo.put("kind", channelType.getKind().toString());
-            basicInfo.put("itemType", channelType.getItemType());
-            basicInfo.put("autoUpdatePolicy",
-                    channelType.getAutoUpdatePolicy() != null ? channelType.getAutoUpdatePolicy().toString() : null);
+            String itemType = "";
+            if (channelType.getItemType() != null) {
+                itemType = channelType.getItemType();
+            }
+            basicInfo.put("itemType", itemType);
+            String autoUpdatePolicy = "";
+            if (channelType.getAutoUpdatePolicy() != null) {
+                autoUpdatePolicy = channelType.getAutoUpdatePolicy().toString();
+            }
+            basicInfo.put("autoUpdatePolicy", autoUpdatePolicy);
             result.put("basicInfo", basicInfo);
 
             // Properties
@@ -229,7 +249,11 @@ public class GetChannelTypeAction implements AIAction {
             // State description
             if (includeStateDescription && channelType.getState() != null) {
                 Map<String, Object> stateDescription = new HashMap<>();
-                stateDescription.put("pattern", channelType.getState().getPattern());
+                String pattern = "";
+                if (channelType.getState().getPattern() != null) {
+                    pattern = channelType.getState().getPattern();
+                }
+                stateDescription.put("pattern", pattern);
                 stateDescription.put("readOnly", channelType.getState().isReadOnly());
                 stateDescription.put("options", channelType.getState().getOptions());
                 result.put("stateDescription", stateDescription);

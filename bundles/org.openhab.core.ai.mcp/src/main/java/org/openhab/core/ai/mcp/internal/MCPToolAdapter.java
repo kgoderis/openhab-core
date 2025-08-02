@@ -2,6 +2,8 @@ package org.openhab.core.ai.mcp.internal;
 
 import java.util.Map;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionResult;
@@ -23,6 +25,7 @@ import org.slf4j.LoggerFactory;
  * 
  * 
  */
+@NonNullByDefault
 public class MCPToolAdapter implements MCPTool {
 
     private static final Logger logger = LoggerFactory.getLogger(MCPToolAdapter.class);
@@ -34,7 +37,8 @@ public class MCPToolAdapter implements MCPTool {
     private final Map<String, Object> schema;
 
     @Reference
-    private MCPLoggingManager loggingManager;
+    // TODO : is REference properly injected for a class that is not a COmponent?
+    private @Nullable MCPLoggingManager loggingManager;
 
     /**
      * Create a new MCP tool adapter from an AIAction.
@@ -326,6 +330,8 @@ public class MCPToolAdapter implements MCPTool {
      */
     private AIActionContext convertToAIActionContext(MCPToolContext mcpContext) {
         // Create a basic AIAction context using builder pattern
+        // TODO : use the mcpContext to build the AIActionContext. We dont copy over the properties from the mcpContext
+        // to the AIActionContext.
         return AIActionContext.builder().protocol("mcp").clientId("mcp-client")
                 .sessionId("mcp-session-" + System.currentTimeMillis())
                 .correlationId("mcp-" + System.currentTimeMillis()).priority("normal").build();

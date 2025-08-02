@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
@@ -22,11 +24,12 @@ import org.slf4j.LoggerFactory;
  * 
  */
 @Component(service = AIActionRegistry.class, immediate = true)
+@NonNullByDefault
 public class AIActionRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(AIActionRegistry.class);
 
-    private BundleContext bundleContext;
+    private @Nullable BundleContext bundleContext;
     private final Map<String, AIAction> actions = new ConcurrentHashMap<>();
     private final Map<String, AIActionMetadata> metadata = new ConcurrentHashMap<>();
 
@@ -132,7 +135,7 @@ public class AIActionRegistry {
      * @param actionId action identifier
      * @return action or null if not found
      */
-    public AIAction getAction(String actionId) {
+    public @Nullable AIAction getAction(String actionId) {
         return actions.get(actionId);
     }
 
@@ -142,7 +145,7 @@ public class AIActionRegistry {
      * @param actionId action identifier
      * @return metadata or null if not found
      */
-    public AIActionMetadata getActionMetadata(String actionId) {
+    public @Nullable AIActionMetadata getActionMetadata(String actionId) {
         return metadata.get(actionId);
     }
 

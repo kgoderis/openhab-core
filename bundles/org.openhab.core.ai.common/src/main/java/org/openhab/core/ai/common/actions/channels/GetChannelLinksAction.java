@@ -21,18 +21,19 @@ import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.link.ItemChannelLink;
 import org.openhab.core.thing.link.ItemChannelLinkRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving information about channel links.
+ * Action for retrieving channel links in openHAB.
  * 
- * This action provides detailed information about item-channel links including
- * configuration and item details.
+ * This action provides functionality to get information about
+ * links between channels and items.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetChannelLinksAction implements AIAction {
 
@@ -222,8 +223,16 @@ public class GetChannelLinksAction implements AIAction {
                         Map<String, Object> itemDetails = new HashMap<>();
                         itemDetails.put("name", item.getName());
                         itemDetails.put("type", item.getType());
-                        itemDetails.put("label", item.getLabel());
-                        itemDetails.put("category", item.getCategory());
+                        String itemLabel = "";
+                        if (item.getLabel() != null) {
+                            itemLabel = item.getLabel();
+                        }
+                        itemDetails.put("label", itemLabel);
+                        String itemCategory = "";
+                        if (item.getCategory() != null) {
+                            itemCategory = item.getCategory();
+                        }
+                        itemDetails.put("category", itemCategory);
                         itemDetails.put("tags", item.getTags());
                         itemDetails.put("state", item.getState() != null ? item.getState().toString() : "NULL");
                         linkInfo.put("itemDetails", itemDetails);

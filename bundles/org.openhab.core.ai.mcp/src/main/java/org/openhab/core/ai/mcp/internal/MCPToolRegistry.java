@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionRegistry;
 import org.openhab.core.ai.mcp.api.MCPTool;
@@ -13,7 +15,6 @@ import org.openhab.core.service.ReadyService.ReadyTracker;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -22,14 +23,12 @@ import org.slf4j.LoggerFactory;
 import io.modelcontextprotocol.server.McpServerFeatures;
 
 /**
- * Tool registry that integrates with the official MCP SDK.
+ * Registry for MCP tools.
  * 
- * This registry manages openHAB MCP tools and provides them to the official
- * MCP SDK for registration and execution.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = MCPToolRegistry.class, immediate = true)
+@NonNullByDefault
 public class MCPToolRegistry implements ReadyTracker {
 
     private static final Logger logger = LoggerFactory.getLogger(MCPToolRegistry.class);
@@ -38,10 +37,10 @@ public class MCPToolRegistry implements ReadyTracker {
     public static final ReadyMarker MCP_TOOLS_READY = new ReadyMarker("mcp", "tools");
 
     @Reference
-    private ReadyService readyService;
+    private @Nullable ReadyService readyService;
 
-    private BundleContext bundleContext;
-    private AIActionRegistry aiActionRegistry;
+    private @Nullable BundleContext bundleContext;
+    private @Nullable AIActionRegistry aiActionRegistry;
     private final Map<String, MCPToolAdapter> toolAdapters = new ConcurrentHashMap<>();
     private final Map<String, MCPTool> tools = new ConcurrentHashMap<>();
     private boolean toolsPopulated = false;
@@ -56,8 +55,10 @@ public class MCPToolRegistry implements ReadyTracker {
         this.bundleContext = bundleContext;
         logger.info("MCP Tool Registry activated");
 
-        // Register as a tracker
-        readyService.registerTracker(this);
+        // Register as a tracker if readyService is available
+        if (readyService != null) {
+            readyService.registerTracker(this);
+        }
 
         discoverTools();
         createToolsFromActions();
@@ -76,14 +77,16 @@ public class MCPToolRegistry implements ReadyTracker {
     public void deactivate() {
         logger.info("MCP Tool Registry deactivated");
 
-        // Unregister tracker and unmark ready
-        readyService.unregisterTracker(this);
-        readyService.unmarkReady(MCP_TOOLS_READY);
+        // Unregister tracker and unmark ready if readyService is available
+        if (readyService != null) {
+            readyService.unregisterTracker(this);
+            readyService.unmarkReady(MCP_TOOLS_READY);
+        }
 
         toolAdapters.clear();
         tools.clear();
-        this.bundleContext = null;
-        this.aiActionRegistry = null;
+        this.bundleContext = null; // This is intentional - clearing the reference
+        this.aiActionRegistry = null; // This is intentional - clearing the reference
     }
 
     /**
@@ -166,6 +169,11 @@ public class MCPToolRegistry implements ReadyTracker {
      * @param tool The tool to register
      */
     public void registerTool(MCPTool tool) {
+        // Validate input parameter
+        if (tool == null) {
+            return; // Cannot register null tool
+        }
+
         String toolId = tool.getToolId();
         tools.put(toolId, tool);
 
@@ -186,6 +194,11 @@ public class MCPToolRegistry implements ReadyTracker {
      * @param action the AIAction to convert
      */
     public void createToolFromAction(AIAction action) {
+        // Validate input parameter
+        if (action == null) {
+            return; // Cannot create tool from null action
+        }
+
         MCPToolAdapter adapter = new MCPToolAdapter(action);
         String toolId = adapter.getToolId();
 
@@ -204,6 +217,11 @@ public class MCPToolRegistry implements ReadyTracker {
      * @param toolId The tool ID to unregister
      */
     public void unregisterTool(String toolId) {
+        // Validate input parameter
+        if (toolId == null) {
+            return; // Cannot unregister tool with null ID
+        }
+
         tools.remove(toolId);
         toolAdapters.remove(toolId);
         logger.info("Unregistered MCP tool: {}", toolId);
@@ -215,7 +233,12 @@ public class MCPToolRegistry implements ReadyTracker {
      * @param toolId Tool identifier
      * @return Tool or null if not found
      */
-    public MCPTool getTool(String toolId) {
+    public @Nullable MCPTool getTool(String toolId) {
+        // Validate input parameter
+        if (toolId == null) {
+            return null; // Cannot get tool with null ID
+        }
+
         return tools.get(toolId);
     }
 
@@ -225,7 +248,12 @@ public class MCPToolRegistry implements ReadyTracker {
      * @param toolId Tool identifier
      * @return Tool adapter or null if not found
      */
-    public MCPToolAdapter getToolAdapter(String toolId) {
+    public @Nullable MCPToolAdapter getToolAdapter(String toolId) {
+        // Validate input parameter
+        if (toolId == null) {
+            return null; // Cannot get tool adapter with null ID
+        }
+
         return toolAdapters.get(toolId);
     }
 
@@ -263,6 +291,11 @@ public class MCPToolRegistry implements ReadyTracker {
      * @return true if registered
      */
     public boolean isToolRegistered(String toolId) {
+        // Validate input parameter
+        if (toolId == null) {
+            return false; // Cannot check if null tool ID is registered
+        }
+
         return tools.containsKey(toolId);
     }
 
@@ -277,6 +310,7 @@ public class MCPToolRegistry implements ReadyTracker {
         // For now, return empty array until we implement proper tool specification creation
         // The tools are registered via the adapter pattern, but the SDK integration
         // requires proper tool specifications that we'll implement in a future iteration
+        // TODO : Implement proper tool specification creation
         logger.warn("Tool specification creation not yet implemented - returning empty array");
         return new McpServerFeatures.SyncToolSpecification[0];
     }
@@ -292,6 +326,7 @@ public class MCPToolRegistry implements ReadyTracker {
         // For now, return empty array until we implement proper tool specification creation
         // The tools are registered via the adapter pattern, but the SDK integration
         // requires proper tool specifications that we'll implement in a future iteration
+        // TODO : Implement proper async tool specification creation
         logger.warn("Async tool specification creation not yet implemented - returning empty array");
         return new McpServerFeatures.AsyncToolSpecification[0];
     }
@@ -302,7 +337,7 @@ public class MCPToolRegistry implements ReadyTracker {
      * @param tool the MCP tool
      * @return the tool specification or null if creation fails
      */
-    private McpServerFeatures.SyncToolSpecification createToolSpecification(MCPTool tool) {
+    private McpServerFeatures.@Nullable SyncToolSpecification createToolSpecification(MCPTool tool) {
         try {
             String toolId = tool.getToolId();
             String description = tool.getDescription();
@@ -328,7 +363,7 @@ public class MCPToolRegistry implements ReadyTracker {
      * @param tool the MCP tool
      * @return the async tool specification or null if creation fails
      */
-    private McpServerFeatures.AsyncToolSpecification createAsyncToolSpecification(MCPTool tool) {
+    private McpServerFeatures.@Nullable AsyncToolSpecification createAsyncToolSpecification(MCPTool tool) {
         try {
             String toolId = tool.getToolId();
             String description = tool.getDescription();
@@ -383,7 +418,9 @@ public class MCPToolRegistry implements ReadyTracker {
     private void markToolsReady() {
         if (!toolsPopulated) {
             toolsPopulated = true;
-            readyService.markReady(MCP_TOOLS_READY);
+            if (readyService != null) {
+                readyService.markReady(MCP_TOOLS_READY);
+            }
             logger.info("MCP tools ready - {} tools available", tools.size());
         }
     }

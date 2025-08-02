@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -33,12 +34,13 @@ import org.slf4j.LoggerFactory;
  * 
  */
 @Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class GetItemAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(GetItemAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
     private @Nullable MetadataRegistry metadataRegistry;
@@ -140,6 +142,10 @@ public class GetItemAction implements AIAction {
     public AIActionResult execute(Map<String, Object> parameters, AIActionContext context) throws AIActionException {
         long executionStartTime = System.currentTimeMillis();
 
+        if (itemRegistry == null) {
+            throw new AIActionException(getActionId(), "ItemRegistry service not available");
+        }
+
         try {
             String itemName = (String) parameters.get("itemName");
             Boolean includeMetadata = (Boolean) parameters.getOrDefault("includeMetadata", true);
@@ -153,16 +159,18 @@ public class GetItemAction implements AIAction {
             Item item = itemRegistry.getItem(itemName);
 
             Map<String, Object> result = new HashMap<>();
-            result.put("itemName", itemName);
+            result.put("itemName", itemName != null ? itemName : "");
             result.put("success", true);
             result.put("timestamp", System.currentTimeMillis());
 
             // Basic item information
             Map<String, Object> basicInfo = new HashMap<>();
-            basicInfo.put("name", item.getName());
-            basicInfo.put("type", item.getType());
-            basicInfo.put("label", item.getLabel());
-            basicInfo.put("category", item.getCategory());
+            basicInfo.put("name", item.getName() != null ? item.getName() : "");
+            basicInfo.put("type", item.getType() != null ? item.getType() : "");
+            String label = item.getLabel() != null ? item.getLabel() : "";
+            basicInfo.put("label", label);
+            String category = item.getCategory() != null ? item.getCategory() : "";
+            basicInfo.put("category", category);
             basicInfo.put("isGroup", item instanceof GroupItem);
             result.put("basicInfo", basicInfo);
 
@@ -183,9 +191,17 @@ public class GetItemAction implements AIAction {
 
             if (item instanceof GroupItem groupItem) {
                 typeInfo.put("memberCount", groupItem.getMembers().size());
-                typeInfo.put("baseItemType",
-                        groupItem.getBaseItem() != null ? groupItem.getBaseItem().getType() : null);
-                typeInfo.put("function", groupItem.getFunction() != null ? groupItem.getFunction().toString() : null);
+                String baseItemType = "";
+                if (groupItem.getBaseItem() != null) {
+                    baseItemType = groupItem.getBaseItem().getType();
+                }
+                typeInfo.put("baseItemType", baseItemType);
+
+                String function = "";
+                if (groupItem.getFunction() != null) {
+                    function = groupItem.getFunction().toString();
+                }
+                typeInfo.put("function", function);
             }
             result.put("typeInfo", typeInfo);
 
@@ -252,14 +268,53 @@ public class GetItemAction implements AIAction {
 
                 if (thing != null && channel != null) {
                     bindingInfo.put("hasBinding", true);
-                    bindingInfo.put("bindingId", thing.getThingTypeUID().getBindingId());
-                    bindingInfo.put("thingTypeId", thing.getThingTypeUID().getId());
-                    bindingInfo.put("thingId", thing.getUID().getId());
-                    bindingInfo.put("thingLabel", thing.getLabel());
-                    bindingInfo.put("thingStatus", thing.getStatus().toString());
-                    bindingInfo.put("channelId", channel.getUID().getId());
-                    bindingInfo.put("channelLabel", channel.getLabel());
-                    bindingInfo.put("channelDescription", channel.getDescription());
+                    String bindingId = "";
+                    if (thing.getThingTypeUID() != null && thing.getThingTypeUID().getBindingId() != null) {
+                        bindingId = thing.getThingTypeUID().getBindingId();
+                    }
+                    bindingInfo.put("bindingId", bindingId);
+
+                    String thingTypeId = "";
+                    if (thing.getThingTypeUID() != null && thing.getThingTypeUID().getId() != null) {
+                        thingTypeId = thing.getThingTypeUID().getId();
+                    }
+                    bindingInfo.put("thingTypeId", thingTypeId);
+
+                    String thingId = "";
+                    if (thing.getUID() != null && thing.getUID().getId() != null) {
+                        thingId = thing.getUID().getId();
+                    }
+                    bindingInfo.put("thingId", thingId);
+
+                    String thingLabel = "";
+                    if (thing.getLabel() != null) {
+                        thingLabel = thing.getLabel();
+                    }
+                    bindingInfo.put("thingLabel", thingLabel);
+
+                    String thingStatus = "";
+                    if (thing.getStatus() != null) {
+                        thingStatus = thing.getStatus().toString();
+                    }
+                    bindingInfo.put("thingStatus", thingStatus);
+
+                    String channelId = "";
+                    if (channel.getUID() != null && channel.getUID().getId() != null) {
+                        channelId = channel.getUID().getId();
+                    }
+                    bindingInfo.put("channelId", channelId);
+
+                    String channelLabel = "";
+                    if (channel.getLabel() != null) {
+                        channelLabel = channel.getLabel();
+                    }
+                    bindingInfo.put("channelLabel", channelLabel);
+
+                    String channelDescription = "";
+                    if (channel.getDescription() != null) {
+                        channelDescription = channel.getDescription();
+                    }
+                    bindingInfo.put("channelDescription", channelDescription);
                 } else {
                     bindingInfo.put("hasBinding", false);
                 }

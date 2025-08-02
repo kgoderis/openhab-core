@@ -4,6 +4,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  * Configuration for a specific AI protocol (MCP or A2A).
  * 
@@ -12,11 +15,12 @@ import java.util.Optional;
  * 
  * 
  */
+@NonNullByDefault
 public class AIProtocolConfiguration {
 
     private final String protocolName;
     private final boolean enabled;
-    private final String endpoint;
+    private final @Nullable String endpoint;
     private final Map<String, String> authenticationConfig;
     private final Map<String, Object> protocolSpecificConfig;
     private final int timeoutSeconds;
@@ -68,7 +72,7 @@ public class AIProtocolConfiguration {
      * 
      * @return Endpoint URL, or null if not configured
      */
-    public String getEndpoint() {
+    public @Nullable String getEndpoint() {
         return endpoint;
     }
 
@@ -156,14 +160,14 @@ public class AIProtocolConfiguration {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o)
             return true;
         if (o == null || getClass() != o.getClass())
             return false;
         AIProtocolConfiguration that = (AIProtocolConfiguration) o;
         return enabled == that.enabled && timeoutSeconds == that.timeoutSeconds && retryAttempts == that.retryAttempts
-                && Objects.equals(protocolName, that.protocolName) && Objects.equals(endpoint, that.endpoint)
+                && protocolName.equals(that.protocolName) && Objects.equals(endpoint, that.endpoint)
                 && Objects.equals(authenticationConfig, that.authenticationConfig)
                 && Objects.equals(protocolSpecificConfig, that.protocolSpecificConfig);
     }
@@ -176,8 +180,9 @@ public class AIProtocolConfiguration {
 
     @Override
     public String toString() {
+        String endpointStr = endpoint != null ? endpoint : "null";
         return "AIProtocolConfiguration{" + "protocolName='" + protocolName + '\'' + ", enabled=" + enabled
-                + ", endpoint='" + endpoint + '\'' + ", timeoutSeconds=" + timeoutSeconds + ", retryAttempts="
+                + ", endpoint='" + endpointStr + '\'' + ", timeoutSeconds=" + timeoutSeconds + ", retryAttempts="
                 + retryAttempts + ", authConfigSize=" + authenticationConfig.size() + ", protocolConfigSize="
                 + protocolSpecificConfig.size() + '}';
     }
@@ -188,7 +193,7 @@ public class AIProtocolConfiguration {
     public static class Builder {
         private final String protocolName;
         private boolean enabled = true;
-        private String endpoint;
+        private @Nullable String endpoint;
         private Map<String, String> authenticationConfig = Map.of();
         private Map<String, Object> protocolSpecificConfig = Map.of();
         private int timeoutSeconds = 30;
@@ -203,7 +208,7 @@ public class AIProtocolConfiguration {
             return this;
         }
 
-        public Builder endpoint(String endpoint) {
+        public Builder endpoint(@Nullable String endpoint) {
             this.endpoint = endpoint;
             return this;
         }

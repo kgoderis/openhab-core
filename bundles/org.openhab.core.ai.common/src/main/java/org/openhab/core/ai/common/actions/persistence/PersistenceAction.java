@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -19,6 +20,7 @@ import org.osgi.service.component.annotations.Component;
  * 
  * 
  */
+@NonNullByDefault
 @Component(service = AIAction.class, immediate = true)
 public class PersistenceAction implements AIAction {
 

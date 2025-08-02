@@ -24,18 +24,19 @@ import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
 import org.openhab.core.persistence.QueryablePersistenceService;
 import org.openhab.core.types.State;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving data from persistence services.
- *
- * This action allows querying historical data from persistence services
- * with various filtering and aggregation options.
+ * Action for getting persistence data in openHAB.
+ * 
+ * This action provides functionality to retrieve
+ * data from persistence services.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetPersistenceDataAction implements AIAction {
 
@@ -549,15 +550,25 @@ public class GetPersistenceDataAction implements AIAction {
             // Calculate aggregated value based on function
             Object aggregatedValue = calculateAggregatedValue(group, aggregation);
 
-            aggregatedPoint.put("timestamp", group.get(0).get("timestamp"));
-            aggregatedPoint.put("timestampISO", group.get(0).get("timestampISO"));
-            aggregatedPoint.put("state", aggregatedValue.toString());
-            aggregatedPoint.put("value", aggregatedValue);
+            Object timestamp = group.get(0).get("timestamp");
+            String timestampStr = timestamp != null ? timestamp.toString() : "";
+            aggregatedPoint.put("timestamp", timestampStr);
+
+            Object timestampISO = group.get(0).get("timestampISO");
+            String timestampISOStr = timestampISO != null ? timestampISO.toString() : "";
+            aggregatedPoint.put("timestampISO", timestampISOStr);
+            aggregatedPoint.put("state", aggregatedValue != null ? aggregatedValue.toString() : "NULL");
+            aggregatedPoint.put("value", aggregatedValue != null ? aggregatedValue : "NULL");
             aggregatedPoint.put("aggregation", aggregation);
             aggregatedPoint.put("interval", interval);
             aggregatedPoint.put("recordCount", group.size());
-            aggregatedPoint.put("serviceId", group.get(0).get("serviceId"));
-            aggregatedPoint.put("itemName", group.get(0).get("itemName"));
+            Object serviceId = group.get(0).get("serviceId");
+            String serviceIdStr = serviceId != null ? serviceId.toString() : "";
+            aggregatedPoint.put("serviceId", serviceIdStr);
+
+            Object itemName = group.get(0).get("itemName");
+            String itemNameStr = itemName != null ? itemName.toString() : "";
+            aggregatedPoint.put("itemName", itemNameStr);
 
             aggregatedData.add(aggregatedPoint);
         }
@@ -601,7 +612,8 @@ public class GetPersistenceDataAction implements AIAction {
 
         if (numericValues.isEmpty()) {
             // If no numeric values, return the first state
-            return group.get(0).get("state");
+            Object state = group.get(0).get("state");
+            return state != null ? state : "NULL";
         }
 
         return switch (aggregation.toUpperCase()) {
@@ -610,7 +622,10 @@ public class GetPersistenceDataAction implements AIAction {
             case "MAX" -> numericValues.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
             case "SUM" -> numericValues.stream().mapToDouble(Double::doubleValue).sum();
             case "COUNT" -> (double) group.size();
-            default -> group.get(0).get("state");
+            default -> {
+                Object state = group.get(0).get("state");
+                yield state != null ? state : "NULL";
+            }
         };
     }
 

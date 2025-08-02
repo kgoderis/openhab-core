@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
  * Action to compress files and directories into a ZIP archive.
  * Only operates within the openHAB root folder for security.
  */
+@NonNullByDefault
 public class CompressFilesAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(CompressFilesAction.class);

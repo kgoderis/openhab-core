@@ -23,18 +23,19 @@ import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingTypeUID;
 import org.openhab.core.thing.ThingUID;
 import org.openhab.core.thing.binding.builder.ThingBuilder;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for approving discovered devices in openHAB using real Thing creation.
- *
- * This action allows approving discovered devices to be added
- * to the openHAB system as real Things using ThingManager and ThingRegistry.
+ * Action for approving discovery results in openHAB.
+ * 
+ * This action provides functionality to approve discovered
+ * devices and add them to the system.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class ApproveDiscoveryAction implements AIAction {
 
@@ -196,11 +197,11 @@ public class ApproveDiscoveryAction implements AIAction {
             // Extract parameters
             @SuppressWarnings("unchecked")
             List<String> deviceIds = (List<String>) parameters.get("deviceIds");
-            String discoveryId = (String) parameters.getOrDefault("discoveryId", null);
-            String bindingId = (String) parameters.getOrDefault("bindingId", null);
-            String thingType = (String) parameters.getOrDefault("thingType", null);
-            String label = (String) parameters.getOrDefault("label", null);
-            String location = (String) parameters.getOrDefault("location", null);
+            String discoveryId = (String) parameters.get("discoveryId");
+            String bindingId = (String) parameters.get("bindingId");
+            String thingType = (String) parameters.get("thingType");
+            String label = (String) parameters.get("label");
+            String location = (String) parameters.get("location");
             @SuppressWarnings("unchecked")
             Map<String, Object> properties = parameters.containsKey("properties")
                     ? (Map<String, Object>) parameters.get("properties")
@@ -306,7 +307,9 @@ public class ApproveDiscoveryAction implements AIAction {
                             channels);
 
                     if (thingUid != null) {
-                        approvedDevices.add(deviceId);
+                        if (deviceId != null) {
+                            approvedDevices.add(deviceId);
+                        }
                         createdThings.add(thingUid);
 
                         // Simulate item creation if requested (in real implementation, this would use ItemRegistry)
@@ -318,12 +321,14 @@ public class ApproveDiscoveryAction implements AIAction {
                         logger.debug("Approved device: {} -> thing: {}", deviceId, thingUid);
                     } else {
                         logger.warn("Failed to create thing for device: {}", deviceId);
-                        failedDevices.add(deviceId);
+                        String deviceIdSafe = deviceId != null ? deviceId : "unknown";
+                        failedDevices.add(deviceIdSafe);
                     }
 
                 } catch (Exception e) {
                     logger.warn("Failed to approve device: {}", deviceId, e);
-                    failedDevices.add(deviceId);
+                    String deviceIdSafe = deviceId != null ? deviceId : "unknown";
+                    failedDevices.add(deviceIdSafe);
                 }
             }
         } else {
@@ -336,9 +341,9 @@ public class ApproveDiscoveryAction implements AIAction {
         result.put("createdThings", createdThings);
         result.put("createdItems", createdItems);
         result.put("failedDevices", failedDevices);
-        result.put("totalApproved", approvedDevices.size());
-        result.put("totalCreated", createdThings.size());
-        result.put("totalFailed", failedDevices.size());
+        result.put("totalApproved", approvedDevices != null ? approvedDevices.size() : 0);
+        result.put("totalCreated", createdThings != null ? createdThings.size() : 0);
+        result.put("totalFailed", failedDevices != null ? failedDevices.size() : 0);
         result.put("discoveryServiceFound", discoveryServiceFound);
         result.put("approvalTime", Instant.now().toString());
 
@@ -366,10 +371,9 @@ public class ApproveDiscoveryAction implements AIAction {
             // Create Thing using ThingBuilder
             ThingBuilder thingBuilder = ThingBuilder.create(thingTypeUID, thingUID);
 
-            if (label != null) {
-                thingBuilder.withLabel(label);
-            } else {
-                thingBuilder.withLabel("Discovered " + deviceId);
+            String thingLabel = label != null ? label : "Discovered " + deviceId;
+            if (thingLabel != null) {
+                thingBuilder.withLabel(thingLabel);
             }
 
             if (location != null) {
@@ -400,12 +404,12 @@ public class ApproveDiscoveryAction implements AIAction {
                 return thingUID.toString();
             } else {
                 logger.error("ThingRegistry not available for adding thing: {}", thingUID);
-                return null;
+                return "";
             }
 
         } catch (Exception e) {
             logger.error("Error creating thing for device: {}", deviceId, e);
-            return null;
+            return "";
         }
     }
 

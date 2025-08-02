@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 /**
@@ -15,6 +16,7 @@ import org.eclipse.jdt.annotation.Nullable;
  * 
  * 
  */
+@NonNullByDefault
 public final class ValidationUtils {
 
     // Private constructor to prevent instantiation

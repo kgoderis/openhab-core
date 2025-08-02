@@ -2,20 +2,20 @@ package org.openhab.core.ai.common.actions.events;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.events.Event;
-import org.openhab.core.events.EventPublisher;
 import org.openhab.core.events.EventSubscriber;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
-import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,14 +25,11 @@ import org.slf4j.LoggerFactory;
  * This component manages event subscriptions per client, allowing MCP clients
  * to subscribe to specific event types and filters, then receive events via SSE.
  */
-@Component(service = EventSubscriptionRegistry.class, immediate = true)
 @NonNullByDefault
+@Component(service = EventSubscriptionRegistry.class, immediate = true)
 public class EventSubscriptionRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(EventSubscriptionRegistry.class);
-
-    @Reference
-    private @Nullable EventPublisher eventPublisher;
 
     // subscriptionId -> EventSubscriber
     private final Map<String, EventSubscriber> subscriptions = new ConcurrentHashMap<>();
@@ -41,7 +38,7 @@ public class EventSubscriptionRegistry {
     private final Map<String, SubscriptionInfo> subscriptionInfos = new ConcurrentHashMap<>();
 
     // clientId -> Set<subscriptionId>
-    private final Map<String, Set<String>> clientSubscriptions = new ConcurrentHashMap<>();
+    private final Map<String, CopyOnWriteArrayList<String>> clientSubscriptions = new ConcurrentHashMap<>();
 
     @Activate
     protected void activate() {
@@ -86,7 +83,7 @@ public class EventSubscriptionRegistry {
         subscriptionInfos.put(subscriptionId, info);
 
         // Track client subscriptions
-        clientSubscriptions.computeIfAbsent(clientId, k -> ConcurrentHashMap.newKeySet()).add(subscriptionId);
+        clientSubscriptions.computeIfAbsent(clientId, k -> new CopyOnWriteArrayList<>()).add(subscriptionId);
 
         logger.debug("Created event subscription: clientId={}, subscriptionId={}, eventTypes={}", clientId,
                 subscriptionId, eventTypes);
@@ -111,7 +108,7 @@ public class EventSubscriptionRegistry {
             if (info != null) {
                 // Remove from client tracking
                 String clientId = info.getClientId();
-                Set<String> clientSubs = clientSubscriptions.get(clientId);
+                CopyOnWriteArrayList<String> clientSubs = clientSubscriptions.get(clientId);
                 if (clientSubs != null) {
                     clientSubs.remove(subscriptionId);
                     if (clientSubs.isEmpty()) {
@@ -135,12 +132,12 @@ public class EventSubscriptionRegistry {
      * @return List of subscription information
      */
     public List<SubscriptionInfo> listSubscriptions(String clientId) {
-        Set<String> subscriptionIds = clientSubscriptions.get(clientId);
+        CopyOnWriteArrayList<String> subscriptionIds = clientSubscriptions.get(clientId);
         if (subscriptionIds == null) {
             return List.of();
         }
 
-        return subscriptionIds.stream().map(subscriptionInfos::get).filter(info -> info != null)
+        return subscriptionIds.stream().map(subscriptionInfos::get).filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
@@ -221,8 +218,11 @@ public class EventSubscriptionRegistry {
             return eventTypes;
         }
 
-        private boolean passesFilters(Event event, Map<String, String> filters) {
+        private boolean passesFilters(Event event, @Nullable Map<String, String> filters) {
             // Simple filter implementation - can be enhanced
+            if (filters == null) {
+                return true;
+            }
             for (Map.Entry<String, String> filter : filters.entrySet()) {
                 String key = filter.getKey();
                 String value = filter.getValue();

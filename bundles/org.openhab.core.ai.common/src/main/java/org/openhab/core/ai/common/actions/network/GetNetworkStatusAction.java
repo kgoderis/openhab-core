@@ -274,7 +274,7 @@ public class GetNetworkStatusAction implements AIAction {
                     Map<String, Object> addressInfo = new HashMap<>();
                     addressInfo.put("address", addr.getAddress().getHostAddress());
                     addressInfo.put("broadcast",
-                            addr.getBroadcast() != null ? addr.getBroadcast().getHostAddress() : null);
+                            addr.getBroadcast() != null ? addr.getBroadcast().getHostAddress() : "");
                     addressInfo.put("prefixLength", addr.getNetworkPrefixLength());
                     addresses.add(addressInfo);
                 });

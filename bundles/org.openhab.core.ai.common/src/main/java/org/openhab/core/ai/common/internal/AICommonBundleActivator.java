@@ -1,5 +1,7 @@
 package org.openhab.core.ai.common.internal;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
@@ -13,14 +15,15 @@ import org.slf4j.LoggerFactory;
  * 
  * 
  */
+@NonNullByDefault
 public class AICommonBundleActivator implements BundleActivator {
 
     private static final Logger logger = LoggerFactory.getLogger(AICommonBundleActivator.class);
 
-    private static BundleContext bundleContext;
+    private static @Nullable BundleContext bundleContext;
 
     @Override
-    public void start(BundleContext context) throws Exception {
+    public void start(@Nullable BundleContext context) throws Exception {
         logger.info("Starting openHAB AI Common bundle");
         bundleContext = context;
 
@@ -31,7 +34,7 @@ public class AICommonBundleActivator implements BundleActivator {
     }
 
     @Override
-    public void stop(BundleContext context) throws Exception {
+    public void stop(@Nullable BundleContext context) throws Exception {
         logger.info("Stopping openHAB AI Common bundle");
 
         // Cleanup shared AI services
@@ -46,7 +49,7 @@ public class AICommonBundleActivator implements BundleActivator {
      * 
      * @return the bundle context, or null if the bundle is not active
      */
-    public static BundleContext getBundleContext() {
+    public static @Nullable BundleContext getBundleContext() {
         return bundleContext;
     }
 

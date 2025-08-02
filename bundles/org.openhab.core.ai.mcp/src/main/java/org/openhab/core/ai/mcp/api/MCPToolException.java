@@ -1,5 +1,14 @@
 package org.openhab.core.ai.mcp.api;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
+/**
+ * Exception thrown by MCP tools during execution.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
+ */
+@NonNullByDefault
 public class MCPToolException extends Exception {
     private static final long serialVersionUID = 1L;
 

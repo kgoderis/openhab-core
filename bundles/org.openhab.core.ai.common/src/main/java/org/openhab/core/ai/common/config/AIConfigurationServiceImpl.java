@@ -18,6 +18,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.OpenHAB;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -35,6 +37,7 @@ import org.slf4j.LoggerFactory;
  * 
  */
 @Component(service = AIConfigurationService.class, immediate = true)
+@NonNullByDefault
 public class AIConfigurationServiceImpl implements AIConfigurationService {
 
     private static final Logger logger = LoggerFactory.getLogger(AIConfigurationServiceImpl.class);
@@ -46,9 +49,9 @@ public class AIConfigurationServiceImpl implements AIConfigurationService {
     private final ScheduledExecutorService reloadExecutor = Executors.newSingleThreadScheduledExecutor();
 
     // Configuration file paths
-    private Path commonConfigPath;
-    private Path mcpConfigPath;
-    private Path a2aConfigPath;
+    private @Nullable Path commonConfigPath;
+    private @Nullable Path mcpConfigPath;
+    private @Nullable Path a2aConfigPath;
 
     // Configuration metadata
     private long lastReloadTime = 0;
@@ -87,8 +90,12 @@ public class AIConfigurationServiceImpl implements AIConfigurationService {
     }
 
     @Override
-    public String getConfigValue(String key, String defaultValue) {
-        return getConfigValue(key).orElse(defaultValue);
+    public String getConfigValue(String key, @Nullable String defaultValue) {
+        Optional<String> value = getConfigValue(key);
+        if (value.isPresent()) {
+            return value.get();
+        }
+        return defaultValue != null ? defaultValue : "";
     }
 
     @Override
@@ -99,7 +106,12 @@ public class AIConfigurationServiceImpl implements AIConfigurationService {
         }
 
         try {
-            return Optional.of(convertValue(value.get(), type));
+            String configValue = value.get();
+            if (configValue != null) {
+                return Optional.of(convertValue(configValue, type));
+            } else {
+                return Optional.empty();
+            }
         } catch (Exception e) {
             logger.warn("Failed to convert configuration value '{}' to type {}", key, type.getSimpleName(), e);
             return Optional.empty();
@@ -135,7 +147,7 @@ public class AIConfigurationServiceImpl implements AIConfigurationService {
         String oldValue = configuration.remove(key);
         if (oldValue != null) {
             logger.debug("Configuration value removed: {}", key);
-            notifyConfigurationChanged(key, oldValue, null);
+            notifyConfigurationChanged(key, oldValue, "");
             return true;
         }
 
@@ -170,14 +182,14 @@ public class AIConfigurationServiceImpl implements AIConfigurationService {
     @Override
     public AIProtocolConfiguration getProtocolConfiguration(String protocol) {
         if (protocol == null || protocol.trim().isEmpty()) {
-            return null;
+            return new AIProtocolConfiguration("", false, "", new HashMap<>(), new HashMap<>(), 30, 3);
         }
 
         String prefix = protocol.toLowerCase() + ".";
         Map<String, String> protocolConfig = getConfigEntries(prefix);
 
         if (protocolConfig.isEmpty()) {
-            return null;
+            return new AIProtocolConfiguration(protocol, false, "", new HashMap<>(), new HashMap<>(), 30, 3);
         }
 
         // Extract protocol-specific configuration
@@ -203,7 +215,8 @@ public class AIConfigurationServiceImpl implements AIConfigurationService {
         int timeoutSeconds = Integer.parseInt(protocolConfig.getOrDefault(prefix + "timeout.seconds", "30"));
         int retryAttempts = Integer.parseInt(protocolConfig.getOrDefault(prefix + "retry.attempts", "3"));
 
-        return new AIProtocolConfiguration(protocol, enabled, endpoint, authConfig, protocolSpecificConfig,
+        String endpointValue = endpoint != null ? endpoint : "";
+        return new AIProtocolConfiguration(protocol, enabled, endpointValue, authConfig, protocolSpecificConfig,
                 timeoutSeconds, retryAttempts);
     }
 
@@ -217,8 +230,9 @@ public class AIConfigurationServiceImpl implements AIConfigurationService {
 
         // Update basic configuration
         setConfigValue(prefix + "enabled", String.valueOf(configuration.isEnabled()));
-        if (configuration.getEndpoint() != null) {
-            setConfigValue(prefix + "endpoint", configuration.getEndpoint());
+        String endpoint = configuration.getEndpoint();
+        if (endpoint != null) {
+            setConfigValue(prefix + "endpoint", endpoint);
         }
         setConfigValue(prefix + "timeout.seconds", String.valueOf(configuration.getTimeoutSeconds()));
         setConfigValue(prefix + "retry.attempts", String.valueOf(configuration.getRetryAttempts()));
@@ -301,12 +315,21 @@ public class AIConfigurationServiceImpl implements AIConfigurationService {
     }
 
     private void loadConfigurationFromFiles() {
-        List<Path> configFiles = List.of(commonConfigPath, mcpConfigPath, a2aConfigPath);
+        List<@Nullable Path> configFiles = new ArrayList<>();
+        if (commonConfigPath != null) {
+            configFiles.add(commonConfigPath);
+        }
+        if (mcpConfigPath != null) {
+            configFiles.add(mcpConfigPath);
+        }
+        if (a2aConfigPath != null) {
+            configFiles.add(a2aConfigPath);
+        }
 
         for (Path configFile : configFiles) {
-            if (Files.exists(configFile)) {
+            if (configFile != null && Files.exists(configFile)) {
                 loadConfigurationFromFile(configFile);
-            } else {
+            } else if (configFile != null) {
                 logger.debug("Configuration file not found: {}", configFile);
             }
         }

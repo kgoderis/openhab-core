@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.a2a.api.A2ASkillException;
 import org.openhab.core.ai.a2a.api.A2ASkillResult;
 import org.openhab.core.ai.common.api.action.AIAction;
@@ -15,13 +16,12 @@ import org.slf4j.LoggerFactory;
 import io.a2a.spec.Message;
 
 /**
- * Adapter that converts AIActions to executable A2A skills.
+ * Skill adapter for A2A operations.
  * 
- * This adapter allows AIActions to be used as A2A skills by providing
- * execution capabilities and converting between AIAction and A2A formats.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class A2ASkillAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(A2ASkillAdapter.class);

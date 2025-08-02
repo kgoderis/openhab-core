@@ -40,7 +40,7 @@ class MCPTransportIntegrationTest {
     void setUp() throws Exception {
         objectMapper = new ObjectMapper();
         testClient = new MCPTestClient();
-        
+
         // Mock server manager behavior
         when(serverManager.isStarted()).thenReturn(true);
         when(serverManager.getAllServerInstances()).thenReturn(java.util.Map.of());
@@ -54,10 +54,10 @@ class MCPTransportIntegrationTest {
     void testStdioTransport() throws Exception {
         testClient.setTransportType("STDIO");
         testClient.initialize();
-        
+
         ObjectNode response = testClient.initializeMCP();
         assertNotNull(response.get("result"));
-        
+
         // Test tool execution via STDIO
         ObjectNode toolResponse = testClient.callTool("openhab.items.list", Map.of("filter", "all"));
         assertNotNull(toolResponse.get("result"));
@@ -70,10 +70,10 @@ class MCPTransportIntegrationTest {
     void testHttpTransport() throws Exception {
         testClient.setTransportType("HTTP");
         testClient.initialize();
-        
+
         ObjectNode response = testClient.initializeMCP();
         assertNotNull(response.get("result"));
-        
+
         // Test tool execution via HTTP
         ObjectNode toolResponse = testClient.callTool("openhab.items.list", Map.of("filter", "all"));
         assertNotNull(toolResponse.get("result"));
@@ -86,10 +86,10 @@ class MCPTransportIntegrationTest {
     void testWebSocketTransport() throws Exception {
         testClient.setTransportType("WEBSOCKET");
         testClient.initialize();
-        
+
         ObjectNode response = testClient.initializeMCP();
         assertNotNull(response.get("result"));
-        
+
         // Test tool execution via WebSocket
         ObjectNode toolResponse = testClient.callTool("openhab.items.list", Map.of("filter", "all"));
         assertNotNull(toolResponse.get("result"));
@@ -105,13 +105,13 @@ class MCPTransportIntegrationTest {
         testClient.initialize();
         ObjectNode stdioResponse = testClient.initializeMCP();
         assertNotNull(stdioResponse.get("result"));
-        
+
         // Switch to HTTP
         testClient.setTransportType("HTTP");
         testClient.initialize();
         ObjectNode httpResponse = testClient.initializeMCP();
         assertNotNull(httpResponse.get("result"));
-        
+
         // Switch to WebSocket
         testClient.setTransportType("WEBSOCKET");
         testClient.initialize();
@@ -129,7 +129,7 @@ class MCPTransportIntegrationTest {
             testClient.setTransportType("INVALID");
             testClient.initialize();
         });
-        
+
         // Test with valid transport type
         testClient.setTransportType("STDIO");
         testClient.initialize();
@@ -144,18 +144,18 @@ class MCPTransportIntegrationTest {
     void testTransportPerformance() throws Exception {
         testClient.setTransportType("STDIO");
         testClient.initialize();
-        
+
         long startTime = System.currentTimeMillis();
-        
+
         // Execute multiple requests to test transport performance
         for (int i = 0; i < 5; i++) {
             ObjectNode response = testClient.callTool("openhab.items.list", Map.of("filter", "all"));
             assertNotNull(response.get("result"));
         }
-        
+
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
-        
+
         // Performance assertion: 5 requests should complete within 5 seconds
         assertTrue(duration < 5000, "Transport performance test took too long: " + duration + "ms");
     }
@@ -167,7 +167,7 @@ class MCPTransportIntegrationTest {
     void testTransportConcurrentRequests() throws Exception {
         testClient.setTransportType("STDIO");
         testClient.initialize();
-        
+
         // Send multiple concurrent requests
         CompletableFuture<ObjectNode> future1 = CompletableFuture.supplyAsync(() -> {
             try {
@@ -176,7 +176,7 @@ class MCPTransportIntegrationTest {
                 throw new RuntimeException(e);
             }
         });
-        
+
         CompletableFuture<ObjectNode> future2 = CompletableFuture.supplyAsync(() -> {
             try {
                 return testClient.callTool("openhab.persistence.manage", Map.of("action", "status"));
@@ -184,11 +184,11 @@ class MCPTransportIntegrationTest {
                 throw new RuntimeException(e);
             }
         });
-        
+
         // Wait for both responses
         ObjectNode response1 = future1.get(30, TimeUnit.SECONDS);
         ObjectNode response2 = future2.get(30, TimeUnit.SECONDS);
-        
+
         assertNotNull(response1.get("result"));
         assertNotNull(response2.get("result"));
     }
@@ -200,16 +200,16 @@ class MCPTransportIntegrationTest {
     void testTransportStreaming() throws Exception {
         testClient.setTransportType("STDIO");
         testClient.initialize();
-        
+
         // Test streaming execution
         var streamResponse = testClient.callToolStreaming("openhab.persistence.manage", Map.of("action", "backup"));
-        
+
         assertNotNull(streamResponse);
         assertTrue(streamResponse.size() > 0, "Should have received streaming events");
-        
+
         boolean hasData = false;
         boolean hasDone = false;
-        
+
         for (ObjectNode event : streamResponse) {
             if (event.has("content")) {
                 hasData = true;
@@ -218,7 +218,7 @@ class MCPTransportIntegrationTest {
                 hasDone = true;
             }
         }
-        
+
         assertTrue(hasData, "Should have received data events");
         assertTrue(hasDone, "Should have received completion event");
     }
@@ -230,12 +230,12 @@ class MCPTransportIntegrationTest {
     void testTransportConnectionStability() throws Exception {
         testClient.setTransportType("STDIO");
         testClient.initialize();
-        
+
         // Test multiple initialization cycles
         for (int i = 0; i < 3; i++) {
             ObjectNode response = testClient.initializeMCP();
             assertNotNull(response.get("result"));
-            
+
             ObjectNode toolResponse = testClient.callTool("openhab.items.list", Map.of("filter", "all"));
             assertNotNull(toolResponse.get("result"));
         }
@@ -248,17 +248,17 @@ class MCPTransportIntegrationTest {
     void testTransportProtocolCompliance() throws Exception {
         testClient.setTransportType("STDIO");
         testClient.initialize();
-        
+
         // Test JSON-RPC 2.0 compliance across transport
         ObjectNode initResponse = testClient.initializeMCP();
-        
+
         // Verify required JSON-RPC 2.0 fields
         assertEquals("2.0", initResponse.get("jsonrpc").asText());
         assertTrue(initResponse.has("id"));
-        
+
         // Test tool call protocol compliance
         ObjectNode toolResponse = testClient.callTool("openhab.items.list", Map.of("filter", "all"));
         assertEquals("2.0", toolResponse.get("jsonrpc").asText());
         assertTrue(toolResponse.has("id"));
     }
-} 
+}

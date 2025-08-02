@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -15,23 +17,26 @@ import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.types.State;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to retrieve type information for items
+ * Action for getting item type information in openHAB.
  * 
+ * This action provides functionality to retrieve
+ * type information for items.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class GetItemTypeAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(GetItemTypeAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Override
     public String getActionId() {
@@ -133,7 +138,7 @@ public class GetItemTypeAction implements AIAction {
             Item item = itemRegistry.getItem(itemName);
 
             Map<String, Object> result = new HashMap<>();
-            result.put("itemName", itemName);
+            result.put("itemName", itemName != null ? itemName : "");
             result.put("itemType", item.getType());
             result.put("success", true);
             result.put("timestamp", System.currentTimeMillis());
@@ -160,16 +165,25 @@ public class GetItemTypeAction implements AIAction {
                 }
 
                 // Item category and tags
-                typeDetails.put("category", item.getCategory());
-                typeDetails.put("label", item.getLabel());
+                String category = item.getCategory() != null ? item.getCategory() : "";
+                typeDetails.put("category", category);
+                String label = item.getLabel() != null ? item.getLabel() : "";
+                typeDetails.put("label", label);
 
                 // Group information if applicable
                 if (item instanceof org.openhab.core.items.GroupItem groupItem) {
                     typeDetails.put("isGroup", true);
-                    typeDetails.put("baseItemType",
-                            groupItem.getBaseItem() != null ? groupItem.getBaseItem().getType() : null);
-                    typeDetails.put("function",
-                            groupItem.getFunction() != null ? groupItem.getFunction().toString() : null);
+                    String baseItemType = "";
+                    if (groupItem.getBaseItem() != null) {
+                        baseItemType = groupItem.getBaseItem().getType();
+                    }
+                    typeDetails.put("baseItemType", baseItemType);
+
+                    String function = "";
+                    if (groupItem.getFunction() != null) {
+                        function = groupItem.getFunction().toString();
+                    }
+                    typeDetails.put("function", function);
                 } else {
                     typeDetails.put("isGroup", false);
                 }

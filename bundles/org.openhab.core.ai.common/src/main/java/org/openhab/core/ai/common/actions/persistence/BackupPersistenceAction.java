@@ -25,18 +25,19 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.config.core.ConfigurableService;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for creating backups of persistence services.
- *
- * This action allows creating comprehensive backups of persistence
- * services including data, configuration, and metadata.
+ * Action for backing up persistence data in openHAB.
+ * 
+ * This action provides functionality to create
+ * backups of persistence data.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class BackupPersistenceAction implements AIAction {
 
@@ -543,7 +544,7 @@ public class BackupPersistenceAction implements AIAction {
             return configPath.toString();
         } catch (IOException e) {
             logger.warn("Error creating configuration backup for {}: {}", serviceId, e.getMessage());
-            return null;
+            return "";
         }
     }
 
@@ -565,7 +566,7 @@ public class BackupPersistenceAction implements AIAction {
             return dataPath.toString();
         } catch (IOException e) {
             logger.warn("Error creating data backup for {}: {}", serviceId, e.getMessage());
-            return null;
+            return "";
         }
     }
 
@@ -582,7 +583,11 @@ public class BackupPersistenceAction implements AIAction {
             String metadataContent = "{\n";
             metadataContent += "  \"serviceId\": \"" + serviceId + "\",\n";
             metadataContent += "  \"serviceClass\": \"" + service.getClass().getSimpleName() + "\",\n";
-            metadataContent += "  \"label\": \"" + service.getLabel(java.util.Locale.getDefault()) + "\",\n";
+            String serviceLabel = "";
+            if (service.getLabel(java.util.Locale.getDefault()) != null) {
+                serviceLabel = service.getLabel(java.util.Locale.getDefault());
+            }
+            metadataContent += "  \"label\": \"" + serviceLabel + "\",\n";
             metadataContent += "  \"queryable\": "
                     + (service instanceof org.openhab.core.persistence.QueryablePersistenceService) + ",\n";
             metadataContent += "  \"configurable\": " + (service instanceof ConfigurableService) + ",\n";
@@ -594,7 +599,7 @@ public class BackupPersistenceAction implements AIAction {
             return metadataPath.toString();
         } catch (IOException e) {
             logger.warn("Error creating metadata backup for {}: {}", serviceId, e.getMessage());
-            return null;
+            return "";
         }
     }
 
@@ -621,7 +626,7 @@ public class BackupPersistenceAction implements AIAction {
             return zipPath.toString();
         } catch (IOException e) {
             logger.warn("Error creating compressed backup: {}", e.getMessage());
-            return null;
+            return "";
         }
     }
 
@@ -654,7 +659,7 @@ public class BackupPersistenceAction implements AIAction {
             return manifestPath.toString();
         } catch (IOException e) {
             logger.warn("Error creating backup manifest: {}", e.getMessage());
-            return null;
+            return "";
         }
     }
 

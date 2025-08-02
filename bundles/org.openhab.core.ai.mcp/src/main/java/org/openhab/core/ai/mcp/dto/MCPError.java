@@ -3,18 +3,18 @@ package org.openhab.core.ai.mcp.dto;
 import java.util.Objects;
 import java.util.Optional;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Data Transfer Object for MCP (Model Context Protocol) errors.
+ * MCP error DTO.
  * 
- * This class represents error information in MCP protocol responses
- * following the JSON-RPC 2.0 error specification.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@NonNullByDefault
 public class MCPError {
 
     @JsonProperty("code")
@@ -24,7 +24,7 @@ public class MCPError {
     private final String message;
 
     @JsonProperty("data")
-    private final Object data;
+    private final @Nullable Object data;
 
     /**
      * Create a new MCP error.
@@ -33,7 +33,7 @@ public class MCPError {
      * @param message Error message
      * @param data Additional error data (optional)
      */
-    public MCPError(int code, String message, Object data) {
+    public MCPError(int code, String message, @Nullable Object data) {
         this.code = code;
         this.message = Objects.requireNonNull(message, "Error message cannot be null");
         this.data = data;
@@ -92,7 +92,7 @@ public class MCPError {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o)
             return true;
         if (o == null || getClass() != o.getClass())

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -20,26 +21,29 @@ import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.Metadata;
 import org.openhab.core.items.MetadataKey;
 import org.openhab.core.items.MetadataRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to update existing openHAB items
+ * Action for updating items in openHAB.
  * 
+ * This action provides functionality to update item
+ * configurations and properties.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class UpdateItemAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(UpdateItemAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
-    private ItemBuilderFactory itemBuilderFactory;
+    private @Nullable ItemBuilderFactory itemBuilderFactory;
 
     @Reference
     private @Nullable MetadataRegistry metadataRegistry;
@@ -165,14 +169,23 @@ public class UpdateItemAction implements AIAction {
             Item currentItem = itemRegistry.getItem(itemName);
 
             Map<String, Object> result = new HashMap<>();
-            result.put("itemName", itemName);
+            result.put("itemName", itemName != null ? itemName : "");
             result.put("success", true);
             result.put("timestamp", System.currentTimeMillis());
 
             // Store previous information
             Map<String, Object> previousInfo = new HashMap<>();
-            previousInfo.put("label", currentItem.getLabel());
-            previousInfo.put("category", currentItem.getCategory());
+            String currentLabel = "";
+            if (currentItem.getLabel() != null) {
+                currentLabel = currentItem.getLabel();
+            }
+            previousInfo.put("label", currentLabel);
+
+            String currentCategory = "";
+            if (currentItem.getCategory() != null) {
+                currentCategory = currentItem.getCategory();
+            }
+            previousInfo.put("category", currentCategory);
             previousInfo.put("groups", currentItem.getGroupNames());
             previousInfo.put("tags", currentItem.getTags());
             result.put("previousInfo", previousInfo);
@@ -269,8 +282,17 @@ public class UpdateItemAction implements AIAction {
 
             // Create new information
             Map<String, Object> newInfo = new HashMap<>();
-            newInfo.put("label", updatedItem.getLabel());
-            newInfo.put("category", updatedItem.getCategory());
+            String updatedLabel = "";
+            if (updatedItem.getLabel() != null) {
+                updatedLabel = updatedItem.getLabel();
+            }
+            newInfo.put("label", updatedLabel);
+
+            String updatedCategory = "";
+            if (updatedItem.getCategory() != null) {
+                updatedCategory = updatedItem.getCategory();
+            }
+            newInfo.put("category", updatedCategory);
             newInfo.put("groups", updatedItem.getGroupNames());
             newInfo.put("tags", updatedItem.getTags());
             result.put("newInfo", newInfo);

@@ -18,18 +18,19 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.ThingStatus;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for stopping device discovery processes in openHAB.
- *
- * This action allows stopping ongoing discovery processes
- * and managing discovery sessions.
+ * Action for stopping discovery processes in openHAB.
+ * 
+ * This action provides functionality to stop ongoing
+ * device discovery processes.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class StopDiscoveryAction implements AIAction {
 

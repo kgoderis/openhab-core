@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.config.AIConfigurationService;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
@@ -25,8 +27,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * and service integration within the openHAB ecosystem using the official
  * Model Context Protocol SDK.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 @Component(service = MCPServerManager.class, immediate = true)
 public class MCPServerManager implements ReadyTracker {
 
@@ -41,18 +45,18 @@ public class MCPServerManager implements ReadyTracker {
     private static final ReadyMarker CORE_RULES_READY = new ReadyMarker("startlevel", "50");
 
     @Reference
-    private ReadyService readyService;
+    private @Nullable ReadyService readyService;
 
     @Reference
-    private MCPToolRegistry toolRegistry;
+    private @Nullable MCPToolRegistry toolRegistry;
 
     @Reference
-    private MCPLoggingManager loggingManager;
+    private @Nullable MCPLoggingManager loggingManager;
 
     @Reference
-    private AIConfigurationService configurationService;
+    private @Nullable AIConfigurationService configurationService;
 
-    private BundleContext bundleContext;
+    private @Nullable BundleContext bundleContext;
     private final Map<String, MCPServer> serverInstances = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -91,6 +95,14 @@ public class MCPServerManager implements ReadyTracker {
      * @return Server instance or null if not found
      */
     public MCPServer getServerInstance(String serverId) {
+        // Validate input parameter
+        if (serverId == null) {
+            throw new IllegalArgumentException("Server ID cannot be null");
+        }
+        if (serverId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Server ID cannot be empty");
+        }
+
         MCPServer server = serverInstances.get(serverId);
 
         // Log server instance access
@@ -128,6 +140,17 @@ public class MCPServerManager implements ReadyTracker {
      * @throws Exception if creation fails
      */
     public MCPServer createServerInstance(String serverId, MCPServerConfiguration config) throws Exception {
+        // Validate input parameters
+        if (serverId == null) {
+            throw new IllegalArgumentException("Server ID cannot be null");
+        }
+        if (serverId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Server ID cannot be empty");
+        }
+        if (config == null) {
+            throw new NullPointerException("Server configuration cannot be null");
+        }
+
         long startTime = System.currentTimeMillis();
 
         // Use enhanced logging for server creation
@@ -140,7 +163,11 @@ public class MCPServerManager implements ReadyTracker {
 
         try {
             // Create server instance using the correct constructor
-            MCPServer server = new MCPServer(serverId, config, toolRegistry);
+            if (toolRegistry == null) {
+                throw new IllegalStateException("Tool registry is not available");
+            }
+            MCPToolRegistry registry = toolRegistry; // Local variable to satisfy null checker
+            MCPServer server = new MCPServer(serverId, config, registry);
             serverInstances.put(serverId, server);
 
             long creationTime = System.currentTimeMillis() - startTime;
@@ -161,8 +188,10 @@ public class MCPServerManager implements ReadyTracker {
             // Log creation failure
             if (loggingManager != null) {
                 Map<String, Object> eventData = new HashMap<>();
-                eventData.put("serverId", serverId != null ? serverId : "unknown");
-                eventData.put("error", e.getMessage() != null ? e.getMessage() : "unknown error");
+                String serverIdStr = serverId != null ? serverId : "unknown";
+                String errorMsg = e.getMessage() != null ? e.getMessage() : "unknown error";
+                eventData.put("serverId", serverIdStr);
+                eventData.put("error", errorMsg);
                 eventData.put("creationTimeMs", creationTime);
                 loggingManager.logMCPEvent("server_manager", "server_instance_creation_failed", "ERROR", eventData);
             } else {
@@ -180,13 +209,22 @@ public class MCPServerManager implements ReadyTracker {
      * @return true if removed, false if not found
      */
     public boolean removeServerInstance(String serverId) {
+        // Validate input parameter
+        if (serverId == null) {
+            throw new IllegalArgumentException("Server ID cannot be null");
+        }
+        if (serverId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Server ID cannot be empty");
+        }
+
         MCPServer server = serverInstances.remove(serverId);
 
         if (server != null) {
             // Log server removal
             if (loggingManager != null) {
                 Map<String, Object> eventData = new HashMap<>();
-                eventData.put("serverId", serverId != null ? serverId : "unknown");
+                String serverIdStr = serverId != null ? serverId : "unknown";
+                eventData.put("serverId", serverIdStr);
                 loggingManager.logMCPEvent("server_manager", "remove_server_instance", "INFO", eventData);
             } else {
                 logger.info("Removed MCP server instance: {}", serverId);
@@ -197,7 +235,8 @@ public class MCPServerManager implements ReadyTracker {
             // Log attempt to remove non-existent server
             if (loggingManager != null) {
                 Map<String, Object> eventData = new HashMap<>();
-                eventData.put("serverId", serverId != null ? serverId : "unknown");
+                String serverIdStr = serverId != null ? serverId : "unknown";
+                eventData.put("serverId", serverIdStr);
                 loggingManager.logMCPEvent("server_manager", "remove_server_instance_not_found", "WARN", eventData);
             } else {
                 logger.warn("Attempted to remove non-existent MCP server instance: {}", serverId);
@@ -256,7 +295,8 @@ public class MCPServerManager implements ReadyTracker {
             // Log startup failure
             if (loggingManager != null) {
                 Map<String, Object> eventData = new HashMap<>();
-                eventData.put("error", e.getMessage() != null ? e.getMessage() : "unknown error");
+                String errorMsg = e.getMessage() != null ? e.getMessage() : "unknown error";
+                eventData.put("error", errorMsg);
                 eventData.put("startupTimeMs", startupTime);
                 loggingManager.logMCPEvent("server_manager", "start_failed", "ERROR", eventData);
             } else {
@@ -310,8 +350,12 @@ public class MCPServerManager implements ReadyTracker {
                 } catch (Exception e) {
                     // Log server stop failure
                     if (loggingManager != null) {
+                        String errorMessage = e.getMessage();
+                        if (errorMessage == null) {
+                            errorMessage = "Unknown error";
+                        }
                         loggingManager.logMCPEvent("server_manager", "server_stop_failed", "ERROR",
-                                Map.of("serverId", serverId, "error", e.getMessage()));
+                                Map.of("serverId", serverId, "error", errorMessage));
                     } else {
                         logger.error("Failed to stop MCP server instance: {}", serverId, e);
                     }
@@ -337,8 +381,12 @@ public class MCPServerManager implements ReadyTracker {
 
             // Log shutdown failure
             if (loggingManager != null) {
+                String errorMessage = e.getMessage();
+                if (errorMessage == null) {
+                    errorMessage = "Unknown error";
+                }
                 loggingManager.logMCPEvent("server_manager", "stop_failed", "ERROR",
-                        Map.of("error", e.getMessage(), "shutdownTimeMs", shutdownTime));
+                        Map.of("error", errorMessage, "shutdownTimeMs", shutdownTime));
             } else {
                 logger.error("Failed to stop MCP Server Manager after {}ms", shutdownTime, e);
             }
@@ -361,7 +409,7 @@ public class MCPServerManager implements ReadyTracker {
      * 
      * @return Tool registry
      */
-    public MCPToolRegistry getToolRegistry() {
+    public @Nullable MCPToolRegistry getToolRegistry() {
         return toolRegistry;
     }
 
@@ -553,7 +601,7 @@ public class MCPServerManager implements ReadyTracker {
      * 
      * @return Configuration service
      */
-    private AIConfigurationService getConfigurationService() {
+    private @Nullable AIConfigurationService getConfigurationService() {
         return configurationService;
     }
 
@@ -653,6 +701,7 @@ public class MCPServerManager implements ReadyTracker {
 
         // Component initialization logic here
         // This is where you would initialize any MCP-specific components
+        // TODO : Initialize MCP-specific components
 
         if (loggingManager != null) {
             loggingManager.logMCPEvent("server_manager", "components_initialized", "DEBUG", Map.of());
@@ -681,7 +730,7 @@ public class MCPServerManager implements ReadyTracker {
             logger.info("MCP Server Manager deactivated");
         }
 
-        this.bundleContext = null;
-        this.configurationService = null;
+        this.bundleContext = null; // This is intentional - clearing the reference
+        this.configurationService = null; // This is intentional - clearing the reference
     }
 }

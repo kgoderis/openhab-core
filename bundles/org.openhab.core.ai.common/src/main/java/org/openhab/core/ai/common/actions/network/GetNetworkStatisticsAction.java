@@ -72,8 +72,8 @@ public class GetNetworkStatisticsAction implements AIAction {
                 Map.of("type", "boolean", "description", "Include traffic statistics", "default", true));
         properties.put("includeErrorStats",
                 Map.of("type", "boolean", "description", "Include error statistics", "default", true));
-        properties.put("interfaceName", Map.of("type", "string", "description",
-                "Specific interface name to query (optional)", "default", null));
+        properties.put("interfaceName",
+                Map.of("type", "string", "description", "Specific interface name to query (optional)"));
 
         schema.put("properties", properties);
         schema.put("required", List.of());

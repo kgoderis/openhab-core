@@ -11,6 +11,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  * Utility class for AI protocol implementations.
  * 
@@ -19,6 +22,7 @@ import java.util.regex.Pattern;
  * 
  * 
  */
+@NonNullByDefault
 public final class AIUtils {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -138,9 +142,9 @@ public final class AIUtils {
      * Format an Instant as ISO-8601 string.
      * 
      * @param instant The instant to format
-     * @return ISO-8601 formatted string
+     * @return ISO-8601 formatted string, or null if instant is null
      */
-    public static String formatInstant(Instant instant) {
+    public static @Nullable String formatInstant(Instant instant) {
         return instant != null ? DateTimeFormatter.ISO_INSTANT.format(instant) : null;
     }
 

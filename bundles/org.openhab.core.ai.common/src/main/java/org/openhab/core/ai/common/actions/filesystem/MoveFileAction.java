@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -22,13 +23,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AI Action for moving files and directories within the openHAB root folder.
+ * Action for moving files in openHAB.
  * 
- * This action provides secure file moving capabilities, ensuring operations
- * only work within the openHAB configuration and user data directories.
+ * This action provides functionality to move files
+ * and directories with various options.
  * 
- * @author Karel Goderis
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class MoveFileAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(MoveFileAction.class);

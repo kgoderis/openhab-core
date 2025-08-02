@@ -10,6 +10,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -33,6 +35,7 @@ import org.osgi.service.component.annotations.Reference;
  * 
  * 
  */
+@NonNullByDefault
 @Component(service = AIAction.class, immediate = true)
 public class ListChannelsAction implements AIAction {
 
@@ -43,13 +46,13 @@ public class ListChannelsAction implements AIAction {
     private static final String VERSION = "1.0.0";
 
     @Reference
-    private ThingRegistry thingRegistry;
+    private @Nullable ThingRegistry thingRegistry;
 
     @Reference
-    private ItemChannelLinkRegistry itemChannelLinkRegistry;
+    private @Nullable ItemChannelLinkRegistry itemChannelLinkRegistry;
 
     @Reference
-    private ChannelTypeRegistry channelTypeRegistry;
+    private @Nullable ChannelTypeRegistry channelTypeRegistry;
 
     @Override
     public String getActionId() {
@@ -299,15 +302,44 @@ public class ListChannelsAction implements AIAction {
         ChannelUID channelUID = channel.getUID();
         channelMap.put("uid", channelUID.getAsString());
         channelMap.put("id", channelUID.getId());
-        channelMap.put("label", channel.getLabel());
-        channelMap.put("description", channel.getDescription());
-        channelMap.put("kind", channel.getKind().toString());
-        channelMap.put("acceptedItemType", channel.getAcceptedItemType());
+        String channelLabel = "";
+        if (channel.getLabel() != null) {
+            channelLabel = channel.getLabel();
+        }
+        channelMap.put("label", channelLabel);
+
+        String channelDescription = "";
+        if (channel.getDescription() != null) {
+            channelDescription = channel.getDescription();
+        }
+        channelMap.put("description", channelDescription);
+
+        String channelKind = "";
+        if (channel.getKind() != null) {
+            channelKind = channel.getKind().toString();
+        }
+        channelMap.put("kind", channelKind);
+
+        String channelAcceptedItemType = "";
+        if (channel.getAcceptedItemType() != null) {
+            channelAcceptedItemType = channel.getAcceptedItemType();
+        }
+        channelMap.put("acceptedItemType", channelAcceptedItemType);
 
         // Thing information
         channelMap.put("thingUID", thing.getUID().getAsString());
-        channelMap.put("thingLabel", thing.getLabel());
-        channelMap.put("binding", thing.getUID().getBindingId());
+
+        String thingLabel = "";
+        if (thing.getLabel() != null) {
+            thingLabel = thing.getLabel();
+        }
+        channelMap.put("thingLabel", thingLabel);
+
+        String bindingId = "";
+        if (thing.getUID() != null && thing.getUID().getBindingId() != null) {
+            bindingId = thing.getUID().getBindingId();
+        }
+        channelMap.put("binding", bindingId);
 
         // Channel type information
         if (channel.getChannelTypeUID() != null) {
@@ -327,11 +359,35 @@ public class ListChannelsAction implements AIAction {
             ChannelType channelType = channelTypeRegistry.getChannelType(channel.getChannelTypeUID());
             if (channelType != null) {
                 Map<String, Object> typeInfo = new HashMap<>();
-                typeInfo.put("label", channelType.getLabel());
-                typeInfo.put("description", channelType.getDescription());
-                typeInfo.put("category", channelType.getCategory());
-                typeInfo.put("itemType", channelType.getItemType());
-                typeInfo.put("kind", channelType.getKind().toString());
+                String typeLabel = "";
+                if (channelType.getLabel() != null) {
+                    typeLabel = channelType.getLabel();
+                }
+                typeInfo.put("label", typeLabel);
+
+                String typeDescription = "";
+                if (channelType.getDescription() != null) {
+                    typeDescription = channelType.getDescription();
+                }
+                typeInfo.put("description", typeDescription);
+
+                String typeCategory = "";
+                if (channelType.getCategory() != null) {
+                    typeCategory = channelType.getCategory();
+                }
+                typeInfo.put("category", typeCategory);
+
+                String typeItemType = "";
+                if (channelType.getItemType() != null) {
+                    typeItemType = channelType.getItemType();
+                }
+                typeInfo.put("itemType", typeItemType);
+
+                String typeKind = "";
+                if (channelType.getKind() != null) {
+                    typeKind = channelType.getKind().toString();
+                }
+                typeInfo.put("kind", typeKind);
                 channelMap.put("channelTypeInfo", typeInfo);
             }
         }

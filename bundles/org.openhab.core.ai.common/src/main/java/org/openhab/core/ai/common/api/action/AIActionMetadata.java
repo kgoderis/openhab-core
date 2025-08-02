@@ -4,11 +4,18 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
- * Comprehensive metadata about an AI action.
+ * Metadata information for an AI action.
  * 
+ * This class provides additional information about an action including
+ * version, author, tags, and other descriptive metadata.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class AIActionMetadata {
 
     private final String version;
@@ -82,14 +89,14 @@ public class AIActionMetadata {
     public static class Builder {
         private String version = "1.0.0";
         private String author = "openHAB AI Team";
-        private String description;
-        private List<String> tags;
-        private Map<String, Object> properties;
-        private Instant created;
-        private Instant lastModified;
-        private String documentation;
-        private List<String> examples;
-        private Map<String, Object> requirements;
+        private String description = "";
+        private List<String> tags = List.of();
+        private Map<String, Object> properties = Map.of();
+        private Instant created = Instant.now();
+        private Instant lastModified = Instant.now();
+        private String documentation = "";
+        private List<String> examples = List.of();
+        private Map<String, Object> requirements = Map.of();
 
         public Builder version(String version) {
             this.version = version;

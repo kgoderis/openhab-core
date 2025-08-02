@@ -20,18 +20,19 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.type.ChannelType;
 import org.openhab.core.thing.type.ChannelTypeRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving detailed information about a specific channel.
+ * Action for retrieving channel information in openHAB.
  * 
- * This action provides comprehensive information about a channel including its
- * configuration, properties, type information, and current state.
+ * This action provides functionality to get detailed information
+ * about channels including their configuration and state.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetChannelAction implements AIAction {
 
@@ -232,11 +233,25 @@ public class GetChannelAction implements AIAction {
             result.put("found", true);
             result.put("thingUID", thing.getUID().toString());
             result.put("channelId", channel.getUID().getId());
-            result.put("label", channel.getLabel());
-            result.put("description", channel.getDescription());
+            String channelLabel = "";
+            if (channel.getLabel() != null) {
+                channelLabel = channel.getLabel();
+            }
+            result.put("label", channelLabel);
+
+            String channelDescription = "";
+            if (channel.getDescription() != null) {
+                channelDescription = channel.getDescription();
+            }
+            result.put("description", channelDescription);
             // Note: Channel doesn't have a direct getCategory() method
             // Category information comes from ChannelType
-            result.put("kind", channel.getKind().toString());
+
+            String channelKind = "";
+            if (channel.getKind() != null) {
+                channelKind = channel.getKind().toString();
+            }
+            result.put("kind", channelKind);
 
             if (includeConfiguration) {
                 result.put("configuration", channel.getConfiguration().getProperties());
@@ -251,18 +266,48 @@ public class GetChannelAction implements AIAction {
                 if (channelType != null) {
                     Map<String, Object> typeInfo = new HashMap<>();
                     typeInfo.put("uid", channelType.getUID().toString());
-                    typeInfo.put("label", channelType.getLabel());
-                    typeInfo.put("description", channelType.getDescription());
-                    typeInfo.put("category", channelType.getCategory());
-                    typeInfo.put("kind", channelType.getKind().toString());
-                    typeInfo.put("itemType", channelType.getItemType());
-                    typeInfo.put("stateDescription",
-                            channelType.getState() != null ? channelType.getState().toString() : null);
+                    String typeLabel = "";
+                    if (channelType.getLabel() != null) {
+                        typeLabel = channelType.getLabel();
+                    }
+                    typeInfo.put("label", typeLabel);
+
+                    String typeDescription = "";
+                    if (channelType.getDescription() != null) {
+                        typeDescription = channelType.getDescription();
+                    }
+                    typeInfo.put("description", typeDescription);
+
+                    String typeCategory = "";
+                    if (channelType.getCategory() != null) {
+                        typeCategory = channelType.getCategory();
+                    }
+                    typeInfo.put("category", typeCategory);
+
+                    String typeKind = "";
+                    if (channelType.getKind() != null) {
+                        typeKind = channelType.getKind().toString();
+                    }
+                    typeInfo.put("kind", typeKind);
+
+                    String typeItemType = "";
+                    if (channelType.getItemType() != null) {
+                        typeItemType = channelType.getItemType();
+                    }
+                    typeInfo.put("itemType", typeItemType);
+                    String stateDescription = "";
+                    if (channelType.getState() != null) {
+                        stateDescription = channelType.getState().toString();
+                    }
+                    typeInfo.put("stateDescription", stateDescription);
                     // Note: ChannelType doesn't have a direct getCommand() method
                     // Command information would be available through other means
-                    typeInfo.put("autoUpdatePolicy",
-                            channelType.getAutoUpdatePolicy() != null ? channelType.getAutoUpdatePolicy().toString()
-                                    : null);
+
+                    String autoUpdatePolicy = "";
+                    if (channelType.getAutoUpdatePolicy() != null) {
+                        autoUpdatePolicy = channelType.getAutoUpdatePolicy().toString();
+                    }
+                    typeInfo.put("autoUpdatePolicy", autoUpdatePolicy);
                     result.put("typeInfo", typeInfo);
                 }
             }

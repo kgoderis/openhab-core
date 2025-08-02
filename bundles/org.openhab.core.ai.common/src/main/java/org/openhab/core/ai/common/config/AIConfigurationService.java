@@ -4,6 +4,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  * Configuration service for AI protocols (MCP and A2A).
  * 
@@ -13,6 +16,7 @@ import java.util.Set;
  * 
  * 
  */
+@NonNullByDefault
 public interface AIConfigurationService {
 
     /**
@@ -30,7 +34,7 @@ public interface AIConfigurationService {
      * @param defaultValue The default value to return if key is not found
      * @return The configuration value or default value
      */
-    String getConfigValue(String key, String defaultValue);
+    String getConfigValue(String key, @Nullable String defaultValue);
 
     /**
      * Get a typed configuration value.

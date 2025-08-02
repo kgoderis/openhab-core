@@ -21,18 +21,19 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingManager;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.binding.builder.ChannelBuilder;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for updating configuration for a specific channel.
+ * Action for setting channel configuration in openHAB.
  * 
- * This action allows updating channel configuration parameters and validates
- * the changes before applying them.
+ * This action provides functionality to configure
+ * channels with specific parameters and settings.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class SetChannelConfigurationAction implements AIAction {
 
@@ -305,8 +306,11 @@ public class SetChannelConfigurationAction implements AIAction {
             configuration.forEach((key, value) -> newConfig.put(key, value));
 
             // Create new channel with updated configuration
+            String channelLabel = existingChannel.getLabel();
+            String channelDescription = existingChannel.getDescription();
             ChannelBuilder channelBuilder = ChannelBuilder.create(channelUID, existingChannel.getAcceptedItemType())
-                    .withLabel(existingChannel.getLabel()).withDescription(existingChannel.getDescription())
+                    .withLabel(channelLabel != null ? channelLabel : "")
+                    .withDescription(channelDescription != null ? channelDescription : "")
                     .withType(existingChannel.getChannelTypeUID()).withKind(existingChannel.getKind())
                     .withConfiguration(newConfig);
 

@@ -8,17 +8,20 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Central authentication manager for AI protocols.
+ * Central authentication manager for AI services.
  * 
- * This class manages authentication across MCP and A2A protocols,
- * providing unified JWT handling, RBAC integration, and multi-provider support.
+ * This manager coordinates authentication across different AI protocols
+ * and provides a unified interface for authentication operations.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class AIAuthenticationManager {
 
     private static final Logger logger = LoggerFactory.getLogger(AIAuthenticationManager.class);
@@ -27,6 +30,7 @@ public class AIAuthenticationManager {
     private final Map<String, AIAuthenticationContext> activeContexts = new ConcurrentHashMap<>();
     private final List<AIAuthenticationListener> listeners = new CopyOnWriteArrayList<>();
 
+    // TODO : Should JWT autentication just be a provider like all the other providers?
     private AIJWTManager jwtManager;
     private AIRoleBasedAccessControl rbac;
     private AIAuditLogger auditLogger;
@@ -121,9 +125,9 @@ public class AIAuthenticationManager {
                     return Optional.of(enhancedContext);
                 }
             } catch (Exception e) {
-                logger.warn("Authentication failed with provider {}: {}", provider.getProviderName(), e.getMessage());
-                auditLogger.logAuthenticationFailure(clientId, provider.getProviderName(), e.getMessage(),
-                        Instant.now());
+                String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+                logger.warn("Authentication failed with provider {}: {}", provider.getProviderName(), errorMessage);
+                auditLogger.logAuthenticationFailure(clientId, provider.getProviderName(), errorMessage, Instant.now());
             }
         }
 
@@ -154,9 +158,10 @@ public class AIAuthenticationManager {
                 }
             }
         } catch (Exception e) {
-            logger.warn("JWT authentication failed: {}", e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            logger.warn("JWT authentication failed: {}", errorMessage);
             auditLogger.logJWTAuthenticationFailure(jwtToken.substring(0, Math.min(10, jwtToken.length())),
-                    e.getMessage(), Instant.now());
+                    errorMessage, Instant.now());
         }
 
         return Optional.empty();

@@ -2,6 +2,8 @@ package org.openhab.core.ai.mcp.internal;
 
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,13 +20,12 @@ import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
 
 /**
- * Represents a single MCP server instance using the official MCP SDK.
+ * MCP server implementation.
  * 
- * This class wraps the official MCP server implementation and provides
- * lifecycle management, state tracking, and integration with openHAB services.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class MCPServer {
 
     private static final Logger logger = LoggerFactory.getLogger(MCPServer.class);
@@ -32,24 +33,24 @@ public class MCPServer {
     private final String serverId;
     private final MCPServerConfiguration configuration;
     private final ObjectMapper objectMapper;
-    private final BundleContext bundleContext;
+    private final @Nullable BundleContext bundleContext;
     private final MCPToolRegistry toolRegistry;
     private final AtomicReference<MCPServerState> state = new AtomicReference<>(MCPServerState.STOPPED);
 
     // MCP server using the official SDK
-    private volatile McpServerTransportProvider mcpTransport;
-    private volatile McpSyncServer mcpSyncServer;
-    private volatile McpAsyncServer mcpAsyncServer;
+    private volatile @Nullable McpServerTransportProvider mcpTransport;
+    private volatile @Nullable McpSyncServer mcpSyncServer;
+    private volatile @Nullable McpAsyncServer mcpAsyncServer;
 
     // Transport health monitoring
-    private volatile MCPTransportType currentTransportType;
+    private volatile @Nullable MCPTransportType currentTransportType;
     private volatile long transportStartTime;
     private volatile boolean transportHealthy = true;
-    private volatile String lastTransportError;
+    private volatile @Nullable String lastTransportError;
 
     // Security and reliability managers
-    private volatile MCPSecurityManager securityManager;
-    private volatile MCPErrorRecoveryManager errorRecoveryManager;
+    private volatile @Nullable MCPSecurityManager securityManager;
+    private volatile @Nullable MCPErrorRecoveryManager errorRecoveryManager;
 
     /**
      * Enumeration of server states.
@@ -128,8 +129,12 @@ public class MCPServer {
 
             // Handle error through recovery manager if available
             if (errorRecoveryManager != null) {
+                String errorMessage = e.getMessage();
+                if (errorMessage == null) {
+                    errorMessage = "Unknown error";
+                }
                 MCPErrorRecoveryManager.RecoveryAction action = errorRecoveryManager.handleError("STARTUP_ERROR",
-                        e.getMessage(), null);
+                        errorMessage, "");
                 logger.info("Recovery action for startup error: {}", action);
             }
 
@@ -211,7 +216,7 @@ public class MCPServer {
      * 
      * @return Security statistics or null if not available
      */
-    public MCPSecurityManager.SecurityStatistics getSecurityStatistics() {
+    public MCPSecurityManager.@Nullable SecurityStatistics getSecurityStatistics() {
         if (securityManager != null) {
             return securityManager.getSecurityStatistics();
         }
@@ -223,7 +228,7 @@ public class MCPServer {
      * 
      * @return Error recovery statistics or null if not available
      */
-    public MCPErrorRecoveryManager.ErrorRecoveryStatistics getErrorRecoveryStatistics() {
+    public MCPErrorRecoveryManager.@Nullable ErrorRecoveryStatistics getErrorRecoveryStatistics() {
         if (errorRecoveryManager != null) {
             return errorRecoveryManager.getErrorRecoveryStatistics();
         }
@@ -235,7 +240,7 @@ public class MCPServer {
      * 
      * @return Map of error types to error information or null if not available
      */
-    public java.util.Map<String, MCPErrorRecoveryManager.ErrorInfo> getErrorDetails() {
+    public java.util.@Nullable Map<String, MCPErrorRecoveryManager.ErrorInfo> getErrorDetails() {
         if (errorRecoveryManager != null) {
             return errorRecoveryManager.getErrorDetails();
         }
@@ -306,14 +311,14 @@ public class MCPServer {
      * Transport health information.
      */
     public static class TransportHealthInfo {
-        private final MCPTransportType transportType;
+        private final @Nullable MCPTransportType transportType;
         private final boolean healthy;
         private final long startTime;
-        private final String lastError;
+        private final @Nullable String lastError;
         private final long uptime;
 
-        public TransportHealthInfo(MCPTransportType transportType, boolean healthy, long startTime, String lastError,
-                long uptime) {
+        public TransportHealthInfo(@Nullable MCPTransportType transportType, boolean healthy, long startTime,
+                @Nullable String lastError, long uptime) {
             this.transportType = transportType;
             this.healthy = healthy;
             this.startTime = startTime;
@@ -321,7 +326,7 @@ public class MCPServer {
             this.uptime = uptime;
         }
 
-        public MCPTransportType getTransportType() {
+        public @Nullable MCPTransportType getTransportType() {
             return transportType;
         }
 
@@ -329,7 +334,7 @@ public class MCPServer {
             return healthy;
         }
 
-        public String getLastError() {
+        public @Nullable String getLastError() {
             return lastError;
         }
 
@@ -360,16 +365,16 @@ public class MCPServer {
      * Transport statistics and performance metrics.
      */
     public static class TransportStatistics {
-        private final MCPTransportType currentType;
+        private final @Nullable MCPTransportType currentType;
         private final long startTime;
         private final long uptime;
         private final boolean healthy;
-        private final String lastError;
+        private final @Nullable String lastError;
         private final String transportClass;
         private final MCPTransportType configuredType;
 
-        public TransportStatistics(MCPTransportType currentType, long startTime, long uptime, boolean healthy,
-                String lastError, String transportClass, MCPTransportType configuredType) {
+        public TransportStatistics(@Nullable MCPTransportType currentType, long startTime, long uptime, boolean healthy,
+                @Nullable String lastError, String transportClass, MCPTransportType configuredType) {
             this.currentType = currentType;
             this.startTime = startTime;
             this.uptime = uptime;
@@ -379,7 +384,7 @@ public class MCPServer {
             this.configuredType = configuredType;
         }
 
-        public MCPTransportType getCurrentType() {
+        public @Nullable MCPTransportType getCurrentType() {
             return currentType;
         }
 
@@ -395,7 +400,7 @@ public class MCPServer {
             return healthy;
         }
 
-        public String getLastError() {
+        public @Nullable String getLastError() {
             return lastError;
         }
 
@@ -751,6 +756,7 @@ public class MCPServer {
             McpServerFeatures.SyncToolSpecification[] toolSpecs) {
         // For now, return all tools - security filtering can be implemented here
         // based on the security manager's configuration
+        // TODO: Implement security filtering
         logger.debug("Security filtering not yet implemented, returning all {} sync tools", toolSpecs.length);
         return toolSpecs;
     }
@@ -765,6 +771,7 @@ public class MCPServer {
             McpServerFeatures.AsyncToolSpecification[] toolSpecs) {
         // For now, return all tools - security filtering can be implemented here
         // based on the security manager's configuration
+        // TODO: Implement security filtering
         logger.debug("Security filtering not yet implemented, returning all {} async tools", toolSpecs.length);
         return toolSpecs;
     }
@@ -866,7 +873,7 @@ public class MCPServer {
         try {
             if (mcpSyncServer != null) {
                 mcpSyncServer.close();
-                mcpSyncServer = null;
+                mcpSyncServer = null; // This is intentional - clearing the reference
                 logger.info("MCP sync server stopped successfully: {}", serverId);
             }
         } catch (Exception e) {
@@ -886,7 +893,7 @@ public class MCPServer {
         try {
             if (mcpAsyncServer != null) {
                 mcpAsyncServer.close();
-                mcpAsyncServer = null;
+                mcpAsyncServer = null; // This is intentional - clearing the reference
                 logger.info("MCP async server stopped successfully: {}", serverId);
             }
         } catch (Exception e) {

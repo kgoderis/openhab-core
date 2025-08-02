@@ -14,6 +14,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -24,19 +25,21 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.automation.RuleRegistry;
 import org.openhab.core.scheduler.CronScheduler;
 import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AI Action for advanced automation including workflow management, task scheduling,
- * job queues, and automation templates.
+ * Advanced automation action for complex automation scenarios.
  * 
+ * This action provides sophisticated automation capabilities including
+ * conditional logic, scheduling, and complex rule execution.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class AdvancedAutomationAction implements AIAction {
 
     private static final String ACTION_ID = "openhab.automation.advanced";
@@ -59,7 +62,7 @@ public class AdvancedAutomationAction implements AIAction {
     private final Map<String, AutomationTemplate> templates = new ConcurrentHashMap<>();
     private final Map<String, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
-    private ScheduledExecutorService scheduler;
+    private @Nullable ScheduledExecutorService scheduler;
 
     @Activate
     protected void activate() {
@@ -546,7 +549,8 @@ public class AdvancedAutomationAction implements AIAction {
 
         result.put("templateId", templateId);
         result.put("templateName", template.name);
-        result.put("workflowId", workflowResult.get("workflowId"));
+        Object workflowId = workflowResult.get("workflowId");
+        result.put("workflowId", workflowId != null ? workflowId : "");
         result.put("message", "Template applied successfully");
 
         return result;
@@ -664,7 +668,7 @@ public class AdvancedAutomationAction implements AIAction {
         });
     }
 
-    private WorkflowExecution findWorkflowExecution(String workflowId) {
+    private @Nullable WorkflowExecution findWorkflowExecution(String workflowId) {
         return activeWorkflows.values().stream().filter(w -> workflowId.equals(w.workflowId)).findFirst().orElse(null);
     }
 
@@ -679,7 +683,8 @@ public class AdvancedAutomationAction implements AIAction {
             map.put("duration", execution.endTime.toEpochMilli() - execution.startTime.toEpochMilli());
         }
         if (execution.error != null) {
-            map.put("error", execution.error);
+            String errorMessage = execution.error;
+            map.put("error", errorMessage);
         }
         return map;
     }
@@ -705,7 +710,8 @@ public class AdvancedAutomationAction implements AIAction {
             map.put("endTime", job.endTime.toString());
         }
         if (job.error != null) {
-            map.put("error", job.error);
+            String errorMessage = job.error;
+            map.put("error", errorMessage);
         }
         return map;
     }
@@ -764,7 +770,9 @@ public class AdvancedAutomationAction implements AIAction {
         final Map<?, ?> parameters;
         final Instant startTime;
         String status;
+        @Nullable
         Instant endTime;
+        @Nullable
         String error;
 
         WorkflowExecution(String workflowId, Map<?, ?> parameters) {
@@ -800,7 +808,9 @@ public class AdvancedAutomationAction implements AIAction {
         final Map<?, ?> parameters;
         final Instant createdTime;
         String status;
+        @Nullable
         Instant endTime;
+        @Nullable
         String error;
 
         AutomationJob(String taskId, String name, String type, Map<?, ?> parameters) {

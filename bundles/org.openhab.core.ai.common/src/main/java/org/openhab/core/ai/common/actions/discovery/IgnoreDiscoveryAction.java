@@ -20,18 +20,19 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingManager;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.ThingStatus;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for ignoring discovered devices in openHAB using real Thing management.
- *
- * This action allows ignoring discovered devices to prevent them
- * from being added to the openHAB system using real ThingRegistry operations.
+ * Action for ignoring discovery results in openHAB.
+ * 
+ * This action provides functionality to ignore discovered
+ * devices and remove them from the discovery results.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class IgnoreDiscoveryAction implements AIAction {
 
@@ -192,12 +193,12 @@ public class IgnoreDiscoveryAction implements AIAction {
             // Extract parameters
             @SuppressWarnings("unchecked")
             List<String> deviceIds = (List<String>) parameters.get("deviceIds");
-            String discoveryId = (String) parameters.getOrDefault("discoveryId", null);
-            String bindingId = (String) parameters.getOrDefault("bindingId", null);
+            String discoveryId = (String) parameters.get("discoveryId");
+            String bindingId = (String) parameters.get("bindingId");
             String reason = (String) parameters.getOrDefault("reason", "User requested ignore");
             boolean permanent = (Boolean) parameters.getOrDefault("permanent", false);
             boolean addToBlacklist = (Boolean) parameters.getOrDefault("addToBlacklist", true);
-            String blacklistPattern = (String) parameters.getOrDefault("blacklistPattern", null);
+            String blacklistPattern = (String) parameters.get("blacklistPattern");
 
             // Ignore discovery
             Map<String, Object> result = ignoreDiscovery(deviceIds, discoveryId, bindingId, reason, permanent,

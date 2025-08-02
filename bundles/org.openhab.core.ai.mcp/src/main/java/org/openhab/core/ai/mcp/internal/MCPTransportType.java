@@ -1,13 +1,14 @@
 package org.openhab.core.ai.mcp.internal;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
- * Enumeration of supported MCP transport types.
+ * Transport type enumeration for MCP.
  * 
- * This enum defines the different communication transports
- * available for MCP server-client communication.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public enum MCPTransportType {
 
     /**

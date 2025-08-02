@@ -1,13 +1,24 @@
 package org.openhab.core.ai.mcp.api;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
+/**
+ * Result of MCP tool execution.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
+ */
+@NonNullByDefault
 public class MCPToolResult {
     private final String toolId;
     private final boolean success;
-    private final Object content;
-    private final String error;
+    private final @Nullable Object content;
+    private final @Nullable String error;
     private final long executionTimeMs;
 
-    private MCPToolResult(String toolId, boolean success, Object content, String error, long executionTimeMs) {
+    private MCPToolResult(String toolId, boolean success, @Nullable Object content, @Nullable String error,
+            long executionTimeMs) {
         this.toolId = toolId;
         this.success = success;
         this.content = content;
@@ -31,11 +42,11 @@ public class MCPToolResult {
         return success;
     }
 
-    public Object getContent() {
+    public @Nullable Object getContent() {
         return content;
     }
 
-    public String getError() {
+    public @Nullable String getError() {
         return error;
     }
 

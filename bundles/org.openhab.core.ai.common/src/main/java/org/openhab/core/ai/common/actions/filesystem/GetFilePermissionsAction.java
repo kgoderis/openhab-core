@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -23,9 +24,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Action to get file permissions for a specified file or directory.
- * Only operates within the openHAB root folder for security.
+ * Action for getting file permissions in openHAB.
+ * 
+ * This action provides functionality to retrieve
+ * permissions for files and directories.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class GetFilePermissionsAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(GetFilePermissionsAction.class);

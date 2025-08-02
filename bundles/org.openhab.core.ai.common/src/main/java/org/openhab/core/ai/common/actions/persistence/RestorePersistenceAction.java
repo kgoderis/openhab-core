@@ -25,18 +25,19 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for restoring persistence data in openHAB.
- *
- * This action allows restoring historical data from backup files
- * to persistence services with various options and validation.
+ * Action for restoring persistence data in openHAB.
+ * 
+ * This action provides functionality to restore
+ * persistence data from backups.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class RestorePersistenceAction implements AIAction {
 
@@ -221,8 +222,8 @@ public class RestorePersistenceAction implements AIAction {
             @SuppressWarnings("unchecked")
             List<String> itemNames = parameters.containsKey("itemNames") ? (List<String>) parameters.get("itemNames")
                     : new ArrayList<>();
-            String startTimeStr = (String) parameters.getOrDefault("startTime", null);
-            String endTimeStr = (String) parameters.getOrDefault("endTime", null);
+            String startTimeStr = (String) parameters.getOrDefault("startTime", "");
+            String endTimeStr = (String) parameters.getOrDefault("endTime", "");
             boolean overwriteExisting = (Boolean) parameters.getOrDefault("overwriteExisting", false);
             boolean validateBeforeRestore = (Boolean) parameters.getOrDefault("validateBeforeRestore", true);
             boolean createBackupBeforeRestore = (Boolean) parameters.getOrDefault("createBackupBeforeRestore", true);
@@ -754,9 +755,9 @@ public class RestorePersistenceAction implements AIAction {
                 }
             }
 
-            return null;
+            return "";
         } catch (Exception e) {
-            return null;
+            return "";
         }
     }
 

@@ -74,8 +74,8 @@ public class GetNetworkInterfacesAction implements AIAction {
                 Map.of("type", "boolean", "description", "Include hardware information", "default", true));
         properties.put("filterActive",
                 Map.of("type", "boolean", "description", "Filter to show only active interfaces", "default", false));
-        properties.put("interfaceName", Map.of("type", "string", "description",
-                "Specific interface name to query (optional)", "default", null));
+        properties.put("interfaceName",
+                Map.of("type", "string", "description", "Specific interface name to query (optional)"));
 
         schema.put("properties", properties);
         schema.put("required", List.of());
@@ -226,7 +226,7 @@ public class GetNetworkInterfacesAction implements AIAction {
                 // Get hardware information
                 if (includeHardwareInfo) {
                     interfaceInfo.put("hardwareAddress", getHardwareAddress(ni));
-                    interfaceInfo.put("parentInterface", ni.getParent() != null ? ni.getParent().getName() : null);
+                    interfaceInfo.put("parentInterface", ni.getParent() != null ? ni.getParent().getName() : "");
                 }
 
                 // Get interface addresses
@@ -236,7 +236,7 @@ public class GetNetworkInterfacesAction implements AIAction {
                         Map<String, Object> addressInfo = new HashMap<>();
                         addressInfo.put("address", addr.getAddress().getHostAddress());
                         addressInfo.put("broadcast",
-                                addr.getBroadcast() != null ? addr.getBroadcast().getHostAddress() : null);
+                                addr.getBroadcast() != null ? addr.getBroadcast().getHostAddress() : "");
                         addressInfo.put("prefixLength", addr.getNetworkPrefixLength());
                         addressInfo.put("networkAddress",
                                 getNetworkAddress(addr.getAddress(), addr.getNetworkPrefixLength()));

@@ -25,18 +25,19 @@ import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.link.ItemChannelLink;
 import org.openhab.core.thing.link.ItemChannelLinkRegistry;
 import org.openhab.core.types.State;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving the current state of a channel.
+ * Action for retrieving channel state in openHAB.
  * 
- * This action provides information about the current state of a channel,
- * including linked items and their states.
+ * This action provides functionality to get the current state
+ * of channels including their values and status.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetChannelStateAction implements AIAction {
 
@@ -228,9 +229,18 @@ public class GetChannelStateAction implements AIAction {
             // Channel state information
             Map<String, Object> channelState = new HashMap<>();
             channelState.put("kind", channel.getKind().toString());
-            channelState.put("acceptedItemType", channel.getAcceptedItemType());
-            channelState.put("label", channel.getLabel());
-            channelState.put("description", channel.getDescription());
+            String acceptedItemType = channel.getAcceptedItemType();
+            channelState.put("acceptedItemType", acceptedItemType != null ? acceptedItemType : "");
+            String channelLabel = channel.getLabel();
+            if (channelLabel == null) {
+                channelLabel = "";
+            }
+            channelState.put("label", channelLabel);
+            String channelDescription = channel.getDescription();
+            if (channelDescription == null) {
+                channelDescription = "";
+            }
+            channelState.put("description", channelDescription);
             result.put("channelState", channelState);
 
             // Linked items information
@@ -267,9 +277,13 @@ public class GetChannelStateAction implements AIAction {
                     if (item != null) {
                         State state = item.getState();
                         itemInfo.put("state", state != null ? state.toString() : "NULL");
-                        itemInfo.put("stateType", state != null ? state.getClass().getSimpleName() : null);
+                        itemInfo.put("stateType", state != null ? state.getClass().getSimpleName() : "NULL");
                         itemInfo.put("itemType", item.getType());
-                        itemInfo.put("itemLabel", item.getLabel());
+                        String itemLabel = item.getLabel();
+                        if (itemLabel == null) {
+                            itemLabel = "";
+                        }
+                        itemInfo.put("itemLabel", itemLabel);
                     }
                 }
 

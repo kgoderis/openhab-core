@@ -1,5 +1,7 @@
 package org.openhab.core.ai.common.config;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  * Listener interface for AI configuration changes.
  * 
@@ -9,6 +11,7 @@ package org.openhab.core.ai.common.config;
  * 
  * 
  */
+@NonNullByDefault
 public interface AIConfigurationChangeListener {
 
     /**

@@ -24,18 +24,19 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.link.ItemChannelLink;
 import org.openhab.core.thing.link.ItemChannelLinkRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for linking a channel to an item.
+ * Action for linking channels to items in openHAB.
  * 
- * This action creates a link between a channel and an item with optional
- * configuration parameters.
+ * This action provides functionality to create links
+ * between channels and items with configuration options.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class LinkChannelAction implements AIAction {
 

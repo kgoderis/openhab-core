@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -21,13 +22,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AI Action for deleting files and directories within the openHAB root folder.
+ * Action for deleting files in openHAB.
  * 
- * This action provides secure file deletion capabilities, ensuring operations
- * only work within the openHAB configuration and user data directories.
+ * This action provides functionality to delete files
+ * and directories with safety checks.
  * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class DeleteFileAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(DeleteFileAction.class);
@@ -146,7 +149,11 @@ public class DeleteFileAction implements AIAction {
             Map<String, Object> result = new HashMap<>();
 
             // Extract parameters with defaults
-            String path = (String) parameters.get("path");
+            Object pathObj = parameters.get("path");
+            if (pathObj == null) {
+                throw new AIActionException(ACTION_ID, "Path parameter is required");
+            }
+            String path = (String) pathObj;
             Boolean recursive = (Boolean) parameters.getOrDefault("recursive", false);
             Boolean createBackup = (Boolean) parameters.getOrDefault("createBackup", false);
             Boolean force = (Boolean) parameters.getOrDefault("force", false);
@@ -216,28 +223,32 @@ public class DeleteFileAction implements AIAction {
 
             // Build result
             result.put("timestamp", Instant.now().toString());
-            result.put("path", filePath.toString());
+            result.put("path", filePath != null && filePath.toString() != null ? filePath.toString() : "");
             result.put("deleted", deleted);
             result.put("type", isDirectory ? "directory" : "file");
             result.put("size", size);
             result.put("itemsDeleted", itemsDeleted);
             result.put("backupCreated", backupPath != null);
             if (backupPath != null) {
-                result.put("backupPath", backupPath);
+                result.put("backupPath", backupPath != null ? backupPath : "");
             }
 
-            logger.debug("DeleteFileAction completed successfully. Deleted {} items from {}", itemsDeleted, path);
+            logger.debug("DeleteFileAction completed successfully. Deleted {} items from {}", itemsDeleted,
+                    filePath.toString());
             return AIActionResult.success(result, System.currentTimeMillis());
 
         } catch (SecurityException e) {
-            logger.error("Security violation in DeleteFileAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Security violation";
+            logger.error("Security violation in DeleteFileAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, errorMessage);
         } catch (IOException e) {
-            logger.error("IO error in DeleteFileAction: {}", e.getMessage());
-            throw new AIActionException(ACTION_ID, "Failed to delete: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "IO error";
+            logger.error("IO error in DeleteFileAction: {}", errorMessage);
+            throw new AIActionException(ACTION_ID, "Failed to delete: " + errorMessage);
         } catch (Exception e) {
-            logger.error("Unexpected error in DeleteFileAction: {}", e.getMessage(), e);
-            throw new AIActionException(ACTION_ID, "Unexpected error: " + e.getMessage());
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            logger.error("Unexpected error in DeleteFileAction: {}", errorMessage, e);
+            throw new AIActionException(ACTION_ID, "Unexpected error: " + errorMessage);
         }
     }
 

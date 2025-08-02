@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -27,6 +29,7 @@ import org.slf4j.LoggerFactory;
  * 
  * 
  */
+@NonNullByDefault
 @Component(service = AIAction.class, immediate = true)
 public class DataAnalysisAction implements AIAction {
 
@@ -35,7 +38,7 @@ public class DataAnalysisAction implements AIAction {
     private static final String ACTION_NAME = "Data Analysis and Reporting";
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Override
     public String getActionId() {
@@ -349,9 +352,11 @@ public class DataAnalysisAction implements AIAction {
         visualization.put("title", "Data Visualization for " + itemName);
         visualization.put("dataPoints", data.size());
         visualization.put("timeRange", "24 hours");
-        visualization.put("chartData",
-                data.stream().map(point -> Map.of("timestamp", point.get("timestamp"), "value", point.get("value")))
-                        .collect(Collectors.toList()));
+        visualization.put("chartData", data.stream().map(point -> {
+            Object timestamp = point.get("timestamp");
+            Object value = point.get("value");
+            return Map.of("timestamp", timestamp != null ? timestamp : "", "value", value != null ? value : "");
+        }).collect(Collectors.toList()));
 
         result.put("visualization", visualization);
         result.put("itemName", itemName);

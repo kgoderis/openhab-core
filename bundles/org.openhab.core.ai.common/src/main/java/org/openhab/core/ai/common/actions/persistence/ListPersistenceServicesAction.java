@@ -18,18 +18,19 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
 import org.openhab.core.persistence.QueryablePersistenceService;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for listing all available persistence services in openHAB.
- *
- * This action provides information about all configured and available
- * persistence services, including their status, configuration, and capabilities.
+ * Action for listing persistence services in openHAB.
+ * 
+ * This action provides functionality to list and manage
+ * persistence services.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class ListPersistenceServicesAction implements AIAction {
 
@@ -312,7 +313,7 @@ public class ListPersistenceServicesAction implements AIAction {
         if (includeStatus) {
             Map<String, Object> status = new HashMap<>();
             status.put("connected", false);
-            status.put("lastUpdate", null);
+            status.put("lastUpdate", "N/A");
             status.put("itemCount", 0);
             status.put("dataPoints", 0);
             mapdb.put("statusDetails", status);
@@ -344,7 +345,7 @@ public class ListPersistenceServicesAction implements AIAction {
         if (includeStatus) {
             Map<String, Object> status = new HashMap<>();
             status.put("connected", false);
-            status.put("lastUpdate", null);
+            status.put("lastUpdate", "N/A");
             status.put("itemCount", 0);
             status.put("dataPoints", 0);
             status.put("error", "Database connection failed: Connection refused");

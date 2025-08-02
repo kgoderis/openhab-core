@@ -18,18 +18,19 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.ThingStatus;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for getting discovery status information in openHAB.
- *
- * This action provides detailed status information about
- * ongoing and completed discovery processes.
+ * Action for retrieving discovery status in openHAB.
+ * 
+ * This action provides functionality to get the current
+ * status of discovery processes.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetDiscoveryStatusAction implements AIAction {
 
@@ -157,9 +158,9 @@ public class GetDiscoveryStatusAction implements AIAction {
 
         try {
             // Extract parameters
-            String discoveryId = (String) parameters.getOrDefault("discoveryId", null);
-            String bindingId = (String) parameters.getOrDefault("bindingId", null);
-            String protocol = (String) parameters.getOrDefault("protocol", null);
+            String discoveryId = (String) parameters.get("discoveryId");
+            String bindingId = (String) parameters.get("bindingId");
+            String protocol = (String) parameters.get("protocol");
             boolean includeHistory = (Boolean) parameters.getOrDefault("includeHistory", false);
             boolean includeDetails = (Boolean) parameters.getOrDefault("includeDetails", true);
             boolean includeProgress = (Boolean) parameters.getOrDefault("includeProgress", true);

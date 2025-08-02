@@ -3,18 +3,18 @@ package org.openhab.core.ai.mcp.dto;
 import java.util.Objects;
 import java.util.Optional;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Data Transfer Object for MCP (Model Context Protocol) responses.
+ * MCP response DTO.
  * 
- * This class represents the base structure for all MCP protocol responses
- * following the JSON-RPC 2.0 specification with MCP extensions.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@NonNullByDefault
 public class MCPResponse {
 
     @JsonProperty("jsonrpc")
@@ -24,10 +24,10 @@ public class MCPResponse {
     private final String id;
 
     @JsonProperty("result")
-    private final Object result;
+    private final @Nullable Object result;
 
     @JsonProperty("error")
-    private final MCPError error;
+    private final @Nullable MCPError error;
 
     /**
      * Create a successful MCP response.
@@ -123,7 +123,7 @@ public class MCPResponse {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o)
             return true;
         if (o == null || getClass() != o.getClass())

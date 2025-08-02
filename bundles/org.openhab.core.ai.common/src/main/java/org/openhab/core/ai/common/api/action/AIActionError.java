@@ -1,16 +1,24 @@
 package org.openhab.core.ai.common.api.action;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
- * Error information for AI action execution failures.
+ * Represents an error that occurred during AI action execution.
  * 
+ * This class provides structured error information including error codes,
+ * messages, and additional context for debugging and error handling.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class AIActionError {
 
     private final String errorCode;
     private final String errorMessage;
     private final String errorType;
-    private final Throwable cause;
+    private final @Nullable Throwable cause;
 
     public AIActionError(String errorCode, String errorMessage) {
         this(errorCode, errorMessage, "EXECUTION_ERROR", null);
@@ -20,7 +28,7 @@ public class AIActionError {
         this(errorCode, errorMessage, errorType, null);
     }
 
-    public AIActionError(String errorCode, String errorMessage, String errorType, Throwable cause) {
+    public AIActionError(String errorCode, String errorMessage, String errorType, @Nullable Throwable cause) {
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
         this.errorType = errorType;
@@ -40,7 +48,7 @@ public class AIActionError {
         return errorType;
     }
 
-    public Throwable getCause() {
+    public @Nullable Throwable getCause() {
         return cause;
     }
 

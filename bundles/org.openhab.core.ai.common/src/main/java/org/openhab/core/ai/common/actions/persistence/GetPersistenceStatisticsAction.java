@@ -18,18 +18,19 @@ import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
 import org.openhab.core.persistence.QueryablePersistenceService;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving statistics from persistence services.
- *
- * This action provides comprehensive statistics about persistence services
- * including data volume, performance metrics, and usage patterns.
+ * Action for getting persistence statistics in openHAB.
+ * 
+ * This action provides functionality to retrieve
+ * statistical information about persistence data.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetPersistenceStatisticsAction implements AIAction {
 
@@ -395,7 +396,7 @@ public class GetPersistenceStatisticsAction implements AIAction {
             usage.put("totalQueries", 0);
             usage.put("averageQueriesPerHour", 0);
             usage.put("peakUsage", "0%");
-            usage.put("lastActivity", null);
+            usage.put("lastActivity", "N/A");
             stats.put("usage", usage);
         }
 
@@ -403,7 +404,7 @@ public class GetPersistenceStatisticsAction implements AIAction {
             Map<String, Object> errors = new HashMap<>();
             errors.put("totalErrors", 0);
             errors.put("errorRate", "0%");
-            errors.put("lastError", null);
+            errors.put("lastError", "N/A");
             errors.put("errorTypes", Map.of());
             stats.put("errors", errors);
         }
@@ -443,7 +444,7 @@ public class GetPersistenceStatisticsAction implements AIAction {
             usage.put("totalQueries", 0);
             usage.put("averageQueriesPerHour", 0);
             usage.put("peakUsage", "0%");
-            usage.put("lastActivity", null);
+            usage.put("lastActivity", "N/A");
             stats.put("usage", usage);
         }
 
@@ -643,7 +644,7 @@ public class GetPersistenceStatisticsAction implements AIAction {
                 Map<String, Object> errors = new HashMap<>();
                 errors.put("totalErrors", 0); // Would need actual implementation
                 errors.put("errorRate", "0.1%");
-                errors.put("lastError", null);
+                errors.put("lastError", "N/A");
                 errors.put("errorTypes", new ArrayList<>());
                 errors.put("lastUpdate", System.currentTimeMillis());
                 stats.put("errors", errors);

@@ -21,18 +21,19 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.type.ChannelType;
 import org.openhab.core.thing.type.ChannelTypeRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving properties for a specific channel.
+ * Action for retrieving channel properties in openHAB.
  * 
- * This action provides detailed property information about a channel including
- * metadata, capabilities, and binding-specific properties.
+ * This action provides functionality to get properties
+ * of channels including their metadata and configuration.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetChannelPropertiesAction implements AIAction {
 
@@ -220,14 +221,46 @@ public class GetChannelPropertiesAction implements AIAction {
 
             // Basic properties
             Map<String, Object> basicProperties = new HashMap<>();
-            basicProperties.put("uid", channel.getUID().toString());
-            basicProperties.put("id", channel.getUID().getId());
-            basicProperties.put("label", channel.getLabel());
-            basicProperties.put("description", channel.getDescription());
-            basicProperties.put("kind", channel.getKind().toString());
-            basicProperties.put("acceptedItemType", channel.getAcceptedItemType());
-            basicProperties.put("channelTypeUID",
-                    channel.getChannelTypeUID() != null ? channel.getChannelTypeUID().toString() : null);
+            String uidString = "";
+            if (channel.getUID() != null && channel.getUID().toString() != null) {
+                uidString = channel.getUID().toString();
+            }
+            basicProperties.put("uid", uidString);
+
+            String idString = "";
+            if (channel.getUID() != null && channel.getUID().getId() != null) {
+                idString = channel.getUID().getId();
+            }
+            basicProperties.put("id", idString);
+            String labelString = "";
+            if (channel.getLabel() != null) {
+                labelString = channel.getLabel();
+            }
+            basicProperties.put("label", labelString);
+
+            String descriptionString = "";
+            if (channel.getDescription() != null) {
+                descriptionString = channel.getDescription();
+            }
+            basicProperties.put("description", descriptionString);
+
+            String kindString = "";
+            if (channel.getKind() != null) {
+                kindString = channel.getKind().toString();
+            }
+            basicProperties.put("kind", kindString);
+
+            String acceptedItemTypeString = "";
+            if (channel.getAcceptedItemType() != null) {
+                acceptedItemTypeString = channel.getAcceptedItemType();
+            }
+            basicProperties.put("acceptedItemType", acceptedItemTypeString);
+
+            String channelTypeUIDString = "";
+            if (channel.getChannelTypeUID() != null) {
+                channelTypeUIDString = channel.getChannelTypeUID().toString();
+            }
+            basicProperties.put("channelTypeUID", channelTypeUIDString);
             result.put("basicProperties", basicProperties);
 
             // Type properties
@@ -235,17 +268,52 @@ public class GetChannelPropertiesAction implements AIAction {
                 ChannelType channelType = channelTypeRegistry.getChannelType(channel.getChannelTypeUID());
                 if (channelType != null) {
                     Map<String, Object> typeProperties = new HashMap<>();
-                    typeProperties.put("uid", channelType.getUID().toString());
-                    typeProperties.put("label", channelType.getLabel());
-                    typeProperties.put("description", channelType.getDescription());
-                    typeProperties.put("category", channelType.getCategory());
-                    typeProperties.put("kind", channelType.getKind().toString());
-                    typeProperties.put("itemType", channelType.getItemType());
-                    typeProperties.put("stateDescription",
-                            channelType.getState() != null ? channelType.getState().toString() : null);
-                    typeProperties.put("autoUpdatePolicy",
-                            channelType.getAutoUpdatePolicy() != null ? channelType.getAutoUpdatePolicy().toString()
-                                    : null);
+                    String typeUidString = "";
+                    if (channelType.getUID() != null && channelType.getUID().toString() != null) {
+                        typeUidString = channelType.getUID().toString();
+                    }
+                    typeProperties.put("uid", typeUidString);
+                    String typeLabelString = "";
+                    if (channelType.getLabel() != null) {
+                        typeLabelString = channelType.getLabel();
+                    }
+                    typeProperties.put("label", typeLabelString);
+
+                    String typeDescriptionString = "";
+                    if (channelType.getDescription() != null) {
+                        typeDescriptionString = channelType.getDescription();
+                    }
+                    typeProperties.put("description", typeDescriptionString);
+
+                    String typeCategoryString = "";
+                    if (channelType.getCategory() != null) {
+                        typeCategoryString = channelType.getCategory();
+                    }
+                    typeProperties.put("category", typeCategoryString);
+
+                    String typeKindString = "";
+                    if (channelType.getKind() != null) {
+                        typeKindString = channelType.getKind().toString();
+                    }
+                    typeProperties.put("kind", typeKindString);
+
+                    String typeItemTypeString = "";
+                    if (channelType.getItemType() != null) {
+                        typeItemTypeString = channelType.getItemType();
+                    }
+                    typeProperties.put("itemType", typeItemTypeString);
+
+                    String typeStateString = "";
+                    if (channelType.getState() != null) {
+                        typeStateString = channelType.getState().toString();
+                    }
+                    typeProperties.put("stateDescription", typeStateString);
+
+                    String typeAutoUpdatePolicyString = "";
+                    if (channelType.getAutoUpdatePolicy() != null) {
+                        typeAutoUpdatePolicyString = channelType.getAutoUpdatePolicy().toString();
+                    }
+                    typeProperties.put("autoUpdatePolicy", typeAutoUpdatePolicyString);
                     result.put("typeProperties", typeProperties);
                 }
             }
@@ -253,20 +321,51 @@ public class GetChannelPropertiesAction implements AIAction {
             // Binding properties
             if (includeBindingProperties) {
                 Map<String, Object> bindingProperties = new HashMap<>();
-                bindingProperties.put("bindingId", thing.getUID().getBindingId());
-                bindingProperties.put("thingUID", thing.getUID().toString());
-                bindingProperties.put("thingLabel", thing.getLabel());
-                bindingProperties.put("thingType",
-                        thing.getThingTypeUID() != null ? thing.getThingTypeUID().toString() : null);
-                bindingProperties.put("thingStatus", thing.getStatus().toString());
-                bindingProperties.put("thingLocation", thing.getLocation());
+                String bindingIdString = "";
+                if (thing.getUID() != null && thing.getUID().getBindingId() != null) {
+                    bindingIdString = thing.getUID().getBindingId();
+                }
+                bindingProperties.put("bindingId", bindingIdString);
+
+                String thingUidString = "";
+                if (thing.getUID() != null && thing.getUID().toString() != null) {
+                    thingUidString = thing.getUID().toString();
+                }
+                bindingProperties.put("thingUID", thingUidString);
+                String thingLabelString = "";
+                if (thing.getLabel() != null) {
+                    thingLabelString = thing.getLabel();
+                }
+                bindingProperties.put("thingLabel", thingLabelString);
+
+                String thingTypeString = "";
+                if (thing.getThingTypeUID() != null) {
+                    thingTypeString = thing.getThingTypeUID().toString();
+                }
+                bindingProperties.put("thingType", thingTypeString);
+
+                String thingStatusString = "";
+                if (thing.getStatus() != null) {
+                    thingStatusString = thing.getStatus().toString();
+                }
+                bindingProperties.put("thingStatus", thingStatusString);
+
+                String thingLocationString = "";
+                if (thing.getLocation() != null) {
+                    thingLocationString = thing.getLocation();
+                }
+                bindingProperties.put("thingLocation", thingLocationString);
                 result.put("bindingProperties", bindingProperties);
             }
 
             // Metadata
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("retrievedAt", Instant.now().toString());
-            metadata.put("thingStatus", thing.getStatus().toString());
+            String metadataThingStatusString = "";
+            if (thing.getStatus() != null) {
+                metadataThingStatusString = thing.getStatus().toString();
+            }
+            metadata.put("thingStatus", metadataThingStatusString);
             metadata.put("channelCount", thing.getChannels().size());
             result.put("metadata", metadata);
 

@@ -3,23 +3,31 @@ package org.openhab.core.ai.common.api.action;
 import java.time.Instant;
 import java.util.Map;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
- * Result of AI action execution.
+ * Result of an AI action execution.
  * 
+ * This class encapsulates the result of an action execution including
+ * success status, data, metadata, and any error information.
  * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class AIActionResult {
 
     private final boolean success;
-    private final Object data;
+    private final @Nullable Object data;
     private final String message;
-    private final AIActionError error;
+    private final @Nullable AIActionError error;
     private final long executionTimeMs;
     private final Instant timestamp;
     private final Map<String, Object> metadata;
 
-    private AIActionResult(boolean success, Object data, String message, AIActionError error, long executionTimeMs,
-            Instant timestamp, Map<String, Object> metadata) {
+    private AIActionResult(boolean success, @Nullable Object data, String message, @Nullable AIActionError error,
+            long executionTimeMs, Instant timestamp, Map<String, Object> metadata) {
         this.success = success;
         this.data = data;
         this.message = message;
@@ -83,7 +91,7 @@ public class AIActionResult {
         return success;
     }
 
-    public Object getData() {
+    public @Nullable Object getData() {
         return data;
     }
 
@@ -91,7 +99,7 @@ public class AIActionResult {
         return message;
     }
 
-    public AIActionError getError() {
+    public @Nullable AIActionError getError() {
         return error;
     }
 

@@ -22,18 +22,19 @@ import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingTypeUID;
 import org.openhab.core.thing.ThingUID;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for getting discovery results in openHAB using real Inbox integration.
- *
- * This action retrieves real discovery results from the openHAB Inbox
- * including discovered devices and their details using actual DiscoveryResult objects.
+ * Action for retrieving discovery results in openHAB.
+ * 
+ * This action provides functionality to get results
+ * from device discovery processes.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetDiscoveryResultsAction implements AIAction {
 
@@ -205,11 +206,11 @@ public class GetDiscoveryResultsAction implements AIAction {
 
         try {
             // Extract parameters
-            String discoveryId = (String) parameters.getOrDefault("discoveryId", null);
-            String bindingId = (String) parameters.getOrDefault("bindingId", null);
-            String protocol = (String) parameters.getOrDefault("protocol", null);
+            String discoveryId = (String) parameters.get("discoveryId");
+            String bindingId = (String) parameters.get("bindingId");
+            String protocol = (String) parameters.get("protocol");
             String status = (String) parameters.getOrDefault("status", "all");
-            String deviceType = (String) parameters.getOrDefault("deviceType", null);
+            String deviceType = (String) parameters.get("deviceType");
             boolean includeDetails = (Boolean) parameters.getOrDefault("includeDetails", true);
             boolean includeMetadata = (Boolean) parameters.getOrDefault("includeMetadata", false);
             int limit = parameters.containsKey("limit") ? ((Number) parameters.get("limit")).intValue() : 100;
@@ -406,13 +407,18 @@ public class GetDiscoveryResultsAction implements AIAction {
         result.put("bindingId", thingUID.getBindingId());
         result.put("thingId", thingUID.getId());
         result.put("thingTypeId", thingTypeUID.getId());
-        result.put("label", thing.getLabel());
+        String thingLabel = "";
+        if (thing.getLabel() != null) {
+            thingLabel = thing.getLabel();
+        }
+        result.put("label", thingLabel);
         result.put("status", convertThingStatusToDiscoveryStatus(thing.getStatus()));
         result.put("discoveryTime", Instant.now().toString()); // Use current time as discovery time
 
         if (includeDetails) {
             // Detailed information
-            result.put("representationProperty", thing.getProperties().get("representationProperty"));
+            Object representationProperty = thing.getProperties().get("representationProperty");
+            result.put("representationProperty", representationProperty != null ? representationProperty : "");
             result.put("bridgeUID", thing.getBridgeUID() != null ? thing.getBridgeUID().toString() : "");
 
             // Properties

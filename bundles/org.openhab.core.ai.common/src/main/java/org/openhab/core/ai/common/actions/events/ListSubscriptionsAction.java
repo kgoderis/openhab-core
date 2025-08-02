@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.actions.events.EventSubscriptionRegistry.SubscriptionInfo;
 import org.openhab.core.ai.common.api.action.AIAction;
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory;
  * - Validate subscription information
  */
 @Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class ListSubscriptionsAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(ListSubscriptionsAction.class);
@@ -224,7 +226,8 @@ public class ListSubscriptionsAction implements AIAction {
         map.put("subscriptionId", info.getSubscriptionId());
         map.put("clientId", info.getClientId());
         map.put("eventTypes", info.getEventTypes());
-        map.put("filters", info.getFilters());
+        Map<String, String> filters = info.getFilters();
+        map.put("filters", filters != null ? filters : Map.of());
         map.put("sseUrl", info.getSseUrl());
         map.put("createdAt", info.getCreatedAt());
         return map;

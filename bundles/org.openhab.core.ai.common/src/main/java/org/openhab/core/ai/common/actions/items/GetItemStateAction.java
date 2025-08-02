@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -27,12 +28,13 @@ import org.slf4j.LoggerFactory;
  * 
  */
 @Component(service = AIAction.class, immediate = true)
+@NonNullByDefault
 public class GetItemStateAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(GetItemStateAction.class);
 
     @Reference
-    private ItemRegistry itemRegistry;
+    private @Nullable ItemRegistry itemRegistry;
 
     @Reference
     private @Nullable PersistenceServiceRegistry persistenceServiceRegistry;

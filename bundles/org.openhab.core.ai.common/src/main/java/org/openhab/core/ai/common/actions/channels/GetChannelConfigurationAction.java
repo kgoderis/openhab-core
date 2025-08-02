@@ -21,18 +21,19 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.type.ChannelType;
 import org.openhab.core.thing.type.ChannelTypeRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for retrieving configuration information for a specific channel.
+ * Action for retrieving channel configuration in openHAB.
  * 
- * This action provides detailed configuration information including current values,
- * default values, parameter descriptions, and validation rules.
+ * This action provides functionality to get configuration details
+ * for channels including their settings and parameters.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetChannelConfigurationAction implements AIAction {
 

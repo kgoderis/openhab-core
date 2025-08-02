@@ -2,20 +2,22 @@ package org.openhab.core.ai.a2a.api;
 
 import java.util.Map;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
- * Result of executing an A2A skill.
+ * Result of A2A skill execution.
  * 
- * This class represents the result of executing an A2A skill, including
- * success/failure status, data, and any error information.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class A2ASkillResult {
 
     private final boolean success;
-    private final Map<String, Object> data;
-    private final String errorMessage;
-    private final String errorCode;
+    private final @Nullable Map<String, Object> data;
+    private final @Nullable String errorMessage;
+    private final @Nullable String errorCode;
     private final long executionTime;
 
     /**
@@ -71,8 +73,8 @@ public class A2ASkillResult {
      * @param errorCode the error code
      * @param executionTime the execution time in milliseconds
      */
-    private A2ASkillResult(boolean success, Map<String, Object> data, String errorMessage, String errorCode,
-            long executionTime) {
+    private A2ASkillResult(boolean success, @Nullable Map<String, Object> data, @Nullable String errorMessage,
+            @Nullable String errorCode, long executionTime) {
         this.success = success;
         this.data = data;
         this.errorMessage = errorMessage;
@@ -94,7 +96,7 @@ public class A2ASkillResult {
      * 
      * @return the result data, or null if execution failed
      */
-    public Map<String, Object> getData() {
+    public @Nullable Map<String, Object> getData() {
         return data;
     }
 
@@ -103,7 +105,7 @@ public class A2ASkillResult {
      * 
      * @return the error message, or null if execution was successful
      */
-    public String getErrorMessage() {
+    public @Nullable String getErrorMessage() {
         return errorMessage;
     }
 
@@ -112,7 +114,7 @@ public class A2ASkillResult {
      * 
      * @return the error code, or null if execution was successful
      */
-    public String getErrorCode() {
+    public @Nullable String getErrorCode() {
         return errorCode;
     }
 

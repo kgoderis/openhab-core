@@ -255,8 +255,14 @@ public class CheckScriptSyntaxAction implements AIAction {
             // Engine-based syntax checking
             Map<String, Object> engineCheck = performEngineSyntaxCheck(actualContent, actualType);
             if (engineCheck.containsKey("error")) {
-                syntaxErrors.add(Map.of("type", "engine", "message", engineCheck.get("error"), "line",
-                        engineCheck.get("line"), "column", engineCheck.get("column"), "severity", "error"));
+                Object error = engineCheck.get("error");
+                Object line = engineCheck.get("line");
+                Object column = engineCheck.get("column");
+                String errorStr = error != null ? error.toString() : "Unknown error";
+                String lineStr = line != null ? line.toString() : "0";
+                String columnStr = column != null ? column.toString() : "0";
+                syntaxErrors.add(Map.of("type", "engine", "message", errorStr, "line", lineStr, "column", columnStr,
+                        "severity", "error"));
             }
 
             // Pattern-based syntax checking

@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
 import org.openhab.core.ai.common.api.action.AIActionException;
@@ -24,13 +25,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AI Action for getting detailed file information within the openHAB root folder.
+ * Action for getting file information in openHAB.
  * 
- * This action provides secure file information retrieval capabilities, ensuring operations
- * only work within the openHAB configuration and user data directories.
+ * This action provides functionality to retrieve
+ * detailed information about files and directories.
  * 
- * @author Karel Goderis
+ * @author AI Assistant
+ * @since 1.0.0
  */
+@NonNullByDefault
 public class GetFileInfoAction implements AIAction {
 
     private static final Logger logger = LoggerFactory.getLogger(GetFileInfoAction.class);

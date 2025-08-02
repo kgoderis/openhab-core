@@ -493,7 +493,9 @@ public class ConfigurationImportAction implements AIAction {
             } catch (Exception e) {
                 logger.error("Failed to import file: {}", file.path, e);
                 stats.errors++;
-                stats.details.add(Map.of("file", file.path, "status", "error", "error", e.getMessage()));
+                String errorMessage = e.getMessage();
+                stats.details.add(Map.of("file", file.path, "status", "error", "error",
+                        errorMessage != null ? errorMessage : "Unknown error"));
             }
         }
 

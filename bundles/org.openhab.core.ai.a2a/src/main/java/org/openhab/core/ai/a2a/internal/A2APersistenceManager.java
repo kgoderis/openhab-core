@@ -13,11 +13,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
 import org.openhab.core.service.ReadyService.ReadyTracker;
 import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -32,14 +33,12 @@ import io.a2a.spec.Task;
 import io.a2a.spec.TaskState;
 
 /**
- * A2A Persistence Manager for task persistence and recovery.
+ * Persistence manager for A2A operations.
  * 
- * This class provides persistent storage for A2A tasks using JSON files,
- * enabling task recovery after system restarts and long-term task history.
- * 
- * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = A2APersistenceManager.class, immediate = true)
+@NonNullByDefault
 public class A2APersistenceManager implements ReadyTracker {
 
     private static final Logger logger = LoggerFactory.getLogger(A2APersistenceManager.class);
@@ -48,7 +47,7 @@ public class A2APersistenceManager implements ReadyTracker {
     public static final ReadyMarker A2A_PERSISTENCE_READY = new ReadyMarker("a2a", "persistence");
 
     @Reference
-    private ReadyService readyService;
+    private @Nullable ReadyService readyService;
 
     // Enhanced persistence configuration
     private static final String PERSISTENCE_DIR = "a2a";
@@ -80,10 +79,10 @@ public class A2APersistenceManager implements ReadyTracker {
     private final Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
 
     // Enhanced persistence directory with subdirectories
-    private Path persistenceDir;
-    private Path tasksDir;
-    private Path logsDir;
-    private Path recoveryDir;
+    private @Nullable Path persistenceDir;
+    private @Nullable Path tasksDir;
+    private @Nullable Path logsDir;
+    private @Nullable Path recoveryDir;
 
     // Enhanced task execution state tracking
     public static class TaskExecutionState {
@@ -143,7 +142,9 @@ public class A2APersistenceManager implements ReadyTracker {
         logger.debug("A2A Persistence Manager activated");
 
         // Register as a tracker
-        readyService.registerTracker(this);
+        if (readyService != null) {
+            readyService.registerTracker(this);
+        }
 
         // Initialize persistence
         initializePersistence();
@@ -154,13 +155,17 @@ public class A2APersistenceManager implements ReadyTracker {
         logger.debug("A2A Persistence Manager deactivated");
 
         // Unregister tracker
-        readyService.unregisterTracker(this);
+        if (readyService != null) {
+            readyService.unregisterTracker(this);
+        }
 
         // Save all data before shutdown
         saveAllData();
 
         // Unmark ready marker
-        readyService.unmarkReady(A2A_PERSISTENCE_READY);
+        if (readyService != null) {
+            readyService.unmarkReady(A2A_PERSISTENCE_READY);
+        }
     }
 
     private void initializePersistence() {
@@ -186,7 +191,9 @@ public class A2APersistenceManager implements ReadyTracker {
             loadExecutionLogs();
 
             // Mark as ready
-            readyService.markReady(A2A_PERSISTENCE_READY);
+            if (readyService != null) {
+                readyService.markReady(A2A_PERSISTENCE_READY);
+            }
             logger.info("Enhanced A2A persistence initialized with {} tasks", tasks.size());
 
         } catch (Exception e) {
@@ -206,7 +213,7 @@ public class A2APersistenceManager implements ReadyTracker {
         }
     }
 
-    public Task getTask(String taskId) {
+    public @Nullable Task getTask(String taskId) {
         return tasks.get(taskId);
     }
 
@@ -261,7 +268,7 @@ public class A2APersistenceManager implements ReadyTracker {
         }
     }
 
-    public Map<String, Object> getTaskMetadata(String taskId) {
+    public @Nullable Map<String, Object> getTaskMetadata(String taskId) {
         return taskMetadata.get(taskId);
     }
 
@@ -329,7 +336,7 @@ public class A2APersistenceManager implements ReadyTracker {
         }
     }
 
-    public TaskExecutionState getTaskExecutionState(String taskId) {
+    public @Nullable TaskExecutionState getTaskExecutionState(String taskId) {
         return taskExecutionStates.get(taskId);
     }
 
@@ -560,7 +567,7 @@ public class A2APersistenceManager implements ReadyTracker {
     private void loadTasksWithRecovery() {
         try {
             // Load from individual task files for better recovery
-            if (Files.exists(tasksDir)) {
+            if (tasksDir != null && Files.exists(tasksDir)) {
                 Files.list(tasksDir).filter(path -> path.toString().endsWith(".json")).forEach(this::loadTaskFromFile);
             }
 
@@ -589,7 +596,7 @@ public class A2APersistenceManager implements ReadyTracker {
 
     private void loadExecutionLogs() {
         try {
-            if (Files.exists(logsDir)) {
+            if (logsDir != null && Files.exists(logsDir)) {
                 Files.list(logsDir).filter(path -> path.toString().endsWith("-execution.json"))
                         .forEach(this::loadExecutionStateFromFile);
             }

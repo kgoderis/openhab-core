@@ -17,18 +17,19 @@ import org.openhab.core.ai.common.api.action.AIActionResult;
 import org.openhab.core.ai.common.api.action.AIActionValidationResult;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for getting discovery services information in openHAB.
- *
- * This action provides information about available discovery services
- * and their capabilities.
+ * Action for retrieving discovery services in openHAB.
+ * 
+ * This action provides functionality to get information
+ * about available discovery services.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class GetDiscoveryServicesAction implements AIAction {
 
@@ -150,8 +151,8 @@ public class GetDiscoveryServicesAction implements AIAction {
 
         try {
             // Extract parameters
-            String bindingId = (String) parameters.getOrDefault("bindingId", null);
-            String protocol = (String) parameters.getOrDefault("protocol", null);
+            String bindingId = (String) parameters.get("bindingId");
+            String protocol = (String) parameters.get("protocol");
             String status = (String) parameters.getOrDefault("status", "all");
             boolean includeCapabilities = (Boolean) parameters.getOrDefault("includeCapabilities", true);
             boolean includeConfiguration = (Boolean) parameters.getOrDefault("includeConfiguration", false);
@@ -219,7 +220,8 @@ public class GetDiscoveryServicesAction implements AIAction {
                     Map<String, Object> service = new HashMap<>();
                     service.put("serviceId", thing.getUID().getId());
                     service.put("bindingId", thingTypeId.substring("discovery:".length()));
-                    service.put("name", thing.getLabel());
+                    String thingLabel = thing.getLabel() != null ? thing.getLabel() : "Unknown";
+                    service.put("name", thingLabel);
                     service.put("protocol", thingTypeId.substring("discovery:".length())); // Assuming protocol is part
                                                                                            // of the binding ID
                     service.put("status", "active"); // Default to active for registered services

@@ -24,18 +24,19 @@ import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
 import org.openhab.core.persistence.QueryablePersistenceService;
 import org.openhab.core.types.State;
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AIAction for querying persistence data in openHAB.
- *
- * This action allows querying historical data from persistence services
- * with various filters, time ranges, and aggregation options.
+ * Action for querying persistence data in openHAB.
+ * 
+ * This action provides functionality to query
+ * persistence data with various filters.
+ * 
+ * @author AI Assistant
+ * @since 1.0.0
  */
-@Component(service = AIAction.class, immediate = true)
 @NonNullByDefault
 public class QueryPersistenceAction implements AIAction {
 
@@ -213,12 +214,17 @@ public class QueryPersistenceAction implements AIAction {
 
         try {
             // Extract parameters
-            String serviceId = (String) parameters.get("serviceId");
-            String itemName = (String) parameters.get("itemName");
-            String startTimeStr = (String) parameters.getOrDefault("startTime", null);
-            String endTimeStr = (String) parameters.getOrDefault("endTime", null);
+            Object serviceIdObj = parameters.get("serviceId");
+            String serviceId = serviceIdObj != null ? (String) serviceIdObj : "";
+            Object itemNameObj = parameters.get("itemName");
+            String itemName = itemNameObj != null ? (String) itemNameObj : "";
+            Object startTimeObj = parameters.get("startTime");
+            String startTimeStr = startTimeObj != null ? (String) startTimeObj : null;
+            Object endTimeObj = parameters.get("endTime");
+            String endTimeStr = endTimeObj != null ? (String) endTimeObj : null;
             String aggregationFunction = (String) parameters.getOrDefault("aggregationFunction", "none");
-            String aggregationPeriod = (String) parameters.getOrDefault("aggregationPeriod", null);
+            Object aggregationPeriodObj = parameters.get("aggregationPeriod");
+            String aggregationPeriod = aggregationPeriodObj != null ? (String) aggregationPeriodObj : null;
             int limit = parameters.containsKey("limit") ? ((Number) parameters.get("limit")).intValue() : 1000;
             int offset = parameters.containsKey("offset") ? ((Number) parameters.get("offset")).intValue() : 0;
             String orderBy = (String) parameters.getOrDefault("orderBy", "timestamp");
@@ -238,7 +244,10 @@ public class QueryPersistenceAction implements AIAction {
 
             // Execute query
             Map<String, Object> result = queryPersistenceData(serviceId, itemName, queryStartTime, queryEndTime,
-                    aggregationFunction, aggregationPeriod, limit, offset, orderBy, orderDirection, includeMetadata);
+                    aggregationFunction != null ? aggregationFunction : "none",
+                    aggregationPeriod != null ? aggregationPeriod : "", limit, offset,
+                    orderBy != null ? orderBy : "timestamp", orderDirection != null ? orderDirection : "desc",
+                    includeMetadata);
 
             long executionTime = System.currentTimeMillis() - startTime;
             return AIActionResult.success(result, executionTime);
@@ -282,23 +291,30 @@ public class QueryPersistenceAction implements AIAction {
         return itemRegistry != null && persistenceServiceRegistry != null;
     }
 
-    private Map<String, Object> queryPersistenceData(String serviceId, String itemName, ZonedDateTime startTime,
-            ZonedDateTime endTime, String aggregationFunction, String aggregationPeriod, int limit, int offset,
-            String orderBy, String orderDirection, boolean includeMetadata) {
+    private Map<String, Object> queryPersistenceData(String serviceId, String itemName,
+            @Nullable ZonedDateTime startTime, @Nullable ZonedDateTime endTime, String aggregationFunction,
+            @Nullable String aggregationPeriod, int limit, int offset, String orderBy, String orderDirection,
+            boolean includeMetadata) {
 
         logger.debug("Querying persistence data for service: {}, item: {}", serviceId, itemName);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("serviceId", serviceId);
-        result.put("itemName", itemName);
-        result.put("startTime", startTime != null ? startTime.toString() : "null");
-        result.put("endTime", endTime != null ? endTime.toString() : "null");
-        result.put("aggregationFunction", aggregationFunction);
-        result.put("aggregationPeriod", aggregationPeriod);
+        result.put("serviceId", serviceId != null ? serviceId : "");
+        result.put("itemName", itemName != null ? itemName : "");
+        String startTimeStr = startTime != null ? startTime.toString() : "";
+        result.put("startTime", startTimeStr);
+        String endTimeStr = endTime != null ? endTime.toString() : "";
+        result.put("endTime", endTimeStr);
+        String aggregationFunctionStr = aggregationFunction != null ? aggregationFunction : "";
+        result.put("aggregationFunction", aggregationFunctionStr);
+        String aggregationPeriodStr = aggregationPeriod != null ? aggregationPeriod : "";
+        result.put("aggregationPeriod", aggregationPeriodStr);
         result.put("limit", limit);
         result.put("offset", offset);
-        result.put("orderBy", orderBy);
-        result.put("orderDirection", orderDirection);
+        String orderByStr = orderBy != null ? orderBy : "";
+        result.put("orderBy", orderByStr);
+        String orderDirectionStr = orderDirection != null ? orderDirection : "";
+        result.put("orderDirection", orderDirectionStr);
 
         long queryStartTime = System.currentTimeMillis();
 
@@ -362,9 +378,9 @@ public class QueryPersistenceAction implements AIAction {
      * Based on the official openHAB Core PersistenceResource implementation
      */
     private List<Map<String, Object>> queryRealPersistenceData(QueryablePersistenceService queryableService,
-            String itemName, ZonedDateTime startTime, ZonedDateTime endTime, String aggregationFunction,
-            String aggregationPeriod, int limit, int offset, String orderBy, String orderDirection,
-            boolean includeMetadata) {
+            String itemName, @Nullable ZonedDateTime startTime, @Nullable ZonedDateTime endTime,
+            String aggregationFunction, @Nullable String aggregationPeriod, int limit, int offset, String orderBy,
+            String orderDirection, boolean includeMetadata) {
 
         List<Map<String, Object>> data = new ArrayList<>();
 
@@ -513,8 +529,12 @@ public class QueryPersistenceAction implements AIAction {
             // Calculate aggregated value based on function
             Object aggregatedValue = calculateAggregatedValue(group, function);
 
-            aggregatedRecord.put("timestamp", group.get(0).get("timestamp"));
-            aggregatedRecord.put("timestampISO", group.get(0).get("timestampISO"));
+            Object timestamp = group.get(0).get("timestamp");
+            String timestampStr = timestamp != null ? timestamp.toString() : "";
+            aggregatedRecord.put("timestamp", timestampStr);
+            Object timestampISO = group.get(0).get("timestampISO");
+            String timestampISOStr = timestampISO != null ? timestampISO.toString() : "";
+            aggregatedRecord.put("timestampISO", timestampISOStr);
             aggregatedRecord.put("state", aggregatedValue.toString());
             aggregatedRecord.put("value", aggregatedValue);
             aggregatedRecord.put("aggregationFunction", function);
@@ -563,7 +583,8 @@ public class QueryPersistenceAction implements AIAction {
 
         if (numericValues.isEmpty()) {
             // If no numeric values, return the first state
-            return group.get(0).get("state");
+            Object state = group.get(0).get("state");
+            return state != null ? state : "NULL";
         }
 
         return switch (function.toLowerCase()) {
@@ -572,9 +593,18 @@ public class QueryPersistenceAction implements AIAction {
             case "max" -> numericValues.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
             case "sum" -> numericValues.stream().mapToDouble(Double::doubleValue).sum();
             case "count" -> (double) group.size();
-            case "first" -> group.get(0).get("state");
-            case "last" -> group.get(group.size() - 1).get("state");
-            default -> group.get(0).get("state");
+            case "first" -> {
+                Object firstState = group.get(0).get("state");
+                yield firstState != null ? firstState : "";
+            }
+            case "last" -> {
+                Object lastState = group.get(group.size() - 1).get("state");
+                yield lastState != null ? lastState : "";
+            }
+            default -> {
+                Object defaultState = group.get(0).get("state");
+                yield defaultState != null ? defaultState : "";
+            }
         };
     }
 
@@ -653,13 +683,14 @@ public class QueryPersistenceAction implements AIAction {
                     aggregatedRecord.put("value", values.size());
                     break;
                 case "first":
-                    aggregatedRecord.put("value", values.get(0));
+                    aggregatedRecord.put("value", values.get(0) != null ? values.get(0) : "");
                     break;
                 case "last":
-                    aggregatedRecord.put("value", values.get(values.size() - 1));
+                    Object lastValue = values.get(values.size() - 1);
+                    aggregatedRecord.put("value", lastValue != null ? lastValue : "");
                     break;
                 default:
-                    aggregatedRecord.put("value", values.get(0));
+                    aggregatedRecord.put("value", values.get(0) != null ? values.get(0) : "");
             }
 
             aggregated.add(aggregatedRecord);

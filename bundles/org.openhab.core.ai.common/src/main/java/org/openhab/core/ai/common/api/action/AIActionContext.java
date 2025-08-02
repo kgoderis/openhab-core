@@ -23,7 +23,7 @@ public class AIActionContext {
     private final String sessionId;
 
     // Authentication and authorization
-    private final AIAuthenticationContext authContext;
+    private final @Nullable AIAuthenticationContext authContext;
 
     // Protocol-specific context
     private final Map<String, Object> protocolContext;
@@ -41,7 +41,8 @@ public class AIActionContext {
                 : new AIAuthenticationContext("default", "none", Map.of(), Set.of(), Instant.now(), null,
                         "default-session");
         this.protocolContext = builder.protocolContext;
-        this.executionStartTime = builder.executionStartTime;
+        this.executionStartTime = builder.executionStartTime != 0 ? builder.executionStartTime
+                : System.currentTimeMillis();
         this.correlationId = builder.correlationId;
         this.priority = builder.priority;
     }
@@ -59,7 +60,7 @@ public class AIActionContext {
         return sessionId;
     }
 
-    public AIAuthenticationContext getAuthContext() {
+    public @Nullable AIAuthenticationContext getAuthContext() {
         return authContext;
     }
 
