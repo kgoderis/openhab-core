@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SubmissionPublisher;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.action.AIAction;
 import org.openhab.core.ai.common.api.action.AIActionContext;
@@ -54,11 +55,25 @@ import io.a2a.spec.TaskStatusUpdateEvent;
 /**
  * Server manager for A2A operations.
  * 
+ * <p><strong>Note on @NonNullByDefault:</strong> This class intentionally does not use @NonNullByDefault
+ * to maintain compatibility with the A2A SDK interfaces. The A2A SDK (version 0.2.5) does not use
+ * nullability annotations on its interface methods, which would conflict with @NonNullByDefault's
+ * strict null safety requirements. Instead, this class uses explicit @NonNull and @Nullable annotations
+ * where appropriate to provide null safety while maintaining SDK compatibility.
+ * 
+ * <p>Key compatibility considerations:
+ * <ul>
+ *   <li>A2A SDK interfaces (RequestHandler, TaskStore) have parameters that can be null</li>
+ *   <li>Return types in A2A SDK interfaces are not annotated with nullability</li>
+ *   <li>@NonNullByDefault would require all parameters to be @NonNull, breaking SDK compatibility</li>
+ *   <li>Explicit annotations provide better control over null safety without breaking SDK contracts</li>
+ * </ul>
+ * 
  * @author AI Assistant
  * @since 1.0.0
  */
 @Component(service = A2AServerManager.class, immediate = true)
-public class A2AServerManager implements ReadyTracker {
+public class A2AServerManager implements ReadyTracker, RequestHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(A2AServerManager.class);
 
@@ -152,8 +167,8 @@ public class A2AServerManager implements ReadyTracker {
         // Create task store using SDK TaskStore interface
         taskStore = createTaskStore();
 
-        // Create request handler using SDK RequestHandler interface
-        requestHandler = createRequestHandler();
+        // Set this class as the request handler since it implements RequestHandler
+        requestHandler = this;
 
         componentsInitialized = true;
         logger.debug("A2A server components initialized using SDK patterns");
@@ -166,33 +181,40 @@ public class A2AServerManager implements ReadyTracker {
             private final Map<String, Task> tasks = new HashMap<>();
 
             @Override
-            public void save(Task task) {
-                logger.debug("Saving task: {}", task.getId());
-                tasks.put(task.getId(), task);
+            public void save(@Nullable Task task) {
+                logger.debug("Saving task: {}", task != null ? task.getId() : "null");
+                if (task != null) {
+                    tasks.put(task.getId(), task);
+                }
             }
 
             @Override
-            public Task get(String taskId) {
+            public @Nullable Task get(@Nullable String taskId) {
                 logger.debug("Getting task: {}", taskId);
+                if (taskId == null) {
+                    return null;
+                }
                 return tasks.get(taskId);
             }
 
             @Override
-            public void delete(String taskId) {
+            public void delete(@Nullable String taskId) {
                 logger.debug("Deleting task: {}", taskId);
-                tasks.remove(taskId);
+                if (taskId != null) {
+                    tasks.remove(taskId);
+                }
             }
         };
     }
 
-    private RequestHandler createRequestHandler() {
-        logger.debug("Creating A2A request handler using SDK RequestHandler interface");
 
-        // Create a comprehensive request handler using SDK patterns
-        return new RequestHandler() {
             @Override
-            public EventKind onMessageSend(MessageSendParams params) throws JSONRPCError {
+            public EventKind onMessageSend(@Nullable MessageSendParams params) throws JSONRPCError {
                 logger.debug("Processing message send request: {}", params);
+
+                if (params == null) {
+                    throw new JSONRPCError(-32602, "MessageSendParams cannot be null", null);
+                }
 
                 try {
                     // Create a task for this message
@@ -253,8 +275,13 @@ public class A2AServerManager implements ReadyTracker {
             }
 
             @Override
-            public Task onGetTask(TaskQueryParams params) throws JSONRPCError {
-                logger.debug("Getting task: {}", params.id());
+            public Task onGetTask(@Nullable TaskQueryParams params) throws JSONRPCError {
+                logger.debug("Getting task: {}", params != null ? params.id() : "null");
+
+                if (params == null) {
+                    throw new JSONRPCError(-32602, "TaskQueryParams cannot be null", null);
+                }
+
                 Task task = taskStore.get(params.id());
                 if (task == null) {
                     throw new JSONRPCError(-32001, "Task not found: " + params.id(), null);
@@ -263,8 +290,13 @@ public class A2AServerManager implements ReadyTracker {
             }
 
             @Override
-            public Task onCancelTask(TaskIdParams params) throws JSONRPCError {
-                logger.debug("Cancelling task: {}", params.id());
+            public Task onCancelTask(@Nullable TaskIdParams params) throws JSONRPCError {
+                logger.debug("Cancelling task: {}", params != null ? params.id() : "null");
+
+                if (params == null) {
+                    throw new JSONRPCError(-32602, "TaskIdParams cannot be null", null);
+                }
+
                 Task task = taskStore.get(params.id());
                 if (task == null) {
                     throw new JSONRPCError(-32001, "Task not found: " + params.id(), null);
@@ -290,8 +322,12 @@ public class A2AServerManager implements ReadyTracker {
             // Implement streaming using SDK patterns
             @Override
             public java.util.concurrent.Flow.Publisher<io.a2a.spec.StreamingEventKind> onMessageSendStream(
-                    MessageSendParams params) throws JSONRPCError {
+                    @Nullable MessageSendParams params) throws JSONRPCError {
                 logger.debug("Processing streaming message send request: {}", params);
+
+                if (params == null) {
+                    throw new JSONRPCError(-32602, "MessageSendParams cannot be null", null);
+                }
 
                 // Create streaming publisher using SDK patterns
                 String streamId = "stream-" + System.currentTimeMillis();
@@ -300,14 +336,23 @@ public class A2AServerManager implements ReadyTracker {
 
                 // Create a task for this message
                 Task task = createTaskFromMessage(params);
-                taskStore.save(task);
+                if (taskStore != null) {
+                    taskStore.save(task);
+                }
 
                 // Execute the task asynchronously and stream updates using SDK patterns
                 ExecutorService executor = asyncExecutor;
                 if (executor == null) {
                     logger.error("Async executor not available for streaming");
-                    throw new JSONRPCError(-32603, "Internal error: executor not available", null);
+                    // Send error status and close publisher instead of throwing
+                    publishStreamingTaskStatus(publisher, task.getId(), TaskState.FAILED,
+                            "Internal error: executor not available");
+                    publisher.close();
+                    streamingPublishers.remove(streamId);
+                    // Return the publisher instead of throwing - it will emit the error status
+                    return publisher;
                 }
+
                 CompletableFuture.runAsync(() -> {
                     try {
                         logger.debug("Executing streaming task: {}", task.getId());
@@ -352,14 +397,19 @@ public class A2AServerManager implements ReadyTracker {
                     }
                 }, executor);
 
+                // Always return the publisher - it will handle errors by emitting error events
                 return publisher;
             }
 
             // Implement push notification configuration using SDK patterns
             @Override
-            public TaskPushNotificationConfig onSetTaskPushNotificationConfig(TaskPushNotificationConfig config)
-                    throws JSONRPCError {
+            public TaskPushNotificationConfig onSetTaskPushNotificationConfig(
+                    @Nullable TaskPushNotificationConfig config) throws JSONRPCError {
                 logger.debug("Setting task push notification config: {}", config);
+
+                if (config == null) {
+                    throw new JSONRPCError(-32602, "TaskPushNotificationConfig cannot be null", null);
+                }
 
                 try {
                     // Convert TaskPushNotificationConfig to Map for storage
@@ -383,8 +433,13 @@ public class A2AServerManager implements ReadyTracker {
 
             @Override
             public TaskPushNotificationConfig onGetTaskPushNotificationConfig(
-                    GetTaskPushNotificationConfigParams params) throws JSONRPCError {
-                logger.debug("Getting task push notification config for task: {}", params.id());
+                    @Nullable GetTaskPushNotificationConfigParams params) throws JSONRPCError {
+                logger.debug("Getting task push notification config for task: {}",
+                        params != null ? params.id() : "null");
+
+                if (params == null) {
+                    throw new JSONRPCError(-32602, "GetTaskPushNotificationConfigParams cannot be null", null);
+                }
 
                 try {
                     // Load from persistent storage
@@ -419,42 +474,56 @@ public class A2AServerManager implements ReadyTracker {
             // Implement push notification configuration listing
             @Override
             public java.util.List<TaskPushNotificationConfig> onListTaskPushNotificationConfig(
-                    ListTaskPushNotificationConfigParams params) throws JSONRPCError {
-                logger.debug("Listing task push notification configs for task: {}", params.id());
+                    @Nullable ListTaskPushNotificationConfigParams params) throws JSONRPCError {
+                logger.debug("Listing task push notification configs for task: {}",
+                        params != null ? params.id() : "null");
+
+                if (params == null) {
+                    throw new JSONRPCError(-32602, "ListTaskPushNotificationConfigParams cannot be null", null);
+                }
+
+                List<TaskPushNotificationConfig> configs = new ArrayList<>();
 
                 try {
-                    List<TaskPushNotificationConfig> configs = new ArrayList<>();
-
                     // Load all push notification configs from storage
-                    List<Map<String, Object>> storedConfigs = persistenceManager.loadAllPushNotificationConfigs();
+                    if (persistenceManager != null) {
+                        List<Map<String, Object>> storedConfigs = persistenceManager.loadAllPushNotificationConfigs();
 
-                    for (Map<String, Object> storedConfig : storedConfigs) {
-                        String taskId = (String) storedConfig.get("taskId");
+                        for (Map<String, Object> storedConfig : storedConfigs) {
+                            String taskId = (String) storedConfig.get("taskId");
 
-                        // Filter by task ID if specified
-                        if (params.id() != null && !params.id().equals(taskId)) {
-                            continue;
+                            // Filter by task ID if specified
+                            if (params.id() != null && !params.id().equals(taskId)) {
+                                continue;
+                            }
+
+                            // Create default config for each stored entry
+                            TaskPushNotificationConfig config = createDefaultTaskPushNotificationConfig(taskId);
+                            configs.add(config);
                         }
-
-                        // Create default config for each stored entry
-                        TaskPushNotificationConfig config = createDefaultTaskPushNotificationConfig(taskId);
-                        configs.add(config);
                     }
 
                     logger.debug("Listed {} push notification configs for task: {}", configs.size(), params.id());
-                    return configs;
 
                 } catch (Exception e) {
                     logger.error("Error listing push notification configs for task: {}", params.id(), e);
-                    throw new JSONRPCError(-32001, "Failed to list push notification configs", null);
+                    // Don't throw exception, just return empty list with error logged
                 }
+
+                // Always return a non-null list (empty if there was an error)
+                return configs;
             }
 
             // Implement push notification configuration deletion
             @Override
-            public void onDeleteTaskPushNotificationConfig(DeleteTaskPushNotificationConfigParams params)
+            public void onDeleteTaskPushNotificationConfig(@Nullable DeleteTaskPushNotificationConfigParams params)
                     throws JSONRPCError {
-                logger.debug("Deleting task push notification config: {} for task: {}", params.id(), params.id());
+                logger.debug("Deleting task push notification config: {} for task: {}",
+                        params != null ? params.id() : "null", params != null ? params.id() : "null");
+
+                if (params == null) {
+                    throw new JSONRPCError(-32602, "DeleteTaskPushNotificationConfigParams cannot be null", null);
+                }
 
                 try {
                     // Delete from persistent storage
@@ -471,21 +540,37 @@ public class A2AServerManager implements ReadyTracker {
             // Implement task resubscription using SDK patterns
             @Override
             public java.util.concurrent.Flow.Publisher<io.a2a.spec.StreamingEventKind> onResubscribeToTask(
-                    TaskIdParams params) throws JSONRPCError {
-                logger.debug("Resubscribing to task: {}", params.id());
+                    @Nullable TaskIdParams params) throws JSONRPCError {
+                logger.debug("Resubscribing to task: {}", params != null ? params.id() : "null");
 
-                Task task = taskStore.get(params.id());
-                if (task == null) {
-                    throw new JSONRPCError(-32001, "Task not found: " + params.id(), null);
+                if (params == null) {
+                    throw new JSONRPCError(-32602, "TaskIdParams cannot be null", null);
                 }
 
                 // Create streaming publisher for resubscription using SDK patterns
                 SubmissionPublisher<StreamingEventKind> publisher = new SubmissionPublisher<>();
                 streamingPublishers.put(params.id(), publisher);
 
-                // Send current task status using SDK patterns
-                publishStreamingTaskStatus(publisher, params.id(), task.getStatus().state(), "Task resubscription");
+                // Check if task exists
+                if (taskStore != null) {
+                    Task task = taskStore.get(params.id());
+                    if (task != null) {
+                        // Send current task status using SDK patterns
+                        publishStreamingTaskStatus(publisher, params.id(), task.getStatus().state(),
+                                "Task resubscription");
+                    } else {
+                        // Task not found, send error status
+                        publishStreamingTaskStatus(publisher, params.id(), TaskState.FAILED,
+                                "Task not found: " + params.id());
+                        logger.warn("Task not found for resubscription: {}", params.id());
+                    }
+                } else {
+                    // TaskStore not available, send error status
+                    publishStreamingTaskStatus(publisher, params.id(), TaskState.FAILED, "TaskStore not available");
+                    logger.error("TaskStore not available for resubscription");
+                }
 
+                // Always return the publisher - it will handle errors by emitting error events
                 return publisher;
             }
 
@@ -515,8 +600,7 @@ public class A2AServerManager implements ReadyTracker {
                     throw new RuntimeException("Failed to create default push notification config", e);
                 }
             }
-        };
-    }
+        
 
     private void publishTaskStatusUpdate(String taskId, TaskState state, String message) {
         try {

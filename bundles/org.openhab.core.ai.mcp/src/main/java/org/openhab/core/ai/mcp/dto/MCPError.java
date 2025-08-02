@@ -86,7 +86,9 @@ public class MCPError {
     @SuppressWarnings("unchecked")
     public <T> Optional<T> getData(Class<T> type) {
         if (data != null && type.isInstance(data)) {
-            return Optional.of((T) data);
+            @SuppressWarnings("null")
+            T typedData = (T) data;
+            return Optional.of(typedData);
         }
         return Optional.empty();
     }

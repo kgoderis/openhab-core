@@ -6,6 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.auth.AIAuditLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,12 +20,12 @@ import org.slf4j.LoggerFactory;
  * 
  * 
  */
+@NonNullByDefault
 public class MCPErrorRecoveryManager {
 
     private static final Logger logger = LoggerFactory.getLogger(MCPErrorRecoveryManager.class);
 
     private final AIAuditLogger auditLogger;
-    private final MCPServerConfiguration config;
 
     // Error tracking
     private final Map<String, AtomicInteger> errorCounters = new ConcurrentHashMap<>();
@@ -42,9 +44,8 @@ public class MCPErrorRecoveryManager {
     // Circuit breaker state
     private final Map<String, CircuitBreakerState> circuitBreakers = new ConcurrentHashMap<>();
 
-    public MCPErrorRecoveryManager(AIAuditLogger auditLogger, MCPServerConfiguration config) {
+    public MCPErrorRecoveryManager(AIAuditLogger auditLogger) {
         this.auditLogger = auditLogger;
-        this.config = config;
         logger.info("MCP Error Recovery Manager initialized");
     }
 
@@ -73,7 +74,7 @@ public class MCPErrorRecoveryManager {
 
         // Check circuit breaker
         CircuitBreakerState circuitBreaker = getCircuitBreaker(errorType);
-        if (circuitBreaker.isOpen()) {
+        if (circuitBreaker != null && circuitBreaker.isOpen()) {
             logger.warn("Circuit breaker is open for error type: {}", errorType);
             return RecoveryAction.FALLBACK;
         }
@@ -178,8 +179,10 @@ public class MCPErrorRecoveryManager {
             String lastErrorMessage = lastErrorMessages.get(errorType);
             CircuitBreakerState circuitBreaker = circuitBreakers.get(errorType);
 
-            details.put(errorType, new ErrorInfo(counter.get(), lastErrorTime, lastErrorMessage,
-                    circuitBreaker != null ? circuitBreaker.getState() : CircuitBreakerState.State.CLOSED));
+            if (counter != null) {
+                details.put(errorType, new ErrorInfo(counter.get(), lastErrorTime, lastErrorMessage,
+                        circuitBreaker != null ? circuitBreaker.getState() : CircuitBreakerState.State.CLOSED));
+            }
         }
 
         return details;
@@ -247,7 +250,7 @@ public class MCPErrorRecoveryManager {
      * @param errorType Error type
      * @return Circuit breaker state
      */
-    private CircuitBreakerState getCircuitBreaker(String errorType) {
+    private @Nullable CircuitBreakerState getCircuitBreaker(String errorType) {
         return circuitBreakers.computeIfAbsent(errorType, k -> new CircuitBreakerState());
     }
 
@@ -259,7 +262,7 @@ public class MCPErrorRecoveryManager {
      */
     private void updateCircuitBreaker(String errorType, boolean shouldOpen) {
         CircuitBreakerState circuitBreaker = getCircuitBreaker(errorType);
-        if (shouldOpen) {
+        if (shouldOpen && circuitBreaker != null) {
             circuitBreaker.recordFailure();
         }
     }

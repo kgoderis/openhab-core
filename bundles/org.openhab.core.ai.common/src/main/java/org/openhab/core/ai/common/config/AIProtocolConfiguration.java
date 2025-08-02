@@ -37,7 +37,7 @@ public class AIProtocolConfiguration {
      * @param timeoutSeconds Request timeout in seconds
      * @param retryAttempts Number of retry attempts for failed requests
      */
-    public AIProtocolConfiguration(String protocolName, boolean enabled, String endpoint,
+    public AIProtocolConfiguration(String protocolName, boolean enabled, @Nullable String endpoint,
             Map<String, String> authenticationConfig, Map<String, Object> protocolSpecificConfig, int timeoutSeconds,
             int retryAttempts) {
         this.protocolName = Objects.requireNonNull(protocolName, "Protocol name cannot be null");

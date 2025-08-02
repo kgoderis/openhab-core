@@ -60,19 +60,15 @@ public class HealthMetricsEndpoint {
     }
 
     public void stop() {
-        if (httpServer != null) {
-            httpServer.stop(0);
-        }
-        if (executor != null) {
-            executor.shutdown();
-            try {
-                if (!executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
-                    executor.shutdownNow();
-                }
-            } catch (InterruptedException e) {
+        httpServer.stop(0);
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
                 executor.shutdownNow();
-                Thread.currentThread().interrupt();
             }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
         logger.info("Health/Metrics endpoint stopped");
     }
@@ -156,11 +152,16 @@ public class HealthMetricsEndpoint {
                 response.append("}");
 
                 byte[] responseBytes = response.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                var headers = exchange.getResponseHeaders();
+                if (headers != null) {
+                    headers.add("Content-Type", "application/json");
+                }
                 exchange.sendResponseHeaders(healthy ? 200 : 503, responseBytes.length);
 
                 try (java.io.OutputStream os = exchange.getResponseBody()) {
-                    os.write(responseBytes);
+                    if (os != null) {
+                        os.write(responseBytes);
+                    }
                 }
 
             } catch (Exception e) {
@@ -168,10 +169,15 @@ public class HealthMetricsEndpoint {
                 logger.error("Error handling health check request", e);
                 String errorResponse = "{\"error\": \"Internal server error\"}";
                 byte[] responseBytes = errorResponse.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                var headers = exchange.getResponseHeaders();
+                if (headers != null) {
+                    headers.add("Content-Type", "application/json");
+                }
                 exchange.sendResponseHeaders(500, responseBytes.length);
                 try (java.io.OutputStream os = exchange.getResponseBody()) {
-                    os.write(responseBytes);
+                    if (os != null) {
+                        os.write(responseBytes);
+                    }
                 }
             }
         }
@@ -252,11 +258,16 @@ public class HealthMetricsEndpoint {
                 }
 
                 byte[] responseBytes = response.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                exchange.getResponseHeaders().add("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
+                var headers = exchange.getResponseHeaders();
+                if (headers != null) {
+                    headers.add("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
+                }
                 exchange.sendResponseHeaders(200, responseBytes.length);
 
                 try (java.io.OutputStream os = exchange.getResponseBody()) {
-                    os.write(responseBytes);
+                    if (os != null) {
+                        os.write(responseBytes);
+                    }
                 }
 
             } catch (Exception e) {
@@ -277,8 +288,8 @@ public class HealthMetricsEndpoint {
         java.util.Map<String, Object> status = new java.util.HashMap<>();
 
         // Basic health checks
-        status.put("serverRunning", serverInstance != null && serverInstance.isRunning());
-        status.put("transportHealthy", serverInstance != null && serverInstance.isHealthy());
+        status.put("serverRunning", serverInstance.isRunning());
+        status.put("transportHealthy", serverInstance.isHealthy());
         status.put("uptime", System.currentTimeMillis() - startTime);
 
         // Performance metrics

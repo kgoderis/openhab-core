@@ -1,0 +1,30 @@
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+0    INFO  XtextGenerator     - Initializing Xtext generator
+279  INFO  XtextGenerator     - Generating org.openhab.core.model.sitemap.Sitemap
+371  INFO  EMFGeneratorFragment2 - Generating EMF model code
+4000 INFO  XtextGenerator     - Generating common infrastructure
+4005 INFO  Workflow           - Done.
+[ERROR] Failed to execute goal com.diffplug.spotless:spotless-maven-plugin:2.44.3:check (codestyle_check) on project org.openhab.core.ai.mcp: The following files had format violations:
+[ERROR]     src/main/java/org/openhab/core/ai/mcp/internal/MCPSecurityManager.java
+[ERROR]         @@ -48,8 +48,6 @@
+[ERROR]          ····private·final·Map<String,·Integer>·failedAttempts·=·new·ConcurrentHashMap<>();
+[ERROR]          ····private·final·Map<String,·Long>·blockedUntil·=·new·ConcurrentHashMap<>();
+[ERROR]          
+[ERROR]         -
+[ERROR]         -
+[ERROR]          ····/**
+[ERROR]          ·····*·Create·a·new·MCP·security·manager.
+[ERROR]          ·····*·
+[ERROR] Run 'mvn spotless:apply' to fix these violations.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :org.openhab.core.ai.mcp

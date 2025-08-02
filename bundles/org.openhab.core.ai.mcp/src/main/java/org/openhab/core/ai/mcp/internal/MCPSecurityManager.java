@@ -344,12 +344,14 @@ public class MCPSecurityManager {
         }
 
         // Check if within rate limit
-        if (counter.get() >= config.getRateLimitPerMinute()) {
+        if (counter != null && counter.get() >= config.getRateLimitPerMinute()) {
             return false;
         }
 
         // Increment counter
-        counter.incrementAndGet();
+        if (counter != null) {
+            counter.incrementAndGet();
+        }
         lastRequestTimes.put(clientId, currentTime);
 
         return true;

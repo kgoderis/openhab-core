@@ -34,7 +34,7 @@ class MCPErrorRecoveryManagerTest {
     @BeforeEach
     void setUp() {
         config = MCPServerConfiguration.builder().serverId("test-server").serverName("Test Server").build();
-        errorRecoveryManager = new MCPErrorRecoveryManager(auditLogger, config);
+        errorRecoveryManager = new MCPErrorRecoveryManager(auditLogger);
     }
 
     @Test
@@ -386,8 +386,8 @@ class MCPErrorRecoveryManagerTest {
     @Test
     void testEquality() {
         // Test equality
-        MCPErrorRecoveryManager manager1 = new MCPErrorRecoveryManager(auditLogger, config);
-        MCPErrorRecoveryManager manager2 = new MCPErrorRecoveryManager(auditLogger, config);
+        MCPErrorRecoveryManager manager1 = new MCPErrorRecoveryManager(auditLogger);
+        MCPErrorRecoveryManager manager2 = new MCPErrorRecoveryManager(auditLogger);
 
         // These should be different instances
         assertNotEquals(manager1, manager2);

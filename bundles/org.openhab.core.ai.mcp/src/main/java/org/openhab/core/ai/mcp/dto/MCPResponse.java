@@ -90,7 +90,9 @@ public class MCPResponse {
     @SuppressWarnings("unchecked")
     public <T> Optional<T> getResult(Class<T> type) {
         if (result != null && type.isInstance(result)) {
-            return Optional.of((T) result);
+            @SuppressWarnings("null")
+            T typedResult = (T) result;
+            return Optional.of(typedResult);
         }
         return Optional.empty();
     }
