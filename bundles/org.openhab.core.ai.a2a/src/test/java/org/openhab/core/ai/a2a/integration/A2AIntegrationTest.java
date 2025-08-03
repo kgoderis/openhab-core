@@ -13,9 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.a2a.internal.A2AAgentExecutor;
+import org.openhab.core.ai.a2a.internal.A2AProtocolHandler;
 import org.openhab.core.ai.a2a.internal.A2ARestEndpoint;
 import org.openhab.core.ai.a2a.internal.A2ASecurityManager;
-import org.openhab.core.ai.a2a.internal.A2AServerManager;
 import org.openhab.core.ai.a2a.internal.A2ASkillRegistry;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,7 +35,7 @@ class A2AIntegrationTest {
     private A2ATestClient testClient;
 
     @Mock
-    private A2AServerManager serverManager;
+    private A2AProtocolHandler protocolHandler;
 
     @Mock
     private A2ASkillRegistry skillRegistry;
@@ -54,8 +54,8 @@ class A2AIntegrationTest {
         objectMapper = new ObjectMapper();
         testClient = new A2ATestClient();
 
-        // Mock server manager behavior
-        when(serverManager.isRunning()).thenReturn(true);
+        // Mock protocol handler behavior
+        when(protocolHandler.isRunning()).thenReturn(true);
 
         // Initialize test client
         testClient.initialize();
@@ -301,11 +301,11 @@ class A2AIntegrationTest {
      */
     @Test
     void testServerLifecycle() throws Exception {
-        // Test server status
-        assertTrue(serverManager.isRunning(), "Server should be running");
+        // Test protocol handler status
+        assertTrue(protocolHandler.isRunning(), "Protocol handler should be running");
 
-        // Test server instance management
-        assertNotNull(serverManager, "Server manager should be available");
+        // Test protocol handler instance management
+        assertNotNull(protocolHandler, "Protocol handler should be available");
 
         // Test skill registry integration
         assertNotNull(skillRegistry, "Skill registry should be available");

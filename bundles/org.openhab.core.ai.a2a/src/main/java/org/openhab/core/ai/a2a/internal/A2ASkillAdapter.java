@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.a2a.api.skill.A2ASkillException;
 import org.openhab.core.ai.a2a.api.skill.A2ASkillResult;
 import org.openhab.core.ai.common.action.AIActionContext;
@@ -163,14 +164,14 @@ public class A2ASkillAdapter {
      * @param data the AIActionResult data
      * @return the converted map
      */
-    private Map<String, Object> convertToMap(Object data) {
+    private Map<String, Object> convertToMap(@Nullable Object data) {
         if (data instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> dataMap = (Map<String, Object>) data;
             return dataMap;
         } else {
             Map<String, Object> resultMap = new HashMap<>();
-            resultMap.put("result", data);
+            resultMap.put("result", data != null ? data : "null");
             return resultMap;
         }
     }

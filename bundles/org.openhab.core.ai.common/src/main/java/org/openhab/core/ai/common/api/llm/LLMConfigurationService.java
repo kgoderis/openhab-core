@@ -2,10 +2,10 @@ package org.openhab.core.ai.common.api.llm;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.llm.LMStudioConfiguration;
 import org.openhab.core.ai.common.llm.configuration.AnthropicConfiguration;
 import org.openhab.core.ai.common.llm.configuration.AzureOpenAIConfiguration;
 import org.openhab.core.ai.common.llm.configuration.GoogleGenAIConfiguration;
+import org.openhab.core.ai.common.llm.configuration.LMStudioConfiguration;
 import org.openhab.core.ai.common.llm.configuration.LocalAIConfiguration;
 import org.openhab.core.ai.common.llm.configuration.OllamaConfiguration;
 import org.openhab.core.ai.common.llm.configuration.OpenAIConfiguration;

@@ -59,6 +59,35 @@
       <version>2.15.2</version>
     </dependency>
 
+    <!-- LLM Provider SDKs -->
+    <!-- OpenAI Java SDK -->
+    <dependency>
+      <groupId>com.openai</groupId>
+      <artifactId>openai-java</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+
+    <!-- Anthropic Java SDK -->
+    <dependency>
+      <groupId>com.anthropic</groupId>
+      <artifactId>anthropic-java</artifactId>
+      <version>2.0.0</version>
+    </dependency>
+
+    <!-- Google GenAI Java SDK -->
+    <dependency>
+      <groupId>com.google.genai</groupId>
+      <artifactId>google-genai</artifactId>
+      <version>1.7.0</version>
+    </dependency>
+
+    <!-- Azure OpenAI SDK -->
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-ai-openai</artifactId>
+      <version>1.0.0-beta.8</version>
+    </dependency>
+
     <!-- Test Dependencies -->
     <!-- JUnit 5 for unit testing -->
     <dependency>

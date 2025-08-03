@@ -6,12 +6,12 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.api.llm.LLMClient;
+import org.openhab.core.ai.common.api.llm.LLMHealthStatus;
+import org.openhab.core.ai.common.api.llm.LLMParameters;
+import org.openhab.core.ai.common.api.llm.LLMProviderInfo;
 import org.openhab.core.ai.common.api.llm.LLMProviderType;
-import org.openhab.core.ai.common.llm.LLMHealthStatus;
-import org.openhab.core.ai.common.llm.LLMParameters;
-import org.openhab.core.ai.common.llm.LLMProviderInfo;
-import org.openhab.core.ai.common.llm.LLMRateLimitInfo;
-import org.openhab.core.ai.common.llm.LLMResponse;
+import org.openhab.core.ai.common.api.llm.LLMRateLimitInfo;
+import org.openhab.core.ai.common.api.llm.LLMResponse;
 
 /**
  * Stub implementation of LLMClient for testing and development.

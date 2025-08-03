@@ -17,7 +17,7 @@ public class A2ABundleActivator implements BundleActivator {
 
     private final Logger logger = LoggerFactory.getLogger(A2ABundleActivator.class);
 
-    private @Nullable A2AServerManager serverManager;
+    private @Nullable A2AProtocolHandler protocolHandler;
     private @Nullable ServiceReference<AIActionRegistry> actionRegistryRef;
 
     @Override
@@ -25,13 +25,13 @@ public class A2ABundleActivator implements BundleActivator {
         try {
             logger.info("Starting A2A bundle...");
 
-            // Initialize server manager
-            serverManager = new A2AServerManager();
-            if (serverManager != null) {
-                serverManager.activate();
+            // Initialize protocol handler
+            protocolHandler = new A2AProtocolHandler();
+            if (protocolHandler != null) {
+                protocolHandler.start();
             }
 
-            // Note: A2AServerManager is already registered as an OSGi service via @Component annotation
+            // Note: A2AProtocolHandler is already registered as an OSGi service via @Component annotation
             // No need to manually register it here
 
             logger.info("A2A bundle started successfully");
@@ -47,11 +47,11 @@ public class A2ABundleActivator implements BundleActivator {
         try {
             logger.info("Stopping A2A bundle...");
 
-            // Clean up server manager
-            A2AServerManager manager = serverManager;
-            if (manager != null) {
-                manager.deactivate();
-                serverManager = null;
+            // Clean up protocol handler
+            A2AProtocolHandler handler = protocolHandler;
+            if (handler != null) {
+                handler.stop();
+                protocolHandler = null;
             }
 
             // Unregister services
@@ -67,5 +67,14 @@ public class A2ABundleActivator implements BundleActivator {
             logger.error("Error stopping A2A bundle", e);
             throw e;
         }
+    }
+
+    /**
+     * Get the protocol handler instance.
+     * 
+     * @return the protocol handler instance
+     */
+    public @Nullable A2AProtocolHandler getProtocolHandler() {
+        return protocolHandler;
     }
 }

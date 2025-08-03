@@ -1,7 +1,6 @@
-package org.openhab.core.ai.common.llm;
+package org.openhab.core.ai.common.llm.configuration;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.llm.configuration.BaseLLMConfiguration;
 
 /**
  * Configuration for LM Studio provider.

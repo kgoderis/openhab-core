@@ -49,13 +49,13 @@ public class A2ARestEndpoint {
     @Reference
     private @Nullable ReadyService readyService;
 
-    private @Nullable A2AServerManager serverManager;
+    private @Nullable A2AProtocolHandler protocolHandler;
 
     /**
      * Initialize the server manager.
      */
     public void initialize() {
-        if (serverManager != null) {
+        if (protocolHandler != null) {
             return; // Already initialized
         }
 
@@ -65,26 +65,26 @@ public class A2ARestEndpoint {
             throw new RuntimeException("ReadyService not available");
         }
 
-        if (!readyService.isReady(A2AServerManager.A2A_SERVER_READY)) {
+        if (!readyService.isReady(A2AProtocolHandler.A2A_SERVER_READY)) {
             logger.warn("A2A Server not ready - waiting for core services");
             throw new RuntimeException("A2A Server not ready - please wait for core services to initialize");
         }
 
-        // Get the server manager service
+        // Get the protocol handler service
         try {
             if (bundleContext == null) {
                 logger.error("BundleContext not available");
                 throw new RuntimeException("BundleContext not available");
             }
 
-            serverManager = bundleContext.getService(bundleContext.getServiceReference(A2AServerManager.class));
-            if (serverManager == null) {
-                throw new RuntimeException("A2A Server Manager service not available");
+            protocolHandler = bundleContext.getService(bundleContext.getServiceReference(A2AProtocolHandler.class));
+            if (protocolHandler == null) {
+                throw new RuntimeException("A2A Protocol Handler service not available");
             }
-            logger.debug("A2A Server Manager initialized successfully");
+            logger.debug("A2A Protocol Handler initialized successfully");
         } catch (Exception e) {
-            logger.error("Failed to initialize A2A Server Manager", e);
-            throw new RuntimeException("Failed to initialize A2A Server Manager: " + e.getMessage(), e);
+            logger.error("Failed to initialize A2A Protocol Handler", e);
+            throw new RuntimeException("Failed to initialize A2A Protocol Handler: " + e.getMessage(), e);
         }
     }
 
@@ -101,7 +101,7 @@ public class A2ARestEndpoint {
 
         try {
             initialize();
-            return serverManager.getAgentCard();
+            return protocolHandler.getAgentCard();
         } catch (Exception e) {
             logger.error("Error getting agent card", e);
             throw new RuntimeException("Failed to get agent card: " + e.getMessage(), e);
@@ -128,7 +128,7 @@ public class A2ARestEndpoint {
             MessageSendParams params = request.getParams();
 
             // Process via request handler
-            io.a2a.spec.EventKind response = serverManager.getRequestHandler().onMessageSend(params);
+            io.a2a.spec.EventKind response = protocolHandler.onMessageSend(params);
 
             // Create response
             return Map.of("taskId", "task-id-" + System.currentTimeMillis(), "status", "accepted", "response",
@@ -159,7 +159,7 @@ public class A2ARestEndpoint {
             initialize();
 
             TaskQueryParams params = new TaskQueryParams(taskId);
-            Task task = serverManager.getRequestHandler().onGetTask(params);
+            Task task = protocolHandler.onGetTask(params);
 
             if (task != null) {
                 return task;
@@ -194,7 +194,7 @@ public class A2ARestEndpoint {
             initialize();
 
             TaskIdParams params = new TaskIdParams(taskId);
-            Task task = serverManager.getRequestHandler().onCancelTask(params);
+            Task task = protocolHandler.onCancelTask(params);
 
             return Map.of("success", true, "taskId", taskId, "status", "cancelled");
 

@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.a2a.internal.A2ABundleActivator;
-import org.openhab.core.ai.a2a.internal.A2AServerManager;
+import org.openhab.core.ai.a2a.internal.A2AProtocolHandler;
 import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
@@ -46,8 +46,8 @@ class A2ABundleActivatorTest {
         verify(mockBundleContext, times(1)).getServiceReference(AIActionRegistry.class);
         verify(mockBundleContext, times(1)).getService(mockServiceReference);
 
-        // Verify server manager is accessible
-        assertNotNull(bundleActivator.getServerManager());
+        // Verify protocol handler is accessible
+        assertNotNull(bundleActivator.getProtocolHandler());
     }
 
     @Test
@@ -147,9 +147,9 @@ class A2ABundleActivatorTest {
     }
 
     @Test
-    void testGetServerManager() {
-        // Test that server manager is accessible
-        assertNotNull(bundleActivator.getServerManager());
+    void testGetProtocolHandler() {
+        // Test that protocol handler is accessible
+        assertNotNull(bundleActivator.getProtocolHandler());
     }
 
     @Test
@@ -205,8 +205,8 @@ class A2ABundleActivatorTest {
         verify(mockBundleContext, times(1)).getServiceReference(AIActionRegistry.class);
         verify(mockBundleContext, times(1)).getService(mockServiceReference);
 
-        // Should still be able to get server manager
-        assertNotNull(bundleActivator.getServerManager());
+        // Should still be able to get protocol handler
+        assertNotNull(bundleActivator.getProtocolHandler());
     }
 
     @Test
@@ -239,19 +239,19 @@ class A2ABundleActivatorTest {
         bundleActivator.start(mockBundleContext);
 
         // Get server manager multiple times
-        A2AServerManager serverManager1 = bundleActivator.getServerManager();
-        A2AServerManager serverManager2 = bundleActivator.getServerManager();
+        A2AProtocolHandler protocolHandler1 = bundleActivator.getProtocolHandler();
+        A2AProtocolHandler protocolHandler2 = bundleActivator.getProtocolHandler();
 
         // Verify consistency
-        assertNotNull(serverManager1);
-        assertNotNull(serverManager2);
-        assertSame(serverManager1, serverManager2);
+        assertNotNull(protocolHandler1);
+        assertNotNull(protocolHandler2);
+        assertSame(protocolHandler1, protocolHandler2);
 
         // Stop bundle
         bundleActivator.stop(mockBundleContext);
 
-        // Server manager should still be accessible after stop
-        A2AServerManager serverManager3 = bundleActivator.getServerManager();
-        assertNotNull(serverManager3);
+        // Protocol handler should still be accessible after stop
+        A2AProtocolHandler protocolHandler3 = bundleActivator.getProtocolHandler();
+        assertNotNull(protocolHandler3);
     }
 }

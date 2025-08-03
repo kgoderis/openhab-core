@@ -13,9 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.a2a.internal.A2AAgentExecutor;
+import org.openhab.core.ai.a2a.internal.A2AProtocolHandler;
 import org.openhab.core.ai.a2a.internal.A2ARestEndpoint;
 import org.openhab.core.ai.a2a.internal.A2ASecurityManager;
-import org.openhab.core.ai.a2a.internal.A2AServerManager;
 import org.openhab.core.ai.a2a.internal.A2ASkillRegistry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +34,7 @@ class A2AClientIntegrationTest {
     private A2ATestClient testClient;
 
     @Mock
-    private A2AServerManager serverManager;
+    private A2AProtocolHandler protocolHandler;
 
     @Mock
     private A2ASkillRegistry skillRegistry;

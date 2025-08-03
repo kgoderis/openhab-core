@@ -1,7 +1,15 @@
 package org.openhab.core.ai.common.llm;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -10,13 +18,17 @@ import org.openhab.core.ai.common.llm.configuration.AnthropicConfiguration;
 import org.openhab.core.ai.common.llm.configuration.AzureOpenAIConfiguration;
 import org.openhab.core.ai.common.llm.configuration.BaseLLMConfiguration;
 import org.openhab.core.ai.common.llm.configuration.GoogleGenAIConfiguration;
+import org.openhab.core.ai.common.llm.configuration.LMStudioConfiguration;
 import org.openhab.core.ai.common.llm.configuration.LocalAIConfiguration;
 import org.openhab.core.ai.common.llm.configuration.OllamaConfiguration;
 import org.openhab.core.ai.common.llm.configuration.OpenAIConfiguration;
 import org.openhab.core.ai.common.llm.configuration.VLLMConfiguration;
+import org.openhab.core.service.WatchService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,19 +36,28 @@ import org.slf4j.LoggerFactory;
  * Implementation of the LLM Configuration Service.
  * 
  * This service manages configuration for all LLM providers, loading settings
- * from configuration files and environment variables.
+ * from configuration files and environment variables. It integrates with
+ * openHAB's file-based configuration system by using the standard WatchService
+ * to monitor the conf/ai directory for changes to llm.cfg.
  * 
  * @author openHAB AI Team
  * @since 4.0.0
  */
-@Component(service = LLMConfigurationService.class)
+@Component(service = LLMConfigurationService.class, configurationPid = "org.openhab.ai.llm")
 @NonNullByDefault
-public class LLMConfigurationServiceImpl implements LLMConfigurationService {
+public class LLMConfigurationServiceImpl implements LLMConfigurationService, WatchService.WatchEventListener {
 
     private final Logger logger = LoggerFactory.getLogger(LLMConfigurationServiceImpl.class);
 
     private final Map<String, BaseLLMConfiguration> providerConfigs = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService reloadExecutor = Executors.newSingleThreadScheduledExecutor();
 
+    // Configuration file paths
+    private static final String CONF_DIR = "conf";
+    private static final String AI_DIR = "ai";
+    private static final String LLM_CONFIG_FILE = "llm.cfg";
+
+    // Global settings
     private String primaryProvider = "ollama";
     private String fallbackProvider = "openai";
     private boolean hybridEnabled = true;
@@ -46,16 +67,98 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService {
     private int defaultTimeoutMs = 30000;
     private int defaultRetryAttempts = 3;
 
+    private @Nullable WatchService watchService;
+    private @Nullable Path configFilePath;
+
     @Activate
     public void activate(Map<String, Object> config) {
         logger.debug("Activating LLM Configuration Service");
+
+        // Load initial configuration
         loadProviderConfigurations(config);
+
+        // Initialize configuration file and start watching
+        initializeConfigurationFile();
+
+        logger.info("LLM Configuration Service activated. Primary provider: {}, Fallback: {}", primaryProvider,
+                fallbackProvider);
     }
 
     @Modified
     public void modified(Map<String, Object> config) {
         logger.debug("Modifying LLM Configuration Service");
         loadProviderConfigurations(config);
+        logger.info("LLM Configuration Service modified. Primary provider: {}, Fallback: {}", primaryProvider,
+                fallbackProvider);
+    }
+
+    @Deactivate
+    public void deactivate() {
+        logger.debug("Deactivating LLM Configuration Service");
+
+        // Stop file watching
+        if (watchService != null) {
+            watchService.unregisterListener(this);
+        }
+
+        // Shutdown executor
+        if (!reloadExecutor.isShutdown()) {
+            reloadExecutor.shutdown();
+            try {
+                if (!reloadExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    reloadExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                reloadExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        logger.info("LLM Configuration Service deactivated");
+    }
+
+    @Reference(target = WatchService.CONFIG_WATCHER_FILTER)
+    protected void setWatchService(WatchService watchService) {
+        this.watchService = watchService;
+        if (configFilePath != null) {
+            // Register for watching the ai directory
+            Path aiDir = Paths.get(AI_DIR);
+            watchService.registerListener(this, aiDir, false);
+            logger.debug("Registered with WatchService for directory: {}", aiDir);
+        }
+    }
+
+    protected void unsetWatchService(WatchService watchService) {
+        if (this.watchService == watchService) {
+            this.watchService = null;
+        }
+    }
+
+    @Override
+    public void processWatchEvent(WatchService.Kind kind, Path fullPath) {
+        // Only process events for our configuration file
+        if (fullPath.endsWith(LLM_CONFIG_FILE)) {
+            logger.debug("Configuration file change detected: {} - {}", kind, fullPath);
+
+            switch (kind) {
+                case MODIFY:
+                    logger.info("Configuration file modified, reloading...");
+                    // Use a small delay to ensure file is fully written
+                    reloadExecutor.schedule(this::reloadConfigurationFromFile, 500, TimeUnit.MILLISECONDS);
+                    break;
+                case CREATE:
+                    logger.info("Configuration file created, loading...");
+                    reloadExecutor.schedule(this::reloadConfigurationFromFile, 100, TimeUnit.MILLISECONDS);
+                    break;
+                case DELETE:
+                    logger.warn("Configuration file deleted, using default configuration");
+                    loadDefaultConfiguration();
+                    break;
+                default:
+                    // Ignore other events
+                    break;
+            }
+        }
     }
 
     @Override
@@ -139,64 +242,196 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService {
     }
 
     /**
+     * Initialize the configuration file and directory structure.
+     */
+    private void initializeConfigurationFile() {
+        try {
+            Path confDir = Paths.get(CONF_DIR, AI_DIR);
+            configFilePath = confDir.resolve(LLM_CONFIG_FILE);
+
+            // Create conf/ai directory if it doesn't exist
+            if (!Files.exists(confDir)) {
+                Files.createDirectories(confDir);
+                logger.info("Created configuration directory: {}", confDir);
+            }
+
+            // Create default config file if it doesn't exist
+            if (configFilePath != null && !Files.exists(configFilePath)) {
+                createDefaultConfigFile(configFilePath);
+                logger.info("Created default configuration file: {}", configFilePath);
+            }
+
+            // Register with WatchService if available
+            if (watchService != null) {
+                Path aiDir = Paths.get(AI_DIR);
+                watchService.registerListener(this, aiDir, false);
+                logger.info("Registered with WatchService for directory: {}", aiDir);
+            }
+
+        } catch (IOException e) {
+            logger.warn("Failed to initialize configuration file: {}", e.getMessage());
+        }
+    }
+
+    /**
      * Loads provider configurations from the configuration map.
-     * 
-     * @param config The configuration map
+     * This method is called both from OSGi configuration and file-based configuration.
      */
     private void loadProviderConfigurations(Map<String, Object> config) {
         logger.debug("Loading LLM provider configurations");
 
         // Load global settings
-        primaryProvider = getStringConfig(config, "ai.llm.primary.provider", "ollama");
-        fallbackProvider = getStringConfig(config, "ai.llm.fallback.provider", "openai");
-        hybridEnabled = getBooleanConfig(config, "ai.llm.hybrid.enabled", true);
-        loadBalancingEnabled = getBooleanConfig(config, "ai.llm.load.balancing.enabled", false);
-        defaultTemperature = getDoubleConfig(config, "ai.reasoning.temperature", 0.3);
-        defaultMaxTokens = getIntConfig(config, "ai.reasoning.maxTokens", 1000);
-        defaultTimeoutMs = getIntConfig(config, "ai.reasoning.timeout", 30000);
-        defaultRetryAttempts = getIntConfig(config, "ai.reasoning.retryAttempts", 3);
+        primaryProvider = getStringConfig(config, "primary.provider", "ollama");
+        fallbackProvider = getStringConfig(config, "fallback.provider", "openai");
+        hybridEnabled = getBooleanConfig(config, "hybrid.enabled", true);
+        loadBalancingEnabled = getBooleanConfig(config, "load.balancing.enabled", false);
+        defaultTemperature = getDoubleConfig(config, "default.temperature", 0.3);
+        defaultMaxTokens = getIntConfig(config, "default.maxTokens", 1000);
+        defaultTimeoutMs = getIntConfig(config, "default.timeoutMs", 30000);
+        defaultRetryAttempts = getIntConfig(config, "default.retryAttempts", 3);
 
-        // Load OpenAI configuration
-        providerConfigs.put("openai", buildOpenAIConfig(config));
+        // Load provider-specific configurations
+        providerConfigs.clear();
 
-        // Load Anthropic configuration
-        providerConfigs.put("anthropic", buildAnthropicConfig(config));
+        if (getBooleanConfig(config, "openai.enabled", false)) {
+            providerConfigs.put("openai", buildOpenAIConfig(config));
+        }
 
-        // Load Google GenAI configuration
-        providerConfigs.put("google", buildGoogleConfig(config));
+        if (getBooleanConfig(config, "anthropic.enabled", false)) {
+            providerConfigs.put("anthropic", buildAnthropicConfig(config));
+        }
 
-        // Load Azure OpenAI configuration
-        providerConfigs.put("azure", buildAzureConfig(config));
+        if (getBooleanConfig(config, "google.enabled", false)) {
+            providerConfigs.put("google", buildGoogleConfig(config));
+        }
 
-        // Load Ollama configuration
-        providerConfigs.put("ollama", buildOllamaConfig(config));
+        if (getBooleanConfig(config, "azure.enabled", false)) {
+            providerConfigs.put("azure", buildAzureConfig(config));
+        }
 
-        // Load LocalAI configuration
-        providerConfigs.put("localai", buildLocalAIConfig(config));
+        if (getBooleanConfig(config, "ollama.enabled", true)) {
+            providerConfigs.put("ollama", buildOllamaConfig(config));
+        }
 
-        // Load vLLM configuration
-        providerConfigs.put("vllm", buildVLLMConfig(config));
+        if (getBooleanConfig(config, "localai.enabled", false)) {
+            providerConfigs.put("localai", buildLocalAIConfig(config));
+        }
 
-        // Load LM Studio configuration
-        providerConfigs.put("lmstudio", buildLMStudioConfig(config));
+        if (getBooleanConfig(config, "vllm.enabled", false)) {
+            providerConfigs.put("vllm", buildVLLMConfig(config));
+        }
+
+        if (getBooleanConfig(config, "lmstudio.enabled", false)) {
+            providerConfigs.put("lmstudio", buildLMStudioConfig(config));
+        }
 
         logger.debug("Loaded {} provider configurations", providerConfigs.size());
+    }
+
+    /**
+     * Reloads configuration from the conf/ai/llm.cfg file.
+     */
+    private void reloadConfigurationFromFile() {
+        if (configFilePath == null || !Files.exists(configFilePath)) {
+            logger.warn("Configuration file does not exist: {}", configFilePath);
+            return;
+        }
+
+        try {
+            Properties props = new Properties();
+            props.load(Files.newInputStream(configFilePath));
+
+            // Convert Properties to Map<String, Object> for loadProviderConfigurations
+            Map<String, Object> config = new ConcurrentHashMap<>();
+            props.forEach((key, value) -> config.put(key.toString(), value));
+
+            // Reload configuration
+            loadProviderConfigurations(config);
+
+            logger.info("Configuration reloaded from file: {}", configFilePath);
+
+        } catch (IOException e) {
+            logger.warn("Failed to reload configuration from file: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Loads default configuration when the config file is deleted.
+     */
+    private void loadDefaultConfiguration() {
+        Map<String, Object> defaultConfig = new ConcurrentHashMap<>();
+        defaultConfig.put("primary.provider", "ollama");
+        defaultConfig.put("fallback.provider", "openai");
+        defaultConfig.put("hybrid.enabled", "true");
+        defaultConfig.put("load.balancing.enabled", "false");
+        defaultConfig.put("ollama.enabled", "true");
+        defaultConfig.put("openai.enabled", "false");
+
+        loadProviderConfigurations(defaultConfig);
+        logger.info("Loaded default configuration");
+    }
+
+    /**
+     * Creates a default configuration file with sample settings.
+     */
+    private void createDefaultConfigFile(@Nullable Path configFile) throws IOException {
+        if (configFile == null) {
+            throw new IllegalArgumentException("Config file path cannot be null");
+        }
+        String defaultConfig = """
+                # OpenHAB AI - LLM Configuration
+                # This file configures the LLM providers for the AI system.
+
+                # Global settings
+                primary.provider=ollama
+                fallback.provider=openai
+                hybrid.enabled=true
+                load.balancing.enabled=false
+                default.temperature=0.3
+                default.maxTokens=1000
+                default.timeoutMs=30000
+                default.retryAttempts=3
+
+                # Ollama (local) - enabled by default
+                ollama.enabled=true
+                ollama.baseUrl=http://localhost:11434
+                ollama.defaultModel=llama3.1:8b
+                ollama.timeoutMs=60000
+                ollama.retryAttempts=2
+
+                # OpenAI - disabled by default
+                openai.enabled=false
+                openai.apiKey=your_openai_api_key_here
+                openai.defaultModel=gpt-4o-mini
+                openai.timeoutMs=30000
+                openai.retryAttempts=3
+
+                # Other providers disabled by default
+                anthropic.enabled=false
+                google.enabled=false
+                azure.enabled=false
+                localai.enabled=false
+                vllm.enabled=false
+                lmstudio.enabled=false
+                """;
+
+        Files.writeString(configFile, defaultConfig);
     }
 
     /**
      * Builds OpenAI configuration from the configuration map.
      */
     private OpenAIConfiguration buildOpenAIConfig(Map<String, Object> config) {
-        boolean enabled = getBooleanConfig(config, "ai.llm.openai.enabled", false);
-        String modelName = getStringConfig(config, "ai.llm.openai.model", "gpt-4o-mini");
-        double temperature = getDoubleConfig(config, "ai.llm.openai.temperature", 0.3);
-        int maxTokens = getIntConfig(config, "ai.llm.openai.maxTokens", 4000);
-        int timeoutMs = getIntConfig(config, "ai.llm.openai.timeout", 30000);
-        int retryAttempts = getIntConfig(config, "ai.llm.openai.retryAttempts", 3);
-        String systemPrompt = getNullableStringConfig(config, "ai.llm.openai.systemPrompt", null);
-        String apiKey = getNullableStringConfig(config, "ai.llm.openai.apiKey", null);
-        String baseUrl = getStringConfig(config, "ai.llm.openai.baseUrl", "https://api.openai.com/v1");
-        double costPer1kTokens = getDoubleConfig(config, "ai.llm.openai.costPer1kTokens", 0.00015);
+        boolean enabled = getBooleanConfig(config, "openai.enabled", false);
+        String modelName = getStringConfig(config, "openai.defaultModel", "gpt-4o-mini");
+        double temperature = getDoubleConfig(config, "openai.temperature", 0.3);
+        int maxTokens = getIntConfig(config, "openai.maxTokens", 4000);
+        int timeoutMs = getIntConfig(config, "openai.timeoutMs", 30000);
+        int retryAttempts = getIntConfig(config, "openai.retryAttempts", 3);
+        String systemPrompt = getNullableStringConfig(config, "openai.systemPrompt", null);
+        String apiKey = getNullableStringConfig(config, "openai.apiKey", null);
+        String baseUrl = getStringConfig(config, "openai.baseUrl", "https://api.openai.com/v1");
+        double costPer1kTokens = getDoubleConfig(config, "openai.costPer1kTokens", 0.00015);
 
         return new OpenAIConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts,
                 systemPrompt, apiKey, baseUrl, costPer1kTokens);
@@ -206,16 +441,16 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService {
      * Builds Anthropic configuration from the configuration map.
      */
     private AnthropicConfiguration buildAnthropicConfig(Map<String, Object> config) {
-        boolean enabled = getBooleanConfig(config, "ai.llm.anthropic.enabled", false);
-        String modelName = getStringConfig(config, "ai.llm.anthropic.model", "claude-3-5-sonnet-20241022");
-        double temperature = getDoubleConfig(config, "ai.llm.anthropic.temperature", 0.3);
-        int maxTokens = getIntConfig(config, "ai.llm.anthropic.maxTokens", 4000);
-        int timeoutMs = getIntConfig(config, "ai.llm.anthropic.timeout", 30000);
-        int retryAttempts = getIntConfig(config, "ai.llm.anthropic.retryAttempts", 3);
-        String systemPrompt = getNullableStringConfig(config, "ai.llm.anthropic.systemPrompt", null);
-        String apiKey = getNullableStringConfig(config, "ai.llm.anthropic.apiKey", null);
-        String baseUrl = getStringConfig(config, "ai.llm.anthropic.baseUrl", "https://api.anthropic.com");
-        double costPer1kTokens = getDoubleConfig(config, "ai.llm.anthropic.costPer1kTokens", 0.00015);
+        boolean enabled = getBooleanConfig(config, "anthropic.enabled", false);
+        String modelName = getStringConfig(config, "anthropic.defaultModel", "claude-3-5-sonnet-20241022");
+        double temperature = getDoubleConfig(config, "anthropic.temperature", 0.3);
+        int maxTokens = getIntConfig(config, "anthropic.maxTokens", 4000);
+        int timeoutMs = getIntConfig(config, "anthropic.timeoutMs", 30000);
+        int retryAttempts = getIntConfig(config, "anthropic.retryAttempts", 3);
+        String systemPrompt = getNullableStringConfig(config, "anthropic.systemPrompt", null);
+        String apiKey = getNullableStringConfig(config, "anthropic.apiKey", null);
+        String baseUrl = getStringConfig(config, "anthropic.baseUrl", "https://api.anthropic.com");
+        double costPer1kTokens = getDoubleConfig(config, "anthropic.costPer1kTokens", 0.00015);
 
         return new AnthropicConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts,
                 systemPrompt, apiKey, baseUrl, costPer1kTokens);
@@ -225,16 +460,16 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService {
      * Builds Google GenAI configuration from the configuration map.
      */
     private GoogleGenAIConfiguration buildGoogleConfig(Map<String, Object> config) {
-        boolean enabled = getBooleanConfig(config, "ai.llm.google.enabled", false);
-        String modelName = getStringConfig(config, "ai.llm.google.model", "gemini-1.5-pro");
-        double temperature = getDoubleConfig(config, "ai.llm.google.temperature", 0.3);
-        int maxTokens = getIntConfig(config, "ai.llm.google.maxTokens", 4000);
-        int timeoutMs = getIntConfig(config, "ai.llm.google.timeout", 30000);
-        int retryAttempts = getIntConfig(config, "ai.llm.google.retryAttempts", 3);
-        String systemPrompt = getNullableStringConfig(config, "ai.llm.google.systemPrompt", null);
-        String apiKey = getNullableStringConfig(config, "ai.llm.google.apiKey", null);
-        String baseUrl = getStringConfig(config, "ai.llm.google.baseUrl", "https://generativelanguage.googleapis.com");
-        double costPer1kTokens = getDoubleConfig(config, "ai.llm.google.costPer1kTokens", 0.000125);
+        boolean enabled = getBooleanConfig(config, "google.enabled", false);
+        String modelName = getStringConfig(config, "google.defaultModel", "gemini-1.5-pro");
+        double temperature = getDoubleConfig(config, "google.temperature", 0.3);
+        int maxTokens = getIntConfig(config, "google.maxTokens", 4000);
+        int timeoutMs = getIntConfig(config, "google.timeoutMs", 30000);
+        int retryAttempts = getIntConfig(config, "google.retryAttempts", 3);
+        String systemPrompt = getNullableStringConfig(config, "google.systemPrompt", null);
+        String apiKey = getNullableStringConfig(config, "google.apiKey", null);
+        String baseUrl = getStringConfig(config, "google.baseUrl", "https://generativelanguage.googleapis.com");
+        double costPer1kTokens = getDoubleConfig(config, "google.costPer1kTokens", 0.000125);
 
         return new GoogleGenAIConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts,
                 systemPrompt, apiKey, baseUrl, costPer1kTokens);
@@ -244,16 +479,16 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService {
      * Builds Azure OpenAI configuration from the configuration map.
      */
     private AzureOpenAIConfiguration buildAzureConfig(Map<String, Object> config) {
-        boolean enabled = getBooleanConfig(config, "ai.llm.azure.enabled", false);
-        String modelName = getStringConfig(config, "ai.llm.azure.model", "gpt-4o-mini");
-        double temperature = getDoubleConfig(config, "ai.llm.azure.temperature", 0.3);
-        int maxTokens = getIntConfig(config, "ai.llm.azure.maxTokens", 4000);
-        int timeoutMs = getIntConfig(config, "ai.llm.azure.timeout", 30000);
-        int retryAttempts = getIntConfig(config, "ai.llm.azure.retryAttempts", 3);
-        String systemPrompt = getNullableStringConfig(config, "ai.llm.azure.systemPrompt", null);
-        String apiKey = getNullableStringConfig(config, "ai.llm.azure.apiKey", null);
-        String endpoint = getStringConfig(config, "ai.llm.azure.endpoint", "");
-        String deploymentName = getStringConfig(config, "ai.llm.azure.deploymentName", "gpt-4o-mini");
+        boolean enabled = getBooleanConfig(config, "azure.enabled", false);
+        String modelName = getStringConfig(config, "azure.defaultModel", "gpt-4o-mini");
+        double temperature = getDoubleConfig(config, "azure.temperature", 0.3);
+        int maxTokens = getIntConfig(config, "azure.maxTokens", 4000);
+        int timeoutMs = getIntConfig(config, "azure.timeoutMs", 30000);
+        int retryAttempts = getIntConfig(config, "azure.retryAttempts", 3);
+        String systemPrompt = getNullableStringConfig(config, "azure.systemPrompt", null);
+        String apiKey = getNullableStringConfig(config, "azure.apiKey", null);
+        String endpoint = getStringConfig(config, "azure.endpoint", "");
+        String deploymentName = getStringConfig(config, "azure.deploymentName", "gpt-4o-mini");
 
         return new AzureOpenAIConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts,
                 systemPrompt, apiKey, endpoint, deploymentName);
@@ -263,15 +498,15 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService {
      * Builds Ollama configuration from the configuration map.
      */
     private OllamaConfiguration buildOllamaConfig(Map<String, Object> config) {
-        boolean enabled = getBooleanConfig(config, "ai.llm.ollama.enabled", true);
-        String modelName = getStringConfig(config, "ai.llm.ollama.model", "llama3.1:8b");
-        double temperature = getDoubleConfig(config, "ai.llm.ollama.temperature", 0.3);
-        int maxTokens = getIntConfig(config, "ai.llm.ollama.maxTokens", 4000);
-        int timeoutMs = getIntConfig(config, "ai.llm.ollama.timeout", 60000);
-        int retryAttempts = getIntConfig(config, "ai.llm.ollama.retryAttempts", 2);
-        String systemPrompt = getStringConfig(config, "ai.llm.ollama.systemPrompt", "You are a helpful AI assistant.");
-        String baseUrl = getStringConfig(config, "ai.llm.ollama.baseUrl", "http://localhost:11434");
-        int concurrentRequests = getIntConfig(config, "ai.llm.ollama.concurrentRequests", 3);
+        boolean enabled = getBooleanConfig(config, "ollama.enabled", true);
+        String modelName = getStringConfig(config, "ollama.defaultModel", "llama3.1:8b");
+        double temperature = getDoubleConfig(config, "ollama.temperature", 0.3);
+        int maxTokens = getIntConfig(config, "ollama.maxTokens", 4000);
+        int timeoutMs = getIntConfig(config, "ollama.timeoutMs", 60000);
+        int retryAttempts = getIntConfig(config, "ollama.retryAttempts", 2);
+        String systemPrompt = getStringConfig(config, "ollama.systemPrompt", "You are a helpful AI assistant.");
+        String baseUrl = getStringConfig(config, "ollama.baseUrl", "http://localhost:11434");
+        int concurrentRequests = getIntConfig(config, "ollama.concurrentRequests", 3);
 
         return new OllamaConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts,
                 systemPrompt, baseUrl, concurrentRequests);
@@ -281,14 +516,14 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService {
      * Builds LocalAI configuration from the configuration map.
      */
     private LocalAIConfiguration buildLocalAIConfig(Map<String, Object> config) {
-        boolean enabled = getBooleanConfig(config, "ai.llm.localai.enabled", false);
-        String modelName = getStringConfig(config, "ai.llm.localai.model", "llama3.1:8b");
-        double temperature = getDoubleConfig(config, "ai.llm.localai.temperature", 0.3);
-        int maxTokens = getIntConfig(config, "ai.llm.localai.maxTokens", 4000);
-        int timeoutMs = getIntConfig(config, "ai.llm.localai.timeout", 60000);
-        int retryAttempts = getIntConfig(config, "ai.llm.localai.retryAttempts", 2);
-        String systemPrompt = getStringConfig(config, "ai.llm.localai.systemPrompt", "You are a helpful AI assistant.");
-        String baseUrl = getStringConfig(config, "ai.llm.localai.baseUrl", "http://localhost:8080");
+        boolean enabled = getBooleanConfig(config, "localai.enabled", false);
+        String modelName = getStringConfig(config, "localai.defaultModel", "llama3.1:8b");
+        double temperature = getDoubleConfig(config, "localai.temperature", 0.3);
+        int maxTokens = getIntConfig(config, "localai.maxTokens", 4000);
+        int timeoutMs = getIntConfig(config, "localai.timeoutMs", 60000);
+        int retryAttempts = getIntConfig(config, "localai.retryAttempts", 2);
+        String systemPrompt = getStringConfig(config, "localai.systemPrompt", "You are a helpful AI assistant.");
+        String baseUrl = getStringConfig(config, "localai.baseUrl", "http://localhost:8080");
 
         return new LocalAIConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts,
                 systemPrompt, baseUrl);
@@ -298,14 +533,14 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService {
      * Builds vLLM configuration from the configuration map.
      */
     private VLLMConfiguration buildVLLMConfig(Map<String, Object> config) {
-        boolean enabled = getBooleanConfig(config, "ai.llm.vllm.enabled", false);
-        String modelName = getStringConfig(config, "ai.llm.vllm.model", "llama3.1:8b");
-        double temperature = getDoubleConfig(config, "ai.llm.vllm.temperature", 0.3);
-        int maxTokens = getIntConfig(config, "ai.llm.vllm.maxTokens", 4000);
-        int timeoutMs = getIntConfig(config, "ai.llm.vllm.timeout", 60000);
-        int retryAttempts = getIntConfig(config, "ai.llm.vllm.retryAttempts", 2);
-        String systemPrompt = getStringConfig(config, "ai.llm.vllm.systemPrompt", "You are a helpful AI assistant.");
-        String baseUrl = getStringConfig(config, "ai.llm.vllm.baseUrl", "http://localhost:8000");
+        boolean enabled = getBooleanConfig(config, "vllm.enabled", false);
+        String modelName = getStringConfig(config, "vllm.defaultModel", "llama3.1:8b");
+        double temperature = getDoubleConfig(config, "vllm.temperature", 0.3);
+        int maxTokens = getIntConfig(config, "vllm.maxTokens", 4000);
+        int timeoutMs = getIntConfig(config, "vllm.timeoutMs", 60000);
+        int retryAttempts = getIntConfig(config, "vllm.retryAttempts", 2);
+        String systemPrompt = getStringConfig(config, "vllm.systemPrompt", "You are a helpful AI assistant.");
+        String baseUrl = getStringConfig(config, "vllm.baseUrl", "http://localhost:8000");
 
         return new VLLMConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts, systemPrompt,
                 baseUrl);
@@ -315,15 +550,14 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService {
      * Builds LM Studio configuration from the configuration map.
      */
     private LMStudioConfiguration buildLMStudioConfig(Map<String, Object> config) {
-        boolean enabled = getBooleanConfig(config, "ai.llm.lmstudio.enabled", false);
-        String modelName = getStringConfig(config, "ai.llm.lmstudio.model", "llama3.1:8b");
-        double temperature = getDoubleConfig(config, "ai.llm.lmstudio.temperature", 0.3);
-        int maxTokens = getIntConfig(config, "ai.llm.lmstudio.maxTokens", 4000);
-        int timeoutMs = getIntConfig(config, "ai.llm.lmstudio.timeout", 60000);
-        int retryAttempts = getIntConfig(config, "ai.llm.lmstudio.retryAttempts", 2);
-        String systemPrompt = getStringConfig(config, "ai.llm.lmstudio.systemPrompt",
-                "You are a helpful AI assistant.");
-        String baseUrl = getStringConfig(config, "ai.llm.lmstudio.baseUrl", "http://localhost:1234");
+        boolean enabled = getBooleanConfig(config, "lmstudio.enabled", false);
+        String modelName = getStringConfig(config, "lmstudio.defaultModel", "llama3.1:8b");
+        double temperature = getDoubleConfig(config, "lmstudio.temperature", 0.3);
+        int maxTokens = getIntConfig(config, "lmstudio.maxTokens", 4000);
+        int timeoutMs = getIntConfig(config, "lmstudio.timeoutMs", 60000);
+        int retryAttempts = getIntConfig(config, "lmstudio.retryAttempts", 2);
+        String systemPrompt = getStringConfig(config, "lmstudio.systemPrompt", "You are a helpful AI assistant.");
+        String baseUrl = getStringConfig(config, "lmstudio.baseUrl", "http://localhost:1234");
 
         return new LMStudioConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts,
                 systemPrompt, baseUrl);

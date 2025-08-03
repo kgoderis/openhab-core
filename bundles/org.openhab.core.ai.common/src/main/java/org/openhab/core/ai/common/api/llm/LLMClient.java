@@ -4,11 +4,6 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.llm.LLMHealthStatus;
-import org.openhab.core.ai.common.llm.LLMParameters;
-import org.openhab.core.ai.common.llm.LLMProviderInfo;
-import org.openhab.core.ai.common.llm.LLMRateLimitInfo;
-import org.openhab.core.ai.common.llm.LLMResponse;
 
 /**
  * Core interface for LLM (Large Language Model) clients.

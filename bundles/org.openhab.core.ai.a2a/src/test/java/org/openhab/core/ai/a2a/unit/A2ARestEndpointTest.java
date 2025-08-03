@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openhab.core.ai.a2a.internal.A2AProtocolHandler;
 import org.openhab.core.ai.a2a.internal.A2ARestEndpoint;
-import org.openhab.core.ai.a2a.internal.A2AServerManager;
 import org.openhab.core.ai.a2a.internal.A2ASkillRegistry;
 import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.openhab.core.service.ReadyService;
@@ -37,7 +37,7 @@ class A2ARestEndpointTest {
     private ReadyService mockReadyService;
 
     @Mock
-    private A2AServerManager mockServerManager;
+    private A2AProtocolHandler mockProtocolHandler;
 
     @Mock
     private AgentCard mockAgentCard;

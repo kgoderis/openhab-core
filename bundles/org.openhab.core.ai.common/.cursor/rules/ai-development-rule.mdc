@@ -1,11 +1,11 @@
 ---
-alwaysApply: false
+alwaysApply: true
 ---
-
 1. You must use @NonNullByDefault annotations on each class. If this creates a compatbility problem with an external SDK, you can ommit but then you have to use explicit @NonNull and @Nullable annotations
 2. Each class must have appropriate javadoc
 3. The author must be "Karel Goderis - Initial Contribution"
 4. You must implement real code, and thus, not simulated code or stubs. If something can not be implemented in a first go, you must add a TODO to the code, and add a task to the BRAIN_PLAN.md file
 5. You must maximise the use of SDK classes, especially in the case of MCP and A2A protocols
 6. You must verify that each method call you make does exist, so, invented or guesses calls are not allowed
-7. The solution will be used in OSGi container, so, make sure dependency injection is used correctly 
+7. The solution will be used in OSGi container, so, make sure dependency injection is used correctly
+8. You must use as much as possible data structures from the A2A SDK 

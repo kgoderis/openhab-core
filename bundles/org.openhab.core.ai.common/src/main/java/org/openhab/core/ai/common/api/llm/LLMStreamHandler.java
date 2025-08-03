@@ -1,7 +1,6 @@
 package org.openhab.core.ai.common.api.llm;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.llm.LLMResponse;
 
 /**
  * Handler for processing streaming LLM responses.

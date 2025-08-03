@@ -1,7 +1,6 @@
-package org.openhab.core.ai.common.llm.providers;
+package org.openhab.core.ai.common.api.llm;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.api.llm.LLMProviderType;
 
 /**
  * Information about an LLM provider and its capabilities.

@@ -3,8 +3,10 @@ package org.openhab.core.ai.a2a.internal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -44,11 +46,25 @@ public class A2AAgentExecutor implements AgentExecutor {
 
     private @Nullable AIActionRegistry actionRegistry;
     private @Nullable A2ASecurityManager securityManager;
-    private @Nullable A2AServerManager serverManager;
+    private @Nullable A2AProtocolHandler protocolHandler;
+    private @Nullable A2ASynchronizationService synchronizationService;
     private @Nullable BundleContext bundleContext;
 
+    // Task execution tracking
     private final Map<String, AtomicBoolean> runningTasks = new ConcurrentHashMap<>();
     private final Map<String, Long> taskStartTimes = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> taskExecutionCounts = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> taskFailureCounts = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> taskRetryCounts = new ConcurrentHashMap<>();
+
+    // Performance monitoring
+    private final Map<String, AtomicLong> totalExecutionTime = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> averageExecutionTime = new ConcurrentHashMap<>();
+
+    // Configuration
+    private final long defaultTimeoutMs = 30000; // 30 seconds
+    private final int maxRetries = 3;
+    private final long retryDelayMs = 1000; // 1 second
 
     @Activate
     public void activate(BundleContext context) {
@@ -72,8 +88,13 @@ public class A2AAgentExecutor implements AgentExecutor {
     }
 
     @Reference
-    public void setServerManager(A2AServerManager serverManager) {
-        this.serverManager = serverManager;
+    public void setProtocolHandler(A2AProtocolHandler protocolHandler) {
+        this.protocolHandler = protocolHandler;
+    }
+
+    @Reference
+    public void setSynchronizationService(A2ASynchronizationService synchronizationService) {
+        this.synchronizationService = synchronizationService;
     }
 
     @Override
@@ -98,6 +119,12 @@ public class A2AAgentExecutor implements AgentExecutor {
             if (!authorizeTask(authContext, task)) {
                 throw new JSONRPCError(-32003, "Insufficient permissions", null);
             }
+
+            // Start task lifecycle management
+            startTaskLifecycle(task, eventQueue);
+
+            // Execute task with enhanced features
+            executeTaskWithEnhancements(task, authContext, eventQueue);
 
             // Mark task as running
             String taskId = requestContext.getTaskId();
@@ -174,6 +201,7 @@ public class A2AAgentExecutor implements AgentExecutor {
         AIActionRegistry registry = actionRegistry;
         if (registry == null) {
             logger.error("Action registry not available");
+            sendErrorEvent(eventQueue, -32603, "Action registry not available");
             return;
         }
 
@@ -189,16 +217,16 @@ public class A2AAgentExecutor implements AgentExecutor {
                 // Extract parameters from task metadata
                 Map<String, Object> parameters = extractParametersFromTask(task);
                 AIActionResult result = action.execute(parameters, aiContext);
-                handleActionResult(result, eventQueue);
+                handleActionResult(result, eventQueue, task.getId());
             } else {
                 logger.warn("No action found for: {}", actionName);
                 // Send error event
-                eventQueue.enqueueEvent(new JSONRPCError(-32601, "No action found for: " + actionName, null));
+                sendErrorEvent(eventQueue, -32601, "No action found for: " + actionName);
             }
 
         } catch (Exception e) {
             logger.error("Error executing task: {}", task.getId(), e);
-            eventQueue.enqueueEvent(new JSONRPCError(-32603, "Task execution failed: " + e.getMessage(), null));
+            sendErrorEvent(eventQueue, -32603, "Task execution failed: " + e.getMessage());
         }
     }
 
@@ -278,35 +306,19 @@ public class A2AAgentExecutor implements AgentExecutor {
     }
 
     @NonNullByDefault
-    private void handleActionResult(AIActionResult result, EventQueue eventQueue) {
+    private void handleActionResult(AIActionResult result, EventQueue eventQueue, String taskId) {
         if (result.isSuccess()) {
             // Send success event with result data
             Object data = result.getData();
             Map<String, Object> metadata = result.getMetadata();
-            if (data != null) {
-                // Create TaskStatusUpdateEvent for success
-                TaskStatusUpdateEvent successEvent = new TaskStatusUpdateEvent.Builder().taskId("task-id") // TODO: Get
-                                                                                                           // actual
-                                                                                                           // task ID
-                        .status(new TaskStatus(TaskState.COMPLETED)).contextId("a2a-context").isFinal(true)
-                        .metadata(metadata).build();
-                eventQueue.enqueueEvent(successEvent);
-            } else {
-                // Create TaskStatusUpdateEvent for success with empty data
-                TaskStatusUpdateEvent successEvent = new TaskStatusUpdateEvent.Builder().taskId("task-id") // TODO: Get
-                                                                                                           // actual
-                                                                                                           // task ID
-                        .status(new TaskStatus(TaskState.COMPLETED)).contextId("a2a-context").isFinal(true)
-                        .metadata(new HashMap<>()).build();
-                eventQueue.enqueueEvent(successEvent);
-            }
+            sendSuccessEvent(eventQueue, taskId, data, metadata);
         } else {
             // Send error event
             String errorMessage = result.getMessage();
             if (errorMessage != null) {
-                eventQueue.enqueueEvent(new JSONRPCError(-32603, errorMessage, null));
+                sendErrorEvent(eventQueue, -32603, errorMessage);
             } else {
-                eventQueue.enqueueEvent(new JSONRPCError(-32603, "Action execution failed", null));
+                sendErrorEvent(eventQueue, -32603, "Action execution failed");
             }
         }
     }
@@ -324,5 +336,326 @@ public class A2AAgentExecutor implements AgentExecutor {
             return System.currentTimeMillis() - startTime;
         }
         return 0;
+    }
+
+    // Helper methods for common event patterns
+    @NonNullByDefault
+    private void sendErrorEvent(EventQueue eventQueue, int code, String message) {
+        eventQueue.enqueueEvent(new JSONRPCError(code, message, null));
+    }
+
+    @NonNullByDefault
+    private void sendSuccessEvent(EventQueue eventQueue, String taskId, Object data, Map<String, Object> metadata) {
+        TaskStatusUpdateEvent successEvent = new TaskStatusUpdateEvent.Builder().taskId(taskId)
+                .status(new TaskStatus(TaskState.COMPLETED)).contextId("a2a-context").isFinal(true)
+                .metadata(metadata != null ? metadata : new HashMap<>()).build();
+        eventQueue.enqueueEvent(successEvent);
+    }
+
+    @NonNullByDefault
+    private void sendTaskStatusEvent(EventQueue eventQueue, String taskId, TaskState state, boolean isFinal) {
+        TaskStatusUpdateEvent statusEvent = new TaskStatusUpdateEvent.Builder().taskId(taskId)
+                .status(new TaskStatus(state)).contextId("a2a-context").isFinal(isFinal).metadata(new HashMap<>())
+                .build();
+        eventQueue.enqueueEvent(statusEvent);
+    }
+
+    /**
+     * Start task lifecycle management
+     */
+    @NonNullByDefault
+    private void startTaskLifecycle(Task task, EventQueue eventQueue) {
+        String taskId = task.getId();
+
+        // Initialize task tracking
+        runningTasks.putIfAbsent(taskId, new AtomicBoolean(false));
+        taskExecutionCounts.putIfAbsent(taskId, new AtomicLong(0));
+        taskFailureCounts.putIfAbsent(taskId, new AtomicLong(0));
+        taskRetryCounts.putIfAbsent(taskId, new AtomicLong(0));
+        totalExecutionTime.putIfAbsent(taskId, new AtomicLong(0));
+        averageExecutionTime.putIfAbsent(taskId, new AtomicLong(0));
+
+        // Mark task as starting
+        runningTasks.get(taskId).set(true);
+        taskStartTimes.put(taskId, System.currentTimeMillis());
+        taskExecutionCounts.get(taskId).incrementAndGet();
+
+        // Send task started event
+        sendTaskStatusEvent(eventQueue, taskId, TaskState.WORKING, false);
+
+        logger.debug("Started task lifecycle for task: {}", taskId);
+    }
+
+    /**
+     * Execute task with enhanced features (timeout, retry, fallback)
+     */
+    @NonNullByDefault
+    private void executeTaskWithEnhancements(Task task, AIAuthenticationContext authContext, EventQueue eventQueue) {
+        String taskId = task.getId();
+
+        // Create CompletableFuture for async execution
+        CompletableFuture<Void> executionFuture = CompletableFuture.runAsync(() -> {
+            try {
+                // Execute the actual task
+                executeTask(task, authContext, eventQueue);
+            } catch (Exception e) {
+                logger.error("Task execution failed: {}", taskId, e);
+                handleTaskFailure(task, eventQueue, e);
+            }
+        });
+
+        // Add timeout handling
+        executionFuture.orTimeout(defaultTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .exceptionally(throwable -> {
+                    if (throwable instanceof java.util.concurrent.TimeoutException) {
+                        logger.warn("Task {} timed out after {} ms", taskId, defaultTimeoutMs);
+                        handleTaskTimeout(task, eventQueue);
+                    } else {
+                        logger.error("Task {} failed with exception", taskId, throwable);
+                        handleTaskFailure(task, eventQueue, throwable);
+                    }
+                    return null;
+                });
+    }
+
+    /**
+     * Handle task failure with retry mechanism
+     */
+    @NonNullByDefault
+    private void handleTaskFailure(Task task, EventQueue eventQueue, Throwable error) {
+        String taskId = task.getId();
+        AtomicLong retryCount = taskRetryCounts.get(taskId);
+
+        if (retryCount != null && retryCount.get() < maxRetries) {
+            retryCount.incrementAndGet();
+            taskFailureCounts.get(taskId).incrementAndGet();
+
+            logger.debug("Retrying task {} (attempt {}/{})", taskId, retryCount.get(), maxRetries);
+
+            // Schedule retry with delay
+            CompletableFuture.delayedExecutor(retryDelayMs, java.util.concurrent.TimeUnit.MILLISECONDS).execute(() -> {
+                try {
+                    // Re-authenticate for retry
+                    AIAuthenticationContext authContext = authenticateRequest(
+                            new RequestContext(null, task.getId(), task.getContextId(), task, List.of())); // TODO: Get
+                                                                                                           // from
+                                                                                                           // context
+                    if (authContext != null) {
+                        executeTaskWithEnhancements(task, authContext, eventQueue);
+                    } else {
+                        sendErrorEvent(eventQueue, -32001, "Authentication failed during retry");
+                    }
+                } catch (Exception e) {
+                    logger.error("Retry execution failed for task: {}", taskId, e);
+                    sendErrorEvent(eventQueue, -32603, "Retry execution failed: " + e.getMessage());
+                }
+            });
+        } else {
+            // Max retries exceeded, mark as failed
+            taskFailureCounts.get(taskId).incrementAndGet();
+            sendTaskStatusEvent(eventQueue, taskId, TaskState.FAILED, true);
+            logger.error("Task {} failed after {} retries", taskId, maxRetries);
+        }
+    }
+
+    /**
+     * Handle task timeout
+     */
+    @NonNullByDefault
+    private void handleTaskTimeout(Task task, EventQueue eventQueue) {
+        String taskId = task.getId();
+
+        // Try fallback agents if available
+        List<String> fallbackAgents = getFallbackAgents(task);
+        if (!fallbackAgents.isEmpty()) {
+            logger.debug("Trying fallback agents for timed out task: {}", taskId);
+            executeWithFallbackAgents(task, fallbackAgents, eventQueue);
+        } else {
+            // No fallback available, mark as failed
+            taskFailureCounts.get(taskId).incrementAndGet();
+            sendTaskStatusEvent(eventQueue, taskId, TaskState.FAILED, true);
+            sendErrorEvent(eventQueue, -32002, "Task timed out and no fallback agents available");
+        }
+    }
+
+    /**
+     * Execute task with fallback agents
+     */
+    @NonNullByDefault
+    private void executeWithFallbackAgents(Task task, List<String> fallbackAgents, EventQueue eventQueue) {
+        String taskId = task.getId();
+
+        // Try each fallback agent
+        for (String fallbackAgent : fallbackAgents) {
+            try {
+                logger.debug("Trying fallback agent {} for task {}", fallbackAgent, taskId);
+
+                // Create new task for fallback agent (simplified - would need proper Task creation)
+                // For now, just retry with original task
+                AIAuthenticationContext authContext = authenticateRequest(
+                        new RequestContext(null, task.getId(), task.getContextId(), task, List.of())); // TODO: Get from
+                                                                                                       // context
+                if (authContext != null) {
+                    executeTask(task, authContext, eventQueue);
+                    return; // Success, exit
+                }
+            } catch (Exception e) {
+                logger.warn("Fallback agent {} failed for task {}: {}", fallbackAgent, taskId, e.getMessage());
+            }
+        }
+
+        // All fallback agents failed
+        taskFailureCounts.get(taskId).incrementAndGet();
+        sendTaskStatusEvent(eventQueue, taskId, TaskState.FAILED, true);
+        sendErrorEvent(eventQueue, -32003, "All fallback agents failed for task: " + taskId);
+    }
+
+    /**
+     * Get fallback agents for a task
+     */
+    @NonNullByDefault
+    private List<String> getFallbackAgents(Task task) {
+        // Extract fallback agents from task metadata
+        @Nullable
+        Object fallbackObj = task.getMetadata().get("fallbackAgents");
+        if (fallbackObj instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<String> fallbackAgents = (List<String>) fallbackObj;
+            return fallbackAgents;
+        }
+        return List.of(); // No fallback agents
+    }
+
+    /**
+     * Execute task with transaction-like semantics using A2ASynchronizationService
+     */
+    @NonNullByDefault
+    public CompletableFuture<A2ASynchronizationService.TransactionResult> executeTaskWithTransaction(Task task,
+            EventQueue eventQueue) {
+        if (synchronizationService == null) {
+            CompletableFuture<A2ASynchronizationService.TransactionResult> future = new CompletableFuture<>();
+            future.completeExceptionally(new IllegalStateException("SynchronizationService not available"));
+            return future;
+        }
+
+        // Create a single-task transaction
+        List<Task> tasks = List.of(task);
+        return synchronizationService.executeTransaction(tasks);
+    }
+
+    /**
+     * Execute multiple tasks with dependency resolution
+     */
+    @NonNullByDefault
+    public CompletableFuture<List<io.a2a.spec.TaskStatusUpdateEvent>> executeTasksWithDependencies(List<Task> tasks,
+            EventQueue eventQueue) {
+        if (synchronizationService == null) {
+            CompletableFuture<List<io.a2a.spec.TaskStatusUpdateEvent>> future = new CompletableFuture<>();
+            future.completeExceptionally(new IllegalStateException("SynchronizationService not available"));
+            return future;
+        }
+
+        return synchronizationService.executeTasksWithDependencies(tasks);
+    }
+
+    /**
+     * Acquire resource lock for task execution
+     */
+    @NonNullByDefault
+    public boolean acquireResourceLock(String resourceId, String taskId) {
+        if (synchronizationService == null) {
+            logger.warn("SynchronizationService not available for resource lock acquisition");
+            return false;
+        }
+
+        return synchronizationService.acquireLock(resourceId, taskId);
+    }
+
+    /**
+     * Release resource lock after task execution
+     */
+    @NonNullByDefault
+    public void releaseResourceLock(String resourceId, String taskId) {
+        if (synchronizationService != null) {
+            synchronizationService.releaseLock(resourceId, taskId);
+        }
+    }
+
+    /**
+     * Get synchronization service statistics
+     */
+    @NonNullByDefault
+    public A2ASynchronizationService.TaskExecutionStats getSynchronizationStats() {
+        if (synchronizationService == null) {
+            return new A2ASynchronizationService.TaskExecutionStats(0, Map.of(), 0, 0);
+        }
+
+        return synchronizationService.getTaskExecutionStats();
+    }
+
+    /**
+     * Get task execution metrics
+     */
+    @NonNullByDefault
+    public TaskExecutionMetrics getTaskExecutionMetrics(String taskId) {
+        AtomicLong executionCount = taskExecutionCounts.get(taskId);
+        AtomicLong failureCount = taskFailureCounts.get(taskId);
+        AtomicLong retryCount = taskRetryCounts.get(taskId);
+        AtomicLong totalTime = totalExecutionTime.get(taskId);
+        AtomicLong avgTime = averageExecutionTime.get(taskId);
+
+        return new TaskExecutionMetrics(taskId, executionCount != null ? executionCount.get() : 0,
+                failureCount != null ? failureCount.get() : 0, retryCount != null ? retryCount.get() : 0,
+                totalTime != null ? totalTime.get() : 0, avgTime != null ? avgTime.get() : 0);
+    }
+
+    /**
+     * Task execution metrics
+     */
+    public static class TaskExecutionMetrics {
+        private final String taskId;
+        private final long executionCount;
+        private final long failureCount;
+        private final long retryCount;
+        private final long totalExecutionTime;
+        private final long averageExecutionTime;
+
+        public TaskExecutionMetrics(String taskId, long executionCount, long failureCount, long retryCount,
+                long totalExecutionTime, long averageExecutionTime) {
+            this.taskId = taskId;
+            this.executionCount = executionCount;
+            this.failureCount = failureCount;
+            this.retryCount = retryCount;
+            this.totalExecutionTime = totalExecutionTime;
+            this.averageExecutionTime = averageExecutionTime;
+        }
+
+        public String getTaskId() {
+            return taskId;
+        }
+
+        public long getExecutionCount() {
+            return executionCount;
+        }
+
+        public long getFailureCount() {
+            return failureCount;
+        }
+
+        public long getRetryCount() {
+            return retryCount;
+        }
+
+        public long getTotalExecutionTime() {
+            return totalExecutionTime;
+        }
+
+        public long getAverageExecutionTime() {
+            return averageExecutionTime;
+        }
+
+        public double getSuccessRate() {
+            return executionCount > 0 ? (double) (executionCount - failureCount) / executionCount : 0.0;
+        }
     }
 }

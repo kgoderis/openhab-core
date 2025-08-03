@@ -1,14 +1,14 @@
-package org.openhab.core.ai.common.llm;
+package org.openhab.core.ai.common.llm.providers;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.action.AIActionRegistry;
 import org.openhab.core.ai.common.api.llm.LLMClient;
 import org.openhab.core.ai.common.api.llm.LLMConfigurationService;
 import org.openhab.core.ai.common.api.llm.LLMProviderType;
-import org.openhab.core.ai.common.llm.providers.StubLLMClient;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -37,6 +37,9 @@ public class LLMProviderFactory {
 
     @Reference
     private @Nullable LLMConfigurationService configService;
+
+    @Reference
+    private @Nullable AIActionRegistry actionRegistry;
 
     @Activate
     public void activate(Map<String, Object> config) {
@@ -240,7 +243,14 @@ public class LLMProviderFactory {
     /**
      * Creates an OpenAI client.
      */
-    private LLMClient createOpenAIClient(LLMConfigurationService config) {
+    private LLMClient createOpenAIClient(@Nullable LLMConfigurationService config) {
+        if (config != null) {
+            var openAIConfig = config.getOpenAIConfig();
+            if (openAIConfig != null && openAIConfig.isEnabled()) {
+                logger.debug("Creating OpenAI client with configuration");
+                return new OpenAIClientImpl(openAIConfig, actionRegistry);
+            }
+        }
         logger.debug("Creating OpenAI client (stub implementation)");
         return new StubLLMClient(LLMProviderType.OPENAI, "gpt-4o-mini");
     }
@@ -248,7 +258,14 @@ public class LLMProviderFactory {
     /**
      * Creates an Anthropic client.
      */
-    private LLMClient createAnthropicClient(LLMConfigurationService config) {
+    private LLMClient createAnthropicClient(@Nullable LLMConfigurationService config) {
+        if (config != null) {
+            var anthropicConfig = config.getAnthropicConfig();
+            if (anthropicConfig != null && anthropicConfig.isEnabled()) {
+                logger.debug("Creating Anthropic client with configuration");
+                return new AnthropicClientImpl(anthropicConfig, actionRegistry);
+            }
+        }
         logger.debug("Creating Anthropic client (stub implementation)");
         return new StubLLMClient(LLMProviderType.ANTHROPIC, "claude-3-5-sonnet");
     }
@@ -256,7 +273,14 @@ public class LLMProviderFactory {
     /**
      * Creates a Google GenAI client.
      */
-    private LLMClient createGoogleGenAIClient(LLMConfigurationService config) {
+    private LLMClient createGoogleGenAIClient(@Nullable LLMConfigurationService config) {
+        if (config != null) {
+            var googleConfig = config.getGoogleConfig();
+            if (googleConfig != null && googleConfig.isEnabled()) {
+                logger.debug("Creating Google GenAI client with configuration");
+                return new GoogleGenAIClientImpl(googleConfig, actionRegistry);
+            }
+        }
         logger.debug("Creating Google GenAI client (stub implementation)");
         return new StubLLMClient(LLMProviderType.GOOGLE, "gemini-1.5-pro");
     }
@@ -264,7 +288,14 @@ public class LLMProviderFactory {
     /**
      * Creates an Azure OpenAI client.
      */
-    private LLMClient createAzureOpenAIClient(LLMConfigurationService config) {
+    private LLMClient createAzureOpenAIClient(@Nullable LLMConfigurationService config) {
+        if (config != null) {
+            var azureConfig = config.getAzureConfig();
+            if (azureConfig != null && azureConfig.isEnabled()) {
+                logger.debug("Creating Azure OpenAI client with configuration");
+                return new AzureOpenAIClientImpl(azureConfig, actionRegistry);
+            }
+        }
         logger.debug("Creating Azure OpenAI client (stub implementation)");
         return new StubLLMClient(LLMProviderType.AZURE, "gpt-4o-mini");
     }
@@ -272,7 +303,7 @@ public class LLMProviderFactory {
     /**
      * Creates an Ollama client.
      */
-    private LLMClient createOllamaClient(LLMConfigurationService config) {
+    private LLMClient createOllamaClient(@Nullable LLMConfigurationService config) {
         logger.debug("Creating Ollama client (stub implementation)");
         return new StubLLMClient(LLMProviderType.OLLAMA, "llama3.1:8b");
     }
@@ -280,7 +311,7 @@ public class LLMProviderFactory {
     /**
      * Creates a LocalAI client.
      */
-    private LLMClient createLocalAIClient(LLMConfigurationService config) {
+    private LLMClient createLocalAIClient(@Nullable LLMConfigurationService config) {
         logger.debug("Creating LocalAI client (stub implementation)");
         return new StubLLMClient(LLMProviderType.LOCALAI, "llama3.1:8b");
     }
@@ -288,7 +319,7 @@ public class LLMProviderFactory {
     /**
      * Creates a vLLM client.
      */
-    private LLMClient createVLLMClient(LLMConfigurationService config) {
+    private LLMClient createVLLMClient(@Nullable LLMConfigurationService config) {
         logger.debug("Creating vLLM client (stub implementation)");
         return new StubLLMClient(LLMProviderType.VLLM, "llama3.1:8b");
     }
@@ -296,7 +327,7 @@ public class LLMProviderFactory {
     /**
      * Creates an LM Studio client.
      */
-    private LLMClient createLMStudioClient(LLMConfigurationService config) {
+    private LLMClient createLMStudioClient(@Nullable LLMConfigurationService config) {
         logger.debug("Creating LM Studio client (stub implementation)");
         return new StubLLMClient(LLMProviderType.LMSTUDIO, "llama3.1:8b");
     }
