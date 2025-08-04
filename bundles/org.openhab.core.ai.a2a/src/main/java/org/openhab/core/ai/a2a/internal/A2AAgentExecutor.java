@@ -414,7 +414,7 @@ public class A2AAgentExecutor implements AgentExecutor {
                         logger.error("Task {} failed with exception", taskId, throwable);
                         handleTaskFailure(task, eventQueue, throwable);
                     }
-                    return null;
+                    return (Void) null;
                 });
     }
 
