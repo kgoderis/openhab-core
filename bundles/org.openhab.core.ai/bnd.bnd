@@ -1,0 +1,38 @@
+Bundle-Name: openHAB Core :: Bundles :: AI :: Common (Consolidated)
+Bundle-SymbolicName: org.openhab.core.ai.common
+Bundle-Version: 1.0.0.${tstamp}
+Bundle-Activator: org.openhab.core.ai.common.internal.AIBundleActivator
+Bundle-Vendor: openHAB Community
+Bundle-Description: Consolidated AI bundle providing MCP and A2A protocol support for openHAB
+Bundle-DocURL: https://www.openhab.org
+Bundle-License: https://www.eclipse.org/legal/epl-v2.html
+Bundle-RequiredExecutionEnvironment: JavaSE-11
+
+# Import packages
+Import-Package: \
+    org.eclipse.jdt.annotation;version="[2.2,3)", \
+    org.osgi.framework;version="[1.8,2)", \
+    org.slf4j;version="[1.7,3)", \
+    *
+
+# Export packages
+Export-Package: \
+    org.openhab.core.ai.common.api.*;version="1.0.0", \
+    org.openhab.core.ai.common.action.*;version="1.0.0", \
+    org.openhab.core.ai.common.auth.*;version="1.0.0", \
+    org.openhab.core.ai.common.config.*;version="1.0.0", \
+    org.openhab.core.ai.common.llm.*;version="1.0.0", \
+    org.openhab.core.ai.common.mcp.*;version="1.0.0", \
+    org.openhab.core.ai.common.reasoning.*;version="1.0.0", \
+    org.openhab.core.ai.common.util.*;version="1.0.0"
+
+# Private packages (not exported)
+Private-Package: \
+    org.openhab.core.ai.common.internal.*, \
+    org.openhab.core.ai.common.a2a.internal.*, \
+    org.openhab.core.ai.common.mcp.internal.*, \
+    org.openhab.core.ai.common.stub.*
+
+# Manifest headers
+Manifest-Version: 1.0
+Created-By: openHAB AI Bundle Generator 

@@ -1,0 +1,145 @@
+package org.openhab.core.ai.action;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.auth.AuthenticationContext;
+
+/**
+ * Context for action execution, providing access to protocol-specific information.
+ * 
+ * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
+ */
+@NonNullByDefault
+public class ActionContext {
+
+    // Protocol identification
+    private final String protocol; // "mcp" or "a2a"
+    private final String clientId;
+    private final String sessionId;
+
+    // Authentication and authorization
+    private final @Nullable AuthenticationContext authContext;
+
+    // Protocol-specific context
+    private final Map<String, Object> protocolContext;
+
+    // Execution metadata
+    private final long executionStartTime;
+    private final String correlationId;
+    private final String priority; // For A2A protocol priority levels
+
+    private ActionContext(Builder builder) {
+        this.protocol = builder.protocol;
+        this.clientId = builder.clientId;
+        this.sessionId = builder.sessionId;
+        this.authContext = builder.authContext != null ? builder.authContext
+                : new AuthenticationContext("default", "none", Map.of(), Set.of(), Instant.now(), null,
+                        "default-session");
+        this.protocolContext = builder.protocolContext;
+        this.executionStartTime = builder.executionStartTime != 0 ? builder.executionStartTime
+                : System.currentTimeMillis();
+        this.correlationId = builder.correlationId;
+        this.priority = builder.priority;
+    }
+
+    // Getters
+    public String getProtocol() {
+        return protocol;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public @Nullable AuthenticationContext getAuthContext() {
+        return authContext;
+    }
+
+    public Map<String, Object> getProtocolContext() {
+        return protocolContext;
+    }
+
+    public long getExecutionStartTime() {
+        return executionStartTime;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    public Optional<String> getPriority() {
+        return Optional.ofNullable(priority);
+    }
+
+    /**
+     * Builder for ActionContext.
+     */
+    public static class Builder {
+        private String protocol = "";
+        private String clientId = "";
+        private String sessionId = "";
+        private @Nullable AuthenticationContext authContext;
+        private Map<String, Object> protocolContext = Map.of();
+        private long executionStartTime = System.currentTimeMillis();
+        private String correlationId = "";
+        private String priority = "";
+
+        public Builder protocol(String protocol) {
+            this.protocol = protocol;
+            return this;
+        }
+
+        public Builder clientId(String clientId) {
+            this.clientId = clientId;
+            return this;
+        }
+
+        public Builder sessionId(String sessionId) {
+            this.sessionId = sessionId;
+            return this;
+        }
+
+        public Builder authContext(AuthenticationContext authContext) {
+            this.authContext = authContext;
+            return this;
+        }
+
+        public Builder protocolContext(Map<String, Object> protocolContext) {
+            this.protocolContext = protocolContext != null ? protocolContext : Map.of();
+            return this;
+        }
+
+        public Builder executionStartTime(long executionStartTime) {
+            this.executionStartTime = executionStartTime;
+            return this;
+        }
+
+        public Builder correlationId(String correlationId) {
+            this.correlationId = correlationId;
+            return this;
+        }
+
+        public Builder priority(String priority) {
+            this.priority = priority;
+            return this;
+        }
+
+        public ActionContext build() {
+            return new ActionContext(this);
+        }
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+}

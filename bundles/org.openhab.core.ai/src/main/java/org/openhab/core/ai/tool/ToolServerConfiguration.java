@@ -1,4 +1,4 @@
-package org.openhab.core.ai.mcp.internal;
+package org.openhab.core.ai.tool.internal;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,14 +14,14 @@ import org.eclipse.jdt.annotation.Nullable;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class MCPServerConfiguration {
+public class ToolServerConfiguration {
 
     // TODO : Check if all these fields are effectively used in the code
 
     private final String serverId;
     private final String serverName;
     private final String serverVersion;
-    private final MCPTransportType transportType;
+    private final ToolTransportType transportType;
     private final String baseUrl;
     private final String messageEndpoint;
     private final String sseEndpoint;
@@ -92,7 +92,7 @@ public class MCPServerConfiguration {
     /**
      * Private constructor for builder pattern.
      */
-    private MCPServerConfiguration(Builder builder) {
+    private ToolServerConfiguration(Builder builder) {
         this.serverId = builder.serverId;
         this.serverName = builder.serverName;
         this.serverVersion = builder.serverVersion;
@@ -206,7 +206,7 @@ public class MCPServerConfiguration {
      * 
      * @return Transport type
      */
-    public MCPTransportType getTransportType() {
+    public ToolTransportType getTransportType() {
         return transportType;
     }
 
@@ -235,6 +235,36 @@ public class MCPServerConfiguration {
      */
     public String getSseEndpoint() {
         return sseEndpoint;
+    }
+
+    /**
+     * Get the SSE path for SSE transport.
+     * 
+     * @return SSE path
+     */
+    public String getSsePath() {
+        return sseEndpoint;
+    }
+
+    /**
+     * Get the SSE port for SSE transport.
+     * 
+     * @return SSE port
+     */
+    public int getSsePort() {
+        // Extract port from baseUrl or use default
+        if (baseUrl != null && baseUrl.contains(":")) {
+            try {
+                String portPart = baseUrl.substring(baseUrl.lastIndexOf(":") + 1);
+                if (portPart.contains("/")) {
+                    portPart = portPart.substring(0, portPart.indexOf("/"));
+                }
+                return Integer.parseInt(portPart);
+            } catch (NumberFormatException e) {
+                // Fall back to default
+            }
+        }
+        return 8080; // Default port
     }
 
     /**
@@ -300,6 +330,15 @@ public class MCPServerConfiguration {
 
     public boolean isEnableAsyncCompletions() {
         return enableAsyncCompletions;
+    }
+
+    /**
+     * Check if async server is enabled.
+     * 
+     * @return true if async server is enabled
+     */
+    public boolean isAsyncEnabled() {
+        return enableAsyncServer;
     }
 
     /**
@@ -621,7 +660,7 @@ public class MCPServerConfiguration {
             return true;
         if (o == null || getClass() != o.getClass())
             return false;
-        MCPServerConfiguration that = (MCPServerConfiguration) o;
+        ToolServerConfiguration that = (ToolServerConfiguration) o;
         return Objects.equals(serverId, that.serverId);
     }
 
@@ -648,7 +687,7 @@ public class MCPServerConfiguration {
         private String serverId = "default-server-id";
         private String serverName = "openHAB MCP Server";
         private String serverVersion = "1.0.0";
-        private MCPTransportType transportType = MCPTransportType.STDIO;
+        private ToolTransportType transportType = ToolTransportType.STDIO;
         private String baseUrl = "http://localhost:8080";
         private String messageEndpoint = "/mcp/message";
         private String sseEndpoint = "/mcp/events";
@@ -755,7 +794,7 @@ public class MCPServerConfiguration {
          * @param transportType Transport type
          * @return This builder
          */
-        public Builder transportType(MCPTransportType transportType) {
+        public Builder transportType(ToolTransportType transportType) {
             this.transportType = transportType;
             return this;
         }
@@ -1088,7 +1127,7 @@ public class MCPServerConfiguration {
          * @return Configuration instance
          * @throws IllegalArgumentException if required fields are missing
          */
-        public MCPServerConfiguration build() {
+        public ToolServerConfiguration build() {
             if (serverId == null || serverId.trim().isEmpty()) {
                 throw new IllegalArgumentException("Server ID is required");
             }
@@ -1102,7 +1141,7 @@ public class MCPServerConfiguration {
                 throw new IllegalArgumentException("Transport type is required");
             }
 
-            return new MCPServerConfiguration(this);
+            return new ToolServerConfiguration(this);
         }
     }
 }

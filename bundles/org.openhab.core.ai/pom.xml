@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.openhab.core.bundles</groupId>
+    <artifactId>org.openhab.core.reactor.bundles</artifactId>
+    <version>5.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>org.openhab.core.ai.common</artifactId>
+
+  <name>openHAB Core :: Bundles :: AI :: Common (Consolidated)</name>
+
+  <dependencies>
+    <!-- openHAB Core Dependencies -->
+    <dependency>
+      <groupId>org.openhab.core.bundles</groupId>
+      <artifactId>org.openhab.core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.openhab.core.bundles</groupId>
+      <artifactId>org.openhab.core.thing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.openhab.core.bundles</groupId>
+      <artifactId>org.openhab.core.config.core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.openhab.core.bundles</groupId>
+      <artifactId>org.openhab.core.automation</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.openhab.core.bundles</groupId>
+      <artifactId>org.openhab.core.transform</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.openhab.core.bundles</groupId>
+      <artifactId>org.openhab.core.persistence</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <!-- Jackson for JSON processing -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.15.2</version>
+    </dependency>
+
+    <!-- LLM Provider SDKs -->
+    <!-- OpenAI Java SDK -->
+    <dependency>
+      <groupId>com.openai</groupId>
+      <artifactId>openai-java</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+
+    <!-- Anthropic Java SDK -->
+    <dependency>
+      <groupId>com.anthropic</groupId>
+      <artifactId>anthropic-java</artifactId>
+      <version>2.0.0</version>
+    </dependency>
+
+    <!-- Google GenAI Java SDK -->
+    <dependency>
+      <groupId>com.google.genai</groupId>
+      <artifactId>google-genai</artifactId>
+      <version>1.7.0</version>
+    </dependency>
+
+    <!-- Azure OpenAI SDK -->
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-ai-openai</artifactId>
+      <version>1.0.0-beta.8</version>
+    </dependency>
+
+    <!-- Ollama4j Java SDK -->
+    <dependency>
+      <groupId>io.github.ollama4j</groupId>
+      <artifactId>ollama4j</artifactId>
+      <version>1.0.100</version>
+    </dependency>
+
+    <!-- MCP Protocol Dependencies -->
+    <!-- Official MCP Java SDK (Spring AI implementation) -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-mcp</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+
+    <!-- openHAB Core Dependencies -->
+    <dependency>
+      <groupId>io.modelcontextprotocol.sdk</groupId>
+      <artifactId>mcp</artifactId>
+      <version>0.11.0</version>
+    </dependency>
+
+    <!-- Jakarta Servlet Dependencies for SSE Transport -->
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <version>6.0.0</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>jakarta.servlet.jsp</groupId>
+      <artifactId>jakarta.servlet.jsp-api</artifactId>
+      <version>3.1.1</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Jetty Core Server -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <version>11.0.18</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>11.0.18</version>
+    </dependency>
+    <!-- Jetty WebSocket Server -->
+    <dependency>
+      <groupId>org.eclipse.jetty.websocket</groupId>
+      <artifactId>websocket-jetty-server</artifactId>
+      <version>11.0.18</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty.websocket</groupId>
+      <artifactId>websocket-servlet</artifactId>
+      <version>11.0.18</version>
+    </dependency>
+
+    <!-- Reactor dependencies for MCP transport -->
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
+      <version>3.6.3</version>
+    </dependency>
+
+    <!-- A2A Protocol Dependencies -->
+    <!-- Official A2A Java SDK - Client and Server -->
+    <dependency>
+      <groupId>io.github.a2asdk</groupId>
+      <artifactId>a2a-java-sdk-client</artifactId>
+      <version>0.2.5</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.github.a2asdk</groupId>
+      <artifactId>a2a-java-sdk-spec</artifactId>
+      <version>0.2.5</version>
+    </dependency>
+
+    <!-- A2A Server SDK -->
+    <dependency>
+      <groupId>io.github.a2asdk</groupId>
+      <artifactId>a2a-java-sdk-server-common</artifactId>
+      <version>0.2.5</version>
+    </dependency>
+
+    <!-- Jakarta EE Web Profile for A2A Server -->
+    <dependency>
+      <groupId>jakarta.platform</groupId>
+      <artifactId>jakarta.jakartaee-web-api</artifactId>
+      <version>10.0.0</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- JSON Processing -->
+    <dependency>
+      <groupId>jakarta.json</groupId>
+      <artifactId>jakarta.json-api</artifactId>
+      <version>2.0.1</version>
+    </dependency>
+
+    <!-- OSGi Framework -->
+    <dependency>
+      <groupId>org.osgi</groupId>
+      <artifactId>org.osgi.core</artifactId>
+      <version>6.0.0</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>2.0.9</version>
+    </dependency>
+
+    <!-- Test Dependencies -->
+    <!-- JUnit 5 for unit testing -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.11.4</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- JUnit Platform Suite for test suites -->
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-suite</artifactId>
+      <version>1.11.4</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Mockito for mocking -->
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>4.11.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>4.11.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- AssertJ for fluent assertions -->
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.24.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- openHAB Test Framework -->
+    <dependency>
+      <groupId>org.openhab.core.bundles</groupId>
+      <artifactId>org.openhab.core.test</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+</project>
