@@ -105,7 +105,8 @@ public class A2ATaskSchemaGenerator {
 
         } catch (Exception e) {
             logger.error("Error generating schema for action: {}", actionId, e);
-            return createErrorSchema(actionId, e.getMessage());
+            String errorMsg = e.getMessage();
+            return createErrorSchema(actionId, errorMsg != null ? errorMsg : "Unknown error");
         }
     }
 
@@ -134,7 +135,8 @@ public class A2ATaskSchemaGenerator {
                     schemas.put(actionId, schema);
                 } catch (Exception e) {
                     logger.error("Error generating schema for action: {}", actionId, e);
-                    schemas.put(actionId, createErrorSchema(actionId, e.getMessage()));
+                    String errorMsg = e.getMessage();
+                    schemas.put(actionId, createErrorSchema(actionId, errorMsg != null ? errorMsg : "Unknown error"));
                 }
             }
 
@@ -178,7 +180,9 @@ public class A2ATaskSchemaGenerator {
 
         } catch (Exception e) {
             logger.error("Error validating task: {}", task.getId(), e);
-            return new SchemaValidationResult(false, "Validation error: " + e.getMessage());
+            String errorMsg = e.getMessage();
+            return new SchemaValidationResult(false,
+                    "Validation error: " + (errorMsg != null ? errorMsg : "Unknown error"));
         }
     }
 
@@ -238,7 +242,8 @@ public class A2ATaskSchemaGenerator {
 
         } catch (Exception e) {
             logger.error("Error creating schema version for action: {}", actionId, e);
-            return null;
+            String errorMsg = e.getMessage();
+            return createErrorSchema(actionId, errorMsg != null ? errorMsg : "Unknown error");
         }
     }
 
@@ -328,6 +333,12 @@ public class A2ATaskSchemaGenerator {
                         String description = (String) paramMap.getOrDefault("description", "");
                         boolean required = (Boolean) paramMap.getOrDefault("required", false);
                         Object defaultValue = paramMap.get("defaultValue");
+
+                        // Ensure non-null values for required fields
+                        if (type == null)
+                            type = "string";
+                        if (description == null)
+                            description = "";
                         @SuppressWarnings("unchecked")
                         Map<String, Object> paramConstraints = (Map<String, Object>) paramMap.get("constraints");
 
@@ -612,6 +623,12 @@ public class A2ATaskSchemaGenerator {
                         String type = (String) paramMap.getOrDefault("type", "string");
                         boolean required = (Boolean) paramMap.getOrDefault("required", false);
                         String description = (String) paramMap.getOrDefault("description", "");
+
+                        // Ensure non-null values for required fields
+                        if (type == null)
+                            type = "string";
+                        if (description == null)
+                            description = "";
 
                         doc.append("### ").append(paramName).append("\n");
                         doc.append("- Type: ").append(type).append("\n");

@@ -298,7 +298,10 @@ public class A2AConfigurationManager {
 
                 Map<String, Object> config = new HashMap<>();
                 for (String key : props.stringPropertyNames()) {
-                    config.put(key, props.getProperty(key));
+                    String value = props.getProperty(key);
+                    if (value != null) {
+                        config.put(key, value);
+                    }
                 }
 
                 loadConfiguration(config);
@@ -402,6 +405,15 @@ public class A2AConfigurationManager {
     public void unregisterConfigurationChangeListener(String listenerId) {
         changeListeners.remove(listenerId);
         logger.debug("Unregistered configuration change listener: {}", listenerId);
+    }
+
+    /**
+     * Initialize components with current configuration.
+     */
+    public void initializeComponents() {
+        logger.info("Initializing A2A components with current configuration");
+        // This method can be used to initialize components that depend on configuration
+        // For now, it's a placeholder for future implementation
     }
 
     /**

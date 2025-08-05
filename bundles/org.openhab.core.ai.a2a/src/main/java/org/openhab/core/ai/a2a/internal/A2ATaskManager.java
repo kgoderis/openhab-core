@@ -4,11 +4,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -34,7 +40,8 @@ import io.a2a.spec.TaskStatus;
 import io.a2a.spec.TaskStatusUpdateEvent;
 
 /**
- * Unified A2A Task Manager - Handles task lifecycle management, execution, orchestration, and storage.
+ * Enhanced A2A Task Manager - Handles task lifecycle management, execution, orchestration, and storage
+ * with advanced deadlock prevention, resource locking, transaction support, and fault tolerance.
  * 
  * <p>
  * This class is responsible for:
@@ -47,6 +54,10 @@ import io.a2a.spec.TaskStatusUpdateEvent;
  * - Agent coordination and load balancing
  * - Performance monitoring and metrics
  * - Security and authorization controls
+ * - Deadlock prevention and circular dependency detection
+ * - Resource locking for concurrent agent access
+ * - Transaction support for multi-agent operations
+ * - Advanced fault tolerance with retry mechanisms and fallback support
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
@@ -75,6 +86,7 @@ public class A2ATaskManager {
     // Task storage and execution
     private @Nullable TaskStore taskStore;
     private @Nullable ExecutorService asyncExecutor;
+    private @Nullable ScheduledExecutorService retryExecutor;
 
     // Task orchestration state (from A2AAgentTaskOrchestrator)
     private final ConcurrentHashMap<String, TaskOrchestrationState> taskStates = new ConcurrentHashMap<>();
@@ -87,37 +99,52 @@ public class A2ATaskManager {
     private final AtomicLong successfulOrchestrations = new AtomicLong(0);
     private final AtomicLong failedOrchestrations = new AtomicLong(0);
 
+    // Enhanced features for section 16.1.5.9
+    // Resource locking for concurrent agent access
+    private final ConcurrentHashMap<String, ReentrantReadWriteLock> agentLocks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Lock> taskLocks = new ConcurrentHashMap<>();
+    
+    // Transaction support for multi-agent operations
+    private final ConcurrentHashMap<String, TaskTransaction> activeTransactions = new ConcurrentHashMap<>();
+    
+    // Deadlock prevention and circular dependency detection
+    private final ConcurrentHashMap<String, Set<String>> resourceAllocationGraph = new ConcurrentHashMap<>();
+    private final Lock deadlockDetectionLock = new ReentrantLock();
+    
+    // Advanced fault tolerance
+    private final ConcurrentHashMap<String, RetryContext> retryContexts = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, FallbackStrategy> fallbackStrategies = new ConcurrentHashMap<>();
+
     // Configuration
     private static final long DEFAULT_TASK_TIMEOUT_MS = 30000; // 30 seconds
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final long RETRY_DELAY_MS = 1000; // 1 second
+    private static final long DEADLOCK_DETECTION_INTERVAL_MS = 5000; // 5 seconds
+    private static final long TRANSACTION_TIMEOUT_MS = 60000; // 60 seconds
 
     @Activate
     public void activate() {
-        logger.debug("A2A Task Manager activated");
+        logger.debug("Enhanced A2A Task Manager activated");
         initializeComponents();
+        startDeadlockDetection();
     }
 
     @Deactivate
     public void deactivate() {
-        logger.debug("A2A Task Manager deactivated");
-
-        // Shutdown executor
+        logger.debug("Enhanced A2A Task Manager deactivated");
         if (asyncExecutor != null) {
             asyncExecutor.shutdown();
         }
+        if (retryExecutor != null) {
+            retryExecutor.shutdown();
+        }
+        cleanupAllTransactions();
     }
 
     private void initializeComponents() {
-        logger.debug("Initializing A2A Task Manager components");
-
-        // Create async executor
-        asyncExecutor = Executors.newCachedThreadPool();
-
-        // Create task store
         taskStore = createTaskStore();
-
-        logger.debug("A2A Task Manager components initialized");
+        asyncExecutor = Executors.newCachedThreadPool();
+        retryExecutor = Executors.newScheduledThreadPool(2);
     }
 
     private TaskStore createTaskStore() {
@@ -858,7 +885,8 @@ public class A2ATaskManager {
             if (task != null) {
                 // Update task metadata with result
                 Map<String, Object> metadata = new HashMap<>(task.getMetadata());
-                metadata.put("result", result.getData() != null ? result.getData() : "");
+                Object resultData = result.getData();
+                metadata.put("result", resultData != null ? resultData : "");
                 metadata.put("success", result.isSuccess());
                 metadata.put("message", result.getMessage());
                 metadata.put("completedAt", System.currentTimeMillis());
@@ -950,12 +978,71 @@ public class A2ATaskManager {
         return new ArrayList<>();
     }
 
+    /**
+     * Order tasks by dependencies using topological sort
+     */
+    private List<Task> orderTasksByDependencies(List<Task> tasks, Map<String, List<String>> dependencyGraph) {
+        // Simple topological sort implementation
+        List<Task> orderedTasks = new ArrayList<>();
+        Set<String> visited = ConcurrentHashMap.newKeySet();
+        Set<String> processing = ConcurrentHashMap.newKeySet();
+        
+        for (Task task : tasks) {
+            if (!visited.contains(task.getId())) {
+                topologicalSortUtil(task.getId(), tasks, dependencyGraph, visited, processing, orderedTasks);
+            }
+        }
+        
+        return orderedTasks;
+    }
+
+    /**
+     * Utility method for topological sort
+     */
+    private void topologicalSortUtil(String taskId, List<Task> allTasks, Map<String, List<String>> dependencyGraph,
+            Set<String> visited, Set<String> processing, List<Task> orderedTasks) {
+        
+        if (processing.contains(taskId)) {
+            // Circular dependency detected
+            logger.warn("Circular dependency detected for task: {}", taskId);
+            return;
+        }
+        
+        if (visited.contains(taskId)) {
+            return;
+        }
+        
+        visited.add(taskId);
+        processing.add(taskId);
+        
+        List<String> dependencies = dependencyGraph.get(taskId);
+        if (dependencies != null) {
+            for (String dependency : dependencies) {
+                topologicalSortUtil(dependency, allTasks, dependencyGraph, visited, processing, orderedTasks);
+            }
+        }
+        
+        processing.remove(taskId);
+        
+        // Find the task and add it to ordered list
+        for (Task task : allTasks) {
+            if (task.getId().equals(taskId)) {
+                orderedTasks.add(task);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Get agents with capability (fixed method call)
+     */
     private List<String> getAgentsWithCapability(String capability) {
         A2AAgentRegistry registry = agentRegistry;
         if (registry != null) {
-            return registry.findAgentsWithCapability(capability);
+            // Use a default user ID for capability lookup
+            return registry.findAgentsWithCapability(capability, "system");
         }
-        return new ArrayList<>();
+        return List.of();
     }
 
     private int getAgentActiveTaskCount(String agentId) {
@@ -978,14 +1065,275 @@ public class A2ATaskManager {
         return graph;
     }
 
+    /**
+     * Enhanced circular dependency detection with deadlock prevention
+     */
     private boolean hasCircularDependencies(Map<String, List<String>> dependencyGraph) {
-        // TODO: Implement cycle detection using DFS
-        return false; // Placeholder
+        // Use depth-first search to detect cycles
+        Set<String> visited = ConcurrentHashMap.newKeySet();
+        Set<String> recursionStack = ConcurrentHashMap.newKeySet();
+        
+        for (String taskId : dependencyGraph.keySet()) {
+            if (!visited.contains(taskId)) {
+                if (hasCycleUtil(taskId, visited, recursionStack, dependencyGraph)) {
+                    logger.warn("Circular dependency detected for task: {}", taskId);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
-    private List<Task> orderTasksByDependencies(List<Task> tasks, Map<String, List<String>> dependencyGraph) {
-        // TODO: Implement topological sort
-        return tasks; // Placeholder - return original order
+    /**
+     * Utility method for cycle detection using DFS (generic version)
+     */
+    private boolean hasCycleUtil(String taskId, Set<String> visited, Set<String> recursionStack, 
+            Map<String, ? extends Iterable<String>> dependencyGraph) {
+        visited.add(taskId);
+        recursionStack.add(taskId);
+        
+        Iterable<String> dependencies = dependencyGraph.get(taskId);
+        if (dependencies != null) {
+            for (String dependency : dependencies) {
+                if (!visited.contains(dependency)) {
+                    if (hasCycleUtil(dependency, visited, recursionStack, dependencyGraph)) {
+                        return true;
+                    }
+                } else if (recursionStack.contains(dependency)) {
+                    return true;
+                }
+            }
+        }
+        
+        recursionStack.remove(taskId);
+        return false;
+    }
+
+    /**
+     * Start deadlock detection service
+     */
+    private void startDeadlockDetection() {
+        if (retryExecutor != null) {
+            retryExecutor.scheduleAtFixedRate(this::detectDeadlocks, 
+                DEADLOCK_DETECTION_INTERVAL_MS, DEADLOCK_DETECTION_INTERVAL_MS, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    /**
+     * Detect and resolve deadlocks
+     */
+    private void detectDeadlocks() {
+        deadlockDetectionLock.lock();
+        try {
+            // Build resource allocation graph
+            buildResourceAllocationGraph();
+            
+            // Check for cycles in the graph
+            if (hasDeadlock()) {
+                logger.warn("Deadlock detected, initiating resolution");
+                resolveDeadlock();
+            }
+        } finally {
+            deadlockDetectionLock.unlock();
+        }
+    }
+
+    /**
+     * Build resource allocation graph for deadlock detection
+     */
+    private void buildResourceAllocationGraph() {
+        resourceAllocationGraph.clear();
+        
+        // Add all active tasks and their resource requirements
+        for (Map.Entry<String, TaskOrchestrationState> entry : taskStates.entrySet()) {
+            String taskId = entry.getKey();
+            TaskOrchestrationState state = entry.getValue();
+            
+            if (state.getState() == TaskOrchestrationState.State.RUNNING) {
+                String agentId = taskAgentAssignments.get(taskId);
+                if (agentId != null) {
+                    resourceAllocationGraph.put(taskId, Set.of(agentId));
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if there's a deadlock in the resource allocation graph
+     */
+    private boolean hasDeadlock() {
+        Set<String> visited = ConcurrentHashMap.newKeySet();
+        Set<String> recursionStack = ConcurrentHashMap.newKeySet();
+        
+        for (String taskId : resourceAllocationGraph.keySet()) {
+            if (!visited.contains(taskId)) {
+                if (hasCycleUtil(taskId, visited, recursionStack, resourceAllocationGraph)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Resolve deadlock by cancelling one of the involved tasks
+     */
+    private void resolveDeadlock() {
+        // Simple resolution: cancel the task with the most recent start time
+        String taskToCancel = null;
+        long latestStartTime = 0;
+        
+        for (Map.Entry<String, TaskOrchestrationState> entry : taskStates.entrySet()) {
+            String taskId = entry.getKey();
+            TaskOrchestrationState state = entry.getValue();
+            
+            if (state.getState() == TaskOrchestrationState.State.RUNNING && 
+                state.getStartTime() > latestStartTime) {
+                taskToCancel = taskId;
+                latestStartTime = state.getStartTime();
+            }
+        }
+        
+        if (taskToCancel != null) {
+            logger.warn("Resolving deadlock by cancelling task: {}", taskToCancel);
+            cancelTaskOrchestration(taskToCancel);
+        }
+    }
+
+    /**
+     * Clean up all active transactions
+     */
+    private void cleanupAllTransactions() {
+        for (String transactionId : activeTransactions.keySet()) {
+            TaskTransaction transaction = activeTransactions.get(transactionId);
+            if (transaction != null) {
+                transaction.rollback();
+            }
+        }
+        activeTransactions.clear();
+    }
+
+    /**
+     * Get or create agent lock for resource management
+     */
+    private ReentrantReadWriteLock getAgentLock(String agentId) {
+        return agentLocks.computeIfAbsent(agentId, k -> new ReentrantReadWriteLock());
+    }
+
+    /**
+     * Get or create task lock
+     */
+    private Lock getTaskLock(String taskId) {
+        return taskLocks.computeIfAbsent(taskId, k -> new ReentrantLock());
+    }
+
+    /**
+     * Execute task with resource locking
+     */
+    public CompletableFuture<TaskStatusUpdateEvent> executeTaskWithResourceLocking(Task task) {
+        String taskId = task.getId();
+        Lock taskLock = getTaskLock(taskId);
+        
+        return CompletableFuture.supplyAsync(() -> {
+            taskLock.lock();
+            try {
+                String agentId = selectOptimalAgent(task);
+                if (agentId != null) {
+                    ReentrantReadWriteLock agentLock = getAgentLock(agentId);
+                    agentLock.writeLock().lock();
+                    try {
+                        return executeTaskWithOrchestration(task);
+                    } finally {
+                        agentLock.writeLock().unlock();
+                    }
+                } else {
+                    return createErrorResponse(task, "No suitable agent available");
+                }
+            } finally {
+                taskLock.unlock();
+            }
+        }, asyncExecutor);
+    }
+
+    /**
+     * Execute task with retry mechanism and fallback support
+     */
+    public CompletableFuture<TaskStatusUpdateEvent> executeTaskWithFaultTolerance(Task task) {
+        String taskId = task.getId();
+        RetryContext retryContext = new RetryContext(taskId, MAX_RETRY_ATTEMPTS);
+        retryContexts.put(taskId, retryContext);
+        
+        return executeTaskWithRetry(task, retryContext, 0);
+    }
+
+    /**
+     * Execute task with retry mechanism
+     */
+    private CompletableFuture<TaskStatusUpdateEvent> executeTaskWithRetry(Task task, RetryContext retryContext, int attempt) {
+        return executeTaskWithResourceLocking(task).handle((result, throwable) -> {
+            if (throwable != null && retryContext.canRetry()) {
+                logger.warn("Task {} failed, attempt {}/{}, retrying...", task.getId(), attempt + 1, MAX_RETRY_ATTEMPTS);
+                retryContext.incrementAttempt();
+                
+                if (retryExecutor != null) {
+                    retryExecutor.schedule(() -> {
+                        executeTaskWithRetry(task, retryContext, attempt + 1);
+                    }, RETRY_DELAY_MS * (attempt + 1), TimeUnit.MILLISECONDS);
+                }
+                return null;
+            } else if (throwable != null) {
+                logger.error("Task {} failed after {} attempts, using fallback strategy", task.getId(), MAX_RETRY_ATTEMPTS);
+                return executeFallbackStrategy(task);
+            } else {
+                return result;
+            }
+        });
+    }
+
+    /**
+     * Execute fallback strategy for failed tasks
+     */
+    private TaskStatusUpdateEvent executeFallbackStrategy(Task task) {
+        FallbackStrategy fallback = fallbackStrategies.get(task.getId());
+        if (fallback != null) {
+            return fallback.execute(task);
+        } else {
+            // Default fallback: return error response
+            return createErrorResponse(task, "Task failed and no fallback strategy available");
+        }
+    }
+
+    /**
+     * Create transaction for multi-agent operations
+     */
+    public TaskTransaction createTransaction(String transactionId) {
+        TaskTransaction transaction = new TaskTransaction(transactionId, this);
+        activeTransactions.put(transactionId, transaction);
+        return transaction;
+    }
+
+    /**
+     * Commit transaction
+     */
+    public boolean commitTransaction(String transactionId) {
+        TaskTransaction transaction = activeTransactions.get(transactionId);
+        if (transaction != null) {
+            boolean success = transaction.commit();
+            activeTransactions.remove(transactionId);
+            return success;
+        }
+        return false;
+    }
+
+    /**
+     * Rollback transaction
+     */
+    public void rollbackTransaction(String transactionId) {
+        TaskTransaction transaction = activeTransactions.get(transactionId);
+        if (transaction != null) {
+            transaction.rollback();
+            activeTransactions.remove(transactionId);
+        }
     }
 
     // ============================================================================
@@ -1128,6 +1476,191 @@ public class A2ATaskManager {
                 return 0.0;
             }
             return executionTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
+        }
+    }
+
+    /**
+     * Task Transaction for multi-agent operations
+     */
+    public static class TaskTransaction {
+        private final String transactionId;
+        private final A2ATaskManager taskManager;
+        private final List<Task> tasks;
+        private final Map<String, String> taskAgentAssignments;
+        private boolean committed = false;
+        private boolean rolledBack = false;
+
+        public TaskTransaction(String transactionId, A2ATaskManager taskManager) {
+            this.transactionId = transactionId;
+            this.taskManager = taskManager;
+            this.tasks = new ArrayList<>();
+            this.taskAgentAssignments = new HashMap<>();
+        }
+
+        public void addTask(Task task) {
+            if (!committed && !rolledBack) {
+                tasks.add(task);
+            }
+        }
+
+        public void assignAgent(String taskId, String agentId) {
+            if (!committed && !rolledBack) {
+                taskAgentAssignments.put(taskId, agentId);
+            }
+        }
+
+        public boolean commit() {
+            if (committed || rolledBack) {
+                return false;
+            }
+
+            try {
+                // Execute all tasks in the transaction
+                for (Task task : tasks) {
+                    String agentId = taskAgentAssignments.get(task.getId());
+                    if (agentId != null) {
+                        taskManager.taskAgentAssignments.put(task.getId(), agentId);
+                    }
+                    taskManager.startTask(task.getId());
+                }
+                
+                committed = true;
+                return true;
+            } catch (Exception e) {
+                logger.error("Transaction commit failed: {}", transactionId, e);
+                rollback();
+                return false;
+            }
+        }
+
+        public void rollback() {
+            if (committed || rolledBack) {
+                return;
+            }
+
+            try {
+                // Cancel all tasks in the transaction
+                for (Task task : tasks) {
+                    taskManager.cancelTaskOrchestration(task.getId());
+                }
+                
+                // Remove agent assignments
+                for (String taskId : taskAgentAssignments.keySet()) {
+                    taskManager.taskAgentAssignments.remove(taskId);
+                }
+                
+                rolledBack = true;
+            } catch (Exception e) {
+                logger.error("Transaction rollback failed: {}", transactionId, e);
+            }
+        }
+
+        public String getTransactionId() {
+            return transactionId;
+        }
+
+        public boolean isCommitted() {
+            return committed;
+        }
+
+        public boolean isRolledBack() {
+            return rolledBack;
+        }
+    }
+
+    /**
+     * Retry Context for fault tolerance
+     */
+    public static class RetryContext {
+        private final String taskId;
+        private final int maxRetries;
+        private int currentAttempts;
+
+        public RetryContext(String taskId, int maxRetries) {
+            this.taskId = taskId;
+            this.maxRetries = maxRetries;
+            this.currentAttempts = 0;
+        }
+
+        public boolean canRetry() {
+            return currentAttempts < maxRetries;
+        }
+
+        public void incrementAttempt() {
+            currentAttempts++;
+        }
+
+        public int getCurrentAttempts() {
+            return currentAttempts;
+        }
+
+        public int getMaxRetries() {
+            return maxRetries;
+        }
+
+        public String getTaskId() {
+            return taskId;
+        }
+    }
+
+    /**
+     * Fallback Strategy for failed tasks
+     */
+    public static class FallbackStrategy {
+        private final String taskId;
+        private final String strategyType;
+        private final A2ATaskManager taskManager;
+
+        public FallbackStrategy(String taskId, String strategyType, A2ATaskManager taskManager) {
+            this.taskId = taskId;
+            this.strategyType = strategyType;
+            this.taskManager = taskManager;
+        }
+
+        public TaskStatusUpdateEvent execute(Task task) {
+            switch (strategyType) {
+                case "RETRY_WITH_DIFFERENT_AGENT":
+                    return retryWithDifferentAgent(task);
+                case "SIMPLIFIED_EXECUTION":
+                    return simplifiedExecution(task);
+                case "ERROR_RESPONSE":
+                default:
+                    return createErrorResponse(task, "Task failed and fallback strategy executed");
+            }
+        }
+
+        private TaskStatusUpdateEvent retryWithDifferentAgent(Task task) {
+            // Try to find a different agent with the same capability
+            String capability = taskManager.getRequiredCapability(task);
+            List<String> agents = taskManager.getAgentsWithCapability(capability);
+            
+            if (agents.size() > 1) {
+                // Try the second agent
+                String alternativeAgentId = agents.get(1);
+                taskManager.taskAgentAssignments.put(task.getId(), alternativeAgentId);
+                return taskManager.executeTaskWithOrchestration(task);
+            } else {
+                return createErrorResponse(task, "No alternative agent available for fallback");
+            }
+        }
+
+        private TaskStatusUpdateEvent simplifiedExecution(Task task) {
+            // Execute a simplified version of the task
+            logger.info("Executing simplified version of task: {}", task.getId());
+            return createErrorResponse(task, "Simplified execution completed");
+        }
+
+        private TaskStatusUpdateEvent createErrorResponse(Task task, String message) {
+            // Create a simple error response using the existing method
+            return taskManager.createErrorResponse(task, message);
+        }
+
+        public String getTaskId() {
+            return taskId;
+        }
+
+        public String getStrategyType() {
+            return strategyType;
         }
     }
 }

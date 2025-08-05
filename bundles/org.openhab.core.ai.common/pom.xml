@@ -88,6 +88,13 @@
       <version>1.0.0-beta.8</version>
     </dependency>
 
+    <!-- Ollama4j Java SDK -->
+    <dependency>
+      <groupId>io.github.ollama4j</groupId>
+      <artifactId>ollama4j</artifactId>
+      <version>1.0.100</version>
+    </dependency>
+
     <!-- Test Dependencies -->
     <!-- JUnit 5 for unit testing -->
     <dependency>

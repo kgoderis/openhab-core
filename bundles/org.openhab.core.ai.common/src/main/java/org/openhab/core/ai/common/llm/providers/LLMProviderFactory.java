@@ -304,6 +304,13 @@ public class LLMProviderFactory {
      * Creates an Ollama client.
      */
     private LLMClient createOllamaClient(@Nullable LLMConfigurationService config) {
+        if (config != null) {
+            var ollamaConfig = config.getOllamaConfig();
+            if (ollamaConfig != null && ollamaConfig.isEnabled()) {
+                logger.debug("Creating Ollama client with configuration");
+                return new OllamaClientImpl(ollamaConfig, actionRegistry);
+            }
+        }
         logger.debug("Creating Ollama client (stub implementation)");
         return new StubLLMClient(LLMProviderType.OLLAMA, "llama3.1:8b");
     }
@@ -312,6 +319,13 @@ public class LLMProviderFactory {
      * Creates a LocalAI client.
      */
     private LLMClient createLocalAIClient(@Nullable LLMConfigurationService config) {
+        if (config != null) {
+            var localAIConfig = config.getLocalAIConfig();
+            if (localAIConfig != null && localAIConfig.isEnabled()) {
+                logger.debug("Creating LocalAI client with configuration");
+                return new LocalAIClientImpl(localAIConfig, actionRegistry);
+            }
+        }
         logger.debug("Creating LocalAI client (stub implementation)");
         return new StubLLMClient(LLMProviderType.LOCALAI, "llama3.1:8b");
     }
@@ -320,6 +334,13 @@ public class LLMProviderFactory {
      * Creates a vLLM client.
      */
     private LLMClient createVLLMClient(@Nullable LLMConfigurationService config) {
+        if (config != null) {
+            var vllmConfig = config.getVLLMConfig();
+            if (vllmConfig != null && vllmConfig.isEnabled()) {
+                logger.debug("Creating vLLM client with configuration");
+                return new VLLMClientImpl(vllmConfig, actionRegistry);
+            }
+        }
         logger.debug("Creating vLLM client (stub implementation)");
         return new StubLLMClient(LLMProviderType.VLLM, "llama3.1:8b");
     }
@@ -328,6 +349,13 @@ public class LLMProviderFactory {
      * Creates an LM Studio client.
      */
     private LLMClient createLMStudioClient(@Nullable LLMConfigurationService config) {
+        if (config != null) {
+            var lmStudioConfig = config.getLMStudioConfig();
+            if (lmStudioConfig != null && lmStudioConfig.isEnabled()) {
+                logger.debug("Creating LM Studio client with configuration");
+                return new LMStudioClientImpl(lmStudioConfig, actionRegistry);
+            }
+        }
         logger.debug("Creating LM Studio client (stub implementation)");
         return new StubLLMClient(LLMProviderType.LMSTUDIO, "llama3.1:8b");
     }

@@ -1,10 +1,5 @@
 package org.openhab.core.ai.common.llm.providers;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -26,13 +21,14 @@ import org.openhab.core.ai.common.llm.configuration.GoogleGenAIConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.genai.Client;
+import com.google.genai.types.Content;
+import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.Part;
 
 /**
- * Google GenAI LLM Client implementation using HTTP client.
+ * Google GenAI LLM Client implementation using official Google GenAI Java SDK.
  * 
  * @author Karel Goderis - Initial Contribution
  */
@@ -44,17 +40,15 @@ public class GoogleGenAIClientImpl implements LLMClient {
     private final @Nullable AIActionRegistry actionRegistry;
     private final ExecutorService executorService;
     private final LLMProviderInfo providerInfo;
-    private final HttpClient httpClient;
-    private final Gson gson;
+    private final Client genaiClient;
 
     public GoogleGenAIClientImpl(GoogleGenAIConfiguration config, @Nullable AIActionRegistry actionRegistry) {
         this.config = config;
         this.actionRegistry = actionRegistry;
         this.executorService = Executors.newCachedThreadPool();
-        this.gson = new Gson();
 
-        // Initialize HTTP client
-        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofMillis(config.getTimeoutMs())).build();
+        // Initialize Google GenAI client
+        this.genaiClient = Client.builder().apiKey(config.getApiKey()).build();
 
         this.providerInfo = new LLMProviderInfo(LLMProviderType.GOOGLE, config.getModelName(), true, // supportsFunctionCalling
                 true, // supportsStreaming
@@ -66,59 +60,23 @@ public class GoogleGenAIClientImpl implements LLMClient {
     public CompletableFuture<LLMResponse> complete(String prompt, LLMParameters params) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Build request payload
-                JsonObject requestBody = new JsonObject();
-                JsonArray contents = new JsonArray();
-                JsonObject content = new JsonObject();
-                JsonArray parts = new JsonArray();
-                JsonObject part = new JsonObject();
-                part.addProperty("text", prompt);
-                parts.add(part);
-                content.add("parts", parts);
-                contents.add(content);
-                requestBody.add("contents", contents);
+                // Build content
+                Content content = buildContent(prompt);
 
-                // Add generation config
-                JsonObject generationConfig = new JsonObject();
-                generationConfig.addProperty("temperature", params.getTemperature());
-                generationConfig.addProperty("maxOutputTokens", params.getMaxTokens());
-                generationConfig.addProperty("topP", 0.8);
-                generationConfig.addProperty("topK", 40);
-                requestBody.add("generationConfig", generationConfig);
+                // Build generation config
+                GenerateContentConfig genConfig = GenerateContentConfig.builder()
+                        .temperature((float) params.getTemperature()).maxOutputTokens(params.getMaxTokens()).topP(0.8f)
+                        .topK(40.0f).build();
 
-                String requestJson = gson.toJson(requestBody);
-                logger.debug("Google GenAI request: {}", requestJson);
-
-                // Build HTTP request
-                String url = config.getBaseUrl() + "/v1beta/models/" + config.getModelName() + ":generateContent?key="
-                        + config.getApiKey();
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                        .timeout(Duration.ofMillis(config.getTimeoutMs())).build();
+                logger.debug("Google GenAI request: model={}, maxTokens={}, temperature={}", this.config.getModelName(),
+                        params.getMaxTokens(), params.getTemperature());
 
                 // Send request
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                GenerateContentResponse response = genaiClient.models.generateContent(this.config.getModelName(),
+                        content, genConfig);
 
-                if (response.statusCode() != 200) {
-                    throw new RuntimeException(
-                            "Google GenAI API error: " + response.statusCode() + " - " + response.body());
-                }
-
-                // Parse response
-                JsonObject responseJson = JsonParser.parseString(response.body()).getAsJsonObject();
-                JsonArray candidates = responseJson.getAsJsonArray("candidates");
-
-                String responseContent = "";
-                if (candidates.size() > 0) {
-                    JsonObject candidate = candidates.get(0).getAsJsonObject();
-                    JsonObject contentResponse = candidate.getAsJsonObject("content");
-                    JsonArray responseParts = contentResponse.getAsJsonArray("parts");
-                    if (responseParts.size() > 0) {
-                        JsonObject responsePart = responseParts.get(0).getAsJsonObject();
-                        responseContent = responsePart.get("text").getAsString();
-                    }
-                }
+                // Extract response content
+                String responseContent = response.text();
 
                 return LLMResponse.builder().content(responseContent).modelName(config.getModelName())
                         .providerType(LLMProviderType.GOOGLE.name()).build();
@@ -130,87 +88,46 @@ public class GoogleGenAIClientImpl implements LLMClient {
         }, executorService);
     }
 
+    /**
+     * Build content for Google GenAI API
+     */
+    private Content buildContent(String prompt) {
+        Part part = Part.builder().text(prompt).build();
+        return Content.builder().parts(part).build();
+    }
+
     @Override
     public CompletableFuture<LLMResponse> completeWithStreaming(String prompt, LLMParameters params,
             LLMStreamHandler handler) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Build request payload
-                JsonObject requestBody = new JsonObject();
-                JsonArray contents = new JsonArray();
-                JsonObject content = new JsonObject();
-                JsonArray parts = new JsonArray();
-                JsonObject part = new JsonObject();
-                part.addProperty("text", prompt);
-                parts.add(part);
-                content.add("parts", parts);
-                contents.add(content);
-                requestBody.add("contents", contents);
+                // Build content
+                Content content = buildContent(prompt);
 
-                // Add generation config
-                JsonObject generationConfig = new JsonObject();
-                generationConfig.addProperty("temperature", params.getTemperature());
-                generationConfig.addProperty("maxOutputTokens", params.getMaxTokens());
-                generationConfig.addProperty("topP", 0.8);
-                generationConfig.addProperty("topK", 40);
-                requestBody.add("generationConfig", generationConfig);
+                // Build generation config
+                GenerateContentConfig genConfig = GenerateContentConfig.builder()
+                        .temperature((float) params.getTemperature()).maxOutputTokens(params.getMaxTokens()).topP(0.8f)
+                        .topK(40.0f).build();
 
-                String requestJson = gson.toJson(requestBody);
-                logger.debug("Google GenAI streaming request: {}", requestJson);
-
-                // Build HTTP request for streaming
-                String url = config.getBaseUrl() + "/v1beta/models/" + config.getModelName()
-                        + ":streamGenerateContent?key=" + config.getApiKey();
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                        .timeout(Duration.ofMillis(config.getTimeoutMs())).build();
+                logger.debug("Google GenAI streaming request: model={}, maxTokens={}, temperature={}",
+                        this.config.getModelName(), params.getMaxTokens(), params.getTemperature());
 
                 // Send streaming request
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                var stream = genaiClient.models.generateContentStream(this.config.getModelName(), content, genConfig);
 
-                if (response.statusCode() != 200) {
-                    throw new RuntimeException(
-                            "Google GenAI API error: " + response.statusCode() + " - " + response.body());
-                }
+                StringBuilder responseContent = new StringBuilder();
 
-                // Parse streaming response
-                StringBuilder contentBuilder = new StringBuilder();
-                String[] lines = response.body().split("\n");
-
-                for (String line : lines) {
-                    if (line.startsWith("data: ")) {
-                        String data = line.substring(6);
-                        if (data.equals("[DONE]")) {
-                            break;
-                        }
-
-                        try {
-                            JsonObject event = JsonParser.parseString(data).getAsJsonObject();
-                            if (event.has("candidates") && event.getAsJsonArray("candidates").size() > 0) {
-                                JsonObject candidate = event.getAsJsonArray("candidates").get(0).getAsJsonObject();
-                                if (candidate.has("content")) {
-                                    JsonObject contentResponse = candidate.getAsJsonObject("content");
-                                    JsonArray streamParts = contentResponse.getAsJsonArray("parts");
-                                    if (streamParts.size() > 0) {
-                                        JsonObject streamPart = streamParts.get(0).getAsJsonObject();
-                                        if (streamPart.has("text")) {
-                                            String chunk = streamPart.get("text").getAsString();
-                                            contentBuilder.append(chunk);
-                                            handler.onChunk(chunk);
-                                        }
-                                    }
-                                }
-                            }
-                        } catch (Exception e) {
-                            logger.debug("Error parsing streaming chunk: {}", e.getMessage());
-                        }
+                // Process streaming response
+                for (GenerateContentResponse response : stream) {
+                    String text = response.text();
+                    if (text != null && !text.isEmpty()) {
+                        responseContent.append(text);
+                        handler.onChunk(text);
                     }
                 }
 
-                String finalContent = contentBuilder.toString();
-                LLMResponse llmResponse = LLMResponse.builder().content(finalContent).modelName(config.getModelName())
-                        .providerType(LLMProviderType.GOOGLE.name()).build();
+                LLMResponse llmResponse = LLMResponse.builder().content(responseContent.toString())
+                        .modelName(this.config.getModelName()).providerType(LLMProviderType.GOOGLE.name()).build();
 
                 handler.onComplete(llmResponse);
                 return llmResponse;
@@ -271,35 +188,12 @@ public class GoogleGenAIClientImpl implements LLMClient {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Simple test with minimal tokens
-                JsonObject requestBody = new JsonObject();
-                JsonArray contents = new JsonArray();
-                JsonObject content = new JsonObject();
-                JsonArray parts = new JsonArray();
-                JsonObject part = new JsonObject();
-                part.addProperty("text", "Hello");
-                parts.add(part);
-                content.add("parts", parts);
-                contents.add(content);
-                requestBody.add("contents", contents);
+                Content content = Content.builder().parts(Part.builder().text("Hello").build()).build();
+                GenerateContentConfig genConfig = GenerateContentConfig.builder().maxOutputTokens(5).build();
 
-                JsonObject generationConfig = new JsonObject();
-                generationConfig.addProperty("maxOutputTokens", 5);
-                requestBody.add("generationConfig", generationConfig);
-
-                String requestJson = gson.toJson(requestBody);
-
-                String url = config.getBaseUrl() + "/v1beta/models/" + config.getModelName() + ":generateContent?key="
-                        + config.getApiKey();
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(requestJson)).timeout(Duration.ofMillis(10000)) // Shorter
-                                                                                                                  // timeout
-                                                                                                                  // for
-                                                                                                                  // test
-                        .build();
-
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                return response.statusCode() == 200;
+                GenerateContentResponse response = genaiClient.models.generateContent(this.config.getModelName(),
+                        content, genConfig);
+                return response != null;
             } catch (Exception e) {
                 logger.debug("Google GenAI connection test failed", e);
                 return false;

@@ -507,9 +507,11 @@ public class LLMConfigurationServiceImpl implements LLMConfigurationService, Wat
         String systemPrompt = getStringConfig(config, "ollama.systemPrompt", "You are a helpful AI assistant.");
         String baseUrl = getStringConfig(config, "ollama.baseUrl", "http://localhost:11434");
         int concurrentRequests = getIntConfig(config, "ollama.concurrentRequests", 3);
+        boolean autoStartOllama = getBooleanConfig(config, "ollama.autoStart", true);
+        boolean autoInstallOllama = getBooleanConfig(config, "ollama.autoInstall", false);
 
         return new OllamaConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts,
-                systemPrompt, baseUrl, concurrentRequests);
+                systemPrompt, baseUrl, concurrentRequests, autoStartOllama, autoInstallOllama);
     }
 
     /**

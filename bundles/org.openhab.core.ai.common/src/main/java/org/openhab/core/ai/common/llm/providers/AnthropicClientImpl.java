@@ -1,10 +1,5 @@
 package org.openhab.core.ai.common.llm.providers;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -26,13 +21,13 @@ import org.openhab.core.ai.common.llm.configuration.AnthropicConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+import com.anthropic.models.messages.Message;
+import com.anthropic.models.messages.MessageCreateParams;
+import com.anthropic.models.messages.MessageParam;
 
 /**
- * Anthropic LLM Client implementation using HTTP client.
+ * Anthropic LLM Client implementation using official Anthropic Java SDK.
  * 
  * @author Karel Goderis - Initial Contribution
  */
@@ -44,17 +39,15 @@ public class AnthropicClientImpl implements LLMClient {
     private final @Nullable AIActionRegistry actionRegistry;
     private final ExecutorService executorService;
     private final LLMProviderInfo providerInfo;
-    private final HttpClient httpClient;
-    private final Gson gson;
+    private final com.anthropic.client.AnthropicClient anthropicClient;
 
     public AnthropicClientImpl(AnthropicConfiguration config, @Nullable AIActionRegistry actionRegistry) {
         this.config = config;
         this.actionRegistry = actionRegistry;
         this.executorService = Executors.newCachedThreadPool();
-        this.gson = new Gson();
 
-        // Initialize HTTP client
-        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofMillis(config.getTimeoutMs())).build();
+        // Initialize Anthropic client with API key
+        this.anthropicClient = new AnthropicOkHttpClient.Builder().apiKey(config.getApiKey()).build();
 
         this.providerInfo = new LLMProviderInfo(LLMProviderType.ANTHROPIC, config.getModelName(), true, // supportsFunctionCalling
                 true, // supportsStreaming
@@ -66,61 +59,31 @@ public class AnthropicClientImpl implements LLMClient {
     public CompletableFuture<LLMResponse> complete(String prompt, LLMParameters params) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Build request payload
-                JsonObject requestBody = new JsonObject();
-                requestBody.addProperty("model", config.getModelName());
-                requestBody.addProperty("max_tokens", params.getMaxTokens());
-                requestBody.addProperty("temperature", params.getTemperature());
+                // Build messages array
+                List<MessageParam> messages = buildMessages(prompt);
 
-                JsonArray messages = new JsonArray();
+                // Create request
+                MessageCreateParams request = MessageCreateParams.builder().model(config.getModelName())
+                        .maxTokens(params.getMaxTokens()).temperature(params.getTemperature()).messages(messages)
+                        .build();
 
-                // Add system message first if configured
-                if (config.getSystemPrompt() != null && !config.getSystemPrompt().isEmpty()) {
-                    JsonObject systemMessage = new JsonObject();
-                    systemMessage.addProperty("role", "system");
-                    systemMessage.addProperty("content", config.getSystemPrompt());
-                    messages.add(systemMessage);
-                }
-
-                // Add user message
-                JsonObject message = new JsonObject();
-                message.addProperty("role", "user");
-                message.addProperty("content", prompt);
-                messages.add(message);
-                requestBody.add("messages", messages);
-
-                String requestJson = gson.toJson(requestBody);
-                logger.debug("Anthropic request: {}", requestJson);
-
-                // Build HTTP request
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(config.getBaseUrl() + "/v1/messages"))
-                        .header("Content-Type", "application/json").header("x-api-key", config.getApiKey())
-                        .header("anthropic-version", "2023-06-01")
-                        .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                        .timeout(Duration.ofMillis(config.getTimeoutMs())).build();
+                logger.debug("Anthropic request: model={}, maxTokens={}, temperature={}", config.getModelName(),
+                        params.getMaxTokens(), params.getTemperature());
 
                 // Send request
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                Message response = anthropicClient.messages().create(request);
 
-                if (response.statusCode() != 200) {
-                    throw new RuntimeException(
-                            "Anthropic API error: " + response.statusCode() + " - " + response.body());
-                }
-
-                // Parse response
-                JsonObject responseJson = JsonParser.parseString(response.body()).getAsJsonObject();
-                JsonArray content = responseJson.getAsJsonArray("content");
-                String model = responseJson.get("model").getAsString();
-
+                // Extract response content
                 String responseContent = "";
-                if (content.size() > 0) {
-                    JsonObject firstContent = content.get(0).getAsJsonObject();
-                    if (firstContent.has("text")) {
-                        responseContent = firstContent.get("text").getAsString();
+                if (response.content() != null && !response.content().isEmpty()) {
+                    // Get the first content block and extract text
+                    var firstBlock = response.content().get(0);
+                    if (firstBlock.isText()) {
+                        responseContent = firstBlock.asText().text();
                     }
                 }
 
-                return LLMResponse.builder().content(responseContent).modelName(model)
+                return LLMResponse.builder().content(responseContent).modelName(response.model().toString())
                         .providerType(LLMProviderType.ANTHROPIC.name()).build();
 
             } catch (Exception e) {
@@ -130,86 +93,68 @@ public class AnthropicClientImpl implements LLMClient {
         }, executorService);
     }
 
+    /**
+     * Build messages array for Anthropic API
+     */
+    private List<MessageParam> buildMessages(String prompt) {
+        List<MessageParam> messages = new java.util.ArrayList<>();
+
+        // Add system message first if configured
+        if (config.getSystemPrompt() != null && !config.getSystemPrompt().isEmpty()) {
+            messages.add(MessageParam.builder().role(MessageParam.Role.USER)
+                    .content("System: " + config.getSystemPrompt() + "\n\nUser: " + prompt).build());
+        } else {
+            // Add user message
+            messages.add(MessageParam.builder().role(MessageParam.Role.USER).content(prompt).build());
+        }
+
+        return messages;
+    }
+
     @Override
     public CompletableFuture<LLMResponse> completeWithStreaming(String prompt, LLMParameters params,
             LLMStreamHandler handler) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Build request payload
-                JsonObject requestBody = new JsonObject();
-                requestBody.addProperty("model", config.getModelName());
-                requestBody.addProperty("max_tokens", params.getMaxTokens());
-                requestBody.addProperty("temperature", params.getTemperature());
-                requestBody.addProperty("stream", true);
+                // Build messages array
+                List<MessageParam> messages = buildMessages(prompt);
 
-                JsonArray messages = new JsonArray();
+                // Create request
+                MessageCreateParams request = MessageCreateParams.builder().model(config.getModelName())
+                        .maxTokens(params.getMaxTokens()).temperature(params.getTemperature()).messages(messages)
+                        .build();
 
-                // Add system message first if configured
-                if (config.getSystemPrompt() != null && !config.getSystemPrompt().isEmpty()) {
-                    JsonObject systemMessage = new JsonObject();
-                    systemMessage.addProperty("role", "system");
-                    systemMessage.addProperty("content", config.getSystemPrompt());
-                    messages.add(systemMessage);
-                }
-
-                // Add user message
-                JsonObject message = new JsonObject();
-                message.addProperty("role", "user");
-                message.addProperty("content", prompt);
-                messages.add(message);
-                requestBody.add("messages", messages);
-
-                String requestJson = gson.toJson(requestBody);
-                logger.debug("Anthropic streaming request: {}", requestJson);
-
-                // Build HTTP request
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(config.getBaseUrl() + "/v1/messages"))
-                        .header("Content-Type", "application/json").header("x-api-key", config.getApiKey())
-                        .header("anthropic-version", "2023-06-01")
-                        .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                        .timeout(Duration.ofMillis(config.getTimeoutMs())).build();
+                logger.debug("Anthropic streaming request: model={}, maxTokens={}, temperature={}",
+                        config.getModelName(), params.getMaxTokens(), params.getTemperature());
 
                 // Send streaming request
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                var stream = anthropicClient.messages().createStreaming(request);
 
-                if (response.statusCode() != 200) {
-                    throw new RuntimeException(
-                            "Anthropic API error: " + response.statusCode() + " - " + response.body());
-                }
+                StringBuilder responseContent = new StringBuilder();
+                java.util.concurrent.atomic.AtomicReference<String> modelNameRef = new java.util.concurrent.atomic.AtomicReference<>(
+                        config.getModelName());
 
-                // Parse streaming response
-                StringBuilder contentBuilder = new StringBuilder();
-                String[] lines = response.body().split("\n");
-
-                for (String line : lines) {
-                    if (line.startsWith("data: ")) {
-                        String data = line.substring(6);
-                        if (data.equals("[DONE]")) {
-                            break;
+                // Process streaming response
+                stream.stream().forEach(event -> {
+                    if (event.isContentBlockDelta()) {
+                        var delta = event.asContentBlockDelta();
+                        var contentDelta = delta.delta();
+                        if (contentDelta.isText()) {
+                            String text = contentDelta.asText().text();
+                            responseContent.append(text);
+                            handler.onChunk(text);
                         }
-
-                        try {
-                            JsonObject event = JsonParser.parseString(data).getAsJsonObject();
-                            if (event.has("type") && event.get("type").getAsString().equals("content_block_delta")) {
-                                JsonObject delta = event.getAsJsonObject("delta");
-                                if (delta.has("text")) {
-                                    String chunk = delta.get("text").getAsString();
-                                    contentBuilder.append(chunk);
-                                    handler.onChunk(chunk);
-                                }
-                            }
-                        } catch (Exception e) {
-                            logger.debug("Error parsing streaming chunk: {}", e.getMessage());
-                        }
+                    } else if (event.isMessageStart()) {
+                        var start = event.asMessageStart();
+                        modelNameRef.set(start.message().model().toString());
+                    } else if (event.isMessageStop()) {
+                        handler.onComplete(LLMResponse.builder().content(responseContent.toString())
+                                .modelName(modelNameRef.get()).providerType(LLMProviderType.ANTHROPIC.name()).build());
                     }
-                }
+                });
 
-                String content = contentBuilder.toString();
-                LLMResponse llmResponse = LLMResponse.builder().content(content).modelName(config.getModelName())
+                return LLMResponse.builder().content(responseContent.toString()).modelName(modelNameRef.get())
                         .providerType(LLMProviderType.ANTHROPIC.name()).build();
-
-                handler.onComplete(llmResponse);
-                return llmResponse;
 
             } catch (Exception e) {
                 logger.error("Error completing Anthropic streaming request", e);
@@ -266,30 +211,14 @@ public class AnthropicClientImpl implements LLMClient {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Simple test with minimal tokens
-                JsonObject requestBody = new JsonObject();
-                requestBody.addProperty("model", config.getModelName());
-                requestBody.addProperty("max_tokens", 5);
+                List<MessageParam> messages = List
+                        .of(MessageParam.builder().role(MessageParam.Role.USER).content("Hello").build());
 
-                JsonArray messages = new JsonArray();
-                JsonObject message = new JsonObject();
-                message.addProperty("role", "user");
-                message.addProperty("content", "Hello");
-                messages.add(message);
-                requestBody.add("messages", messages);
+                MessageCreateParams request = MessageCreateParams.builder().model(config.getModelName()).maxTokens(5)
+                        .messages(messages).build();
 
-                String requestJson = gson.toJson(requestBody);
-
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(config.getBaseUrl() + "/v1/messages"))
-                        .header("Content-Type", "application/json").header("x-api-key", config.getApiKey())
-                        .header("anthropic-version", "2023-06-01")
-                        .POST(HttpRequest.BodyPublishers.ofString(requestJson)).timeout(Duration.ofMillis(10000)) // Shorter
-                                                                                                                  // timeout
-                                                                                                                  // for
-                                                                                                                  // test
-                        .build();
-
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                return response.statusCode() == 200;
+                Message response = anthropicClient.messages().create(request);
+                return response != null;
             } catch (Exception e) {
                 logger.debug("Anthropic connection test failed", e);
                 return false;

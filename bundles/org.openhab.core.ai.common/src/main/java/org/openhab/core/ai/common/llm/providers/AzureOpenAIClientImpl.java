@@ -1,10 +1,5 @@
 package org.openhab.core.ai.common.llm.providers;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -26,13 +21,15 @@ import org.openhab.core.ai.common.llm.configuration.AzureOpenAIConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.OpenAIClientBuilder;
+import com.azure.ai.openai.models.ChatCompletions;
+import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatRequestUserMessage;
+import com.azure.core.credential.AzureKeyCredential;
 
 /**
- * Azure OpenAI LLM Client implementation using HTTP client.
+ * Azure OpenAI LLM Client implementation using official Azure OpenAI Java SDK.
  * 
  * @author Karel Goderis - Initial Contribution
  */
@@ -44,70 +41,51 @@ public class AzureOpenAIClientImpl implements LLMClient {
     private final @Nullable AIActionRegistry actionRegistry;
     private final ExecutorService executorService;
     private final LLMProviderInfo providerInfo;
-    private final HttpClient httpClient;
-    private final Gson gson;
+    private final OpenAIClient openAIClient;
 
     public AzureOpenAIClientImpl(AzureOpenAIConfiguration config, @Nullable AIActionRegistry actionRegistry) {
         this.config = config;
         this.actionRegistry = actionRegistry;
         this.executorService = Executors.newCachedThreadPool();
-        this.gson = new Gson();
 
-        // Initialize HTTP client
-        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofMillis(config.getTimeoutMs())).build();
+        // Initialize Azure OpenAI client
+        this.openAIClient = new OpenAIClientBuilder().endpoint(config.getEndpoint())
+                .credential(new AzureKeyCredential(config.getApiKey())).buildClient();
 
         this.providerInfo = new LLMProviderInfo(LLMProviderType.AZURE, config.getModelName(), true, // supportsFunctionCalling
                 true, // supportsStreaming
                 true, // supportsMultimodal
-                config.getMaxTokens(), 0.03 // Default cost per 1K tokens for Azure OpenAI
-        );
+                config.getMaxTokens(), 0.0); // TODO: Add cost per 1k tokens to config
     }
 
     @Override
     public CompletableFuture<LLMResponse> complete(String prompt, LLMParameters params) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Build request payload
-                JsonObject requestBody = new JsonObject();
-                requestBody.addProperty("model", config.getDeploymentName());
-                requestBody.addProperty("max_tokens", params.getMaxTokens());
-                requestBody.addProperty("temperature", params.getTemperature());
+                // Build messages
+                ChatRequestUserMessage userMessage = new ChatRequestUserMessage(prompt);
+                List<ChatRequestUserMessage> messages = List.of(userMessage);
 
-                JsonArray messages = new JsonArray();
-                JsonObject message = new JsonObject();
-                message.addProperty("role", "user");
-                message.addProperty("content", prompt);
-                messages.add(message);
-                requestBody.add("messages", messages);
+                // Build options
+                ChatCompletionsOptions options = new ChatCompletionsOptions(
+                        messages.stream().map(msg -> (com.azure.ai.openai.models.ChatRequestMessage) msg)
+                                .collect(java.util.stream.Collectors.toList()));
+                options.setMaxTokens(params.getMaxTokens());
+                options.setTemperature(params.getTemperature());
 
-                String requestJson = gson.toJson(requestBody);
-                logger.debug("Azure OpenAI request: {}", requestJson);
-
-                // Build HTTP request
-                String url = config.getEndpoint() + "/openai/deployments/" + config.getDeploymentName()
-                        + "/chat/completions?api-version=2024-02-15-preview";
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
-                        .header("Content-Type", "application/json").header("api-key", config.getApiKey())
-                        .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                        .timeout(Duration.ofMillis(config.getTimeoutMs())).build();
+                logger.debug("Azure OpenAI request: model={}, maxTokens={}, temperature={}", config.getDeploymentName(),
+                        params.getMaxTokens(), params.getTemperature());
 
                 // Send request
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                ChatCompletions response = openAIClient.getChatCompletions(config.getDeploymentName(), options);
 
-                if (response.statusCode() != 200) {
-                    throw new RuntimeException(
-                            "Azure OpenAI API error: " + response.statusCode() + " - " + response.body());
-                }
-
-                // Parse response
-                JsonObject responseJson = JsonParser.parseString(response.body()).getAsJsonObject();
-                JsonArray choices = responseJson.getAsJsonArray("choices");
-
+                // Extract response content
                 String responseContent = "";
-                if (choices.size() > 0) {
-                    JsonObject choice = choices.get(0).getAsJsonObject();
-                    JsonObject messageResponse = choice.getAsJsonObject("message");
-                    responseContent = messageResponse.get("content").getAsString();
+                if (response.getChoices() != null && !response.getChoices().isEmpty()) {
+                    var choice = response.getChoices().get(0);
+                    if (choice.getMessage() != null) {
+                        responseContent = choice.getMessage().getContent();
+                    }
                 }
 
                 return LLMResponse.builder().content(responseContent).modelName(config.getModelName())
@@ -125,72 +103,40 @@ public class AzureOpenAIClientImpl implements LLMClient {
             LLMStreamHandler handler) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Build request payload
-                JsonObject requestBody = new JsonObject();
-                requestBody.addProperty("model", config.getDeploymentName());
-                requestBody.addProperty("max_tokens", params.getMaxTokens());
-                requestBody.addProperty("temperature", params.getTemperature());
-                requestBody.addProperty("stream", true);
+                // Build messages
+                ChatRequestUserMessage userMessage = new ChatRequestUserMessage(prompt);
+                List<ChatRequestUserMessage> messages = List.of(userMessage);
 
-                JsonArray messages = new JsonArray();
-                JsonObject message = new JsonObject();
-                message.addProperty("role", "user");
-                message.addProperty("content", prompt);
-                messages.add(message);
-                requestBody.add("messages", messages);
+                // Build options
+                ChatCompletionsOptions options = new ChatCompletionsOptions(
+                        messages.stream().map(msg -> (com.azure.ai.openai.models.ChatRequestMessage) msg)
+                                .collect(java.util.stream.Collectors.toList()));
+                options.setMaxTokens(params.getMaxTokens());
+                options.setTemperature(params.getTemperature());
+                options.setStream(true);
 
-                String requestJson = gson.toJson(requestBody);
-                logger.debug("Azure OpenAI streaming request: {}", requestJson);
-
-                // Build HTTP request
-                String url = config.getEndpoint() + "/openai/deployments/" + config.getDeploymentName()
-                        + "/chat/completions?api-version=2024-02-15-preview";
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
-                        .header("Content-Type", "application/json").header("api-key", config.getApiKey())
-                        .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                        .timeout(Duration.ofMillis(config.getTimeoutMs())).build();
+                logger.debug("Azure OpenAI streaming request: model={}, maxTokens={}, temperature={}",
+                        config.getDeploymentName(), params.getMaxTokens(), params.getTemperature());
 
                 // Send streaming request
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                var stream = openAIClient.getChatCompletionsStream(config.getDeploymentName(), options);
 
-                if (response.statusCode() != 200) {
-                    throw new RuntimeException(
-                            "Azure OpenAI API error: " + response.statusCode() + " - " + response.body());
-                }
+                StringBuilder responseContent = new StringBuilder();
 
-                // Parse streaming response
-                StringBuilder contentBuilder = new StringBuilder();
-                String[] lines = response.body().split("\n");
-
-                for (String line : lines) {
-                    if (line.startsWith("data: ")) {
-                        String data = line.substring(6);
-                        if (data.equals("[DONE]")) {
-                            break;
-                        }
-
-                        try {
-                            JsonObject event = JsonParser.parseString(data).getAsJsonObject();
-                            if (event.has("choices") && event.getAsJsonArray("choices").size() > 0) {
-                                JsonObject choice = event.getAsJsonArray("choices").get(0).getAsJsonObject();
-                                if (choice.has("delta")) {
-                                    JsonObject delta = choice.getAsJsonObject("delta");
-                                    if (delta.has("content")) {
-                                        String chunk = delta.get("content").getAsString();
-                                        contentBuilder.append(chunk);
-                                        handler.onChunk(chunk);
-                                    }
-                                }
-                            }
-                        } catch (Exception e) {
-                            logger.debug("Error parsing streaming chunk: {}", e.getMessage());
+                // Process streaming response
+                for (ChatCompletions response : stream) {
+                    if (response.getChoices() != null && !response.getChoices().isEmpty()) {
+                        var choice = response.getChoices().get(0);
+                        if (choice.getDelta() != null && choice.getDelta().getContent() != null) {
+                            String chunk = choice.getDelta().getContent();
+                            responseContent.append(chunk);
+                            handler.onChunk(chunk);
                         }
                     }
                 }
 
-                String content = contentBuilder.toString();
-                LLMResponse llmResponse = LLMResponse.builder().content(content).modelName(config.getModelName())
-                        .providerType(LLMProviderType.AZURE.name()).build();
+                LLMResponse llmResponse = LLMResponse.builder().content(responseContent.toString())
+                        .modelName(config.getModelName()).providerType(LLMProviderType.AZURE.name()).build();
 
                 handler.onComplete(llmResponse);
                 return llmResponse;
@@ -251,31 +197,16 @@ public class AzureOpenAIClientImpl implements LLMClient {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Simple test with minimal tokens
-                JsonObject requestBody = new JsonObject();
-                requestBody.addProperty("model", config.getDeploymentName());
-                requestBody.addProperty("max_tokens", 5);
+                ChatRequestUserMessage userMessage = new ChatRequestUserMessage("Hello");
+                List<ChatRequestUserMessage> messages = List.of(userMessage);
 
-                JsonArray messages = new JsonArray();
-                JsonObject message = new JsonObject();
-                message.addProperty("role", "user");
-                message.addProperty("content", "Hello");
-                messages.add(message);
-                requestBody.add("messages", messages);
+                ChatCompletionsOptions options = new ChatCompletionsOptions(
+                        messages.stream().map(msg -> (com.azure.ai.openai.models.ChatRequestMessage) msg)
+                                .collect(java.util.stream.Collectors.toList()));
+                options.setMaxTokens(5);
 
-                String requestJson = gson.toJson(requestBody);
-
-                String url = config.getEndpoint() + "/openai/deployments/" + config.getDeploymentName()
-                        + "/chat/completions?api-version=2024-02-15-preview";
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
-                        .header("Content-Type", "application/json").header("api-key", config.getApiKey())
-                        .POST(HttpRequest.BodyPublishers.ofString(requestJson)).timeout(Duration.ofMillis(10000)) // Shorter
-                                                                                                                  // timeout
-                                                                                                                  // for
-                                                                                                                  // test
-                        .build();
-
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                return response.statusCode() == 200;
+                ChatCompletions response = openAIClient.getChatCompletions(config.getDeploymentName(), options);
+                return response != null;
             } catch (Exception e) {
                 logger.debug("Azure OpenAI connection test failed", e);
                 return false;
