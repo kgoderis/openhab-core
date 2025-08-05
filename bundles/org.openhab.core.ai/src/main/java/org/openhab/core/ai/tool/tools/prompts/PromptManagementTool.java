@@ -6,6 +6,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.api.tool.Tool;
+import org.openhab.core.ai.api.tool.ToolContext;
+import org.openhab.core.ai.api.tool.ToolException;
+import org.openhab.core.ai.api.tool.ToolMetadata;
+import org.openhab.core.ai.api.tool.ToolResult;
+import org.openhab.core.ai.api.tool.ToolValidationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,20 +63,20 @@ public class PromptManagementTool implements Tool {
     }
 
     @Override
-    public MCPToolMetadata getMetadata() {
-        return MCPToolMetadata.builder().version("1.0.0").author("openHAB")
+    public ToolMetadata getMetadata() {
+        return ToolMetadata.builder().version("1.0.0").author("openHAB")
                 .description("Prompt management tool for openHAB MCP").build();
     }
 
     @Override
-    public MCPToolValidationResult validateParameters(Map<String, Object> parameters) {
+    public ToolValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null || parameters.isEmpty()) {
-            return MCPToolValidationResult.invalid("Parameters cannot be null or empty");
+            return ToolValidationResult.invalid("Parameters cannot be null or empty");
         }
 
         String operation = (String) parameters.get("operation");
         if (operation == null || operation.trim().isEmpty()) {
-            return MCPToolValidationResult.invalid("Operation is required");
+            return ToolValidationResult.invalid("Operation is required");
         }
 
         switch (operation) {
@@ -80,26 +85,26 @@ public class PromptManagementTool implements Tool {
             case "delete":
             case "execute":
                 if (parameters.get("promptId") == null) {
-                    return MCPToolValidationResult.invalid("Prompt ID is required for " + operation + " operation");
+                    return ToolValidationResult.invalid("Prompt ID is required for " + operation + " operation");
                 }
                 break;
             case "create":
                 if (parameters.get("promptData") == null) {
-                    return MCPToolValidationResult.invalid("Prompt data is required for create operation");
+                    return ToolValidationResult.invalid("Prompt data is required for create operation");
                 }
                 break;
             case "list":
                 // No additional validation needed
                 break;
             default:
-                return MCPToolValidationResult.invalid("Invalid operation: " + operation);
+                return ToolValidationResult.invalid("Invalid operation: " + operation);
         }
 
-        return MCPToolValidationResult.valid();
+        return ToolValidationResult.valid();
     }
 
     @Override
-    public MCPToolResult execute(Map<String, Object> parameters, MCPToolContext context) throws MCPToolException {
+    public ToolResult execute(Map<String, Object> parameters, ToolContext context) throws ToolException {
         logger.debug("Executing prompt management tool with parameters: {}", parameters);
 
         try {
@@ -119,11 +124,11 @@ public class PromptManagementTool implements Tool {
                 case "execute":
                     return executePrompt(parameters, context);
                 default:
-                    return MCPToolResult.error(TOOL_ID, "Invalid operation: " + operation, System.currentTimeMillis());
+                    return ToolResult.error(TOOL_ID, "Invalid operation: " + operation, System.currentTimeMillis());
             }
         } catch (Exception e) {
             logger.error("Error executing prompt management tool", e);
-            return MCPToolResult.error(TOOL_ID, "Prompt management operation failed: " + e.getMessage(),
+            return ToolResult.error(TOOL_ID, "Prompt management operation failed: " + e.getMessage(),
                     System.currentTimeMillis());
         }
     }
@@ -131,7 +136,7 @@ public class PromptManagementTool implements Tool {
     /**
      * List prompts based on filter criteria.
      */
-    private MCPToolResult listPrompts(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult listPrompts(Map<String, Object> parameters, ToolContext context) {
         @SuppressWarnings("unchecked")
         Map<String, Object> filter = (Map<String, Object>) parameters.get("filter");
 
@@ -142,13 +147,13 @@ public class PromptManagementTool implements Tool {
         result.put("count", 0);
         result.put("message", "Prompt listing completed successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Get a specific prompt by ID.
      */
-    private MCPToolResult getPrompt(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult getPrompt(Map<String, Object> parameters, ToolContext context) {
         String promptId = (String) parameters.get("promptId");
 
         Map<String, Object> result = new HashMap<>();
@@ -158,13 +163,13 @@ public class PromptManagementTool implements Tool {
                 "template", "Hello {{name}}, how can I help you?", "variables", java.util.List.of("name")));
         result.put("message", "Prompt retrieved successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Create a new prompt.
      */
-    private MCPToolResult createPrompt(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult createPrompt(Map<String, Object> parameters, ToolContext context) {
         @SuppressWarnings("unchecked")
         Map<String, Object> promptData = (Map<String, Object>) parameters.get("promptData");
 
@@ -174,13 +179,13 @@ public class PromptManagementTool implements Tool {
         result.put("promptId", "new-prompt-id"); // Placeholder for actual prompt ID
         result.put("message", "Prompt created successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Update an existing prompt.
      */
-    private MCPToolResult updatePrompt(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult updatePrompt(Map<String, Object> parameters, ToolContext context) {
         String promptId = (String) parameters.get("promptId");
         @SuppressWarnings("unchecked")
         Map<String, Object> promptData = (Map<String, Object>) parameters.get("promptData");
@@ -191,13 +196,13 @@ public class PromptManagementTool implements Tool {
         result.put("promptData", promptData);
         result.put("message", "Prompt updated successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Delete a prompt.
      */
-    private MCPToolResult deletePrompt(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult deletePrompt(Map<String, Object> parameters, ToolContext context) {
         String promptId = (String) parameters.get("promptId");
 
         Map<String, Object> result = new HashMap<>();
@@ -205,13 +210,13 @@ public class PromptManagementTool implements Tool {
         result.put("promptId", promptId);
         result.put("message", "Prompt deleted successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Execute a prompt with input data.
      */
-    private MCPToolResult executePrompt(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult executePrompt(Map<String, Object> parameters, ToolContext context) {
         String promptId = (String) parameters.get("promptId");
         @SuppressWarnings("unchecked")
         Map<String, Object> input = (Map<String, Object>) parameters.get("input");
@@ -223,7 +228,7 @@ public class PromptManagementTool implements Tool {
         result.put("output", "Hello World, how can I help you?"); // Placeholder for actual prompt execution
         result.put("message", "Prompt executed successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
@@ -233,12 +238,12 @@ public class PromptManagementTool implements Tool {
      * @param context Tool context
      * @return CompletableFuture with tool result
      */
-    public CompletableFuture<MCPToolResult> executeAsync(Map<String, Object> parameters, MCPToolContext context) {
+    public CompletableFuture<ToolResult> executeAsync(Map<String, Object> parameters, ToolContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
-            } catch (MCPToolException e) {
-                return MCPToolResult.error(TOOL_ID, "Async prompt management operation failed: " + e.getMessage(),
+            } catch (ToolException e) {
+                return ToolResult.error(TOOL_ID, "Async prompt management operation failed: " + e.getMessage(),
                         System.currentTimeMillis());
             }
         });

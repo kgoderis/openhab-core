@@ -1,4 +1,4 @@
-package org.openhab.core.ai.agent.internal;
+package org.openhab.core.ai.agent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +19,7 @@ import org.openhab.core.service.ReadyService.ReadyTracker;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
 import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -34,6 +35,7 @@ import io.a2a.spec.TaskState;
  * @since 1.0.0
  */
 @NonNullByDefault
+@Component(service = AgentOpenHABPersistenceManager.class)
 public class AgentOpenHABPersistenceManager implements ReadyTracker {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentOpenHABPersistenceManager.class);

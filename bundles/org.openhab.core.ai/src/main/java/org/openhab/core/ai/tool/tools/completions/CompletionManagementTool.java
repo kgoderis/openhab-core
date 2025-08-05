@@ -129,11 +129,11 @@ public class CompletionManagementTool implements Tool {
                 case "execute":
                     return executeCompletion(parameters, context);
                 default:
-                    return MCPToolResult.error(TOOL_ID, "Invalid operation: " + operation, System.currentTimeMillis());
+                    return ToolResult.error(TOOL_ID, "Invalid operation: " + operation, System.currentTimeMillis());
             }
         } catch (Exception e) {
             logger.error("Error executing completion management tool", e);
-            return MCPToolResult.error(TOOL_ID, "Completion management operation failed: " + e.getMessage(),
+            return ToolResult.error(TOOL_ID, "Completion management operation failed: " + e.getMessage(),
                     System.currentTimeMillis());
         }
     }
@@ -141,89 +141,86 @@ public class CompletionManagementTool implements Tool {
     /**
      * List completions based on filter criteria.
      */
-    private MCPToolResult listCompletions(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult listCompletions(Map<String, Object> parameters, ToolContext context) {
         @SuppressWarnings("unchecked")
         Map<String, Object> filter = (Map<String, Object>) parameters.get("filter");
 
+        // TODO: Implement actual completion listing logic
         Map<String, Object> result = new HashMap<>();
-        result.put("operation", "list");
-        result.put("filter", filter);
-        result.put("completions", java.util.List.of()); // Placeholder for actual completion list
-        result.put("count", 0);
+        result.put("completions", java.util.List.of());
+        result.put("total", 0);
         result.put("message", "Completion listing completed successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Get a specific completion by ID.
      */
-    private MCPToolResult getCompletion(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult getCompletion(Map<String, Object> parameters, ToolContext context) {
         String completionId = (String) parameters.get("completionId");
 
+        // TODO: Implement actual completion retrieval logic
         Map<String, Object> result = new HashMap<>();
-        result.put("operation", "get");
         result.put("completionId", completionId);
-        result.put("completion",
-                Map.of("id", completionId, "name", "Sample Completion", "description", "A sample completion", "model",
-                        "gpt-3.5-turbo", "temperature", 0.7, "maxTokens", 1000, "prompt",
-                        "Complete the following: {{input}}"));
+        result.put("completion", Map.of("id", completionId, "name", "Sample Completion", "description",
+                "Sample completion description"));
         result.put("message", "Completion retrieved successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Create a new completion.
      */
-    private MCPToolResult createCompletion(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult createCompletion(Map<String, Object> parameters, ToolContext context) {
         @SuppressWarnings("unchecked")
         Map<String, Object> completionData = (Map<String, Object>) parameters.get("completionData");
 
+        // TODO: Implement actual completion creation logic
         Map<String, Object> result = new HashMap<>();
-        result.put("operation", "create");
-        result.put("completionData", completionData);
-        result.put("completionId", "new-completion-id"); // Placeholder for actual completion ID
+        result.put("completionId", "new-completion-id");
+        result.put("completion", completionData);
         result.put("message", "Completion created successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Update an existing completion.
      */
-    private MCPToolResult updateCompletion(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult updateCompletion(Map<String, Object> parameters, ToolContext context) {
         String completionId = (String) parameters.get("completionId");
         @SuppressWarnings("unchecked")
         Map<String, Object> completionData = (Map<String, Object>) parameters.get("completionData");
 
+        // TODO: Implement actual completion update logic
         Map<String, Object> result = new HashMap<>();
-        result.put("operation", "update");
         result.put("completionId", completionId);
-        result.put("completionData", completionData);
+        result.put("completion", completionData);
         result.put("message", "Completion updated successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Delete a completion.
      */
-    private MCPToolResult deleteCompletion(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult deleteCompletion(Map<String, Object> parameters, ToolContext context) {
         String completionId = (String) parameters.get("completionId");
 
+        // TODO: Implement actual completion deletion logic
         Map<String, Object> result = new HashMap<>();
-        result.put("operation", "delete");
         result.put("completionId", completionId);
         result.put("message", "Completion deleted successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Execute a completion with input data.
      */
-    private MCPToolResult executeCompletion(Map<String, Object> parameters, MCPToolContext context) {
+    private ToolResult executeCompletion(Map<String, Object> parameters, ToolContext context) {
         String completionId = (String) parameters.get("completionId");
         @SuppressWarnings("unchecked")
         Map<String, Object> input = (Map<String, Object>) parameters.get("input");
@@ -231,34 +228,32 @@ public class CompletionManagementTool implements Tool {
         Double temperature = (Double) parameters.get("temperature");
         Integer maxTokens = (Integer) parameters.get("maxTokens");
 
+        // TODO: Implement actual completion execution logic
         Map<String, Object> result = new HashMap<>();
-        result.put("operation", "execute");
         result.put("completionId", completionId);
         result.put("input", input);
         result.put("model", model);
         result.put("temperature", temperature);
         result.put("maxTokens", maxTokens);
-        result.put("output", "This is a sample completion output based on the input provided."); // Placeholder for
-                                                                                                 // actual completion
-        result.put("usage", Map.of("promptTokens", 10, "completionTokens", 15, "totalTokens", 25));
+        result.put("output", "Sample completion output");
         result.put("message", "Completion executed successfully");
 
-        return MCPToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+        return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
 
     /**
      * Execute the tool asynchronously.
      * 
-     * @param parameters Tool parameters
-     * @param context Tool context
+     * @param parameters the tool parameters
+     * @param context the tool context
      * @return CompletableFuture with tool result
      */
-    public CompletableFuture<MCPToolResult> executeAsync(Map<String, Object> parameters, MCPToolContext context) {
+    public CompletableFuture<ToolResult> executeAsync(Map<String, Object> parameters, ToolContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
-            } catch (MCPToolException e) {
-                return MCPToolResult.error(TOOL_ID, "Async completion management operation failed: " + e.getMessage(),
+            } catch (ToolException e) {
+                return ToolResult.error(TOOL_ID, "Async completion management operation failed: " + e.getMessage(),
                         System.currentTimeMillis());
             }
         });

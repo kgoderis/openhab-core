@@ -121,7 +121,8 @@ public class KarafManagementTool implements Tool {
         long startTime = System.currentTimeMillis();
 
         if (bundleContext == null) {
-            throw new ToolException("Bundle context not available");
+            throw new ToolException(TOOL_ID, "Bundle context not available",
+                    ToolException.ToolErrorCode.SERVICE_UNAVAILABLE);
         }
 
         try {
@@ -142,15 +143,17 @@ public class KarafManagementTool implements Tool {
                 case "bundle_headers" -> getBundleHeaders(parameters);
                 case "bundle_services" -> getBundleServices(parameters);
                 case "bundle_dependencies" -> getBundleDependencies(parameters);
-                default -> throw new ToolException("Unknown operation: " + operation);
+                default -> throw new ToolException(TOOL_ID, "Unknown operation: " + operation,
+                        ToolException.ToolErrorCode.INVALID_PARAMETER);
             };
 
             long executionTime = System.currentTimeMillis() - startTime;
-            return ToolResult.success(TOOL_ID, result, executionTime);
+            return ToolResult.successJson(TOOL_ID, result, executionTime);
 
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
-            throw new ToolException("Karaf management operation failed: " + e.getMessage(), e);
+            throw new ToolException(TOOL_ID, "Karaf management operation failed: " + e.getMessage(), e,
+                    ToolException.ToolErrorCode.EXECUTION_ERROR);
         }
     }
 

@@ -1,4 +1,4 @@
-package org.openhab.core.ai.action;
+package org.openhab.core.ai.api.agent;
 
 import java.util.List;
 import java.util.Map;
@@ -122,6 +122,15 @@ public interface AgentSkillManager {
      * @return the number of skills
      */
     int getSkillCount();
+
+    /**
+     * Execute a skill with the given parameters.
+     * 
+     * @param skillId the skill ID to execute
+     * @param parameters the parameters for the skill execution
+     * @return the skill execution result
+     */
+    AgentSkillResult executeSkill(String skillId, Map<String, Object> parameters);
 
     /**
      * Skill validation result

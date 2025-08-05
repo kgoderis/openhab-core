@@ -1,4 +1,4 @@
-package org.openhab.core.ai.agent.internal;
+package org.openhab.core.ai.agent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -280,44 +280,24 @@ public class AgentTaskManager {
     public Task cancelTask(String taskId) throws JSONRPCError {
         logger.debug("Cancelling task: {}", taskId);
 
-        if (taskStore == null) {
-            throw new JSONRPCError(-32603, "Internal error: TaskStore not available", null);
-        }
-
-        Task task = taskStore.get(taskId);
-        if (task == null) {
-            throw new JSONRPCError(-32001, "Task not found: " + taskId, null);
-        }
-
         try {
-            // Cancel the task using orchestration methods
-            cancelTaskOrchestration(taskId);
+            Task task = taskStore.get(taskId);
+            if (task == null) {
+                throw new JSONRPCError(-32601, "Task not found: " + taskId, null);
+            }
 
-            // Publish cancellation status
+            // Update task status to cancelled
+            TaskStatus cancelledStatus = new TaskStatus(TaskState.CANCELED);
+            Task cancelledTask = new Task(task.getId(), task.getContextId(), cancelledStatus, task.getArtifacts(),
+                    task.getHistory(), task.getMetadata(), task.getKind());
+
+            taskStore.save(cancelledTask);
             publishTaskStatusUpdate(taskId, TaskState.CANCELED, "Task cancelled");
 
-            taskStore.delete(taskId);
             return task;
         } catch (Exception e) {
             logger.error("Error cancelling task: {}", taskId, e);
             throw new JSONRPCError(-32603, "Internal error: " + e.getMessage(), null);
-        }
-    }
-
-    public Object executeSkill(io.a2a.spec.Message message) {
-        logger.debug("Executing skill for message: {}", message);
-
-        try {
-            String skillId = extractSkillIdFromMessage(message);
-            if (skillId != null && skillRegistry != null && skillRegistry.hasSkill(skillId)) {
-                return skillRegistry.executeSkill(skillId, message);
-            } else {
-                logger.warn("Skill not found: {}", skillId);
-                return Map.of("error", "Skill not found: " + skillId);
-            }
-        } catch (Exception e) {
-            logger.error("Error executing skill", e);
-            return Map.of("error", "Error executing skill: " + e.getMessage());
         }
     }
 

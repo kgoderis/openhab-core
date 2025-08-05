@@ -1,6 +1,4 @@
-package org.openhab.core.ai.agent.internal;
-
-import java.util.Map;
+package org.openhab.core.ai.agent;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
@@ -337,15 +335,6 @@ public class AgentProtocolHandler implements ReadyTracker, RequestHandler {
         } else {
             logger.error("AgentCardBuilder not available");
             throw new RuntimeException("AgentCardBuilder not available");
-        }
-    }
-
-    public Object executeSkill(io.a2a.spec.Message message) {
-        if (taskManager != null) {
-            return taskManager.executeSkill(message);
-        } else {
-            logger.error("TaskManager not available for skill execution");
-            return Map.of("error", "TaskManager not available");
         }
     }
 

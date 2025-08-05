@@ -1,4 +1,4 @@
-package org.openhab.core.ai.agent.internal;
+package org.openhab.core.ai.agent;
 
 import java.time.Instant;
 import java.util.Map;
@@ -13,6 +13,7 @@ import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.openhab.core.ai.auth.RoleBasedAccessControl;
 import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ import io.a2a.spec.Message;
  * @since 1.0.0
  */
 @NonNullByDefault
+@Component(service = AgentSecurityManager.class)
 public class AgentSecurityManager {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentSecurityManager.class);
