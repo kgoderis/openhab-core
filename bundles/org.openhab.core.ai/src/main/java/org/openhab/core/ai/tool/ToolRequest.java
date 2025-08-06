@@ -1,4 +1,4 @@
-package org.openhab.core.ai.tool.internal;
+package org.openhab.core.ai.tool;
 
 import java.util.Map;
 import java.util.Objects;

@@ -1,4 +1,4 @@
-package org.openhab.core.ai.agent.internal;
+package org.openhab.core.ai.agent;
 
 import java.util.ArrayList;
 import java.util.List;

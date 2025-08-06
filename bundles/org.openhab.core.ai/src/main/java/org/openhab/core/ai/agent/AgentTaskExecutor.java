@@ -43,6 +43,7 @@ import io.a2a.spec.TextPart;
  * @since 1.0.0
  */
 @Component(service = AgentExecutor.class)
+@NonNullByDefault
 public class AgentTaskExecutor implements AgentExecutor {
 
     private final Logger logger = LoggerFactory.getLogger(AgentTaskExecutor.class);

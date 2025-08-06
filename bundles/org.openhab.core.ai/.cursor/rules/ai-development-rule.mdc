@@ -9,3 +9,5 @@ alwaysApply: true
 6. You must verify that each method call you make does exist, so, invented or guesses calls are not allowed
 7. The solution will be used in OSGi container, so, make sure dependency injection is used correctly
 8. You must use as much as possible data structures from the A2A SDK 
+9. If you have to create classes, first verify that a class already exists in the solution or dependencies
+10. If you have to modify class, do refactor the class, and do not create a new class

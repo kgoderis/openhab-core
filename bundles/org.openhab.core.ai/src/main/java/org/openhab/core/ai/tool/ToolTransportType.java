@@ -1,4 +1,4 @@
-package org.openhab.core.ai.tool.internal;
+package org.openhab.core.ai.tool;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 

@@ -44,7 +44,7 @@ public class AgentSecurityManager {
     private @Nullable AuditLogger auditLogger;
 
     // A2A-specific configuration
-    private final A2AServerConfiguration config;
+    private final ServerConfiguration config;
 
     // Rate limiting and security tracking
     private final Map<String, AtomicLong> requestCounters = new ConcurrentHashMap<>();
@@ -66,7 +66,7 @@ public class AgentSecurityManager {
      */
     @Activate
     public AgentSecurityManager() {
-        this.config = new A2AServerConfiguration(); // Default configuration for now
+        this.config = new ServerConfiguration(); // Default configuration for now
         logger.info("A2A Security Manager initialized");
     }
 
@@ -469,7 +469,7 @@ public class AgentSecurityManager {
     /**
      * Simple A2A server configuration for security settings.
      */
-    private static class A2AServerConfiguration {
+    private static class ServerConfiguration {
         public boolean isEnableAuthentication() {
             return true;
         }

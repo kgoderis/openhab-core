@@ -21,6 +21,7 @@ import org.openhab.core.ai.api.reasoning.MultiStepReasoningConfiguration;
 import org.openhab.core.ai.api.reasoning.MultiStepReasoningResult;
 import org.openhab.core.ai.api.reasoning.ReasoningContext;
 import org.openhab.core.ai.api.reasoning.ReasoningStep;
+import org.openhab.core.ai.model.ModelResponseActionParser;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -56,7 +57,7 @@ public class MultiStepReasoningEngine {
     private @Nullable ActionRegistry actionRegistry;
 
     @Reference
-    private @Nullable ActionCallParser actionCallParser;
+    private @Nullable ModelResponseActionParser actionCallParser;
 
     // Performance monitoring
     private final AtomicLong totalReasoningSessions = new AtomicLong(0);
@@ -311,7 +312,7 @@ public class MultiStepReasoningEngine {
      * Parse actions from LLM response
      */
     private List<ActionContext> parseResponseActions(ModelResponse response) {
-        ActionCallParser parser = actionCallParser;
+        ModelResponseActionParser parser = actionCallParser;
         if (parser == null) {
             logger.warn("ActionCallParser not available, returning empty action list");
             return new ArrayList<>();

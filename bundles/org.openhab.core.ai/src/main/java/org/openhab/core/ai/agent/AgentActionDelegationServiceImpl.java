@@ -1,4 +1,4 @@
-package org.openhab.core.ai.action;
+package org.openhab.core.ai.agent;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -11,6 +11,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.action.ActionContext;
+import org.openhab.core.ai.action.ActionError;
+import org.openhab.core.ai.action.ActionRegistry;
+import org.openhab.core.ai.action.ActionResult;
+import org.openhab.core.ai.api.agent.AgentActionDelegationService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;

@@ -1,9 +1,12 @@
-package org.openhab.core.ai.tool.internal;
+package org.openhab.core.ai.tool;
 
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.manager.ToolErrorRecoveryManager;
+import org.openhab.core.ai.tool.manager.ToolSecurityManager;
+import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -539,43 +542,27 @@ public class ToolServer {
             syncServer.addTool(toolSpec);
         }
 
-        // Example sync resource specification (can be extended with real resources)
-        // var syncResourceSpecification = new McpServerFeatures.SyncResourceSpecification(
-        // new Resource("custom://resource", "name", "description", "mime-type", null),
-        // (exchange, request) -> {
-        // // Resource read implementation
-        // return new ReadResourceResult(contents);
-        // }
-        // );
-        // syncServer.addResource(syncResourceSpecification);
+        // Register resources with the sync server
+        McpServerFeatures.SyncResourceSpecification[] resourceSpecs = toolRegistry.getSyncResourceSpecifications();
+        for (McpServerFeatures.SyncResourceSpecification resourceSpec : resourceSpecs) {
+            syncServer.addResource(resourceSpec);
+        }
 
-        // Example sync prompt specification (can be extended with real prompts)
-        // var syncPromptSpecification = new McpServerFeatures.SyncPromptSpecification(
-        // new Prompt("greeting", "description", List.of(
-        // new PromptArgument("name", "description", true)
-        // )),
-        // (exchange, request) -> {
-        // // Prompt implementation
-        // return new GetPromptResult(description, messages);
-        // }
-        // );
-        // syncServer.addPrompt(syncPromptSpecification);
+        // Register prompts with the sync server
+        McpServerFeatures.SyncPromptSpecification[] promptSpecs = toolRegistry.getSyncPromptSpecifications();
+        for (McpServerFeatures.SyncPromptSpecification promptSpec : promptSpecs) {
+            syncServer.addPrompt(promptSpec);
+        }
 
-        // Example sync completion specification (can be extended with real completions)
-        // var syncCompletionSpecification = new McpServerFeatures.SyncCompletionSpecification(
-        // new McpSchema.PromptReference("code_review"), (exchange, request) -> {
-        // // completion implementation ...
-        // return new McpSchema.CompleteResult(
-        // new CompleteResult.CompleteCompletion(
-        // List.of("python", "pytorch", "pyside"),
-        // 10, // total
-        // false // hasMore
-        // ));
+        // TODO: Register completions with the sync server when MCP SDK supports it
+        // McpServerFeatures.SyncCompletionSpecification[] completionSpecs =
+        // toolRegistry.getSyncCompletionSpecifications();
+        // for (McpServerFeatures.SyncCompletionSpecification completionSpec : completionSpecs) {
+        // syncServer.addCompletion(completionSpec);
         // }
-        // );
-        // syncServer.addCompletion(syncCompletionSpecification);
 
-        logger.debug("MCP sync server created successfully with {} tools", toolSpecs.length);
+        logger.debug("MCP sync server created successfully with {} tools, {} resources, {} prompts", toolSpecs.length,
+                resourceSpecs.length, promptSpecs.length);
         return syncServer;
     }
 
@@ -607,85 +594,33 @@ public class ToolServer {
                     .doOnSuccess(v -> logger.info("Async tool registered: {}", toolSpec.tool().name())).subscribe();
         }
 
-        // Example async resource specification (can be extended with real resources)
-        // var asyncResourceSpecification = new McpServerFeatures.AsyncResourceSpecification(
-        // new Resource("custom://resource", "name", "description", "mime-type", null),
-        // (exchange, request) -> {
-        // // Resource read implementation
-        // return Mono.just(new ReadResourceResult(contents));
+        // Register resources with the async server using reactive patterns
+        McpServerFeatures.AsyncResourceSpecification[] resourceSpecs = toolRegistry.getAsyncResourceSpecifications();
+        for (McpServerFeatures.AsyncResourceSpecification resourceSpec : resourceSpecs) {
+            asyncServer.addResource(resourceSpec)
+                    .doOnSuccess(v -> logger.info("Async resource registered: {}", resourceSpec.resource().name()))
+                    .subscribe();
+        }
+
+        // Register prompts with the async server using reactive patterns
+        McpServerFeatures.AsyncPromptSpecification[] promptSpecs = toolRegistry.getAsyncPromptSpecifications();
+        for (McpServerFeatures.AsyncPromptSpecification promptSpec : promptSpecs) {
+            asyncServer.addPrompt(promptSpec)
+                    .doOnSuccess(v -> logger.info("Async prompt registered: {}", promptSpec.prompt().name()))
+                    .subscribe();
+        }
+
+        // TODO: Register completions with the async server when MCP SDK supports it
+        // McpServerFeatures.AsyncCompletionSpecification[] completionSpecs =
+        // toolRegistry.getAsyncCompletionSpecifications();
+        // for (McpServerFeatures.AsyncCompletionSpecification completionSpec : completionSpecs) {
+        // asyncServer.addCompletion(completionSpec)
+        // .doOnSuccess(v -> logger.info("Async completion registered: {}", completionSpec.promptReference().name()))
+        // .subscribe();
         // }
-        // );
-        // asyncServer.addResource(asyncResourceSpecification)
-        // .doOnSuccess(v -> logger.info("Resource registered"))
-        // .subscribe();
 
-        // Example async prompt specification (can be extended with real prompts)
-        // var asyncPromptSpecification = new McpServerFeatures.AsyncPromptSpecification(
-        // new Prompt("greeting", "description", List.of(
-        // new PromptArgument("name", "description", true)
-        // )),
-        // (exchange, request) -> {
-        // // Prompt implementation
-        // return Mono.just(new GetPromptResult(description, messages));
-        // }
-        // );
-        // asyncServer.addPrompt(asyncPromptSpecification)
-        // .doOnSuccess(v -> logger.info("Prompt registered"))
-        // .subscribe();
-
-        // Example async completion specification (can be extended with real completions)
-        // var asyncCompletionSpecification = new McpServerFeatures.AsyncCompletionSpecification(
-        // new McpSchema.PromptReference("code_review"), (exchange, request) -> {
-        // // completion implementation ...
-        // return Mono.just(new McpSchema.CompleteResult(
-        // new CompleteResult.CompleteCompletion(
-        // List.of("python", "pytorch", "pyside"),
-        // 10, // total
-        // false // hasMore
-        // )));
-        // }
-        // );
-        // asyncServer.addCompletion(asyncCompletionSpecification)
-        // .doOnSuccess(v -> logger.info("Completion registered"))
-        // .subscribe();
-
-        // Example async logging support (can be extended with real logging)
-        // var mcpClient = McpClient.async(transport)
-        // .loggingConsumer(notification -> {
-        // System.out.println("Received log message: " + notification.data());
-        // })
-        // .build();
-        // mcpClient.initialize().subscribe();
-        // mcpClient.setLoggingLevel(McpSchema.LoggingLevel.INFO).subscribe();
-        // // Call the tool that sends logging notifications
-        // mcpClient.callTool(new McpSchema.CallToolRequest("logging-test", Map.of()))
-        // .doOnSuccess(result -> logger.info("Tool call result: {}", result))
-        // .subscribe();
-
-        // Alternative: Exchange-based logging support example (can be extended with real logging)
-        // var tool = new McpServerFeatures.AsyncToolSpecification(
-        // new McpSchema.Tool("logging-test", "Test logging notifications", emptyJsonSchema),
-        // (exchange, request) -> {
-        // exchange.loggingNotification( // Use the exchange to send log messages
-        // McpSchema.LoggingMessageNotification.builder()
-        // .level(McpSchema.LoggingLevel.DEBUG)
-        // .logger("test-logger")
-        // .data("Debug message")
-        // .build())
-        // .block();
-        // return Mono.just(new CallToolResult("Logging test completed", false));
-        // });
-        // var mcpServer = McpServer.async(mcpServerTransportProvider)
-        // .serverInfo("test-server", "1.0.0")
-        // .capabilities(
-        // ServerCapabilities.builder()
-        // .logging() // Enable logging support
-        // .tools(true)
-        // .build())
-        // .tools(tool)
-        // .build();
-
-        logger.debug("MCP async server created successfully with {} tools", toolSpecs.length);
+        logger.debug("MCP async server created successfully with {} tools, {} resources, {} prompts", toolSpecs.length,
+                resourceSpecs.length, promptSpecs.length);
         return asyncServer;
     }
 

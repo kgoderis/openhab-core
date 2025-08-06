@@ -1,0 +1,969 @@
+package org.openhab.core.ai.agent.config;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+/**
+ * Manages configuration for agent communication systems
+ * 
+ * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
+ */
+@Component(service = AgentCommunicationConfigurationManager.class)
+@NonNullByDefault
+public class AgentCommunicationConfigurationManager {
+
+    private final Logger logger = LoggerFactory.getLogger(AgentCommunicationConfigurationManager.class);
+
+    // Configuration storage
+    private final Map<String, CommunicationConfig> configurations = new ConcurrentHashMap<>();
+    private final Map<String, ConfigurationTemplate> templates = new ConcurrentHashMap<>();
+    private final Map<String, ConfigurationPreset> presets = new ConcurrentHashMap<>();
+
+    // Configuration versioning
+    private final Map<String, ConfigurationVersion> versionHistory = new ConcurrentHashMap<>();
+    private final AtomicLong configurationVersionCounter = new AtomicLong(0);
+
+    // Configuration monitoring
+    private final AtomicLong totalConfigurations = new AtomicLong(0);
+    private final AtomicLong successfulLoads = new AtomicLong(0);
+    private final AtomicLong failedLoads = new AtomicLong(0);
+    private final AtomicLong hotReloads = new AtomicLong(0);
+
+    // Background processors
+    private final ScheduledExecutorService configMonitor = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService backupProcessor = Executors.newScheduledThreadPool(1);
+
+    // JSON mapper for configuration serialization
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // Default configuration paths
+    private static final String DEFAULT_CONFIG_PATH = "conf/agent-communication";
+    private static final String BACKUP_CONFIG_PATH = "conf/agent-communication/backup";
+    private static final String TEMPLATES_CONFIG_PATH = "conf/agent-communication/templates";
+
+    @Activate
+    public AgentCommunicationConfigurationManager() {
+        initializeDefaultTemplates();
+        initializeDefaultPresets();
+        startBackgroundProcessors();
+        loadExistingConfigurations();
+    }
+
+    @Deactivate
+    public void deactivate() {
+        configMonitor.shutdown();
+        backupProcessor.shutdown();
+    }
+
+    /**
+     * Load configuration from file
+     */
+    public CompletableFuture<CommunicationConfig> loadConfiguration(String configId, String filePath) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Path path = Paths.get(filePath);
+                if (!Files.exists(path)) {
+                    throw new ConfigurationException("Configuration file not found: " + filePath);
+                }
+
+                String content = Files.readString(path);
+                CommunicationConfig config = objectMapper.readValue(content, CommunicationConfig.class);
+
+                // Validate configuration
+                validateConfiguration(config);
+
+                // Store configuration
+                configurations.put(configId, config);
+                totalConfigurations.incrementAndGet();
+                successfulLoads.incrementAndGet();
+
+                // Create version entry
+                ConfigurationVersion version = new ConfigurationVersion(configId, config.getVersion(), Instant.now(),
+                        "Loaded from file: " + filePath, config);
+                versionHistory.put(configId + "_" + config.getVersion(), version);
+
+                logger.debug("Successfully loaded configuration: {} from {}", configId, filePath);
+                return config;
+
+            } catch (Exception e) {
+                failedLoads.incrementAndGet();
+                logger.error("Error loading configuration: {} from {}", configId, filePath, e);
+                throw new ConfigurationException("Failed to load configuration: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Save configuration to file
+     */
+    public CompletableFuture<Void> saveConfiguration(String configId, String filePath) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                CommunicationConfig config = configurations.get(configId);
+                if (config == null) {
+                    throw new ConfigurationException("Configuration not found: " + configId);
+                }
+
+                // Create backup before saving
+                createBackup(configId, filePath);
+
+                // Serialize and save
+                String content = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(config);
+                Path path = Paths.get(filePath);
+                Files.createDirectories(path.getParent());
+                Files.writeString(path, content);
+
+                logger.debug("Successfully saved configuration: {} to {}", configId, filePath);
+
+            } catch (Exception e) {
+                logger.error("Error saving configuration: {} to {}", configId, filePath, e);
+                throw new ConfigurationException("Failed to save configuration: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Get configuration by ID
+     */
+    public @Nullable CommunicationConfig getConfiguration(String configId) {
+        return configurations.get(configId);
+    }
+
+    /**
+     * Update configuration
+     */
+    public CompletableFuture<CommunicationConfig> updateConfiguration(String configId, CommunicationConfig newConfig) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                // Validate new configuration
+                validateConfiguration(newConfig);
+
+                // Create backup of current configuration
+                CommunicationConfig currentConfig = configurations.get(configId);
+                if (currentConfig != null) {
+                    ConfigurationVersion backupVersion = new ConfigurationVersion(configId, currentConfig.getVersion(),
+                            Instant.now(), "Backup before update", currentConfig);
+                    versionHistory.put(configId + "_" + currentConfig.getVersion(), backupVersion);
+                }
+
+                // Update configuration
+                configurations.put(configId, newConfig);
+                hotReloads.incrementAndGet();
+
+                // Create version entry
+                ConfigurationVersion version = new ConfigurationVersion(configId, newConfig.getVersion(), Instant.now(),
+                        "Configuration updated", newConfig);
+                versionHistory.put(configId + "_" + newConfig.getVersion(), version);
+
+                logger.debug("Successfully updated configuration: {}", configId);
+                return newConfig;
+
+            } catch (Exception e) {
+                logger.error("Error updating configuration: {}", configId, e);
+                throw new ConfigurationException("Failed to update configuration: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Validate configuration
+     */
+    public CompletableFuture<ConfigurationValidationResult> validateConfiguration(CommunicationConfig config) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                List<String> errors = new java.util.ArrayList<>();
+                List<String> warnings = new java.util.ArrayList<>();
+
+                // Validate required fields
+                if (config.getConfigId() == null || config.getConfigId().isEmpty()) {
+                    errors.add("Configuration ID is required");
+                }
+
+                if (config.getVersion() == null || config.getVersion().isEmpty()) {
+                    errors.add("Configuration version is required");
+                }
+
+                // Validate messaging settings
+                if (config.getMessagingConfig() != null) {
+                    MessagingConfig messaging = config.getMessagingConfig();
+                    if (messaging.getMaxMessageSize() <= 0) {
+                        errors.add("Max message size must be positive");
+                    }
+                    if (messaging.getTimeoutMs() <= 0) {
+                        errors.add("Timeout must be positive");
+                    }
+                }
+
+                // Validate security settings
+                if (config.getSecurityConfig() != null) {
+                    SecurityConfig security = config.getSecurityConfig();
+                    if (security.isEncryptionEnabled() && security.getEncryptionKey() == null) {
+                        errors.add("Encryption key is required when encryption is enabled");
+                    }
+                }
+
+                // Validate performance settings
+                if (config.getPerformanceConfig() != null) {
+                    PerformanceConfig performance = config.getPerformanceConfig();
+                    if (performance.getMaxConcurrentConnections() <= 0) {
+                        errors.add("Max concurrent connections must be positive");
+                    }
+                    if (performance.getConnectionTimeoutMs() <= 0) {
+                        errors.add("Connection timeout must be positive");
+                    }
+                }
+
+                boolean isValid = errors.isEmpty();
+                return new ConfigurationValidationResult(isValid, errors, warnings);
+
+            } catch (Exception e) {
+                logger.error("Error validating configuration", e);
+                return new ConfigurationValidationResult(false, List.of("Validation error: " + e.getMessage()),
+                        List.of());
+            }
+        });
+    }
+
+    /**
+     * Create configuration from template
+     */
+    public CompletableFuture<CommunicationConfig> createFromTemplate(String templateId, String configId,
+            Map<String, Object> parameters) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                ConfigurationTemplate template = templates.get(templateId);
+                if (template == null) {
+                    throw new ConfigurationException("Template not found: " + templateId);
+                }
+
+                // Create configuration from template
+                CommunicationConfig config = template.createConfiguration(configId, parameters);
+
+                // Validate the created configuration
+                ConfigurationValidationResult validation = validateConfiguration(config).get();
+                if (!validation.isValid()) {
+                    throw new ConfigurationException(
+                            "Invalid configuration created from template: " + validation.errors());
+                }
+
+                // Store configuration
+                configurations.put(configId, config);
+                totalConfigurations.incrementAndGet();
+
+                logger.debug("Successfully created configuration: {} from template: {}", configId, templateId);
+                return config;
+
+            } catch (Exception e) {
+                logger.error("Error creating configuration from template: {}", templateId, e);
+                throw new ConfigurationException("Failed to create configuration from template: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Apply configuration preset
+     */
+    public CompletableFuture<CommunicationConfig> applyPreset(String presetId, String configId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                ConfigurationPreset preset = presets.get(presetId);
+                if (preset == null) {
+                    throw new ConfigurationException("Preset not found: " + presetId);
+                }
+
+                // Apply preset to configuration
+                CommunicationConfig config = configurations.get(configId);
+                if (config == null) {
+                    throw new ConfigurationException("Configuration not found: " + configId);
+                }
+
+                CommunicationConfig updatedConfig = preset.applyTo(config);
+
+                // Validate the updated configuration
+                ConfigurationValidationResult validation = validateConfiguration(updatedConfig).get();
+                if (!validation.isValid()) {
+                    throw new ConfigurationException(
+                            "Invalid configuration after applying preset: " + validation.errors());
+                }
+
+                // Update configuration
+                configurations.put(configId, updatedConfig);
+                hotReloads.incrementAndGet();
+
+                logger.debug("Successfully applied preset: {} to configuration: {}", presetId, configId);
+                return updatedConfig;
+
+            } catch (Exception e) {
+                logger.error("Error applying preset: {} to configuration: {}", presetId, configId, e);
+                throw new ConfigurationException("Failed to apply preset: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Get configuration statistics
+     */
+    public ConfigurationStatistics getStatistics() {
+        return new ConfigurationStatistics(totalConfigurations.get(), successfulLoads.get(), failedLoads.get(),
+                hotReloads.get(), configurations.size(), templates.size(), presets.size(), versionHistory.size());
+    }
+
+    /**
+     * Get configuration version history
+     */
+    public List<ConfigurationVersion> getVersionHistory(String configId) {
+        return versionHistory.values().stream().filter(v -> v.configId().equals(configId))
+                .sorted((v1, v2) -> v2.timestamp().compareTo(v1.timestamp())).toList();
+    }
+
+    /**
+     * Rollback to previous version
+     */
+    public CompletableFuture<CommunicationConfig> rollbackToVersion(String configId, String version) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                ConfigurationVersion targetVersion = versionHistory.get(configId + "_" + version);
+                if (targetVersion == null) {
+                    throw new ConfigurationException("Version not found: " + version);
+                }
+
+                // Rollback to target version
+                CommunicationConfig rolledBackConfig = targetVersion.config();
+                configurations.put(configId, rolledBackConfig);
+
+                // Create version entry for rollback
+                ConfigurationVersion rollbackVersion = new ConfigurationVersion(configId, "rollback_" + version,
+                        Instant.now(), "Rollback to version: " + version, rolledBackConfig);
+                versionHistory.put(configId + "_rollback_" + version, rollbackVersion);
+
+                logger.debug("Successfully rolled back configuration: {} to version: {}", configId, version);
+                return rolledBackConfig;
+
+            } catch (Exception e) {
+                logger.error("Error rolling back configuration: {} to version: {}", configId, version, e);
+                throw new ConfigurationException("Failed to rollback configuration: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Export configuration
+     */
+    public CompletableFuture<String> exportConfiguration(String configId, String format) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                CommunicationConfig config = configurations.get(configId);
+                if (config == null) {
+                    throw new ConfigurationException("Configuration not found: " + configId);
+                }
+
+                switch (format.toLowerCase()) {
+                    case "json":
+                        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(config);
+                    case "yaml":
+                        // Note: Would need YAML library for full YAML support
+                        return objectMapper.writeValueAsString(config);
+                    default:
+                        throw new ConfigurationException("Unsupported export format: " + format);
+                }
+
+            } catch (Exception e) {
+                logger.error("Error exporting configuration: {} in format: {}", configId, format, e);
+                throw new ConfigurationException("Failed to export configuration: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Import configuration
+     */
+    public CompletableFuture<CommunicationConfig> importConfiguration(String configId, String content, String format) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                CommunicationConfig config;
+                switch (format.toLowerCase()) {
+                    case "json":
+                        config = objectMapper.readValue(content, CommunicationConfig.class);
+                        break;
+                    case "yaml":
+                        // Note: Would need YAML library for full YAML support
+                        config = objectMapper.readValue(content, CommunicationConfig.class);
+                        break;
+                    default:
+                        throw new ConfigurationException("Unsupported import format: " + format);
+                }
+
+                // Validate imported configuration
+                ConfigurationValidationResult validation = validateConfiguration(config).get();
+                if (!validation.isValid()) {
+                    throw new ConfigurationException("Invalid imported configuration: " + validation.errors());
+                }
+
+                // Store configuration
+                configurations.put(configId, config);
+                totalConfigurations.incrementAndGet();
+
+                logger.debug("Successfully imported configuration: {} in format: {}", configId, format);
+                return config;
+
+            } catch (Exception e) {
+                logger.error("Error importing configuration: {} in format: {}", configId, format, e);
+                throw new ConfigurationException("Failed to import configuration: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    // Background processing methods
+    private void monitorConfigurations() {
+        // Monitor configuration files for changes and trigger hot-reload
+        configurations.forEach((configId, config) -> {
+            // Check if configuration file has been modified
+            // This is a simplified implementation - in practice, you'd use file watchers
+            logger.debug("Monitoring configuration: {}", configId);
+        });
+    }
+
+    private void createBackups() {
+        // Create periodic backups of configurations
+        configurations.forEach((configId, config) -> {
+            try {
+                String backupPath = BACKUP_CONFIG_PATH + "/" + configId + "_" + Instant.now().toEpochMilli() + ".json";
+                saveConfiguration(configId, backupPath);
+                logger.debug("Created backup for configuration: {}", configId);
+            } catch (Exception e) {
+                logger.error("Error creating backup for configuration: {}", configId, e);
+            }
+        });
+    }
+
+    private void createBackup(String configId, String originalPath) {
+        try {
+            Path path = Paths.get(originalPath);
+            if (Files.exists(path)) {
+                String backupPath = BACKUP_CONFIG_PATH + "/" + configId + "_" + Instant.now().toEpochMilli() + ".json";
+                Files.copy(path, Paths.get(backupPath));
+            }
+        } catch (IOException e) {
+            logger.warn("Failed to create backup for configuration: {}", configId, e);
+        }
+    }
+
+    private void loadExistingConfigurations() {
+        try {
+            Path configDir = Paths.get(DEFAULT_CONFIG_PATH);
+            if (Files.exists(configDir)) {
+                Files.list(configDir).filter(path -> path.toString().endsWith(".json")).forEach(path -> {
+                    String configId = path.getFileName().toString().replace(".json", "");
+                    loadConfiguration(configId, path.toString());
+                });
+            }
+        } catch (IOException e) {
+            logger.warn("Error loading existing configurations", e);
+        }
+    }
+
+    private void startBackgroundProcessors() {
+        configMonitor.scheduleAtFixedRate(this::monitorConfigurations, 0, 60000, TimeUnit.MILLISECONDS); // 1 minute
+        backupProcessor.scheduleAtFixedRate(this::createBackups, 0, 3600000, TimeUnit.MILLISECONDS); // 1 hour
+    }
+
+    private void initializeDefaultTemplates() {
+        // Initialize default configuration templates
+        templates.put("basic", new BasicConfigurationTemplate());
+        templates.put("secure", new SecureConfigurationTemplate());
+        templates.put("high-performance", new HighPerformanceConfigurationTemplate());
+    }
+
+    private void initializeDefaultPresets() {
+        // Initialize default configuration presets
+        presets.put("development", new DevelopmentPreset());
+        presets.put("production", new ProductionPreset());
+        presets.put("testing", new TestingPreset());
+    }
+
+    // Data classes
+    public record ConfigurationStatistics(long totalConfigurations, long successfulLoads, long failedLoads,
+            long hotReloads, int activeConfigurations, int templates, int presets, int versionHistory) {
+    }
+
+    public record ConfigurationValidationResult(boolean isValid, List<String> errors, List<String> warnings) {
+    }
+
+    public record ConfigurationVersion(String configId, String version, Instant timestamp, String description,
+            CommunicationConfig config) {
+    }
+
+    // Configuration classes
+    public static class CommunicationConfig {
+        private String configId;
+        private String version;
+        private String description;
+        private MessagingConfig messagingConfig;
+        private SecurityConfig securityConfig;
+        private PerformanceConfig performanceConfig;
+        private Map<String, Object> customSettings;
+
+        // Constructors, getters, setters
+        public CommunicationConfig() {
+        }
+
+        public CommunicationConfig(String configId, String version) {
+            this.configId = configId;
+            this.version = version;
+        }
+
+        public String getConfigId() {
+            return configId;
+        }
+
+        public void setConfigId(String configId) {
+            this.configId = configId;
+        }
+
+        public String getVersion() {
+            return version;
+        }
+
+        public void setVersion(String version) {
+            this.version = version;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
+        public MessagingConfig getMessagingConfig() {
+            return messagingConfig;
+        }
+
+        public void setMessagingConfig(MessagingConfig messagingConfig) {
+            this.messagingConfig = messagingConfig;
+        }
+
+        public SecurityConfig getSecurityConfig() {
+            return securityConfig;
+        }
+
+        public void setSecurityConfig(SecurityConfig securityConfig) {
+            this.securityConfig = securityConfig;
+        }
+
+        public PerformanceConfig getPerformanceConfig() {
+            return performanceConfig;
+        }
+
+        public void setPerformanceConfig(PerformanceConfig performanceConfig) {
+            this.performanceConfig = performanceConfig;
+        }
+
+        public Map<String, Object> getCustomSettings() {
+            return customSettings;
+        }
+
+        public void setCustomSettings(Map<String, Object> customSettings) {
+            this.customSettings = customSettings;
+        }
+    }
+
+    public static class MessagingConfig {
+        private int maxMessageSize;
+        private long timeoutMs;
+        private boolean enableRetry;
+        private int maxRetries;
+
+        // Constructors, getters, setters
+        public MessagingConfig() {
+        }
+
+        public int getMaxMessageSize() {
+            return maxMessageSize;
+        }
+
+        public void setMaxMessageSize(int maxMessageSize) {
+            this.maxMessageSize = maxMessageSize;
+        }
+
+        public long getTimeoutMs() {
+            return timeoutMs;
+        }
+
+        public void setTimeoutMs(long timeoutMs) {
+            this.timeoutMs = timeoutMs;
+        }
+
+        public boolean isEnableRetry() {
+            return enableRetry;
+        }
+
+        public void setEnableRetry(boolean enableRetry) {
+            this.enableRetry = enableRetry;
+        }
+
+        public int getMaxRetries() {
+            return maxRetries;
+        }
+
+        public void setMaxRetries(int maxRetries) {
+            this.maxRetries = maxRetries;
+        }
+    }
+
+    public static class SecurityConfig {
+        private boolean encryptionEnabled;
+        private String encryptionKey;
+        private boolean authenticationRequired;
+        private String authenticationMethod;
+
+        // Constructors, getters, setters
+        public SecurityConfig() {
+        }
+
+        public boolean isEncryptionEnabled() {
+            return encryptionEnabled;
+        }
+
+        public void setEncryptionEnabled(boolean encryptionEnabled) {
+            this.encryptionEnabled = encryptionEnabled;
+        }
+
+        public String getEncryptionKey() {
+            return encryptionKey;
+        }
+
+        public void setEncryptionKey(String encryptionKey) {
+            this.encryptionKey = encryptionKey;
+        }
+
+        public boolean isAuthenticationRequired() {
+            return authenticationRequired;
+        }
+
+        public void setAuthenticationRequired(boolean authenticationRequired) {
+            this.authenticationRequired = authenticationRequired;
+        }
+
+        public String getAuthenticationMethod() {
+            return authenticationMethod;
+        }
+
+        public void setAuthenticationMethod(String authenticationMethod) {
+            this.authenticationMethod = authenticationMethod;
+        }
+    }
+
+    public static class PerformanceConfig {
+        private int maxConcurrentConnections;
+        private long connectionTimeoutMs;
+        private int threadPoolSize;
+        private boolean enableCompression;
+
+        // Constructors, getters, setters
+        public PerformanceConfig() {
+        }
+
+        public int getMaxConcurrentConnections() {
+            return maxConcurrentConnections;
+        }
+
+        public void setMaxConcurrentConnections(int maxConcurrentConnections) {
+            this.maxConcurrentConnections = maxConcurrentConnections;
+        }
+
+        public long getConnectionTimeoutMs() {
+            return connectionTimeoutMs;
+        }
+
+        public void setConnectionTimeoutMs(long connectionTimeoutMs) {
+            this.connectionTimeoutMs = connectionTimeoutMs;
+        }
+
+        public int getThreadPoolSize() {
+            return threadPoolSize;
+        }
+
+        public void setThreadPoolSize(int threadPoolSize) {
+            this.threadPoolSize = threadPoolSize;
+        }
+
+        public boolean isEnableCompression() {
+            return enableCompression;
+        }
+
+        public void setEnableCompression(boolean enableCompression) {
+            this.enableCompression = enableCompression;
+        }
+    }
+
+    // Template and Preset interfaces and implementations
+    public interface ConfigurationTemplate {
+        String getTemplateId();
+
+        String getDescription();
+
+        CommunicationConfig createConfiguration(String configId, Map<String, Object> parameters);
+    }
+
+    public interface ConfigurationPreset {
+        String getPresetId();
+
+        String getDescription();
+
+        CommunicationConfig applyTo(CommunicationConfig config);
+    }
+
+    // Default template implementations
+    public static class BasicConfigurationTemplate implements ConfigurationTemplate {
+        @Override
+        public String getTemplateId() {
+            return "basic";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Basic configuration template for simple agent communication";
+        }
+
+        @Override
+        public CommunicationConfig createConfiguration(String configId, Map<String, Object> parameters) {
+            CommunicationConfig config = new CommunicationConfig(configId, "1.0.0");
+            config.setDescription("Basic configuration created from template");
+
+            // Set default messaging config
+            MessagingConfig messaging = new MessagingConfig();
+            messaging.setMaxMessageSize(1024 * 1024); // 1MB
+            messaging.setTimeoutMs(30000); // 30 seconds
+            messaging.setEnableRetry(true);
+            messaging.setMaxRetries(3);
+            config.setMessagingConfig(messaging);
+
+            // Set default security config
+            SecurityConfig security = new SecurityConfig();
+            security.setEncryptionEnabled(false);
+            security.setAuthenticationRequired(false);
+            config.setSecurityConfig(security);
+
+            // Set default performance config
+            PerformanceConfig performance = new PerformanceConfig();
+            performance.setMaxConcurrentConnections(10);
+            performance.setConnectionTimeoutMs(5000); // 5 seconds
+            performance.setThreadPoolSize(4);
+            performance.setEnableCompression(false);
+            config.setPerformanceConfig(performance);
+
+            return config;
+        }
+    }
+
+    public static class SecureConfigurationTemplate implements ConfigurationTemplate {
+        @Override
+        public String getTemplateId() {
+            return "secure";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Secure configuration template with encryption and authentication";
+        }
+
+        @Override
+        public CommunicationConfig createConfiguration(String configId, Map<String, Object> parameters) {
+            CommunicationConfig config = new CommunicationConfig(configId, "1.0.0");
+            config.setDescription("Secure configuration created from template");
+
+            // Set secure messaging config
+            MessagingConfig messaging = new MessagingConfig();
+            messaging.setMaxMessageSize(512 * 1024); // 512KB
+            messaging.setTimeoutMs(60000); // 60 seconds
+            messaging.setEnableRetry(true);
+            messaging.setMaxRetries(5);
+            config.setMessagingConfig(messaging);
+
+            // Set secure security config
+            SecurityConfig security = new SecurityConfig();
+            security.setEncryptionEnabled(true);
+            security.setEncryptionKey("default-secure-key");
+            security.setAuthenticationRequired(true);
+            security.setAuthenticationMethod("token");
+            config.setSecurityConfig(security);
+
+            // Set performance config
+            PerformanceConfig performance = new PerformanceConfig();
+            performance.setMaxConcurrentConnections(5);
+            performance.setConnectionTimeoutMs(10000); // 10 seconds
+            performance.setThreadPoolSize(2);
+            performance.setEnableCompression(true);
+            config.setPerformanceConfig(performance);
+
+            return config;
+        }
+    }
+
+    public static class HighPerformanceConfigurationTemplate implements ConfigurationTemplate {
+        @Override
+        public String getTemplateId() {
+            return "high-performance";
+        }
+
+        @Override
+        public String getDescription() {
+            return "High-performance configuration template optimized for speed";
+        }
+
+        @Override
+        public CommunicationConfig createConfiguration(String configId, Map<String, Object> parameters) {
+            CommunicationConfig config = new CommunicationConfig(configId, "1.0.0");
+            config.setDescription("High-performance configuration created from template");
+
+            // Set high-performance messaging config
+            MessagingConfig messaging = new MessagingConfig();
+            messaging.setMaxMessageSize(2 * 1024 * 1024); // 2MB
+            messaging.setTimeoutMs(15000); // 15 seconds
+            messaging.setEnableRetry(false);
+            messaging.setMaxRetries(0);
+            config.setMessagingConfig(messaging);
+
+            // Set minimal security config
+            SecurityConfig security = new SecurityConfig();
+            security.setEncryptionEnabled(false);
+            security.setAuthenticationRequired(false);
+            config.setSecurityConfig(security);
+
+            // Set high-performance config
+            PerformanceConfig performance = new PerformanceConfig();
+            performance.setMaxConcurrentConnections(50);
+            performance.setConnectionTimeoutMs(2000); // 2 seconds
+            performance.setThreadPoolSize(16);
+            performance.setEnableCompression(false);
+            config.setPerformanceConfig(performance);
+
+            return config;
+        }
+    }
+
+    // Default preset implementations
+    public static class DevelopmentPreset implements ConfigurationPreset {
+        @Override
+        public String getPresetId() {
+            return "development";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Development preset with relaxed settings for debugging";
+        }
+
+        @Override
+        public CommunicationConfig applyTo(CommunicationConfig config) {
+            if (config.getMessagingConfig() != null) {
+                config.getMessagingConfig().setTimeoutMs(60000); // 60 seconds for debugging
+                config.getMessagingConfig().setMaxRetries(5);
+            }
+            if (config.getSecurityConfig() != null) {
+                config.getSecurityConfig().setEncryptionEnabled(false);
+                config.getSecurityConfig().setAuthenticationRequired(false);
+            }
+            if (config.getPerformanceConfig() != null) {
+                config.getPerformanceConfig().setMaxConcurrentConnections(5);
+                config.getPerformanceConfig().setThreadPoolSize(2);
+            }
+            return config;
+        }
+    }
+
+    public static class ProductionPreset implements ConfigurationPreset {
+        @Override
+        public String getPresetId() {
+            return "production";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Production preset with strict security and performance settings";
+        }
+
+        @Override
+        public CommunicationConfig applyTo(CommunicationConfig config) {
+            if (config.getMessagingConfig() != null) {
+                config.getMessagingConfig().setTimeoutMs(30000); // 30 seconds
+                config.getMessagingConfig().setMaxRetries(3);
+            }
+            if (config.getSecurityConfig() != null) {
+                config.getSecurityConfig().setEncryptionEnabled(true);
+                config.getSecurityConfig().setAuthenticationRequired(true);
+            }
+            if (config.getPerformanceConfig() != null) {
+                config.getPerformanceConfig().setMaxConcurrentConnections(20);
+                config.getPerformanceConfig().setThreadPoolSize(8);
+                config.getPerformanceConfig().setEnableCompression(true);
+            }
+            return config;
+        }
+    }
+
+    public static class TestingPreset implements ConfigurationPreset {
+        @Override
+        public String getPresetId() {
+            return "testing";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Testing preset optimized for automated testing";
+        }
+
+        @Override
+        public CommunicationConfig applyTo(CommunicationConfig config) {
+            if (config.getMessagingConfig() != null) {
+                config.getMessagingConfig().setTimeoutMs(5000); // 5 seconds for fast tests
+                config.getMessagingConfig().setMaxRetries(1);
+            }
+            if (config.getSecurityConfig() != null) {
+                config.getSecurityConfig().setEncryptionEnabled(false);
+                config.getSecurityConfig().setAuthenticationRequired(false);
+            }
+            if (config.getPerformanceConfig() != null) {
+                config.getPerformanceConfig().setMaxConcurrentConnections(1);
+                config.getPerformanceConfig().setThreadPoolSize(1);
+                config.getPerformanceConfig().setEnableCompression(false);
+            }
+            return config;
+        }
+    }
+
+    // Exception class
+    public static class ConfigurationException extends RuntimeException {
+        public ConfigurationException(String message) {
+            super(message);
+        }
+
+        public ConfigurationException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+}

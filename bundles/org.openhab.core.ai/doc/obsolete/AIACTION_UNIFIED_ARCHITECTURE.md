@@ -742,7 +742,7 @@ public class A2ASkillAdapter implements A2ASkill {
 ### List Items Action
 
 ```java
-package org.openhab.core.ai.actions.items;
+package org.openhab.core.ai.action.library.items;
 
 import org.openhab.core.ai.api.action.AbstractAction;
 import org.openhab.core.ai.api.action.ActionContext;

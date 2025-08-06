@@ -6951,6 +6951,302 @@ ai.security.privacy.data-retention.enabled=true
 
 This comprehensive security architecture ensures that openHAB AI can safely integrate with remote LLMs while maintaining the highest security standards and protecting user privacy and system integrity.
 
+## HTTP Server Integration for MCP and A2A Protocols
+
+### **Question: How do we integrate MCP and A2A protocols with openHAB's HTTP server infrastructure?**
+
+**Answer: Use OSGi HTTP Whiteboard pattern for unified HTTP server integration with URL path separation**
+
+### **1. openHAB HTTP Server Architecture**
+
+openHAB uses the **OSGi HTTP Whiteboard pattern** to expose its HTTP server, providing a unified, secure, and scalable solution for all HTTP-based protocols.
+
+#### **Key Components:**
+- **OSGi HTTP Service**: Jetty-based HTTP server running on port 8080
+- **HTTP Whiteboard Pattern**: Dynamic servlet registration via OSGi services
+- **Servlet Container**: OSGi-compliant servlet container
+- **Security Integration**: Unified authentication and authorization system
+
+#### **OSGi HTTP Whiteboard Configuration:**
+```xml
+<!-- Example from AuthorizePageServlet.xml -->
+<property name="osgi.http.whiteboard.servlet.name" type="String" value="/auth"/>
+<property name="osgi.http.whiteboard.servlet.pattern" type="String">/auth/*</property>
+<service>
+    <provide interface="javax.servlet.Servlet"/>
+</service>
+```
+
+### **2. Protocol Port Specifications**
+
+#### **MCP (Model Context Protocol):**
+- **Standard Port**: No standard port specified (transport-agnostic)
+- **Common Usage**: 
+  - **STDIO**: No port (stdin/stdout)
+  - **HTTP/SSE**: Typically 8080 (as configured: `mcp.transport.base.url=http://localhost:8080`)
+  - **WebSocket**: Typically 8080 (same as HTTP)
+- **Protocol Flexibility**: Supports multiple transports (STDIO, HTTP, WebSocket, TCP)
+
+#### **A2A (Agent-to-Agent Protocol):**
+- **Standard Port**: No standard port specified (transport-agnostic)
+- **Common Usage**:
+  - **HTTP/JSON-RPC**: Typically 8080 (shared with other services)
+  - **WebSocket**: Typically 8080 (same as HTTP)
+  - **Custom Ports**: Can use any available port
+- **Protocol Flexibility**: Supports multiple transports (HTTP, WebSocket, TCP)
+
+### **3. OSGi HTTP Whiteboard Port Limitation**
+
+**Critical Limitation**: The OSGi HTTP Whiteboard pattern **cannot use different ports** for different protocols.
+
+#### **Why Different Ports Are Not Possible:**
+1. **Single HTTP Server**: OSGi HTTP Whiteboard registers servlets with one shared HTTP server
+2. **Port Binding**: The HTTP server is bound to one port (typically 8080)
+3. **Servlet Pattern**: Servlets are distinguished by URL patterns, not ports
+4. **OSGi Specification**: The OSGi HTTP Whiteboard spec doesn't support multiple ports
+
+#### **Port Usage Comparison:**
+| Approach | MCP Port | A2A Port | Integration | Complexity |
+|----------|----------|----------|-------------|------------|
+| **OSGi HTTP Whiteboard** | 8080 | 8080 | ✅ Unified | ✅ Low |
+| **Separate HTTP Servers** | 8081 | 8082 | ❌ Fragmented | ❌ High |
+| **URL Path Separation** | 8080/mcp | 8080/a2a | ✅ Unified | ✅ Low |
+
+### **4. Recommended Implementation: URL Path Separation**
+
+#### **MCP Servlet Implementation:**
+```java
+@Component(service = Servlet.class)
+@HttpWhiteboardServletPattern("/mcp/*")
+@HttpWhiteboardServletName("mcp-servlet")
+public class McpServlet extends HttpServletSseServerTransportProvider {
+    // MCP protocol handling
+    // Handles: POST /mcp/message, GET /mcp/events, POST /mcp/tools/call
+}
+```
+
+#### **A2A Servlet Implementation:**
+```java
+@Component(service = Servlet.class)
+@HttpWhiteboardServletPattern("/a2a/*")
+@HttpWhiteboardServletName("a2a-servlet")
+public class A2AServlet extends HttpServlet {
+    private final JSONRPCHandler jsonRpcHandler;
+    
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+        // A2A protocol handling
+        // Handles: POST /a2a/message/send, POST /a2a/task/create, GET /a2a/task/{id}
+    }
+}
+```
+
+#### **Access URLs:**
+- **MCP**: `http://localhost:8080/mcp/*`
+- **A2A**: `http://localhost:8080/a2a/*`
+
+### **5. Protocol Security Filter Implementation**
+
+#### **Unified Security for Both Protocols:**
+```java
+@Component(service = Filter.class)
+@HttpWhiteboardFilterPattern("/*")
+@HttpWhiteboardFilterName("protocol-security-filter")
+public class ProtocolSecurityFilter implements Filter {
+    
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) 
+            throws IOException, ServletException {
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        
+        if (httpRequest.getRequestURI().startsWith("/mcp/")) {
+            // MCP-specific security validation
+            validateMcpRequest(httpRequest);
+        } else if (httpRequest.getRequestURI().startsWith("/a2a/")) {
+            // A2A-specific security validation  
+            validateA2ARequest(httpRequest);
+        }
+        
+        chain.doFilter(request, response);
+    }
+    
+    private void validateMcpRequest(HttpServletRequest request) {
+        // MCP protocol security validation
+        // - Validate MCP protocol compliance
+        // - Check authentication and authorization
+        // - Apply rate limiting
+        // - Audit logging
+    }
+    
+    private void validateA2ARequest(HttpServletRequest request) {
+        // A2A protocol security validation
+        // - Validate A2A protocol compliance
+        // - Check authentication and authorization
+        // - Apply rate limiting
+        // - Audit logging
+    }
+}
+```
+
+### **6. Benefits of URL Path Separation**
+
+#### **✅ Unified Security:**
+- Single authentication/authorization system
+- Unified rate limiting and abuse prevention
+- Centralized audit logging and monitoring
+
+#### **✅ Unified Monitoring:**
+- Single HTTP server monitoring
+- Unified performance metrics
+- Centralized health checks
+
+#### **✅ Unified Configuration:**
+- Single port configuration (8080)
+- Unified SSL/TLS configuration
+- Centralized logging configuration
+
+#### **✅ Protocol Compliance:**
+- Both protocols work as expected
+- No protocol-specific port requirements
+- Standard HTTP/HTTPS access
+
+#### **✅ OSGi Integration:**
+- Proper OSGi lifecycle management
+- Dynamic servlet registration/deregistration
+- Bundle-aware configuration
+
+#### **✅ Resource Efficiency:**
+- Single HTTP server instance
+- Shared connection pooling
+- Unified resource management
+
+### **7. Configuration Examples**
+
+#### **MCP Configuration (`mcp.cfg`):**
+```properties
+# MCP Server Configuration
+mcp.server.id=openhab-mcp-server
+mcp.server.name=openHAB MCP Server
+mcp.server.version=1.0.0
+
+# Transport Configuration
+mcp.transport.type=HTTP
+mcp.transport.base.url=http://localhost:8080
+mcp.transport.message.endpoint=/mcp/message
+mcp.transport.sse.endpoint=/mcp/events
+mcp.transport.enable.sse=true
+
+# Servlet Configuration
+mcp.servlet.path=/mcp
+mcp.servlet.pattern=/mcp/*
+mcp.servlet.name=mcp-servlet
+```
+
+#### **A2A Configuration (`a2a.cfg`):**
+```properties
+# A2A Server Configuration
+a2a.server.id=openhab-a2a-server
+a2a.server.name=openHAB A2A Server
+a2a.server.version=1.0.0
+
+# Servlet Configuration
+a2a.servlet.path=/a2a
+a2a.servlet.pattern=/a2a/*
+a2a.servlet.name=a2a-servlet
+
+# Protocol Endpoints
+a2a.endpoint.message.send=/a2a/message/send
+a2a.endpoint.task.create=/a2a/task/create
+a2a.endpoint.task.get=/a2a/task/{id}
+```
+
+### **8. Security Integration**
+
+#### **Authentication and Authorization:**
+```java
+@Component
+public class ProtocolAuthenticationService {
+    
+    public boolean authenticateMcpRequest(HttpServletRequest request) {
+        // MCP-specific authentication
+        // - API key validation
+        // - OAuth 2.1 token validation
+        // - openHAB user authentication
+    }
+    
+    public boolean authenticateA2ARequest(HttpServletRequest request) {
+        // A2A-specific authentication
+        // - Agent certificate validation
+        // - JWT token validation
+        // - openHAB user authentication
+    }
+    
+    public boolean authorizeProtocolOperation(String protocol, String operation, String user) {
+        // Protocol-specific authorization
+        // - Role-based access control
+        // - Permission validation
+        // - Resource access control
+    }
+}
+```
+
+### **9. Monitoring and Health Checks**
+
+#### **Unified Health Monitoring:**
+```java
+@Component
+public class ProtocolHealthMonitor {
+    
+    @Scheduled(fixedRate = 30000) // Every 30 seconds
+    public void checkProtocolHealth() {
+        // MCP health check
+        checkMcpHealth();
+        
+        // A2A health check
+        checkA2AHealth();
+        
+        // Overall HTTP server health
+        checkHttpServerHealth();
+    }
+    
+    private void checkMcpHealth() {
+        // Check MCP servlet availability
+        // Monitor MCP protocol metrics
+        // Validate MCP tool execution
+    }
+    
+    private void checkA2AHealth() {
+        // Check A2A servlet availability
+        // Monitor A2A protocol metrics
+        // Validate A2A task execution
+    }
+}
+```
+
+### **10. Summary and Recommendations**
+
+#### **✅ Recommended Approach:**
+1. **Use OSGi HTTP Whiteboard** for unified HTTP server integration
+2. **Implement URL path separation** (`/mcp/*` and `/a2a/*`)
+3. **Create ProtocolSecurityFilter** for unified security
+4. **Use single port 8080** for all HTTP-based protocols
+5. **Implement unified monitoring** and health checks
+
+#### **❌ Avoid:**
+1. **Separate HTTP servers** (fragmented architecture)
+2. **Different ports** (not supported by OSGi HTTP Whiteboard)
+3. **Protocol-specific security** (duplicated effort)
+4. **Manual servlet registration** (bypasses OSGi lifecycle)
+
+#### **🎯 Key Benefits:**
+- **Unified Architecture**: Single HTTP server for all protocols
+- **Protocol Compliance**: Both MCP and A2A work as expected
+- **Security Integration**: Unified authentication and authorization
+- **Resource Efficiency**: Single server instance and configuration
+- **OSGi Integration**: Proper lifecycle management and dynamic registration
+
+This approach ensures that both MCP and A2A protocols are properly integrated with openHAB's existing HTTP server infrastructure, providing a unified, secure, and scalable solution.
+
 ## Multi-Agent Communication and Coordination in openHAB
 
 ### **Question: In a setup where there are multiple agents in openHAB, how would these agents communicate with each other?**
@@ -10805,6 +11101,480 @@ public class MultiStepReasoningEngine {
             );
         }, reasoningExecutor);
     }
+}
+```
+
+## AbstractIntelligentAgent Integration Architecture
+
+### **Overview: Comprehensive Agent Integration**
+
+The `AbstractIntelligentAgent` serves as the central integration point for all reasoning, event processing, memory, and action execution components. This integration provides a unified framework for intelligent autonomous behavior in openHAB.
+
+### **1. Integration Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AbstractIntelligentAgent                    │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 1: Core Reasoning Integration                          │
+│  ├─ MultiStepReasoningEngine                                  │
+│  ├─ ReasoningOrchestrationService                             │
+│  └─ Enhanced Reasoning Context                                │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 2: Event Processing Integration                        │
+│  ├─ LogIngestionPipeline                                      │
+│  ├─ AutonomousReasoningInputManager                           │
+│  ├─ EventLogCorrelationEngine                                 │
+│  └─ Event-Driven Behavior Triggers                            │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 3: Memory Systems Integration                          │
+│  ├─ ContextMemoryManager                                      │
+│  ├─ AgentMemory                                               │
+│  ├─ Memory Consolidation                                      │
+│  └─ Memory Retrieval & Search                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 4: Enhanced Action Execution                           │
+│  ├─ ActionRegistry Integration                                │
+│  ├─ Action Correlation & Analytics                            │
+│  ├─ Safety Constraints                                        │
+│  └─ Learning & Adaptation                                     │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 5: Analytics & Monitoring                              │
+│  ├─ EventProcessingAnalytics                                  │
+│  ├─ Performance Metrics                                       │
+│  ├─ Bottleneck Detection                                      │
+│  └─ Real-time Optimization                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### **2. Core Integration Implementation**
+
+#### **A. Enhanced Dependencies**
+
+```java
+@Component(service = AbstractIntelligentAgent.class)
+@NonNullByDefault
+public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent implements IntelligentAgent {
+
+    // Layer 1: Core Reasoning Integration
+    @Reference
+    private @Nullable MultiStepReasoningEngine reasoningEngine;
+
+    @Reference
+    private @Nullable ReasoningOrchestrationService orchestrationService;
+
+    @Reference
+    private @Nullable ContextMemoryManager contextMemory;
+
+    @Reference
+    private @Nullable AgentMemory agentMemory;
+
+    // Layer 2: Event Processing Integration
+    @Reference
+    private @Nullable LogIngestionPipeline logPipeline;
+
+    @Reference
+    private @Nullable AutonomousReasoningInputManager inputManager;
+
+    @Reference
+    private @Nullable EventLogCorrelationEngine correlationEngine;
+
+    @Reference
+    private @Nullable EventProcessingAnalytics analytics;
+
+    // Agent knowledge and learning
+    private final Map<String, Object> agentKnowledge = new HashMap<>();
+    private final Map<String, List<LearningExample>> learningHistory = new HashMap<>();
+}
+```
+
+#### **B. Enhanced Action Execution**
+
+```java
+@Override
+public CompletableFuture<ActionResult> executeIntelligentAction(String actionName, Map<String, Object> parameters) {
+    return CompletableFuture.supplyAsync(() -> {
+        String actionId = generateActionId();
+        Instant startTime = Instant.now();
+
+        try {
+            logger.debug("Agent {} executing intelligent action: {}", getAgentId(), actionName);
+
+            // 1. Create comprehensive reasoning context
+            ReasoningContext reasoningContext = createEnhancedReasoningContext(actionName, parameters);
+
+            // 2. Execute multi-step reasoning
+            MultiStepReasoningResult reasoningResult = reasoningEngine.reasonAsync(reasoningContext).get();
+
+            // 3. Parse reasoning to concrete actions
+            List<ActionContext> actionsToExecute = parseReasoningToActions(reasoningResult, actionName, parameters);
+
+            // 4. Execute actions with correlation
+            List<ActionResult> actionResults = executeActionsWithCorrelation(actionsToExecute);
+
+            // 5. Aggregate results
+            ActionResult finalResult = aggregateResults(actionId, actionResults, reasoningResult);
+
+            // 6. Learn from execution
+            learnFromAction(actionName, parameters, finalResult, finalResult.isSuccess());
+
+            logger.debug("Agent {} completed intelligent action: {} in {}ms", getAgentId(), actionName,
+                    Duration.between(startTime, Instant.now()).toMillis());
+
+            return finalResult;
+
+        } catch (Exception e) {
+            logger.error("Agent {} failed to execute intelligent action: {}", getAgentId(), actionName, e);
+            return ActionResult.error("Intelligent action execution failed: " + e.getMessage(), null, 0);
+        } finally {
+            totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+        }
+    });
+}
+```
+
+### **3. Enhanced Context Creation**
+
+```java
+private ReasoningContext createEnhancedReasoningContext(String actionName, Map<String, Object> parameters) {
+    Map<String, Object> metadata = new HashMap<>();
+    
+    // Agent context
+    metadata.put("agentContext", getContext().getAll());
+    metadata.put("agentKnowledge", agentKnowledge);
+    metadata.put("agentMemory", agentMemory != null ? agentMemory.getRecentMemory() : Map.of());
+    
+    // Event correlation
+    if (correlationEngine != null) {
+        metadata.put("recentCorrelations", correlationEngine.getRecentCorrelations());
+    }
+    
+    // Log context
+    if (logPipeline != null) {
+        metadata.put("recentLogs", logPipeline.getRecentLogs(10));
+        metadata.put("logAnomalies", logPipeline.getDetectedAnomalies(5));
+    }
+    
+    // Performance context
+    if (analytics != null) {
+        metadata.put("performanceMetrics", analytics.getPerformanceAnalytics());
+    }
+    
+    return ReasoningContext.builder()
+        .initialContext("Action: " + actionName + " with parameters: " + parameters)
+        .currentContext("Agent: " + getAgentId() + " executing: " + actionName)
+        .domain(getSpecialization())
+        .sessionId("session-" + System.currentTimeMillis())
+        .metadata(metadata)
+        .build();
+}
+```
+
+### **4. Event-Driven Autonomous Behavior**
+
+```java
+public void processEvent(Object event) {
+    if (!isRunning || state.get() != AgentState.RUNNING) {
+        return;
+    }
+    
+    try {
+        // 1. Submit event to input manager
+        if (inputManager != null) {
+            ReasoningInput input = createReasoningInput(event);
+            inputManager.submitInput(input).thenAccept(this::handleInputSubmission);
+        }
+        
+        // 2. Correlate with logs
+        if (correlationEngine != null && logPipeline != null) {
+            List<LogEntry> recentLogs = logPipeline.getRecentLogs(20);
+            correlationEngine.correlateEventWithLogs(event, recentLogs)
+                .thenAccept(this::handleEventLogCorrelation);
+        }
+        
+        // 3. Update agent memory
+        if (agentMemory != null) {
+            agentMemory.addToShortTermMemory("event", event);
+        }
+        
+    } catch (Exception e) {
+        logger.error("Failed to process event", e);
+    }
+}
+
+private ReasoningInput createReasoningInput(Object event) {
+    return ReasoningInput.builder()
+        .inputType("event")
+        .content(event.toString())
+        .priority(determineEventPriority(event))
+        .timestamp(Instant.now())
+        .context(getContext().getAll())
+        .build();
+}
+```
+
+### **5. Enhanced Learning and Adaptation**
+
+```java
+@Override
+public void learnFromAction(String actionName, Map<String, Object> parameters, ActionResult result, boolean success) {
+    try {
+        // 1. Create comprehensive learning example
+        LearningExample example = new LearningExample(actionName, parameters, result, success,
+            getContext().getAll(), Instant.now());
+        
+        // 2. Store in learning history
+        learningHistory.computeIfAbsent(actionName, k -> new ArrayList<>()).add(example);
+        
+        // 3. Update agent memory
+        if (agentMemory != null) {
+            agentMemory.addToLongTermMemory("action_result", example);
+        }
+        
+        // 4. Update context memory
+        if (contextMemory != null) {
+            Map<String, Object> contextUpdate = new HashMap<>();
+            contextUpdate.put("last_action", actionName);
+            contextUpdate.put("action_success", success);
+            contextUpdate.put("learning_timestamp", Instant.now());
+            contextMemory.updateContext(getAgentId(), contextUpdate);
+        }
+        
+        // 5. Update knowledge
+        updateKnowledgeFromLearning(example);
+        
+        // 6. Record analytics
+        if (analytics != null) {
+            analytics.recordQualityMetric(getAgentId(), actionName, 
+                success ? 1.0 : 0.0, "Action execution result");
+        }
+        
+    } catch (Exception e) {
+        logger.error("Failed to learn from action", e);
+    }
+}
+```
+
+### **6. Multi-Step Reasoning Integration**
+
+```java
+@Override
+public CompletableFuture<MultiStepReasoningResult> reason(ReasoningContext reasoningContext) {
+    if (reasoningEngine == null) {
+        return CompletableFuture.failedFuture(new IllegalStateException("Reasoning engine not available"));
+    }
+    
+    // Enhance context with agent-specific information
+    ReasoningContext enhancedContext = enhanceReasoningContext(reasoningContext);
+    
+    // Execute reasoning with orchestration
+    if (orchestrationService != null) {
+        return orchestrationService.orchestrateReasoning(reasoningEngine, enhancedContext, getModelParameters());
+    } else {
+        return reasoningEngine.reasonAsync(enhancedContext);
+    }
+}
+
+private ReasoningContext enhanceReasoningContext(ReasoningContext original) {
+    Map<String, Object> enhancedMetadata = new HashMap<>(original.getMetadata());
+    
+    // Add agent-specific context
+    enhancedMetadata.put("agentId", getAgentId());
+    enhancedMetadata.put("agentSpecialization", getSpecialization());
+    enhancedMetadata.put("agentCapabilities", getCapabilities());
+    enhancedMetadata.put("agentMemory", agentMemory != null ? agentMemory.getRecentMemory() : Map.of());
+    
+    return ReasoningContext.builder()
+        .initialContext(original.getInitialContext())
+        .currentContext(original.getCurrentContext())
+        .domain(original.getDomain())
+        .sessionId(original.getSessionId())
+        .metadata(enhancedMetadata)
+        .build();
+}
+```
+
+### **7. Action Execution with Correlation**
+
+```java
+private List<ActionResult> executeActionsWithCorrelation(List<ActionContext> actions) {
+    List<ActionResult> results = new ArrayList<>();
+    
+    for (ActionContext action : actions) {
+        try {
+            // 1. Execute action
+            ActionResult result = executeAction(action);
+            results.add(result);
+            
+            // 2. Correlate with logs
+            if (correlationEngine != null && logPipeline != null) {
+                List<LogEntry> postActionLogs = logPipeline.getRecentLogs(5);
+                correlationEngine.correlateEventWithLogs(result, postActionLogs)
+                    .thenAccept(correlations -> {
+                        logger.debug("Found {} correlations for action {}", correlations.size(), action.getCorrelationId());
+                    });
+            }
+            
+            // 3. Update analytics
+            if (analytics != null) {
+                analytics.recordPerformanceMetric(getAgentId(), "action_execution", 
+                    Duration.between(Instant.now(), Instant.now()), result.isSuccess());
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to execute action with correlation", e);
+            results.add(ActionResult.error("Action execution failed: " + e.getMessage(), null, 0));
+        }
+    }
+    
+    return results;
+}
+```
+
+### **8. Specialized Agent Examples**
+
+#### **A. Energy Optimization Agent**
+
+```java
+@Component(service = EnergyOptimizationAgent.class)
+@NonNullByDefault
+public class EnergyOptimizationAgent extends AbstractIntelligentAgent {
+
+    public EnergyOptimizationAgent() {
+        super("energy-optimization");
+    }
+
+    @Override
+    public String getSpecialization() {
+        return "energy_optimization";
+    }
+
+    @Override
+    public CompletableFuture<ActionResult> executeIntelligentAction(String actionName, Map<String, Object> parameters) {
+        // Energy-specific reasoning context
+        Map<String, Object> energyContext = new HashMap<>(parameters);
+        energyContext.put("energy_usage_patterns", getEnergyUsagePatterns());
+        energyContext.put("cost_optimization_goals", getCostOptimizationGoals());
+        energyContext.put("environmental_impact", getEnvironmentalImpact());
+        
+        return super.executeIntelligentAction(actionName, energyContext);
+    }
+
+    private Map<String, Object> getEnergyUsagePatterns() {
+        // Retrieve energy usage patterns from memory
+        return agentMemory != null ? agentMemory.getLongTermMemory("energy_patterns") : Map.of();
+    }
+
+    private Map<String, Object> getCostOptimizationGoals() {
+        // Get cost optimization goals from configuration
+        return Map.of(
+            "target_cost_reduction", 0.15,
+            "peak_demand_reduction", 0.20,
+            "renewable_energy_usage", 0.80
+        );
+    }
+
+    private Map<String, Object> getEnvironmentalImpact() {
+        // Calculate environmental impact metrics
+        return Map.of(
+            "carbon_footprint", calculateCarbonFootprint(),
+            "energy_efficiency", calculateEnergyEfficiency(),
+            "sustainability_score", calculateSustainabilityScore()
+        );
+    }
+}
+```
+
+#### **B. Security Monitoring Agent**
+
+```java
+@Component(service = SecurityMonitoringAgent.class)
+@NonNullByDefault
+public class SecurityMonitoringAgent extends AbstractIntelligentAgent {
+
+    public SecurityMonitoringAgent() {
+        super("security-monitoring");
+    }
+
+    @Override
+    public String getSpecialization() {
+        return "security_monitoring";
+    }
+
+    @Override
+    public void processEvent(Object event) {
+        // Security-specific event processing
+        if (isSecurityEvent(event)) {
+            // Enhanced security context
+            Map<String, Object> securityContext = new HashMap<>();
+            securityContext.put("threat_level", assessThreatLevel(event));
+            securityContext.put("vulnerability_scan", getVulnerabilityScanResults());
+            securityContext.put("incident_history", getIncidentHistory());
+            
+            // Process with enhanced context
+            super.processEvent(securityContext);
+        }
+    }
+
+    private boolean isSecurityEvent(Object event) {
+        // Determine if event is security-related
+        return event.toString().contains("security") || 
+               event.toString().contains("threat") ||
+               event.toString().contains("vulnerability");
+    }
+
+    private String assessThreatLevel(Object event) {
+        // Assess threat level based on event characteristics
+        // Implementation would include threat assessment logic
+        return "MEDIUM";
+    }
+
+    private Map<String, Object> getVulnerabilityScanResults() {
+        // Get recent vulnerability scan results
+        return Map.of(
+            "critical_vulnerabilities", 2,
+            "high_vulnerabilities", 5,
+            "medium_vulnerabilities", 12,
+            "last_scan", Instant.now().minus(Duration.ofHours(6))
+        );
+    }
+
+    private List<Map<String, Object>> getIncidentHistory() {
+        // Get recent security incidents
+        return List.of(
+            Map.of("type", "unauthorized_access", "severity", "HIGH", "timestamp", Instant.now().minus(Duration.ofHours(2))),
+            Map.of("type", "suspicious_activity", "severity", "MEDIUM", "timestamp", Instant.now().minus(Duration.ofHours(4)))
+        );
+    }
+}
+```
+
+### **9. Benefits of Integration**
+
+1. **Comprehensive Reasoning**: Multi-step reasoning with context accumulation
+2. **Event-Driven Behavior**: Real-time event processing with log correlation
+3. **Enhanced Learning**: Memory-based learning with context persistence
+4. **Performance Monitoring**: Analytics and metrics for optimization
+5. **Safety and Validation**: Enhanced safety checks with correlation
+6. **Scalability**: Orchestrated reasoning for complex scenarios
+7. **Specialization**: Domain-specific agent implementations
+8. **Coordination**: Multi-agent coordination and learning federation
+
+### **10. Implementation Phases**
+
+1. **Phase 1**: Core reasoning integration (MultiStepReasoningEngine)
+2. **Phase 2**: Event processing integration (LogIngestionPipeline, InputManager)
+3. **Phase 3**: Memory systems integration (ContextMemoryManager, AgentMemory)
+4. **Phase 4**: Analytics and correlation (EventProcessingAnalytics, CorrelationEngine)
+5. **Phase 5**: Advanced orchestration (ReasoningOrchestrationService)
+6. **Phase 6**: Specialized agents (Energy, Security, Comfort)
+7. **Phase 7**: Multi-agent coordination and learning federation
+
+This integration approach provides a comprehensive intelligent agent framework that leverages all the reasoning, event processing, and memory capabilities while maintaining the foundational agent architecture from `BaseAutonomousAgent`.
+                maxReasoningSteps
+            );
+        }, reasoningExecutor);
+    }
     
     private ReasoningStep parseReasoningStep(String content, int stepNumber) {
         // Parse LLM response to extract reasoning step information
@@ -11520,3 +12290,573 @@ The implementation follows openHAB's established patterns with OSGi components, 
 - **Extensibility**: Modular design allows for easy extension and customization
 
 This implementation bridges the gap between the current local LLM capabilities and the vision outlined in BRAIN.md for intelligent, autonomous home automation systems.
+
+---
+
+## Resource Architecture and MCP Integration
+
+The openHAB AI system implements a sophisticated **Resource architecture** that bridges openHAB entities with the Machine Comprehension Protocol (MCP). This architecture provides bidirectional conversion between simple DTOs and encapsulated behavior objects, enabling seamless integration with AI agents while maintaining proper lifecycle management and caching.
+
+### **Resource Architecture Overview**
+
+The Resource system consists of three main layers:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    MCP Protocol Layer                       │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │   Resource DTO  │  │   Prompt DTO    │  │ Completion   │ │
+│  │   (Immutable)   │  │   (Immutable)   │  │ DTO          │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                              ↕ (Bidirectional Conversion)
+┌─────────────────────────────────────────────────────────────┐
+│                  Factory Layer                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │ ResourceFactory │  │  PromptFactory  │  │Completion    │ │
+│  │ (Caching &      │  │ (Caching &      │  │Factory       │ │
+│  │  Lifecycle)     │  │  Lifecycle)     │  │(Caching &    │ │
+│  └─────────────────┘  └─────────────────┘  │ Lifecycle)   │ │
+└─────────────────────────────────────────────────────────────┘
+                              ↕ (Encapsulated Behavior)
+┌─────────────────────────────────────────────────────────────┐
+│                Abstract Base Layer                          │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │ AbstractResource│  │ AbstractPrompt  │  │Abstract      │ │
+│  │ (Lifecycle &    │  │ (Lifecycle &    │  │Completion    │ │
+│  │  Caching)       │  │  Caching)       │  │(Lifecycle &  │ │
+│  └─────────────────┘  └─────────────────┘  │ Caching)     │ │
+└─────────────────────────────────────────────────────────────┘
+                              ↕ (Concrete Implementation)
+┌─────────────────────────────────────────────────────────────┐
+│                Proxy/Adapter Layer                          │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │ ItemResource    │  │ ItemPrompt      │  │ ItemCompletion│ │
+│  │ Proxy           │  │ Proxy           │  │ Proxy        │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │ ThingResource   │  │ SystemPrompt    │  │ RuleCompletion│ │
+│  │ Proxy           │  │ Proxy           │  │ Proxy        │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                              ↕ (openHAB Integration)
+┌─────────────────────────────────────────────────────────────┐
+│                openHAB Entity Layer                         │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │   ItemRegistry  │  │   ThingRegistry │  │ RuleRegistry │ │
+│  │   (Items)       │  │   (Things)      │  │ (Rules)      │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **Core Components**
+
+#### **1. Resource DTO (`Resource.java`)**
+
+The `Resource` class represents the MCP Resource data model as a simple, immutable Data Transfer Object (DTO).
+
+```java
+public class Resource {
+    private final String uri;           // Resource identifier
+    private final String name;          // Human-readable name
+    private final String description;   // Resource description
+    private final String mimeType;      // Content type
+    private final Map<String, Object> metadata; // Additional metadata
+    
+    // Immutable constructor and getters
+    // No behavior, just data
+}
+```
+
+**Purpose:**
+- **Protocol Communication**: Used for MCP protocol serialization/deserialization
+- **Data Transfer**: Simple, lightweight data structure
+- **Immutable**: Thread-safe and predictable
+- **No Dependencies**: Pure data, no openHAB dependencies
+
+#### **2. AbstractResource Base Class**
+
+The `AbstractResource` class provides common behavior and lifecycle management for all MCP Resources.
+
+```java
+public abstract class AbstractResource {
+    // Core properties
+    private final String uri;
+    private final String name;
+    private final String description;
+    private final String mimeType;
+    private final Map<String, Object> metadata;
+    
+    // Lifecycle management
+    private volatile boolean valid = true;
+    private volatile long lastRefreshTime;
+    private final long refreshIntervalMs;
+    
+    // Abstract methods for concrete implementations
+    public abstract @Nullable String getContent();
+    public abstract boolean isWritable();
+    public abstract boolean writeContent(@Nullable String content);
+    public abstract boolean exists();
+    public abstract void refresh();
+    public abstract void close();
+    
+    // Lifecycle methods
+    public boolean isValid() { return valid; }
+    public boolean needsRefresh() { return System.currentTimeMillis() - lastRefreshTime > refreshIntervalMs; }
+    public void markInvalid() { this.valid = false; }
+    
+    // Conversion to DTO
+    public Resource toResource() {
+        return new Resource(uri, name, description, mimeType, metadata);
+    }
+}
+```
+
+**Key Features:**
+- **Lifecycle Management**: Validity tracking, refresh intervals, cleanup
+- **Caching**: Automatic content caching with refresh mechanisms
+- **Thread Safety**: Volatile fields and concurrent access handling
+- **Conversion**: Bidirectional conversion with DTOs
+- **Abstract Interface**: Defines contract for concrete implementations
+
+#### **3. ResourceFactory**
+
+The `ResourceFactory` manages the creation, caching, and lifecycle of `AbstractResource` objects.
+
+```java
+public class ResourceFactory {
+    private final Map<String, AbstractResource> activeResources = new ConcurrentHashMap<>();
+    private static final long DEFAULT_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+    
+    // Create resources with factory methods
+    public @Nullable AbstractResource createResource(String uri, ResourceFactoryMethod factory);
+    public @Nullable AbstractResource createResource(String uri, ResourceFactoryMethod factory, long refreshIntervalMs);
+    
+    // Bidirectional conversion
+    public @Nullable AbstractResource fromResource(Resource resource, Map<String, Object> context);
+    public @Nullable AbstractResource fromResource(Resource resource, Map<String, Object> context, long refreshIntervalMs);
+    
+    // Lifecycle management
+    public boolean refreshResource(String uri);
+    public int refreshAllResources();
+    public boolean removeResource(String uri);
+    public void cleanup();
+    
+    // Factory method interface
+    @FunctionalInterface
+    public interface ResourceFactoryMethod {
+        @Nullable AbstractResource create(String uri, long refreshIntervalMs);
+    }
+}
+```
+
+**Key Features:**
+- **Centralized Creation**: Single point for resource creation
+- **Caching**: Automatic caching with validity checks
+- **Lifecycle Management**: Refresh, cleanup, and invalidation
+- **Context Resolution**: Registry dependency injection
+- **Bidirectional Conversion**: DTO ↔ AbstractResource conversion
+
+#### **4. Resource Proxies**
+
+Concrete implementations that encapsulate openHAB entities with behavior and lifecycle management.
+
+**Example: ItemResourceProxy**
+```java
+public class ItemResourceProxy extends AbstractResource {
+    private final ItemRegistry itemRegistry;
+    private final String itemName;
+    private volatile @Nullable String cachedContent;
+    
+    public ItemResourceProxy(ItemRegistry itemRegistry, String itemName, long refreshIntervalMs) {
+        super("openhab://items/" + itemName, "Item: " + itemName, 
+              "Resource adapter for openHAB item: " + itemName, "application/json", 
+              createMetadata(itemName), refreshIntervalMs);
+        
+        this.itemRegistry = itemRegistry;
+        this.itemName = itemName;
+    }
+    
+    @Override
+    public @Nullable String getContent() {
+        if (needsRefresh()) {
+            refresh();
+        }
+        return cachedContent;
+    }
+    
+    @Override
+    public boolean isWritable() {
+        Item item = itemRegistry.get(itemName);
+        return item != null && item.getAcceptedCommandTypes().contains(RefreshType.class);
+    }
+    
+    @Override
+    public boolean writeContent(@Nullable String content) {
+        // Implementation for writing content to item
+        // Handles state updates, commands, etc.
+    }
+    
+    @Override
+    public boolean exists() {
+        return itemRegistry.get(itemName) != null;
+    }
+    
+    @Override
+    public void refresh() {
+        Item item = itemRegistry.get(itemName);
+        if (item != null) {
+            cachedContent = createItemJson(item);
+            lastRefreshTime = System.currentTimeMillis();
+        }
+    }
+    
+    @Override
+    public void close() {
+        cachedContent = null;
+        markInvalid();
+    }
+}
+```
+
+**Available Resource Proxies:**
+- **ItemResourceProxy**: Encapsulates openHAB items with state and command handling
+- **ThingResourceProxy**: Encapsulates openHAB things with configuration and status
+- **RuleResourceProxy**: Encapsulates automation rules with execution and modification
+- **ConfigurationResourceProxy**: Encapsulates configuration data with read/write operations
+
+### **Bidirectional Conversion System**
+
+The Resource architecture provides complete bidirectional conversion between DTOs and encapsulated objects:
+
+#### **DTO → AbstractResource (fromResource)**
+```java
+// Create context with required registries
+Map<String, Object> context = Map.of(
+    "itemRegistry", itemRegistry,
+    "thingRegistry", thingRegistry,
+    "ruleRegistry", ruleRegistry
+);
+
+// Convert DTO to AbstractResource
+Resource resourceDto = new Resource("openhab://items/light1", "Light1", "Living room light", "text/plain", null);
+AbstractResource abstractResource = resourceFactory.fromResource(resourceDto, context);
+
+if (abstractResource != null) {
+    // Use encapsulated behavior
+    String content = abstractResource.getContent();
+    boolean writable = abstractResource.isWritable();
+    abstractResource.refresh();
+}
+```
+
+#### **AbstractResource → DTO (toResource)**
+```java
+// Convert back to DTO
+Resource convertedDto = abstractResource.toResource();
+
+// Round-trip conversion preserves all data
+assertEquals(resourceDto.getUri(), convertedDto.getUri());
+assertEquals(resourceDto.getName(), convertedDto.getName());
+assertEquals(resourceDto.getDescription(), convertedDto.getDescription());
+```
+
+#### **URI Scheme Resolution**
+The factory automatically resolves URI schemes to appropriate proxy types:
+
+- **`openhab://items/{itemName}`** → `ItemResourceProxy`
+- **`openhab://things/{thingUID}`** → `ThingResourceProxy`
+- **`openhab://rules/{ruleUID}`** → `RuleResourceProxy`
+- **`openhab://config/{configId}`** → `ConfigurationResourceProxy`
+
+### **Lifecycle Management**
+
+#### **Resource Lifecycle States**
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Created   │ →  │   Valid     │ →  │  Refreshing │ →  │   Invalid   │
+│             │    │             │    │             │    │             │
+│ • Factory   │    │ • Cached    │    │ • Updating  │    │ • Cleanup   │
+│ • Registry  │    │ • Available │    │ • Content   │    │ • Removed   │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+```
+
+#### **Automatic Refresh**
+```java
+// Resources automatically refresh when needed
+if (abstractResource.needsRefresh()) {
+    abstractResource.refresh();
+}
+
+// Custom refresh intervals
+AbstractResource resource = resourceFactory.fromResource(dto, context, 30000); // 30 seconds
+```
+
+#### **Cleanup and Memory Management**
+```java
+// Manual cleanup
+resourceFactory.removeResource("openhab://items/light1");
+
+// Automatic cleanup of all resources
+resourceFactory.cleanup();
+
+// Resource-specific cleanup
+abstractResource.close();
+```
+
+### **Caching Strategy**
+
+#### **Multi-Level Caching**
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Factory Cache                            │
+│  • URI → AbstractResource mapping                          │
+│  • ConcurrentHashMap for thread safety                     │
+│  • Automatic invalidation on errors                        │
+└─────────────────────────────────────────────────────────────┘
+                              ↕
+┌─────────────────────────────────────────────────────────────┘
+│                  Resource Cache                             │
+│  • Content caching with refresh intervals                   │
+│  • Metadata caching for performance                        │
+│  • Lazy loading on first access                            │
+└─────────────────────────────────────────────────────────────┘
+                              ↕
+┌─────────────────────────────────────────────────────────────┘
+│                openHAB Registry Cache                       │
+│  • ItemRegistry, ThingRegistry, RuleRegistry               │
+│  • OSGi service caching                                     │
+│  • Event-driven updates                                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### **Cache Invalidation**
+```java
+// Automatic invalidation on errors
+try {
+    content = fetchContent();
+} catch (Exception e) {
+    markInvalid(); // Triggers cache invalidation
+    throw e;
+}
+
+// Manual invalidation
+abstractResource.markInvalid();
+
+// Time-based invalidation
+if (abstractResource.needsRefresh()) {
+    abstractResource.refresh();
+}
+```
+
+### **Error Handling and Resilience**
+
+#### **Graceful Degradation**
+```java
+public @Nullable AbstractResource fromResource(Resource resource, Map<String, Object> context) {
+    String uri = resource.getUri();
+    
+    try {
+        // URI scheme resolution with fallbacks
+        if (uri.startsWith("openhab://items/")) {
+            // Item resolution logic
+        } else if (uri.startsWith("openhab://things/")) {
+            // Thing resolution logic
+        } else {
+            LOGGER.warn("Unknown URI scheme for resource: {}", uri);
+        }
+    } catch (Exception e) {
+        LOGGER.error("Error creating AbstractResource from Resource DTO: {}", uri, e);
+    }
+    
+    return null; // Graceful fallback
+}
+```
+
+#### **Registry Dependency Handling**
+```java
+// Check for required registries
+ItemRegistry itemRegistry = (ItemRegistry) context.get("itemRegistry");
+if (itemRegistry != null) {
+    return createResource(uri, factory);
+} else {
+    LOGGER.warn("ItemRegistry not found in context for: {}", uri);
+    return null;
+}
+```
+
+### **Performance Optimizations**
+
+#### **Lazy Loading**
+```java
+@Override
+public @Nullable String getContent() {
+    if (needsRefresh()) {
+        refresh(); // Only fetch when needed
+    }
+    return cachedContent;
+}
+```
+
+#### **Concurrent Access**
+```java
+// Thread-safe caching with volatile fields
+private volatile @Nullable String cachedContent;
+private volatile long lastRefreshTime;
+
+// ConcurrentHashMap for factory cache
+private final Map<String, AbstractResource> activeResources = new ConcurrentHashMap<>();
+```
+
+#### **Memory Management**
+```java
+// Automatic cleanup of old resources
+public void cleanup() {
+    activeResources.entrySet().removeIf(entry -> {
+        AbstractResource resource = entry.getValue();
+        return !resource.isValid() || resource.needsRefresh();
+    });
+}
+```
+
+### **Integration with MCP Protocol**
+
+#### **Resource Registration**
+```java
+// Register resources with MCP server
+List<Resource> resources = resourceFactory.getAllResources().values().stream()
+    .map(AbstractResource::toResource)
+    .collect(Collectors.toList());
+
+mcpServer.registerResources(resources);
+```
+
+#### **Resource Discovery**
+```java
+// Discover available resources
+List<Resource> availableResources = resourceFactory.getAllResources().values().stream()
+    .filter(AbstractResource::exists)
+    .map(AbstractResource::toResource)
+    .collect(Collectors.toList());
+```
+
+#### **Content Retrieval**
+```java
+// Get resource content for MCP protocol
+public String getResourceContent(String uri) {
+    AbstractResource resource = resourceFactory.getResource(uri);
+    if (resource != null && resource.exists()) {
+        return resource.getContent();
+    }
+    return null;
+}
+```
+
+### **Testing and Validation**
+
+#### **Unit Testing**
+```java
+@Test
+void testFromResource_ItemResource() {
+    Resource resourceDto = new Resource("openhab://items/light1", "Light1", "Living room light", "text/plain", null);
+    Map<String, Object> context = Map.of("itemRegistry", itemRegistry);
+    
+    AbstractResource result = resourceFactory.fromResource(resourceDto, context);
+    
+    assertNotNull(result);
+    assertEquals("openhab://items/light1", result.getUri());
+    assertTrue(result.isValid());
+}
+```
+
+#### **Round-Trip Testing**
+```java
+@Test
+void testFromResource_RoundTripConversion() {
+    Resource originalDto = new Resource("openhab://items/light1", "Light1", "Living room light", "text/plain", null);
+    Map<String, Object> context = Map.of("itemRegistry", itemRegistry);
+    
+    AbstractResource abstractResource = resourceFactory.fromResource(originalDto, context);
+    Resource convertedDto = abstractResource.toResource();
+    
+    assertEquals(originalDto.getUri(), convertedDto.getUri());
+    assertEquals(originalDto.getName(), convertedDto.getName());
+}
+```
+
+### **Future Extensibility**
+
+#### **Adding New Resource Types**
+```java
+// 1. Create new proxy class
+public class ScheduleResourceProxy extends AbstractResource {
+    // Implementation for schedule resources
+}
+
+// 2. Add URI scheme resolution in factory
+} else if (uri.startsWith("openhab://schedules/")) {
+    String scheduleId = uri.substring("openhab://schedules/".length());
+    ScheduleRegistry scheduleRegistry = (ScheduleRegistry) context.get("scheduleRegistry");
+    if (scheduleRegistry != null) {
+        return createResource(uri, (resourceUri, refreshIntervalMs) -> 
+            new ScheduleResourceProxy(scheduleRegistry, scheduleId, refreshIntervalMs));
+    }
+}
+```
+
+#### **Custom Metadata Support**
+```java
+// Enhanced metadata for specific resource types
+private static Map<String, Object> createEnhancedMetadata(String itemName, Item item) {
+    Map<String, Object> metadata = new ConcurrentHashMap<>();
+    metadata.put("type", "openhab-item");
+    metadata.put("itemName", itemName);
+    metadata.put("itemType", item.getType());
+    metadata.put("tags", item.getTags());
+    metadata.put("groups", item.getGroupNames());
+    metadata.put("state", item.getState().toString());
+    return metadata;
+}
+```
+
+### **Benefits of Resource Architecture**
+
+#### **1. Protocol Independence**
+- **MCP Integration**: Seamless integration with MCP protocol
+- **A2A Support**: Ready for Agent-to-Agent protocol
+- **Future Protocols**: Extensible for new protocols
+
+#### **2. Encapsulation and Lifecycle**
+- **Behavior Encapsulation**: Resources have behavior, not just data
+- **Lifecycle Management**: Automatic refresh, cleanup, and invalidation
+- **Thread Safety**: Concurrent access with proper synchronization
+
+#### **3. Performance and Caching**
+- **Multi-Level Caching**: Factory, resource, and registry caching
+- **Lazy Loading**: Content fetched only when needed
+- **Memory Management**: Automatic cleanup of unused resources
+
+#### **4. Error Handling and Resilience**
+- **Graceful Degradation**: Fallbacks for missing registries or invalid URIs
+- **Error Recovery**: Automatic invalidation and retry mechanisms
+- **Logging and Monitoring**: Comprehensive error tracking
+
+#### **5. Extensibility and Maintainability**
+- **Factory Pattern**: Centralized creation and management
+- **Abstract Base Classes**: Common behavior and interfaces
+- **Plugin Architecture**: Easy to add new resource types
+
+### **Summary**
+
+The Resource architecture provides a **robust, scalable, and maintainable** foundation for integrating openHAB entities with AI protocols. It combines the simplicity of DTOs for protocol communication with the power of encapsulated behavior objects for actual functionality.
+
+**Key Achievements:**
+- ✅ **Bidirectional Conversion**: Complete DTO ↔ AbstractResource conversion
+- ✅ **Lifecycle Management**: Automatic refresh, cleanup, and invalidation
+- ✅ **Caching Strategy**: Multi-level caching for optimal performance
+- ✅ **Error Handling**: Graceful degradation and error recovery
+- ✅ **Thread Safety**: Concurrent access with proper synchronization
+- ✅ **Extensibility**: Easy to add new resource types and URI schemes
+- ✅ **Protocol Integration**: Ready for MCP, A2A, and future protocols
+
+This architecture enables openHAB to seamlessly integrate with AI agents while maintaining proper encapsulation, performance, and reliability.

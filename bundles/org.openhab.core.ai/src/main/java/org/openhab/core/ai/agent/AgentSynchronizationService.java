@@ -10,7 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.core.ai.agent.internal;
+package org.openhab.core.ai.agent;
 
 import java.time.Duration;
 import java.util.ArrayList;

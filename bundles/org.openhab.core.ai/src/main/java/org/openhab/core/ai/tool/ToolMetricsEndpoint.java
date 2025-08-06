@@ -1,9 +1,11 @@
-package org.openhab.core.ai.tool.internal;
+package org.openhab.core.ai.tool;
 
 import java.io.IOException;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.manager.ToolErrorRecoveryManager;
+import org.openhab.core.ai.tool.manager.ToolSecurityManager;
 
 /**
  * Health metrics endpoint for MCP operations.
