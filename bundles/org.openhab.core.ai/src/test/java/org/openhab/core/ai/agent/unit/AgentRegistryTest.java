@@ -21,7 +21,7 @@ import org.openhab.core.ai.agent.AgentRegistry.AgentValidationResult;
 import org.openhab.core.ai.agent.AgentRegistry.MessageHandler;
 import org.openhab.core.ai.agent.AgentRegistry.MessageResponse;
 import org.openhab.core.ai.agent.AgentRegistry.MessageStatus;
-import org.openhab.core.ai.api.agent.Agent;
+import org.openhab.core.ai.agent.api.Agent;
 
 import io.a2a.spec.Task;
 import io.a2a.spec.TaskStatusUpdateEvent;

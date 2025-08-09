@@ -1,55 +1,121 @@
 package org.openhab.core.ai.tool.registry;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.api.tool.CompletionRegistry;
-import org.openhab.core.ai.api.tool.PromptRegistry;
-import org.openhab.core.ai.api.tool.ResourceRegistry;
-import org.openhab.core.ai.api.tool.Tool;
 import org.openhab.core.ai.tool.adapter.ToolAdapter;
+import org.openhab.core.ai.tool.api.CompletionRegistry;
+import org.openhab.core.ai.tool.api.PromptRegistry;
+import org.openhab.core.ai.tool.api.ResourceRegistry;
+import org.openhab.core.ai.tool.api.Tool;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.util.tracker.ServiceTracker;
+import org.osgi.util.tracker.ServiceTrackerCustomizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
-import io.modelcontextprotocol.spec.McpSchema;
 
 /**
- * Registry for MCP Tools, Resources, Prompts, and Completions.
+ * Registry for MCP Tools.
  *
- * This class manages the registration and discovery of MCP tools, resources, prompts, and completions,
- * providing access to specifications for the MCP server.
+ * This class manages the registration and discovery of MCP tools,
+ * providing access to tool specifications for the MCP server.
  *
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
+@Component(immediate = true)
 public class ToolRegistry {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ToolRegistry.class);
 
     /** Map of tool adapters by tool ID. */
     private final Map<String, ToolAdapter> toolAdapters = new ConcurrentHashMap<>();
+
     /** Map of tools by tool ID. */
     private final Map<String, Tool> tools = new ConcurrentHashMap<>();
 
+    /** Map of registered tools by service reference. */
+    private final Map<ServiceReference<Tool>, Tool> registeredTools = new ConcurrentHashMap<>();
+
     /** Resource registry. */
     private final ResourceRegistry resourceRegistry;
+
     /** Prompt registry. */
     private final PromptRegistry promptRegistry;
+
     /** Completion registry. */
     private final CompletionRegistry completionRegistry;
+
+    /** Bundle context for OSGi service tracking. */
+    private @Nullable BundleContext bundleContext;
+
+    /** Service tracker for Tool services. */
+    private @Nullable ServiceTracker<Tool, Tool> toolTracker;
 
     /**
      * Create a new ToolRegistry with all specification registries.
      */
     public ToolRegistry() {
-        this.resourceRegistry = new org.openhab.core.ai.tool.registry.ResourceRegistryImpl();
-        this.promptRegistry = new org.openhab.core.ai.tool.registry.PromptRegistryImpl();
-        this.completionRegistry = new org.openhab.core.ai.tool.registry.CompletionRegistryImpl();
+        this.resourceRegistry = new DefaultResourceRegistry();
+        this.promptRegistry = new DefaultPromptRegistry();
+        this.completionRegistry = new DefaultCompletionRegistry();
+    }
+
+    /**
+     * Activate the registry with OSGi service tracking.
+     * 
+     * @param bundleContext the bundle context
+     */
+    @Activate
+    public void activate(BundleContext bundleContext) {
+        this.bundleContext = bundleContext;
+        startToolTracking();
+        LOGGER.info("Tool registry activated with OSGi service tracking");
+    }
+
+    /**
+     * Deactivate the registry.
+     */
+    @Deactivate
+    public void deactivate() {
+        stopToolTracking();
+        LOGGER.info("Tool registry deactivated");
+    }
+
+    /**
+     * Start tracking Tool services.
+     */
+    private void startToolTracking() {
+        BundleContext context = bundleContext;
+        if (context == null) {
+            LOGGER.warn("Bundle context not available for tool tracking");
+            return;
+        }
+
+        toolTracker = new ServiceTracker<>(context, Tool.class, new ToolServiceCustomizer());
+        toolTracker.open();
+        LOGGER.debug("Tool service tracking started");
+    }
+
+    /**
+     * Stop tracking Tool services.
+     */
+    private void stopToolTracking() {
+        ServiceTracker<Tool, Tool> tracker = toolTracker;
+        if (tracker != null) {
+            tracker.close();
+            toolTracker = null;
+            LOGGER.debug("Tool service tracking stopped");
+        }
     }
 
     /**
@@ -96,6 +162,22 @@ public class ToolRegistry {
     }
 
     /**
+     * Register a tool with OSGi service reference tracking.
+     *
+     * @param tool the tool to register
+     * @param reference the OSGi service reference
+     */
+    private void registerToolWithReference(final Tool tool, final ServiceReference<Tool> reference) {
+        try {
+            registerTool(tool);
+            registeredTools.put(reference, tool);
+            LOGGER.info("Registered tool with OSGi tracking: {} (service: {})", tool.getId(), reference);
+        } catch (Exception e) {
+            LOGGER.error("Failed to register tool: {}", tool.getId(), e);
+        }
+    }
+
+    /**
      * Unregister a tool.
      *
      * @param toolId the tool ID to unregister
@@ -104,6 +186,22 @@ public class ToolRegistry {
         tools.remove(toolId);
         toolAdapters.remove(toolId);
         LOGGER.debug("Unregistered tool: {}", toolId);
+    }
+
+    /**
+     * Unregister a tool with OSGi service reference tracking.
+     *
+     * @param tool the tool to unregister
+     * @param reference the OSGi service reference
+     */
+    private void unregisterToolWithReference(final Tool tool, final ServiceReference<Tool> reference) {
+        try {
+            unregisterTool(tool.getId());
+            registeredTools.remove(reference);
+            LOGGER.info("Unregistered tool with OSGi tracking: {} (service: {})", tool.getId(), reference);
+        } catch (Exception e) {
+            LOGGER.error("Failed to unregister tool: {}", tool.getId(), e);
+        }
     }
 
     /**
@@ -154,6 +252,24 @@ public class ToolRegistry {
     }
 
     /**
+     * Get the number of registered tools with OSGi tracking.
+     *
+     * @return the number of registered tools
+     */
+    public int getRegisteredToolCount() {
+        return registeredTools.size();
+    }
+
+    /**
+     * Get all registered tools with OSGi tracking.
+     *
+     * @return map of registered tools by service reference
+     */
+    public Map<ServiceReference<Tool>, Tool> getRegisteredTools() {
+        return new ConcurrentHashMap<>(registeredTools);
+    }
+
+    /**
      * Check if a tool is registered.
      *
      * @param toolId the tool ID
@@ -169,8 +285,8 @@ public class ToolRegistry {
      * @return sync tool specifications
      */
     public McpServerFeatures.SyncToolSpecification[] getSyncToolSpecifications() {
-        return tools.values().stream().map(this::createSyncToolSpecification).filter(spec -> spec != null)
-                .toArray(McpServerFeatures.SyncToolSpecification[]::new);
+        return toolAdapters.values().stream().map(adapter -> adapter.createSyncToolSpecification())
+                .filter(spec -> spec != null).toArray(McpServerFeatures.SyncToolSpecification[]::new);
     }
 
     /**
@@ -179,8 +295,8 @@ public class ToolRegistry {
      * @return async tool specifications
      */
     public McpServerFeatures.AsyncToolSpecification[] getAsyncToolSpecifications() {
-        return tools.values().stream().map(this::createAsyncToolSpecification).filter(spec -> spec != null)
-                .toArray(McpServerFeatures.AsyncToolSpecification[]::new);
+        return toolAdapters.values().stream().map(adapter -> adapter.createAsyncToolSpecification())
+                .filter(spec -> spec != null).toArray(McpServerFeatures.AsyncToolSpecification[]::new);
     }
 
     /**
@@ -189,7 +305,7 @@ public class ToolRegistry {
      * @return sync resource specifications
      */
     public McpServerFeatures.SyncResourceSpecification[] getSyncResourceSpecifications() {
-        return resourceRegistry.getSyncResourceSpecifications();
+        return resourceRegistry.getMcpSyncResourceSpecifications();
     }
 
     /**
@@ -198,7 +314,7 @@ public class ToolRegistry {
      * @return async resource specifications
      */
     public McpServerFeatures.AsyncResourceSpecification[] getAsyncResourceSpecifications() {
-        return resourceRegistry.getAsyncResourceSpecifications();
+        return resourceRegistry.getMcpAsyncResourceSpecifications();
     }
 
     /**
@@ -238,124 +354,41 @@ public class ToolRegistry {
     }
 
     /**
-     * Create a sync tool specification from a tool.
-     *
-     * @param tool the tool
-     * @return the sync tool specification or null if creation fails
+     * Service tracker customizer for Tool services.
      */
-    private McpServerFeatures.@Nullable SyncToolSpecification createSyncToolSpecification(final Tool tool) {
-        try {
-            LOGGER.debug("Creating sync tool specification for tool: {}", tool.getId());
+    private class ToolServiceCustomizer implements ServiceTrackerCustomizer<Tool, Tool> {
 
-            // Convert Map<String, Object> schema to JsonSchema
-            final McpSchema.JsonSchema inputSchema = convertToJsonSchema(tool.getInputSchema());
-
-            // Create the MCP Tool definition using builder pattern
-            final McpSchema.Tool mcpTool = McpSchema.Tool.builder().name(tool.getName())
-                    .description(tool.getDescription()).inputSchema(inputSchema).build();
-
-            // Create the call handler that delegates to the ToolAdapter
-            final ToolAdapter adapter = toolAdapters.get(tool.getId());
-            if (adapter == null) {
-                LOGGER.warn("No adapter found for tool: {}", tool.getId());
+        @Override
+        public Tool addingService(ServiceReference<Tool> reference) {
+            BundleContext context = bundleContext;
+            if (context == null) {
+                LOGGER.warn("Bundle context not available for adding tool service");
                 return null;
             }
 
-            return McpServerFeatures.SyncToolSpecification.builder().tool(mcpTool).callHandler((exchange, toolReq) -> {
-                try {
-                    // Execute the tool through the adapter
-                    final Map<String, Object> result = adapter.execute(toolReq.arguments());
-
-                    // Convert the result to MCP format
-                    final McpSchema.CallToolResult callResult = new McpSchema.CallToolResult(
-                            List.of(new McpSchema.TextContent(result.toString())), false);
-
-                    return callResult;
-                } catch (Exception e) {
-                    LOGGER.error("Error executing tool: {}", tool.getId(), e);
-                    return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent("Error: " + e.getMessage())),
-                            true);
-                }
-            }).build();
-
-        } catch (Exception e) {
-            LOGGER.warn("Failed to create sync tool specification for tool: {}", tool.getId(), e);
-            return null;
-        }
-    }
-
-    /**
-     * Create an async tool specification from a tool.
-     *
-     * @param tool the tool
-     * @return the async tool specification or null if creation fails
-     */
-    private McpServerFeatures.@Nullable AsyncToolSpecification createAsyncToolSpecification(final Tool tool) {
-        try {
-            LOGGER.debug("Creating async tool specification for tool: {}", tool.getId());
-
-            // Convert Map<String, Object> schema to JsonSchema
-            final McpSchema.JsonSchema inputSchema = convertToJsonSchema(tool.getInputSchema());
-
-            // Create the MCP Tool definition using builder pattern
-            final McpSchema.Tool mcpTool = McpSchema.Tool.builder().name(tool.getName())
-                    .description(tool.getDescription()).inputSchema(inputSchema).build();
-
-            // Create the call handler that delegates to the ToolAdapter
-            final ToolAdapter adapter = toolAdapters.get(tool.getId());
-            if (adapter == null) {
-                LOGGER.warn("No adapter found for tool: {}", tool.getId());
-                return null;
+            Tool tool = context.getService(reference);
+            if (tool != null) {
+                registerToolWithReference(tool, reference);
             }
-
-            return McpServerFeatures.AsyncToolSpecification.builder().tool(mcpTool).callHandler((exchange, toolReq) -> {
-                return reactor.core.publisher.Mono.fromCallable(() -> {
-                    try {
-                        // Execute the tool through the adapter
-                        final Map<String, Object> result = adapter.execute(toolReq.arguments());
-
-                        // Convert the result to MCP format
-                        final McpSchema.CallToolResult callResult = new McpSchema.CallToolResult(
-                                List.of(new McpSchema.TextContent(result.toString())), false);
-
-                        return callResult;
-                    } catch (Exception e) {
-                        LOGGER.error("Error executing tool: {}", tool.getId(), e);
-                        return new McpSchema.CallToolResult(
-                                List.of(new McpSchema.TextContent("Error: " + e.getMessage())), true);
-                    }
-                });
-            }).build();
-
-        } catch (Exception e) {
-            LOGGER.warn("Failed to create async tool specification for tool: {}", tool.getId(), e);
-            return null;
-        }
-    }
-
-    /**
-     * Convert a Map<String, Object> schema to JsonSchema.
-     *
-     * @param schemaMap the schema as a map
-     * @return the JsonSchema object
-     */
-    private McpSchema.JsonSchema convertToJsonSchema(final Map<String, Object> schemaMap) {
-        if (schemaMap == null || schemaMap.isEmpty()) {
-            // Return a default schema for objects
-            return new McpSchema.JsonSchema("object", Map.of(), List.of(), true, Map.of(), Map.of());
+            return tool;
         }
 
-        final String type = (String) schemaMap.getOrDefault("type", "object");
-        @SuppressWarnings("unchecked")
-        final Map<String, Object> properties = (Map<String, Object>) schemaMap.getOrDefault("properties", Map.of());
-        @SuppressWarnings("unchecked")
-        final List<String> required = (List<String>) schemaMap.getOrDefault("required", List.of());
-        final Boolean additionalProperties = (Boolean) schemaMap.getOrDefault("additionalProperties", true);
-        @SuppressWarnings("unchecked")
-        final Map<String, Object> defs = (Map<String, Object>) schemaMap.getOrDefault("$defs", Map.of());
-        @SuppressWarnings("unchecked")
-        final Map<String, Object> definitions = (Map<String, Object>) schemaMap.getOrDefault("definitions", Map.of());
+        @Override
+        public void modifiedService(ServiceReference<Tool> reference, Tool tool) {
+            // Re-register the tool if it was modified
+            unregisterToolWithReference(tool, reference);
+            registerToolWithReference(tool, reference);
+            LOGGER.debug("Modified tool service: {}", tool.getId());
+        }
 
-        return new McpSchema.JsonSchema(type, properties, required, additionalProperties, defs, definitions);
+        @Override
+        public void removedService(ServiceReference<Tool> reference, Tool tool) {
+            unregisterToolWithReference(tool, reference);
+
+            BundleContext context = bundleContext;
+            if (context != null) {
+                context.ungetService(reference);
+            }
+        }
     }
 }

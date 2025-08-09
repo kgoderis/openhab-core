@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.api.agent.AgentActionDelegationService;
-import org.openhab.core.ai.api.model.ModelProviderType;
+import org.openhab.core.ai.agent.api.AgentActionDelegationService;
+import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -61,8 +61,8 @@ public class UnifiedActionExecutionService {
     private final AtomicLong totalExecutionTime = new AtomicLong(0);
     private final AtomicLong totalRetryAttempts = new AtomicLong(0);
 
-    // Caching
-    private final ConcurrentHashMap<String, CachedActionResult> actionResultCache = new ConcurrentHashMap<>();
+    // Enhanced caching using ActionCacheEntry
+    private final ConcurrentHashMap<String, ActionCacheEntry> actionResultCache = new ConcurrentHashMap<>();
     private final AtomicReference<Duration> cacheExpiration = new AtomicReference<>(Duration.ofMinutes(5));
 
     // Configuration
@@ -115,11 +115,13 @@ public class UnifiedActionExecutionService {
             // Check cache first
             String cacheKey = generateCacheKey(actionContext);
             if (enableCaching.get() && cacheKey != null) {
-                CachedActionResult cachedResult = actionResultCache.get(cacheKey);
+                ActionCacheEntry cachedResult = actionResultCache.get(cacheKey);
                 if (cachedResult != null && !cachedResult.isExpired()) {
                     logger.debug("Returning cached result for action: {}", actionContext.getCorrelationId());
                     successfulActionExecutions.incrementAndGet();
-                    return CompletableFuture.completedFuture(cachedResult.getResult());
+                    // Update access count
+                    actionResultCache.put(cacheKey, cachedResult.withAccess());
+                    return CompletableFuture.completedFuture((ActionResult) cachedResult.getResult());
                 }
             }
 
@@ -281,7 +283,7 @@ public class UnifiedActionExecutionService {
     }
 
     /**
-     * Cache action result
+     * Cache action result using enhanced ActionCacheEntry
      */
     private void cacheActionResult(@Nullable String cacheKey, ActionResult result) {
         if (cacheKey == null) {
@@ -292,7 +294,8 @@ public class UnifiedActionExecutionService {
             expiration = Duration.ofMinutes(5); // Default fallback
         }
         Instant expirationTime = Instant.now().plus(expiration);
-        actionResultCache.put(cacheKey, new CachedActionResult(result, expirationTime));
+        ActionCacheEntry cachedResult = new ActionCacheEntry(cacheKey, Map.of(), result, Instant.now(), expirationTime);
+        actionResultCache.put(cacheKey, cachedResult);
     }
 
     /**
@@ -390,27 +393,6 @@ public class UnifiedActionExecutionService {
         public Configuration cacheExpiration(Duration cacheExpiration) {
             this.cacheExpiration = cacheExpiration;
             return this;
-        }
-    }
-
-    /**
-     * Cached action result
-     */
-    private static class CachedActionResult {
-        private final ActionResult result;
-        private final Instant expirationTime;
-
-        public CachedActionResult(ActionResult result, Instant expirationTime) {
-            this.result = result;
-            this.expirationTime = expirationTime;
-        }
-
-        public ActionResult getResult() {
-            return result;
-        }
-
-        public boolean isExpired() {
-            return Instant.now().isAfter(expirationTime);
         }
     }
 

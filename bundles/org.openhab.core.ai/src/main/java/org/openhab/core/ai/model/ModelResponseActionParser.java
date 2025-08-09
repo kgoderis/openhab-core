@@ -13,7 +13,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionContext;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.api.model.ModelResponse;
+import org.openhab.core.ai.model.api.ModelResponse;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -5,14 +5,14 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.api.model.ModelClient;
-import org.openhab.core.ai.api.model.ModelClientInfo;
-import org.openhab.core.ai.api.model.ModelHealthStatus;
-import org.openhab.core.ai.api.model.ModelParameters;
-import org.openhab.core.ai.api.model.ModelProviderType;
-import org.openhab.core.ai.api.model.ModelRateLimitInfo;
-import org.openhab.core.ai.api.model.ModelResponse;
-import org.openhab.core.ai.api.model.ModelStreamHandler;
+import org.openhab.core.ai.model.api.ModelClient;
+import org.openhab.core.ai.model.api.ModelClientInfo;
+import org.openhab.core.ai.model.api.ModelHealthStatus;
+import org.openhab.core.ai.model.api.ModelParameters;
+import org.openhab.core.ai.model.api.ModelProviderType;
+import org.openhab.core.ai.model.api.ModelRateLimitInfo;
+import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.model.api.ModelStreamHandler;
 
 /**
  * Stub implementation of ModelClient for testing and development.

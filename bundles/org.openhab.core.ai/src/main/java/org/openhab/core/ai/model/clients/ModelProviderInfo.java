@@ -1,7 +1,7 @@
 package org.openhab.core.ai.model.clients;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.api.model.ModelProviderType;
+import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**
  * Information about an LLM provider and its capabilities.

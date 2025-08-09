@@ -6,12 +6,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-import org.openhab.core.ai.api.tool.Tool;
-import org.openhab.core.ai.api.tool.ToolContext;
-import org.openhab.core.ai.api.tool.ToolException;
-import org.openhab.core.ai.api.tool.ToolMetadata;
-import org.openhab.core.ai.api.tool.ToolResult;
-import org.openhab.core.ai.api.tool.ToolValidationResult;
+import org.openhab.core.ai.tool.api.Tool;
+import org.openhab.core.ai.tool.api.ToolContext;
+import org.openhab.core.ai.tool.api.ToolException;
+import org.openhab.core.ai.tool.api.ToolMetadata;
+import org.openhab.core.ai.tool.api.ToolResult;
+import org.openhab.core.ai.tool.api.ToolValidationResult;
 
 /**
  * Test class for the new Tool API classes with Tool* prefix naming convention.

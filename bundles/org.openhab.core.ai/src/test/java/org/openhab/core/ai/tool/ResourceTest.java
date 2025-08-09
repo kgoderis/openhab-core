@@ -6,7 +6,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.junit.jupiter.api.Test;
-import org.openhab.core.ai.tool.dto.Resource;
+import org.openhab.core.ai.tool.resource.Resource;
 
 /**
  * Unit tests for the Resource class.

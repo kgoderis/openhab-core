@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 package org.openhab.core.ai.reasoning;
 
 import java.time.Instant;
@@ -13,12 +25,16 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.api.model.IntelligentToolClient;
-import org.openhab.core.ai.api.model.ModelParameters;
-import org.openhab.core.ai.api.model.ModelResponse;
-import org.openhab.core.ai.api.reasoning.MultiStepReasoningResult;
-import org.openhab.core.ai.api.reasoning.ReasoningContext;
-import org.openhab.core.ai.api.reasoning.ReasoningPlanStep;
+import org.openhab.core.ai.model.api.IntelligentToolClient;
+import org.openhab.core.ai.model.api.ModelParameters;
+import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
+import org.openhab.core.ai.reasoning.api.ReasoningContext;
+import org.openhab.core.ai.reasoning.api.ReasoningPlanStep;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +48,7 @@ import org.slf4j.LoggerFactory;
  * @author Karel Goderis - Initial Contribution
  * @since 4.0.0
  */
+@Component(service = ReasoningOrchestrationService.class)
 @NonNullByDefault
 public class ReasoningOrchestrationService {
 
@@ -42,13 +59,22 @@ public class ReasoningOrchestrationService {
     private final ExecutorService executorService;
     private final AtomicLong sessionCounter = new AtomicLong(0);
 
-    private @Nullable MultiStepReasoningEngine reasoningEngine;
-    private @Nullable ContextMemoryManager contextMemoryManager;
-    private @Nullable AgentMemory agentMemory;
-    private @Nullable LearningAdaptationSystem learningSystem;
-    private @Nullable SafetyConstraintManager safetyManager;
-
     private boolean activated = false;
+
+    @Reference
+    private @Nullable MultiStepReasoningEngine reasoningEngine;
+
+    @Reference
+    private @Nullable ContextMemoryManager contextMemoryManager;
+
+    @Reference
+    private @Nullable AgentMemory agentMemory;
+
+    @Reference
+    private @Nullable LearningAdaptationSystem learningSystem;
+
+    @Reference
+    private @Nullable SafetyConstraintManager safetyManager;
 
     /**
      * Creates a new ReasoningOrchestrationService.
@@ -58,9 +84,7 @@ public class ReasoningOrchestrationService {
         initializeDefaultStrategies();
     }
 
-    /**
-     * Activates the service and initializes dependencies.
-     */
+    @Activate
     public void activate() {
         if (activated) {
             return;
@@ -73,9 +97,7 @@ public class ReasoningOrchestrationService {
         initializeDefaultStrategies();
     }
 
-    /**
-     * Deactivates the service and cleans up resources.
-     */
+    @Deactivate
     public void deactivate() {
         if (!activated) {
             return;
@@ -242,41 +264,6 @@ public class ReasoningOrchestrationService {
      */
     public @Nullable ReasoningStrategy getStrategy(String name) {
         return strategies.get(name);
-    }
-
-    /**
-     * Sets the reasoning engine dependency.
-     */
-    public void setReasoningEngine(MultiStepReasoningEngine reasoningEngine) {
-        this.reasoningEngine = reasoningEngine;
-    }
-
-    /**
-     * Sets the context memory manager dependency.
-     */
-    public void setContextMemoryManager(ContextMemoryManager contextMemoryManager) {
-        this.contextMemoryManager = contextMemoryManager;
-    }
-
-    /**
-     * Sets the agent memory dependency.
-     */
-    public void setAgentMemory(AgentMemory agentMemory) {
-        this.agentMemory = agentMemory;
-    }
-
-    /**
-     * Sets the learning adaptation system dependency.
-     */
-    public void setLearningAdaptationSystem(LearningAdaptationSystem learningSystem) {
-        this.learningSystem = learningSystem;
-    }
-
-    /**
-     * Sets the safety constraint manager dependency.
-     */
-    public void setSafetyConstraintManager(SafetyConstraintManager safetyManager) {
-        this.safetyManager = safetyManager;
     }
 
     private void initializeDefaultStrategies() {

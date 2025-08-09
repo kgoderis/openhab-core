@@ -13,12 +13,12 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.api.tool.Tool;
-import org.openhab.core.ai.api.tool.ToolContext;
-import org.openhab.core.ai.api.tool.ToolException;
-import org.openhab.core.ai.api.tool.ToolMetadata;
-import org.openhab.core.ai.api.tool.ToolResult;
-import org.openhab.core.ai.api.tool.ToolValidationResult;
+import org.openhab.core.ai.tool.api.Tool;
+import org.openhab.core.ai.tool.api.ToolContext;
+import org.openhab.core.ai.tool.api.ToolException;
+import org.openhab.core.ai.tool.api.ToolMetadata;
+import org.openhab.core.ai.tool.api.ToolResult;
+import org.openhab.core.ai.tool.api.ToolValidationResult;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -96,10 +96,9 @@ public class KarafManagementTool implements Tool {
         Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
         schema.put("properties",
-                Map.of("success", Map.of("type", "boolean", "description", "Whether the operation was successful"),
-                        "message", Map.of("type", "string", "description", "Result message"), "data",
-                        Map.of("type", "object", "description", "Operation result data"), "error",
-                        Map.of("type", "string", "description", "Error message if operation failed")));
+                Map.of("success", Map.of("type", "boolean", "description", "Operation success status"), "data",
+                        Map.of("type", "object", "description", "Operation result data"), "message",
+                        Map.of("type", "string", "description", "Operation message")));
         return schema;
     }
 

@@ -1,3 +1,100 @@
+### UID Strategy for AI Components
+
+- We standardize on colon-separated UIDs: `ai:<kind>:<type>:<id>` where segments are lowercase `[a-z0-9_-]+`.
+- Examples:
+  - Tools: `ai:tool:<category>:<toolId>`
+  - Resources: `ai:resource:<kind>:<resourceId>` (e.g., `ai:resource:item:heating_setpoint`)
+  - Prompts: `ai:prompt:<name>`
+  - Completions: `ai:completion:<promptName>[:<variant>]`
+- Usage across the codebase:
+  - Registry keys and O(1) lookups
+  - Routing/dispatch by segments
+  - Authorization scopes (`ai:<kind>:<type>`) and filtering
+  - Metrics/tracing labels and correlation IDs
+  - Cache keys and idempotency tokens
+  - HTTP/MCP parameters for direct addressing
+  - Configuration and persistence keys
+
+#### Details and Examples
+
+- UID segment rules: lowercase, `[a-z0-9_-]+`, no empty segments. Separator is `:`.
+
+- Construction examples:
+  ```java
+  String toolUid = String.join(":", "ai", "tool", "items", "list_items");
+  String resUid  = String.join(":", "ai", "resource", "item", "heating_setpoint");
+  String prUid   = String.join(":", "ai", "prompt", "system:diagnostics").replace(' ', '-').toLowerCase();
+  String cmUid   = String.join(":", "ai", "completion", "item", "livingroom_lamp");
+  ```
+
+- Minimal parsing helper:
+  ```java
+  final class UidParts {
+    final String ns, kind, type, id;
+    static UidParts parse(String uid) {
+      String[] s = uid.split(":");
+      if (s.length < 3) throw new IllegalArgumentException("Bad UID: " + uid);
+      String ns = s[0], kind = s[1];
+      String type = s.length > 3 ? s[2] : "";
+      String id = s[s.length - 1];
+      return new UidParts(ns, kind, type, id);
+    }
+    private UidParts(String ns, String kind, String type, String id) {
+      this.ns = ns; this.kind = kind; this.type = type; this.id = id;
+    }
+  }
+  ```
+
+- Registry usage (keys and lookup):
+  ```java
+  Map<String, ToolSpecElement> toolsByUid = new java.util.concurrent.ConcurrentHashMap<>();
+  toolsByUid.put(toolElement.getUID(), toolElement);
+  ToolSpecElement element = toolsByUid.get(uid);
+  ```
+
+- Routing/dispatch by segments:
+  ```java
+  UidParts p = UidParts.parse(uid); // ai:resource:item:heating_setpoint
+  switch (p.ns + ":" + p.kind) {
+    case "ai:tool"     -> handleTool(p.type, p.id);
+    case "ai:resource" -> handleResource(p.type, p.id);
+    case "ai:prompt"   -> handlePrompt(p.id);
+    case "ai:completion"-> handleCompletion(p.type, p.id);
+    default -> throw new IllegalArgumentException("Unknown UID kind: " + uid);
+  }
+  ```
+
+- Authorization scopes:
+  ```java
+  boolean allowed = permissionService.hasRole(principal, "ai:" + p.kind + ":" + p.type);
+  if (!allowed) throw new SecurityException("Forbidden for scope: " + p.kind + "/" + p.type);
+  ```
+
+- Metrics/tracing labels:
+  ```java
+  metrics.counter("ai_calls", java.util.Map.of("uid", uid, "kind", p.kind, "type", p.type)).increment();
+  logger.info("Handled {} [{}:{}]", uid, p.kind, p.type);
+  ```
+
+- Cache keys and idempotency:
+  ```java
+  cache.put(uid, result);
+  var cached = cache.getIfPresent(uid);
+  ```
+
+- HTTP/MCP parameters:
+  ```java
+  String uid = request.getParameter("uid");
+  UidParts p = UidParts.parse(uid);
+  // route accordingly
+  ```
+
+- Configuration/persistence keys:
+  ```java
+  configStore.save(uid, configurationMap);
+  var cfg = configStore.load(uid);
+  ```
+
   Current Architecture Reality Check
 
   Current State: OpenHAB as a "Tool Provider"
@@ -12860,3 +12957,1176 @@ The Resource architecture provides a **robust, scalable, and maintainable** foun
 - ✅ **Protocol Integration**: Ready for MCP, A2A, and future protocols
 
 This architecture enables openHAB to seamlessly integrate with AI agents while maintaining proper encapsulation, performance, and reliability.
+
+---
+
+## **Agent-Skill-Centric Architecture Overview**
+
+### **Introduction**
+
+The **Agent-Skill-Centric Architecture** represents a fundamental refactoring of the openHAB AI system to establish a clean, skill-focused approach where agents deal exclusively with skills, while actions remain the shared execution layer for both MCP and A2A protocols. This architecture eliminates backward compatibility constraints and creates a pure skill-centric design.
+
+### **Architecture Principles**
+
+#### **1. Pure Skill-Centric Design**
+- **Agents are skill-focused**: No direct action knowledge or execution capabilities
+- **Skills encapsulate actions**: Actions are implementation details via `AgentSkillAdapter`
+- **Clean separation**: Agents focus on domain logic, not execution details
+- **No backward compatibility**: Clean break from action execution to focus purely on skills
+
+#### **2. Protocol Independence**
+- **MCP Protocol**: Uses actions directly via `ToolServlet` or via agent skills
+- **A2A Protocol**: Always uses agent skills via `AgentSkillAdapter`
+- **Shared action layer**: Same actions used by both protocols
+- **No protocol coupling**: Each protocol maintains its own conversion logic
+
+#### **3. Unified Task Execution**
+- **Protocol-agnostic task representation**: Works across all protocols
+- **Agent decision making**: Agents choose skill execution strategy
+- **Skill composition**: Complex behaviors composed from multiple skills
+- **A2A SDK compliance**: Full integration with A2A TaskUpdater
+
+### **Architecture Schema**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              PROTOCOL LAYER                                     │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  MCP Protocol                    │  A2A Protocol                    │  HTTP    │
+│  ┌─────────────────────────────┐ │  ┌─────────────────────────────┐ │  ┌──────┐ │
+│  │ ToolServlet                 │ │  │ AgentProtocolHandler       │ │  │ REST │ │
+│  │ • Direct action execution   │ │  │ • Skill execution          │ │  │ API  │ │
+│  │ • MCP tool conversion       │ │  │ • A2A message handling     │ │  │      │ │
+│  └─────────────────────────────┘ │  └─────────────────────────────┘ │  └──────┘ │
+└─────────────────────────────────┼─────────────────────────────────┼──────────┘
+                                   │                                 │
+                                   ▼                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              TASK MANAGEMENT LAYER                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ AgentTaskManager                                                           │ │
+│  │ • Protocol-agnostic task orchestration                                     │ │
+│  │ • Task dependency management and validation                                │ │
+│  │ • Agent selection and load balancing                                       │ │
+│  │ • A2A SDK TaskUpdater integration                                          │ │
+│  │ • Performance monitoring and analytics                                     │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              AGENT LAYER                                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ BaseAutonomousAgent (Skill-Centric)                                        │ │
+│  │ • Pure skill execution (no action execution)                               │ │
+│  │ • Skill composition and orchestration                                      │ │
+│  │ • Agent-skill decision logic                                               │ │
+│  │ • Skill performance monitoring                                             │ │
+│  │ • Skill error handling and recovery                                        │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                   │                                              │
+│                                   ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ Specialized Agents                                                          │ │
+│  │ • EnergyOptimizationAgent                                                   │ │
+│  │ • SecurityMonitoringAgent                                                   │ │
+│  │ • ComfortOptimizationAgent                                                  │ │
+│  │ • All skill-centric, no action execution                                    │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              SKILL MANAGEMENT LAYER                             │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ AgentSkillManager                                                           │ │
+│  │ • Skill registry and management                                             │ │
+│  │ • Skill execution orchestration                                             │ │
+│  │ • Skill composition strategies                                              │ │
+│  │ • Skill learning and adaptation                                             │ │
+│  │ • Skill performance monitoring                                              │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                   │                                              │
+│                                   ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ SkillCompositionEngine                                                      │ │
+│  │ • Skill composition strategy execution                                      │ │
+│  │ • Dependency management and ordering                                        │ │
+│  │ • Result aggregation and processing                                         │ │
+│  │ • Performance monitoring and analytics                                      │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              EXECUTION LAYER                                    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ AgentTaskExecutor                                                           │ │
+│  │ • A2A SDK compliant task execution                                         │ │
+│  │ • Skill execution via AgentSkillAdapter                                     │ │
+│  │ • Execution security validation                                             │ │
+│  │ • Performance monitoring and analytics                                      │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                   │                                              │
+│                                   ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ AgentSkillAdapter                                                           │ │
+│  │ • A2A message to action parameter conversion                                │ │
+│  │ • Enhanced action context creation                                          │ │
+│  │ • Skill result to A2A response conversion                                   │ │
+│  │ • Skill execution performance monitoring                                    │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              SHARED ACTION LAYER                                │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ Action Registry                                                             │ │
+│  │ • Centralized action management                                             │ │
+│  │ • Action discovery and registration                                         │ │
+│  │ • Action validation and testing                                             │ │
+│  │ • Action performance monitoring                                             │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                   │                                              │
+│                                   ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ Actions (Shared between MCP and A2A)                                        │ │
+│  │ • Item management actions                                                   │ │
+│  │ • Thing management actions                                                  │ │
+│  │ • Rule management actions                                                   │ │
+│  │ • System management actions                                                 │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### **Data Flow Architecture**
+
+#### **A2A Protocol Flow**
+```
+A2A Message → AgentProtocolHandler → AgentTaskManager → BaseAutonomousAgent → AgentSkillManager → AgentSkillAdapter → Action → Result
+     │              │                      │                      │                    │                    │
+     ▼              ▼                      ▼                      ▼                    ▼                    ▼
+A2A Response ← Skill Result ← Task Result ← Skill Result ← Skill Result ← Action Result ← Action Result
+```
+
+#### **MCP Protocol Flow**
+```
+MCP Tool Call → ToolServlet → Action → Result
+     │              │
+     ▼              ▼
+MCP Response ← Action Result
+```
+
+#### **Skill Composition Flow**
+```
+Multiple Skills → SkillCompositionEngine → SkillCompositionStrategy → AgentSkillManager → AgentSkillAdapter → Actions → Aggregated Result
+      │                      │                        │                      │                    │
+      ▼                      ▼                        ▼                      ▼                    ▼
+Composition Plan ← Strategy Decision ← Skill Analysis ← Skill Execution ← Action Execution ← Individual Results
+```
+
+### **Key Components**
+
+#### **1. BaseAutonomousAgent (Refactored)**
+```java
+public abstract class BaseAutonomousAgent {
+    // Pure skill-centric methods (no action execution)
+    public CompletableFuture<AgentSkillResult> executeSkill(String skillName, Map<String, Object> parameters);
+    public CompletableFuture<AgentSkillResult> executeComposedSkills(List<SkillExecutionRequest> skillRequests);
+    
+    // Skill decision and composition
+    protected String decideSkillToExecute(Map<String, Object> context, List<String> availableSkills);
+    protected void enhanceContextForSkills(Map<String, Object> skillContext);
+    
+    // Abstract methods for skill safety
+    protected abstract boolean onSkillSafetyCheck(String skillName, Map<String, Object> parameters) throws Exception;
+}
+```
+
+#### **2. SkillCompositionStrategy Interface**
+```java
+public interface SkillCompositionStrategy {
+    SkillCompositionResult compose(List<SkillExecutionRequest> skills, Map<String, Object> context);
+    String getStrategyType();
+    boolean canHandle(List<SkillExecutionRequest> skills);
+    String getDescription();
+    int getPriority();
+    
+    enum ExecutionStrategyType {
+        SKILL,      // Execute as skill via AgentSkillManager
+        ACTION,     // Execute as action directly
+        COMPOSED    // Execute as composed action/skill
+    }
+}
+```
+
+#### **3. SkillCompositionEngine**
+```java
+@Component(service = SkillCompositionEngine.class)
+public class SkillCompositionEngine {
+    public CompletableFuture<CompositionResult> executeComposition(
+        SkillCompositionStrategy strategy, 
+        List<SkillExecutionRequest> skills, 
+        Map<String, Object> context
+    );
+    
+    // Dependency management, result aggregation, performance monitoring
+}
+```
+
+#### **4. ExecutionStrategy Framework**
+```java
+public interface ExecutionStrategy {
+    ExecutionResult execute(ExecutionRequest request);
+    ExecutionStrategyType getStrategyType();
+    boolean canHandle(ExecutionRequest request);
+    
+    interface ExecutionRequest {
+        ExecutionStrategyType getType();
+        String getTargetName();
+        Map<String, Object> getParameters();
+        ExecutionPriority getPriority();
+        Map<String, Object> getContext();
+        boolean requiresValidation();
+        boolean requiresSafetyChecks();
+    }
+}
+```
+
+### **Benefits of Agent-Skill-Centric Architecture**
+
+#### **1. Clean Separation of Concerns**
+- **Agents focus on domain logic**: No execution details to worry about
+- **Skills provide abstraction**: High-level operations over low-level actions
+- **Actions remain shared**: Single implementation for both protocols
+- **Protocols handle conversion**: Each protocol manages its own conversion logic
+
+#### **2. Enhanced Flexibility**
+- **Skill composition**: Complex behaviors from simple skills
+- **Execution strategies**: Different approaches for different scenarios
+- **Protocol independence**: MCP and A2A can evolve independently
+- **Easy extension**: New skills and strategies can be added easily
+
+#### **3. Improved Maintainability**
+- **No action execution in agents**: Cleaner, more focused agent code
+- **Centralized skill management**: Single point for skill orchestration
+- **Comprehensive monitoring**: Performance and error tracking at all levels
+- **Clear data flow**: Predictable execution paths
+
+#### **4. Better Performance**
+- **Skill caching**: Frequently used skills can be cached
+- **Composition optimization**: Smart skill composition strategies
+- **Parallel execution**: Skills can be executed in parallel when possible
+- **Resource management**: Efficient resource allocation and cleanup
+
+#### **5. Enhanced Security**
+- **Skill-level security**: Security checks at the skill level
+- **Context validation**: Validation of execution context
+- **Access control**: Fine-grained access control for skills
+- **Audit trail**: Comprehensive logging of skill execution
+
+### **Implementation Status**
+
+#### **✅ Completed Components**
+- **Task Execution Architecture**: AgentTaskManager and AgentProtocolHandler integration
+- **Agent-Skill Manager Integration**: AgentSkillManager and AgentSkillAdapter enhancement
+- **Skill Composition Framework**: SkillCompositionStrategy and SkillCompositionEngine
+- **Execution Strategy Framework**: ExecutionStrategy and ExecutionRequest
+- **BaseAutonomousAgent Refactoring**: Skill-centric methods added (partial completion)
+
+#### **🔄 In Progress**
+- **BaseAutonomousAgent**: Complete removal of action execution methods
+- **Linter Error Resolution**: Fix remaining compilation issues
+- **AgentSkillResult**: Implement proper result creation
+
+#### **📋 TODO Items**
+- **Skill Decision Logic**: Implement context-based skill selection
+- **Learning and Adaptation**: Add skill learning mechanisms
+- **Integration Testing**: Implement comprehensive test suite
+- **Metrics System**: Update metrics to be skill-centric
+- **Documentation**: Complete architecture documentation
+
+### **Migration Strategy**
+
+#### **Phase 1: Foundation (Completed)**
+- ✅ Create skill composition framework
+- ✅ Implement execution strategy framework
+- ✅ Add skill-centric methods to BaseAutonomousAgent
+
+#### **Phase 2: Agent Refactoring (In Progress)**
+- 🔄 Remove action execution methods from BaseAutonomousAgent
+- 🔄 Update specialized agents to be skill-centric
+- 🔄 Fix linter errors and compilation issues
+
+#### **Phase 3: Integration (Planned)**
+- 📋 Integrate with existing protocol handlers
+- 📋 Update metrics and monitoring systems
+- 📋 Implement comprehensive testing
+
+#### **Phase 4: Optimization (Planned)**
+- 📋 Add skill caching and optimization
+- 📋 Implement advanced composition strategies
+- 📋 Add learning and adaptation capabilities
+
+### **Summary**
+
+The **Agent-Skill-Centric Architecture** provides a **clean, maintainable, and scalable** foundation for openHAB AI integration. By removing backward compatibility constraints and focusing purely on skills, this architecture creates a clear separation of concerns where:
+
+- **Agents focus on domain logic and skill orchestration**
+- **Skills provide high-level abstractions over actions**
+- **Actions remain the shared execution layer**
+- **Protocols handle their own conversion and execution**
+
+This approach enables openHAB to seamlessly integrate with AI agents while maintaining clean architecture, optimal performance, and enhanced security.
+
+**Key Achievements:**
+- ✅ **Pure Skill-Centric Design**: Agents deal exclusively with skills
+- ✅ **Protocol Independence**: MCP and A2A maintain separate conversion logic
+- ✅ **Skill Composition**: Framework for complex behavior composition
+- ✅ **Execution Strategies**: Flexible execution approaches
+- ✅ **Performance Monitoring**: Comprehensive metrics and analytics
+- ✅ **Error Handling**: Robust error handling and recovery
+- ✅ **Extensibility**: Easy to add new skills and strategies
+
+The architecture is now ready for the next phase of implementation, focusing on completing the agent refactoring and integrating with the existing openHAB ecosystem.
+
+---
+
+## Agent Service Integration Architecture
+
+The openHAB AI system implements a **comprehensive service integration architecture** where intelligent agents orchestrate multiple specialized services to achieve complex automation goals. This architecture provides a **loosely coupled, highly coordinated** approach to agent functionality.
+
+### **Architecture Overview**
+
+The agent service integration follows a **layered orchestration pattern** with three main components:
+
+1. **`BaseAutonomousAgent`** - Foundation layer with lifecycle management
+2. **`AbstractIntelligentAgent`** - Intelligence layer with reasoning capabilities  
+3. **Agent Services** - Specialized service components for specific functionality
+
+### **Service Integration Pattern**
+
+#### **1. Dependency Injection via OSGi References**
+
+All agent services are integrated through OSGi dependency injection using `@Reference` annotations:
+
+```java
+// In AbstractIntelligentAgent.java
+@Reference
+private @Nullable MultiStepReasoningEngine reasoningEngine;
+
+@Reference
+private @Nullable ActionRegistry actionRegistry;
+
+@Reference
+private @Nullable ModelClient modelClient;
+
+// In BaseAutonomousAgent.java
+@Reference
+private @Nullable AutonomousReasoningInputManager inputManager;
+
+@Reference
+private @Nullable EventProcessingAnalytics analytics;
+
+@Reference
+private @Nullable AgentSkillManager skillManager;
+```
+
+#### **2. Service Integration Flow**
+
+The integration follows this pattern:
+
+```
+External Request → Intelligent Agent → Service Delegation → Specialized Services
+```
+
+**Example Flow:**
+1. **Request comes in** to `AbstractIntelligentAgent.executeIntelligentAction()`
+2. **Agent creates reasoning context** using `createReasoningContext()`
+3. **Delegates to reasoning engine** via `reasoningEngine.reasonAsync()`
+4. **Parses reasoning results** to extract concrete actions
+5. **Executes actions** via `actionRegistry` and `skillManager`
+6. **Learns from results** using `learnFromAction()`
+
+### **3. Core Service Categories**
+
+#### **A. Intelligence Services**
+- **`MultiStepReasoningEngine`** - Handles complex reasoning and decision making
+- **`ModelClient`** - Provides LLM access for intelligent processing
+- **`AutonomousReasoningInputManager`** - Manages reasoning input and context
+
+#### **B. Action & Skill Services**
+- **`ActionRegistry`** - Manages available actions and their execution
+- **`AgentSkillManager`** - Handles skill execution and composition
+- **`AgentSkillRegistry`** - Registers and manages agent skills
+
+#### **C. Context & State Services**
+- **`AgentContext`** - Manages agent state and context
+- **`AgentPersistenceManager`** - Handles state persistence
+- **`EventProcessingAnalytics`** - Tracks performance and analytics
+
+#### **D. Communication Services**
+- **`AgentProtocolHandler`** - Handles protocol-specific communication
+- **`AgentSynchronizationService`** - Manages agent synchronization
+- **`AgentStreamingManager`** - Handles streaming communication
+
+### **4. Complete Service Execution Workflow**
+
+#### **Scenario: Smart Home Energy Optimization Agent**
+
+Here's exactly how an agent uses ALL services in a specific order:
+
+```java
+@Component
+public class EnergyOptimizationAgent extends AbstractIntelligentAgent {
+    
+    // ALL SERVICE DEPENDENCIES
+    @Reference private @Nullable MultiStepReasoningEngine reasoningEngine;
+    @Reference private @Nullable ActionRegistry actionRegistry;
+    @Reference private @Nullable ModelClient modelClient;
+    @Reference private @Nullable AgentSkillManager skillManager;
+    @Reference private @Nullable AgentTaskManager taskManager;
+    @Reference private @Nullable AgentCommunicationProtocol communicationProtocol;
+    @Reference private @Nullable AgentSynchronizationService syncService;
+    @Reference private @Nullable AgentPersistenceManager persistenceManager;
+    @Reference private @Nullable AgentStreamingManager streamingManager;
+    @Reference private @Nullable AgentCoordinationManager coordinationManager;
+    @Reference private @Nullable AgentMessagingService messagingService;
+    @Reference private @Nullable AgentConversationService conversationService;
+    @Reference private @Nullable AgentConflictResolver conflictResolver;
+    @Reference private @Nullable AgentNegotiationService negotiationService;
+    @Reference private @Nullable AgentPerformanceMonitor performanceMonitor;
+    @Reference private @Nullable EventProcessingAnalytics analytics;
+    @Reference private @Nullable AgentSecurityManager securityManager;
+    @Reference private @Nullable AgentContextManager contextManager;
+    @Reference private @Nullable AgentMemoryManager memoryManager;
+    @Reference private @Nullable AgentLearningEngine learningEngine;
+    
+    @Override
+    public CompletableFuture<ActionResult> executeIntelligentAction(String actionName, Map<String, Object> parameters) {
+        return CompletableFuture.supplyAsync(() -> {
+            String sessionId = generateSessionId();
+            Instant startTime = Instant.now();
+            
+            try {
+                // STEP 1: SECURITY VALIDATION
+                if (!securityManager.validateRequest(actionName, parameters)) {
+                    return ActionResult.error("Security validation failed", null, 0);
+                }
+                
+                // STEP 2: CONTEXT ENRICHMENT
+                AgentContext enrichedContext = contextManager.enrichContext(getContext(), parameters);
+                enrichedContext.put("sessionId", sessionId);
+                enrichedContext.put("actionName", actionName);
+                enrichedContext.put("timestamp", Instant.now());
+                
+                // STEP 3: MEMORY RETRIEVAL
+                Map<String, Object> historicalData = memoryManager.retrieveRelevantMemory(actionName, enrichedContext);
+                enrichedContext.put("historicalData", historicalData);
+                
+                // STEP 4: ANALYTICS TRACKING
+                analytics.recordActionStart(getAgentId(), actionName, sessionId, enrichedContext);
+                
+                // STEP 5: PERFORMANCE MONITORING START
+                performanceMonitor.startMonitoring(sessionId, actionName);
+                
+                // STEP 6: REASONING EXECUTION
+                ReasoningContext reasoningContext = createReasoningContext(actionName, enrichedContext);
+                MultiStepReasoningResult reasoningResult = reasoningEngine.reasonAsync(reasoningContext).get();
+                
+                // STEP 7: TASK GENERATION
+                List<AgentTask> tasks = taskManager.generateTasksFromReasoning(reasoningResult, enrichedContext);
+                
+                // STEP 8: TASK VALIDATION
+                List<AgentTask> validatedTasks = taskManager.validateTasks(tasks, enrichedContext);
+                
+                // STEP 9: TASK PRIORITIZATION
+                List<AgentTask> prioritizedTasks = taskManager.prioritizeTasks(validatedTasks, enrichedContext);
+                
+                // STEP 10: COORDINATION CHECK
+                if (requiresCoordination(prioritizedTasks)) {
+                    // STEP 10a: AGENT DISCOVERY
+                    List<AgentInfo> availableAgents = coordinationManager.discoverAvailableAgents(prioritizedTasks);
+                    
+                    // STEP 10b: CONFLICT RESOLUTION
+                    List<AgentTask> resolvedTasks = conflictResolver.resolveConflicts(prioritizedTasks, availableAgents);
+                    
+                    // STEP 10c: NEGOTIATION (if needed)
+                    if (requiresNegotiation(resolvedTasks)) {
+                        resolvedTasks = negotiationService.negotiateTaskAssignment(resolvedTasks, availableAgents);
+                    }
+                    
+                    // STEP 10d: TASK DISTRIBUTION
+                    Map<String, List<AgentTask>> distributedTasks = coordinationManager.distributeTasks(resolvedTasks, availableAgents);
+                    
+                    // STEP 10e: SYNCHRONIZATION
+                    syncService.synchronizeTaskExecution(distributedTasks);
+                    
+                    // STEP 10f: EXECUTION COORDINATION
+                    List<ActionResult> results = executeCoordinatedTasks(distributedTasks);
+                    
+                    // STEP 10g: RESULT AGGREGATION
+                    ActionResult finalResult = aggregateCoordinatedResults(results, reasoningResult);
+                    
+                    // STEP 10h: CONVERSATION MANAGEMENT
+                    conversationService.recordConversation(sessionId, actionName, distributedTasks, finalResult);
+                    
+                    // STEP 10i: MESSAGING NOTIFICATIONS
+                    messagingService.sendNotifications(sessionId, finalResult);
+                    
+                    // STEP 10j: STREAMING UPDATES
+                    streamingManager.sendStreamingUpdates(sessionId, finalResult);
+                    
+                    return finalResult;
+                    
+                } else {
+                    // STEP 11: LOCAL EXECUTION (Single Agent)
+                    List<ActionResult> results = executeLocalTasks(prioritizedTasks);
+                    
+                    // STEP 12: RESULT AGGREGATION
+                    ActionResult finalResult = aggregateResults(sessionId, results, reasoningResult);
+                    
+                    return finalResult;
+                }
+                
+            } catch (Exception e) {
+                // STEP 13: ERROR HANDLING
+                analytics.recordError(getAgentId(), actionName, e, sessionId);
+                performanceMonitor.recordError(sessionId, e);
+                messagingService.sendErrorNotification(sessionId, e);
+                return ActionResult.error("Execution failed: " + e.getMessage(), null, 0);
+                
+            } finally {
+                // STEP 14: CLEANUP & PERSISTENCE
+                long executionTime = Duration.between(startTime, Instant.now()).toMillis();
+                
+                // STEP 14a: PERFORMANCE MONITORING END
+                performanceMonitor.endMonitoring(sessionId, executionTime);
+                
+                // STEP 14b: ANALYTICS COMPLETION
+                analytics.recordActionComplete(getAgentId(), actionName, sessionId, executionTime);
+                
+                // STEP 14c: MEMORY PERSISTENCE
+                memoryManager.persistMemory(sessionId, actionName, parameters, executionTime);
+                
+                // STEP 14d: CONTEXT PERSISTENCE
+                persistenceManager.persistContext(sessionId, getContext());
+                
+                // STEP 14e: LEARNING
+                learningEngine.learnFromExecution(sessionId, actionName, parameters, executionTime);
+                
+                // STEP 14f: SYNCHRONIZATION CLEANUP
+                syncService.cleanupSession(sessionId);
+                
+                totalProcessingTime.addAndGet(executionTime);
+            }
+        });
+    }
+}
+```
+
+### **5. Complete Service Execution Order**
+
+Here's the **exact order** in which ALL services are executed:
+
+#### **Phase 1: PRE-EXECUTION (Services 1-5)**
+1. **SecurityManager** - Validate request
+2. **ContextManager** - Enrich context with session data
+3. **MemoryManager** - Retrieve relevant historical data
+4. **Analytics** - Record action start
+5. **PerformanceMonitor** - Start monitoring
+
+#### **Phase 2: INTELLIGENCE (Services 6-9)**
+6. **ReasoningEngine** - Execute reasoning
+7. **TaskManager** - Generate tasks from reasoning
+8. **TaskManager** - Validate tasks
+9. **TaskManager** - Prioritize tasks
+
+#### **Phase 3: COORDINATION (Services 10-14)**
+10. **CoordinationManager** - Discover available agents
+11. **ConflictResolver** - Resolve conflicts
+12. **NegotiationService** - Negotiate task assignment (if needed)
+13. **CoordinationManager** - Distribute tasks
+14. **SynchronizationService** - Synchronize execution
+
+#### **Phase 4: EXECUTION (Services 15-17)**
+15. **CommunicationProtocol** - Send tasks to other agents
+16. **SkillManager** - Execute local skills
+17. **TaskManager** - Coordinate task execution
+
+#### **Phase 5: RESULTS (Services 18-21)**
+18. **Result Aggregation** - Combine results from all agents
+19. **ConversationService** - Record conversation
+20. **MessagingService** - Send notifications
+21. **StreamingManager** - Send streaming updates
+
+#### **Phase 6: CLEANUP (Services 22-27)**
+22. **Analytics** - Record completion
+23. **PerformanceMonitor** - End monitoring
+24. **MemoryManager** - Persist memory
+25. **PersistenceManager** - Persist context
+26. **LearningEngine** - Learn from execution
+27. **SynchronizationService** - Cleanup session
+
+### **6. Service Integration Patterns**
+
+#### **A. Direct Service Delegation**
+```java
+// Direct delegation to reasoning engine
+MultiStepReasoningResult reasoningResult = reasoningEngine.reasonAsync(reasoningContext).get();
+
+// Direct delegation to skill manager
+AgentSkillResult result = skillManager.executeSkill(skillName, parameters);
+```
+
+#### **B. Service Composition**
+```java
+// Compose multiple services for complex operations
+private List<ActionResult> executeActions(List<ActionContext> actions) {
+    List<ActionResult> results = new ArrayList<>();
+    
+    for (ActionContext action : actions) {
+        // Use action registry to get action
+        org.openhab.core.ai.api.action.Action actionImpl = actionRegistry.getAction(actionId);
+        
+        // Execute via skill manager
+        if (actionImpl != null) {
+            ActionResult result = actionImpl.execute(action.getProtocolContext(), action);
+            results.add(result);
+        }
+    }
+    return results;
+}
+```
+
+#### **C. Context-Aware Service Integration**
+```java
+// Services receive enhanced context from agent
+private ReasoningContext createReasoningContext(String actionName, Map<String, Object> parameters) {
+    Map<String, Object> metadata = new HashMap<>();
+    metadata.put("agentContext", getContext().getAll());
+    metadata.put("knowledge", agentKnowledge);
+    metadata.put("learningHistory", learningHistory);
+    metadata.put("capabilities", getCapabilities());
+    
+    return ReasoningContext.builder()
+        .initialContext("Action: " + actionName + " with parameters: " + parameters)
+        .currentContext("Action: " + actionName + " with parameters: " + parameters)
+        .domain(getSpecialization())
+        .sessionId("session-" + System.currentTimeMillis())
+        .metadata(metadata)
+        .build();
+}
+```
+
+### **7. Service Lifecycle Integration**
+
+#### **A. Initialization Phase**
+```java
+protected void initializeAgent() {
+    // Load persistent state
+    if (enableContextPersistence) {
+        loadPersistentState();
+    }
+    
+    // Initialize services
+    onInitialize();
+    
+    // Set state to ready
+    state.set(AgentState.READY);
+}
+```
+
+#### **B. Runtime Integration**
+```java
+// Background processing integrates multiple services
+private void backgroundProcessingLoop() {
+    while (isRunning && !Thread.currentThread().isInterrupted()) {
+        try {
+            // Perform background tasks using various services
+            onBackgroundProcessing();
+            
+            // Analytics tracking
+            if (analytics != null) {
+                analytics.recordPerformanceMetric(getAgentId(), "background", duration, true);
+            }
+            
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            logger.error("Error in background processing", e);
+        }
+    }
+}
+```
+
+### **8. Service Communication Patterns**
+
+#### **A. Synchronous Service Calls**
+```java
+// Direct synchronous calls for immediate results
+public CompletableFuture<ActionResult> executeIntelligentAction(String actionName, Map<String, Object> parameters) {
+    return CompletableFuture.supplyAsync(() -> {
+        // Synchronous reasoning
+        MultiStepReasoningResult reasoningResult = reasoningEngine.reasonAsync(reasoningContext).get();
+        
+        // Synchronous action execution
+        List<ActionResult> actionResults = executeActions(actionsToExecute);
+        
+        return aggregateResults(actionId, actionResults, reasoningResult);
+    });
+}
+```
+
+#### **B. Asynchronous Service Composition**
+```java
+// Asynchronous composition of multiple services
+public CompletableFuture<AgentSkillResult> executeComposedSkills(List<SkillExecutionRequest> skillRequests) {
+    List<CompletableFuture<AgentSkillResult>> futures = new ArrayList<>();
+    
+    for (SkillExecutionRequest request : skillRequests) {
+        CompletableFuture<AgentSkillResult> future = executeSkill(request.getSkillName(), request.getParameters());
+        futures.add(future);
+    }
+    
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+        .thenApply(v -> aggregateResults(futures));
+}
+```
+
+### **9. Error Handling and Service Resilience**
+
+#### **A. Service Availability Checks**
+```java
+// Check service availability before use
+if (reasoningEngine == null) {
+    return CompletableFuture.failedFuture(new IllegalStateException("Reasoning engine not available"));
+}
+
+if (actionRegistry != null) {
+    // Use service
+} else {
+    return ActionResult.error("Action registry not available", null, 0);
+}
+```
+
+#### **B. Graceful Degradation**
+```java
+// Fallback when services are unavailable
+private List<ActionResult> executeActions(List<ActionContext> actions) {
+    List<ActionResult> results = new ArrayList<>();
+    
+    for (ActionContext action : actions) {
+        try {
+            if (actionRegistry != null) {
+                // Normal execution path
+                ActionResult result = actionImpl.execute(action.getProtocolContext(), action);
+                results.add(result);
+            } else {
+                // Fallback path
+                results.add(ActionResult.error("Action registry not available", null, 0));
+            }
+        } catch (Exception e) {
+            // Error handling
+            results.add(ActionResult.error("Action execution failed: " + e.getMessage(), null, 0));
+        }
+    }
+    return results;
+}
+```
+
+### **10. Key Integration Points**
+
+#### **A. Service Dependencies**
+```java
+// Each service can depend on others
+@Reference private @Nullable AgentTaskManager taskManager;
+@Reference private @Nullable AgentCoordinationManager coordinationManager;
+@Reference private @Nullable AgentCommunicationProtocol communicationProtocol;
+```
+
+#### **B. Context Sharing**
+```java
+// All services share the same context
+AgentContext enrichedContext = contextManager.enrichContext(getContext(), parameters);
+enrichedContext.put("sessionId", sessionId);
+enrichedContext.put("actionName", actionName);
+```
+
+#### **C. Session Management**
+```java
+// All services use the same session ID
+String sessionId = generateSessionId();
+performanceMonitor.startMonitoring(sessionId, actionName);
+analytics.recordActionStart(getAgentId(), actionName, sessionId, enrichedContext);
+```
+
+#### **D. Error Handling**
+```java
+// Centralized error handling across all services
+analytics.recordError(getAgentId(), actionName, e, sessionId);
+performanceMonitor.recordError(sessionId, e);
+messagingService.sendErrorNotification(sessionId, e);
+```
+
+### **11. Benefits of Service Integration Architecture**
+
+#### **A. Modularity**
+- **Independent Services**: Each service can be developed, tested, and deployed independently
+- **Clear Boundaries**: Well-defined interfaces between services
+- **Easy Extension**: New services can be added without affecting existing ones
+
+#### **B. Scalability**
+- **Horizontal Scaling**: Services can be scaled independently
+- **Load Distribution**: Work can be distributed across multiple service instances
+- **Resource Optimization**: Each service can be optimized for its specific workload
+
+#### **C. Maintainability**
+- **Focused Responsibility**: Each service has a single, well-defined responsibility
+- **Easier Testing**: Services can be tested in isolation
+- **Simplified Debugging**: Issues can be isolated to specific services
+
+#### **D. Flexibility**
+- **Service Swapping**: Services can be replaced with alternative implementations
+- **Configuration**: Each service can be configured independently
+- **Feature Toggles**: Services can be enabled/disabled as needed
+
+### **12. Implementation Strategy**
+
+#### **Phase 1: Core Service Integration**
+1. **Implement service dependencies** in AbstractIntelligentAgent
+2. **Add service health checks** and availability validation
+3. **Implement basic service orchestration** patterns
+4. **Add error handling** and fallback mechanisms
+
+#### **Phase 2: Advanced Orchestration**
+1. **Implement AgentTaskOrchestrator** for complex scenarios
+2. **Add smart routing** to choose between simple and orchestrated execution
+3. **Implement multi-agent coordination** capabilities
+4. **Add workflow management** for complex tasks
+
+#### **Phase 3: Optimization and Monitoring**
+1. **Add performance monitoring** across all services
+2. **Implement service caching** and optimization
+3. **Add comprehensive analytics** and reporting
+4. **Implement advanced error recovery** mechanisms
+
+### **Summary**
+
+The **Agent Service Integration Architecture** provides a **comprehensive, scalable, and maintainable** foundation for intelligent agent development. By orchestrating multiple specialized services in a coordinated manner, agents can achieve complex automation goals while maintaining clean separation of concerns and enabling sophisticated multi-agent coordination scenarios.
+
+**Key Achievements:**
+- ✅ **Comprehensive Service Integration**: All services integrated through OSGi dependency injection
+- ✅ **Ordered Execution Workflow**: Clear, predictable service execution order
+- ✅ **Context Sharing**: Rich context shared across all services
+- ✅ **Error Resilience**: Robust error handling and graceful degradation
+- ✅ **Performance Monitoring**: Comprehensive monitoring across all services
+- ✅ **Multi-Agent Coordination**: Support for complex multi-agent scenarios
+- ✅ **Session Management**: Consistent session tracking across all services
+- ✅ **Learning Integration**: Continuous learning from service interactions
+
+This architecture enables openHAB to support sophisticated autonomous agents that can coordinate complex automation workflows while maintaining clean architecture, optimal performance, and enhanced reliability.
+
+---
+
+## **Comprehensive REST API Architecture**
+
+The openHAB AI system provides a **comprehensive REST API architecture** that follows openHAB's established patterns and provides complete visibility and control over all AI system components. This architecture maintains clear separation between protocol-compliant endpoints (MCP/A2A) and user-facing REST APIs.
+
+### **Architecture Principles**
+
+1. **Protocol Separation**: MCP and A2A servlets remain in their current locations for protocol compliance
+2. **REST API Location**: All user-facing REST APIs go in the `/rest` folder following openHAB conventions
+3. **Comprehensive Coverage**: REST APIs provide visibility into all AI system components
+4. **Operational Control**: Full management and configuration capabilities through REST
+5. **Security Integration**: Proper authentication and access control using openHAB patterns
+
+### **REST API Structure**
+
+#### **1. Event Processing and Analytics**
+```
+/rest/ai/events/
+├── /analytics                    # Event processing analytics
+├── /correlations                  # Event correlation analysis
+├── /ingestion                    # Log ingestion pipeline status
+├── /filters                      # Event filter configurations
+├── /persistence                   # Event persistence management
+└── /system-integration           # Event system integration status
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/events/analytics` - Event processing performance metrics
+- `GET /rest/ai/events/correlations` - Event correlation patterns and insights
+- `GET /rest/ai/events/ingestion/status` - Log ingestion pipeline health
+- `POST /rest/ai/events/filters` - Configure event filters
+- `GET /rest/ai/events/persistence/stats` - Persistence performance statistics
+
+#### **2. Reasoning and Autonomous Behavior**
+```
+/rest/ai/reasoning/
+├── /autonomous-behavior          # Autonomous behavior configuration
+├── /safety-constraints           # Safety constraint management
+├── /learning-adaptation          # Learning and adaptation status
+├── /memory                       # Agent memory and context
+├── /orchestration                # Reasoning orchestration status
+└── /multi-step                   # Multi-step reasoning engine status
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/reasoning/autonomous-behavior/config` - Current behavior configuration
+- `POST /rest/ai/reasoning/safety-constraints` - Update safety constraints
+- `GET /rest/ai/reasoning/learning-adaptation/status` - Learning system status
+- `GET /rest/ai/reasoning/memory/context` - Current agent memory context
+- `GET /rest/ai/reasoning/orchestration/status` - Reasoning orchestration health
+
+#### **3. Agent Communication and Messaging**
+```
+/rest/ai/communication/
+├── /conversations                # Agent conversation management
+├── /messaging                    # Agent messaging service status
+├── /notifications                # Push notification management
+├── /streaming                    # Streaming communication status
+├── /protocols                    # Communication protocol status
+└── /events                       # Communication event bus status
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/communication/conversations` - Active conversation sessions
+- `GET /rest/ai/communication/messaging/status` - Messaging service health
+- `POST /rest/ai/communication/notifications` - Send push notifications
+- `GET /rest/ai/communication/streaming/status` - Streaming service status
+- `GET /rest/ai/communication/protocols/health` - Protocol health status
+
+#### **4. Agent Collaboration and Coordination**
+```
+/rest/ai/collaboration/
+├── /coordination                 # Agent coordination management
+├── /conflict-resolution          # Conflict resolution engine status
+├── /negotiation                  # Agent negotiation sessions
+└── /context-sharing              # Shared context management
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/collaboration/coordination/status` - Coordination system health
+- `GET /rest/ai/collaboration/conflict-resolution/stats` - Conflict resolution statistics
+- `GET /rest/ai/collaboration/negotiation/sessions` - Active negotiation sessions
+- `GET /rest/ai/collaboration/context-sharing/status` - Context sharing system status
+
+#### **5. Agent Infrastructure and Performance**
+```
+/rest/ai/infrastructure/
+├── /performance                  # Performance monitoring
+├── /security                     # Security management
+├── /persistence                  # Persistence management
+├── /synchronization              # Synchronization service status
+└── /configuration                # Infrastructure configuration
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/infrastructure/performance/metrics` - Performance metrics
+- `GET /rest/ai/infrastructure/security/status` - Security system status
+- `GET /rest/ai/infrastructure/persistence/stats` - Persistence statistics
+- `GET /rest/ai/infrastructure/synchronization/status` - Synchronization health
+- `GET /rest/ai/infrastructure/configuration` - Current configuration
+
+#### **6. Agent Delegation and Actions**
+```
+/rest/ai/delegation/
+├── /actions                      # Action delegation management
+├── /cards                        # Agent card management
+└── /delegation-history           # Delegation history and logs
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/delegation/actions` - Active action delegations
+- `GET /rest/ai/delegation/cards` - Agent capability cards
+- `GET /rest/ai/delegation/history` - Delegation execution history
+
+#### **7. Model Management and Health**
+```
+/rest/ai/models/
+├── /providers                    # Model provider information
+├── /clients                      # Model client status
+├── /health                       # Model health monitoring
+├── /rate-limits                  # Rate limiting information
+├── /responses                    # Model response analysis
+└── /parameters                   # Model parameter management
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/models/providers` - Available model providers
+- `GET /rest/ai/models/clients/status` - Model client health status
+- `GET /rest/ai/models/health` - Overall model health
+- `GET /rest/ai/models/rate-limits` - Current rate limiting status
+- `GET /rest/ai/models/responses/stats` - Response analysis statistics
+- `GET /rest/ai/models/parameters` - Current model parameters
+
+#### **8. Action Library and Execution**
+```
+/rest/ai/actions/
+├── /library                      # Action library management
+├── /execution                    # Action execution status
+├── /security                     # Action security validation
+├── /validation                   # Action validation results
+├── /metrics                      # Action performance metrics
+└── /categories                   # Action categories and organization
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/actions/library` - Available action library
+- `GET /rest/ai/actions/execution/status` - Execution system status
+- `GET /rest/ai/actions/security/validation` - Security validation results
+- `GET /rest/ai/actions/validation/results` - Action validation outcomes
+- `GET /rest/ai/actions/metrics` - Action performance metrics
+- `GET /rest/ai/actions/categories` - Action categorization
+
+#### **9. Agent Lifecycle and Registry**
+```
+/rest/ai/lifecycle/
+├── /registry                     # Agent registry management
+├── /security                     # Agent security management
+├── /configuration                # Agent configuration management
+└── /state                        # Agent state management
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/lifecycle/registry` - Registered agents
+- `GET /rest/ai/lifecycle/security/status` - Agent security status
+- `GET /rest/ai/lifecycle/configuration` - Agent configuration
+- `GET /rest/ai/lifecycle/state` - Current agent states
+
+#### **10. Advanced Analytics and Insights**
+```
+/rest/ai/analytics/
+├── /performance                  # Performance analytics
+├── /usage                        # Usage analytics
+├── /patterns                     # Pattern recognition results
+├── /predictions                  # Predictive analytics
+├── /optimization                 # Optimization recommendations
+└── /reports                      # Analytics reports
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/analytics/performance` - Performance analytics data
+- `GET /rest/ai/analytics/usage/stats` - Usage statistics
+- `GET /rest/ai/analytics/patterns` - Recognized patterns
+- `GET /rest/ai/analytics/predictions` - Predictive insights
+- `GET /rest/ai/analytics/optimization/recommendations` - Optimization suggestions
+- `GET /rest/ai/analytics/reports` - Generated reports
+
+#### **11. Integration and External Services**
+```
+/rest/ai/integration/
+├── /external-services            # External service integration status
+├── /webhooks                     # Webhook management
+├── /api-keys                     # API key management
+├── /connectors                   # Connector status
+└── /endpoints                    # External endpoint management
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/integration/external-services/status` - External service health
+- `GET /rest/ai/integration/webhooks` - Configured webhooks
+- `GET /rest/ai/integration/api-keys` - API key management
+- `GET /rest/ai/integration/connectors/status` - Connector health
+- `GET /rest/ai/integration/endpoints` - External endpoint status
+
+#### **12. Development and Debugging**
+```
+/rest/ai/development/
+├── /debug                        # Debug information and logs
+├── /testing                      # Testing framework status
+├── /validation                   # System validation results
+├── /profiling                    # Performance profiling data
+└── /diagnostics                  # System diagnostics
+```
+
+**Key Endpoints:**
+- `GET /rest/ai/development/debug/logs` - Debug logs
+- `GET /rest/ai/development/testing/status` - Testing framework status
+- `GET /rest/ai/development/validation/results` - System validation
+- `GET /rest/ai/development/profiling/data` - Performance profiling
+- `GET /rest/ai/development/diagnostics` - System diagnostics
+
+### **Implementation Benefits**
+
+#### **1. Comprehensive Monitoring**
+- **Full Visibility**: Complete visibility into all AI system components
+- **Real-time Status**: Real-time status monitoring across all services
+- **Performance Tracking**: Detailed performance metrics and analytics
+- **Health Monitoring**: Comprehensive health monitoring and alerting
+
+#### **2. Operational Control**
+- **Configuration Management**: Full configuration management capabilities
+- **Runtime Control**: Runtime control over system behavior
+- **Resource Management**: Resource allocation and optimization
+- **Security Management**: Comprehensive security monitoring and control
+
+#### **3. Debugging Support**
+- **Diagnostic Tools**: Rich diagnostic and debugging capabilities
+- **Log Analysis**: Comprehensive log analysis and correlation
+- **Performance Profiling**: Detailed performance profiling and optimization
+- **Error Tracking**: Advanced error tracking and resolution
+
+#### **4. User Experience**
+- **Rich Dashboards**: Comprehensive data for dashboard creation
+- **API Integration**: Easy integration with external systems
+- **Monitoring Tools**: Integration with monitoring and alerting systems
+- **Development Tools**: Support for development and testing workflows
+
+### **Security and Access Control**
+
+#### **1. Authentication Integration**
+- **openHAB Authentication**: Integration with openHAB's authentication system
+- **Role-based Access**: Role-based access control for different API endpoints
+- **API Key Management**: Secure API key management for external access
+- **Session Management**: Proper session management and timeout handling
+
+#### **2. Authorization Patterns**
+- **Endpoint-level Authorization**: Different authorization levels for different endpoints
+- **Resource-level Access**: Fine-grained access control to specific resources
+- **Audit Logging**: Comprehensive audit logging for all API access
+- **Rate Limiting**: Rate limiting to prevent abuse and ensure fair usage
+
+#### **3. Data Protection**
+- **Data Encryption**: Encryption of sensitive data in transit and at rest
+- **Privacy Controls**: Privacy controls for user data and system information
+- **Compliance**: Compliance with data protection and privacy regulations
+- **Secure Communication**: Secure communication protocols and certificates
+
+### **Implementation Strategy**
+
+#### **Phase 1: Core Infrastructure**
+1. **Basic REST Framework**: Implement basic REST API framework
+2. **Authentication Integration**: Integrate with openHAB authentication
+3. **Core Endpoints**: Implement core monitoring and status endpoints
+4. **Error Handling**: Implement comprehensive error handling
+
+#### **Phase 2: Comprehensive Coverage**
+1. **Event Processing APIs**: Implement event processing and analytics APIs
+2. **Reasoning APIs**: Implement reasoning and autonomous behavior APIs
+3. **Communication APIs**: Implement communication and messaging APIs
+4. **Collaboration APIs**: Implement collaboration and coordination APIs
+
+#### **Phase 3: Advanced Features**
+1. **Analytics APIs**: Implement advanced analytics and insights APIs
+2. **Integration APIs**: Implement integration and external service APIs
+3. **Development APIs**: Implement development and debugging APIs
+4. **Performance Optimization**: Optimize API performance and scalability
+
+### **Summary**
+
+The **Comprehensive REST API Architecture** provides complete visibility and control over the openHAB AI system while maintaining proper separation between protocol-compliant endpoints and user-facing REST APIs. This architecture enables:
+
+- **Complete System Visibility**: Full visibility into all AI system components
+- **Operational Excellence**: Comprehensive operational control and management
+- **Enhanced User Experience**: Rich APIs for dashboard and integration development
+- **Security and Compliance**: Proper security, authentication, and compliance
+- **Scalability and Performance**: Scalable and performant API infrastructure
+
+This REST API architecture complements the existing MCP and A2A protocol implementations, providing a comprehensive interface for monitoring, management, and integration of the openHAB AI system.

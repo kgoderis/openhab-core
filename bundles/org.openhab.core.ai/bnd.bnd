@@ -17,7 +17,6 @@ Import-Package: \\
 
 # Export packages
 Export-Package: \
-    org.openhab.core.ai.api.*;version="1.0.0", \
     org.openhab.core.ai.action.*;version="1.0.0", \
     org.openhab.core.ai.agent.*;version="1.0.0", \
     org.openhab.core.ai.auth.*;version="1.0.0", \

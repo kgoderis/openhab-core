@@ -19,8 +19,8 @@ import org.openhab.core.ai.agent.AgentSkillRegistry;
 import org.openhab.core.ai.agent.AgentSynchronizationService;
 import org.openhab.core.ai.agent.AgentTaskManager;
 import org.openhab.core.ai.agent.AgentTaskSchemaGenerator;
+import org.openhab.core.ai.agent.api.Agent;
 import org.openhab.core.ai.agent.internal.AgentAgentExecutor;
-import org.openhab.core.ai.api.agent.Agent;
 
 import io.a2a.spec.Task;
 import io.a2a.spec.TaskState;

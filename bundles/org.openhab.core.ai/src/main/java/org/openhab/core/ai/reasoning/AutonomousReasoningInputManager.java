@@ -17,8 +17,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.events.EventSystemIntegration;
 import org.openhab.core.ai.events.LogIngestionPipeline;
-import org.openhab.core.ai.events.LogIngestionPipeline.LogEntry;
-import org.openhab.core.ai.events.LogIngestionPipeline.LogLevel;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

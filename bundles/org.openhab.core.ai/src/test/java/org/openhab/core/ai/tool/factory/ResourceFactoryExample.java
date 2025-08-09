@@ -2,8 +2,8 @@ package org.openhab.core.ai.tool.factory;
 
 import java.util.Map;
 
-import org.openhab.core.ai.tool.dto.AbstractResource;
-import org.openhab.core.ai.tool.dto.Resource;
+import org.openhab.core.ai.tool.resource.AbstractResource;
+import org.openhab.core.ai.tool.resource.Resource;
 import org.openhab.core.automation.RuleRegistry;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.thing.ThingRegistry;

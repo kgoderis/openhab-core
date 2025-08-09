@@ -13,12 +13,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.api.model.ModelClient;
-import org.openhab.core.ai.api.model.ModelParameters;
-import org.openhab.core.ai.api.model.ModelResponse;
-import org.openhab.core.ai.api.reasoning.MultiStepReasoningConfiguration;
-import org.openhab.core.ai.api.reasoning.MultiStepReasoningResult;
-import org.openhab.core.ai.api.reasoning.ReasoningContext;
+import org.openhab.core.ai.model.api.ModelClient;
+import org.openhab.core.ai.model.api.ModelParameters;
+import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.reasoning.api.MultiStepReasoningConfiguration;
+import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
+import org.openhab.core.ai.reasoning.api.ReasoningContext;
 
 /**
  * Unit tests for MultiStepReasoningEngine

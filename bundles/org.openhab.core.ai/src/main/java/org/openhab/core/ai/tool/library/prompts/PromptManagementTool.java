@@ -5,22 +5,27 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.api.tool.Tool;
-import org.openhab.core.ai.api.tool.ToolContext;
-import org.openhab.core.ai.api.tool.ToolException;
-import org.openhab.core.ai.api.tool.ToolMetadata;
-import org.openhab.core.ai.api.tool.ToolResult;
-import org.openhab.core.ai.api.tool.ToolValidationResult;
+import org.openhab.core.ai.tool.api.Tool;
+import org.openhab.core.ai.tool.api.ToolContext;
+import org.openhab.core.ai.tool.api.ToolException;
+import org.openhab.core.ai.tool.api.ToolMetadata;
+import org.openhab.core.ai.tool.api.ToolResult;
+import org.openhab.core.ai.tool.api.ToolValidationResult;
+import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Prompt management tool for MCP.
  * 
+ * This tool provides comprehensive prompt management capabilities for the openHAB system,
+ * including listing, getting, creating, updating, deleting, and executing prompts.
+ * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
+@Component(service = Tool.class, immediate = true)
 public class PromptManagementTool implements Tool {
 
     private static final Logger logger = LoggerFactory.getLogger(PromptManagementTool.class);

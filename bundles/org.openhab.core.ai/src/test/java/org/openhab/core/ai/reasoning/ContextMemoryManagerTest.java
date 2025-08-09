@@ -6,7 +6,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openhab.core.ai.api.reasoning.ReasoningContext;
+import org.openhab.core.ai.reasoning.api.ReasoningContext;
 
 /**
  * Test for ContextMemoryManager

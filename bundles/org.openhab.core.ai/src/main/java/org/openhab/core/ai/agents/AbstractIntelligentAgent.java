@@ -13,11 +13,11 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionContext;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.ActionResult;
-import org.openhab.core.ai.api.agent.IntelligentAgent;
-import org.openhab.core.ai.api.model.ModelClient;
-import org.openhab.core.ai.api.reasoning.MultiStepReasoningResult;
-import org.openhab.core.ai.api.reasoning.ReasoningContext;
+import org.openhab.core.ai.agent.api.IntelligentAgent;
+import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.reasoning.MultiStepReasoningEngine;
+import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
+import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +38,17 @@ import org.slf4j.LoggerFactory;
  */
 @NonNullByDefault
 public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent implements IntelligentAgent {
+    private String generateActionId() {
+        return getAgentId() + "_action_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
+    }
+
+    private List<org.openhab.core.ai.action.api.Action> getRegisteredActions() {
+        ActionRegistry registry = actionRegistry;
+        if (registry == null) {
+            return java.util.List.of();
+        }
+        return new java.util.ArrayList<>(registry.getAllActions().values());
+    }
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractIntelligentAgent.class);
 
@@ -190,7 +201,7 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
     public boolean canHandleAction(String actionName) {
         // Check if this agent can handle the action based on specialization
         return actionName.toLowerCase().contains(getSpecialization().toLowerCase())
-                || getRegisteredActions().stream().anyMatch(action -> action.getName().equals(actionName));
+                || getRegisteredActions().stream().anyMatch(action -> action.getActionName().equals(actionName));
     }
 
     // Helper methods
@@ -220,6 +231,7 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                 // For now, create a simple action context
                 ActionContext actionContext = ActionContext.builder().protocol("openhab").clientId(getAgentId())
                         .sessionId("session-" + System.currentTimeMillis())
+                        .protocolContext(java.util.Map.of("actionId", originalAction))
                         .correlationId("corr-" + System.currentTimeMillis()).build();
 
                 actions.add(actionContext);
@@ -240,10 +252,22 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                 if (actionRegistry != null) {
                     // Get action from registry and execute
                     String actionId = action.getCorrelationId();
-                    org.openhab.core.ai.api.action.Action actionImpl = actionRegistry.getAction(actionId);
-                    if (actionImpl != null) {
-                        org.openhab.core.ai.action.ActionResult result = actionImpl.execute(action.getProtocolContext(),
-                                action);
+                    org.openhab.core.ai.action.api.Action fetchedAction = actionRegistry.getAction(actionId);
+                    if (fetchedAction == null) {
+                        // Fallback: try matching by name or alternative candidate from protocol context
+                        String nameCandidate = String
+                                .valueOf(action.getProtocolContext().getOrDefault("actionId", actionId));
+                        for (org.openhab.core.ai.action.api.Action a : getRegisteredActions()) {
+                            if (a.getActionId().equals(actionId) || a.getActionId().equals(nameCandidate)
+                                    || a.getActionName().equalsIgnoreCase(nameCandidate)) {
+                                fetchedAction = a;
+                                break;
+                            }
+                        }
+                    }
+                    if (fetchedAction != null) {
+                        org.openhab.core.ai.action.ActionResult result = fetchedAction
+                                .execute(action.getProtocolContext(), action);
                         results.add(ActionResult.success(result,
                                 Duration.between(Instant.now(), Instant.now()).toMillis()));
                     } else {

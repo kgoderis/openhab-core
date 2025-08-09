@@ -15,12 +15,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.ActionDefinition;
-import org.openhab.core.ai.action.ActionMetric;
-import org.openhab.core.ai.action.ActionResult;
-import org.openhab.core.ai.agent.AgentContext;
-import org.openhab.core.ai.agent.AgentMetrics;
-import org.openhab.core.ai.agent.AgentState;
+import org.openhab.core.ai.agent.api.AgentSkillManager;
+import org.openhab.core.ai.agent.core.AgentContext;
+import org.openhab.core.ai.agent.core.AgentMetrics;
+import org.openhab.core.ai.agent.core.AgentState;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
 import org.openhab.core.ai.reasoning.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
@@ -37,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * This component provides the foundational framework for all autonomous agents:
  * - Agent lifecycle management (initialization, activation, deactivation, cleanup)
  * - Context management and state persistence
- * - Action execution with validation and safety checks
+ * - Skill execution with validation and safety checks
  * - Comprehensive error handling and recovery mechanisms
  * - Detailed logging and monitoring capabilities
  * - Performance metrics and health monitoring
@@ -53,8 +51,8 @@ public abstract class BaseAutonomousAgent {
     private static final Logger logger = LoggerFactory.getLogger(BaseAutonomousAgent.class);
 
     // Configuration
-    private static final Duration DEFAULT_ACTION_TIMEOUT = Duration.ofSeconds(30);
-    private static final int DEFAULT_MAX_CONCURRENT_ACTIONS = 5;
+    private static final Duration DEFAULT_SKILL_TIMEOUT = Duration.ofSeconds(30);
+    private static final int DEFAULT_MAX_CONCURRENT_SKILLS = 5;
     private static final int DEFAULT_MAX_RETRY_ATTEMPTS = 3;
     private static final Duration DEFAULT_RETRY_DELAY = Duration.ofSeconds(5);
 
@@ -62,17 +60,15 @@ public abstract class BaseAutonomousAgent {
     private final AtomicReference<AgentState> state = new AtomicReference<>(AgentState.INITIALIZING);
     private final AtomicReference<AgentContext> context = new AtomicReference<>(new AgentContext());
     private final Map<String, Object> persistentState = new ConcurrentHashMap<>();
-    private final Map<String, ActionDefinition> registeredActions = new ConcurrentHashMap<>();
 
     // Performance monitoring
-    private final AtomicLong totalActionsExecuted = new AtomicLong(0);
-    private final AtomicLong totalActionsSucceeded = new AtomicLong(0);
-    private final AtomicLong totalActionsFailed = new AtomicLong(0);
+    private final AtomicLong totalSkillsExecuted = new AtomicLong(0);
+    private final AtomicLong totalSkillsSucceeded = new AtomicLong(0);
+    private final AtomicLong totalSkillsFailed = new AtomicLong(0);
     protected final AtomicLong totalProcessingTime = new AtomicLong(0);
-    private final List<ActionMetric> metrics = new ArrayList<>();
 
     // Threading
-    private final ExecutorService actionExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_CONCURRENT_ACTIONS);
+    private final ExecutorService skillExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_CONCURRENT_SKILLS);
     private volatile boolean isRunning = false;
 
     // Dependencies
@@ -82,9 +78,12 @@ public abstract class BaseAutonomousAgent {
     @Reference
     private @Nullable EventProcessingAnalytics analytics;
 
+    @Reference
+    private @Nullable AgentSkillManager skillManager;
+
     // Configuration
-    private Duration actionTimeout = DEFAULT_ACTION_TIMEOUT;
-    private int maxConcurrentActions = DEFAULT_MAX_CONCURRENT_ACTIONS;
+    private Duration skillTimeout = DEFAULT_SKILL_TIMEOUT;
+    private int maxConcurrentSkills = DEFAULT_MAX_CONCURRENT_SKILLS;
     private int maxRetryAttempts = DEFAULT_MAX_RETRY_ATTEMPTS;
     private Duration retryDelay = DEFAULT_RETRY_DELAY;
     private boolean enableSafetyChecks = true;
@@ -108,30 +107,27 @@ public abstract class BaseAutonomousAgent {
      */
     protected void initializeAgent() {
         try {
-            logger.info("Initializing autonomous agent: {}", getAgentId());
+            logger.debug("Initializing agent: {}", getAgentId());
 
             // Set initial state
             state.set(AgentState.INITIALIZING);
-
-            // Initialize agent-specific components
-            onInitialize();
-
-            // Register default actions
-            registerDefaultActions();
 
             // Load persistent state if enabled
             if (enableContextPersistence) {
                 loadPersistentState();
             }
 
+            // Call abstract initialization
+            onInitialize();
+
             // Set state to ready
             state.set(AgentState.READY);
 
-            logger.info("Autonomous agent initialized successfully: {}", getAgentId());
+            logger.info("Agent initialized successfully: {}", getAgentId());
 
         } catch (Exception e) {
-            logger.error("Failed to initialize autonomous agent: {}", getAgentId(), e);
             state.set(AgentState.ERROR);
+            logger.error("Failed to initialize agent: {}", getAgentId(), e);
             throw new AgentInitializationException("Failed to initialize agent: " + getAgentId(), e);
         }
     }
@@ -140,29 +136,31 @@ public abstract class BaseAutonomousAgent {
      * Start the agent
      */
     public void startAgent() {
-        if (isRunning) {
-            logger.warn("Agent {} is already running", getAgentId());
-            return;
-        }
-
         try {
-            logger.info("Starting autonomous agent: {}", getAgentId());
+            logger.debug("Starting agent: {}", getAgentId());
 
-            isRunning = true;
-            state.set(AgentState.RUNNING);
+            if (state.get() != AgentState.READY) {
+                throw new AgentStartupException("Agent is not ready to start: " + getAgentId(), null);
+            }
 
-            // Start agent-specific processing
+            // Set state to starting
+            state.set(AgentState.STARTING);
+
+            // Call abstract start method
             onStart();
 
             // Start background processing
+            isRunning = true;
             startBackgroundProcessing();
 
-            logger.info("Autonomous agent started successfully: {}", getAgentId());
+            // Set state to running
+            state.set(AgentState.RUNNING);
+
+            logger.info("Agent started successfully: {}", getAgentId());
 
         } catch (Exception e) {
-            logger.error("Failed to start autonomous agent: {}", getAgentId(), e);
             state.set(AgentState.ERROR);
-            isRunning = false;
+            logger.error("Failed to start agent: {}", getAgentId(), e);
             throw new AgentStartupException("Failed to start agent: " + getAgentId(), e);
         }
     }
@@ -171,34 +169,32 @@ public abstract class BaseAutonomousAgent {
      * Stop the agent
      */
     public void stopAgent() {
-        if (!isRunning) {
-            return;
-        }
-
         try {
-            logger.info("Stopping autonomous agent: {}", getAgentId());
+            logger.debug("Stopping agent: {}", getAgentId());
 
-            isRunning = false;
-            state.set(AgentState.STOPPING);
-
-            // Stop agent-specific processing
-            onStop();
-
-            // Shutdown executor
-            actionExecutor.shutdown();
-
-            // Save persistent state if enabled
-            if (enableContextPersistence) {
-                savePersistentState();
+            if (state.get() != AgentState.RUNNING) {
+                logger.warn("Agent is not running: {}", getAgentId());
+                return;
             }
 
+            // Set state to stopping
+            state.set(AgentState.STOPPING);
+
+            // Stop background processing
+            isRunning = false;
+
+            // Call abstract stop method
+            onStop();
+
+            // Set state to stopped
             state.set(AgentState.STOPPED);
 
-            logger.info("Autonomous agent stopped successfully: {}", getAgentId());
+            logger.info("Agent stopped successfully: {}", getAgentId());
 
         } catch (Exception e) {
-            logger.error("Error stopping autonomous agent: {}", getAgentId(), e);
             state.set(AgentState.ERROR);
+            logger.error("Failed to stop agent: {}", getAgentId(), e);
+            throw new AgentStartupException("Failed to stop agent: " + getAgentId(), e);
         }
     }
 
@@ -206,143 +202,322 @@ public abstract class BaseAutonomousAgent {
      * Shutdown the agent
      */
     protected void shutdownAgent() {
-        stopAgent();
-        onShutdown();
-    }
+        try {
+            logger.debug("Shutting down agent: {}", getAgentId());
 
-    /**
-     * Execute an action
-     */
-    public CompletableFuture<ActionResult> executeAction(String actionName, Map<String, Object> parameters) {
-        return CompletableFuture.supplyAsync(() -> {
-            Instant startTime = Instant.now();
-            String actionId = generateActionId();
-
-            try {
-                // Validate agent state
-                if (!isRunning || state.get() != AgentState.RUNNING) {
-                    return ActionResult.error("Agent is not running", null, 0);
-                }
-
-                // Validate action
-                ActionDefinition actionDef = registeredActions.get(actionName);
-                if (actionDef == null) {
-                    return ActionResult.error("Action not found: " + actionName, null, 0);
-                }
-
-                // Validate parameters
-                if (!validateActionParameters(actionDef, parameters)) {
-                    return ActionResult.error("Invalid parameters for action: " + actionName, null, 0);
-                }
-
-                // Perform safety checks
-                if (enableSafetyChecks && !performSafetyChecks(actionName, parameters)) {
-                    return ActionResult.error("Safety check failed for action: " + actionName, null, 0);
-                }
-
-                // Execute action with retry logic
-                ActionResult result = executeActionWithRetry(actionName, parameters, actionId);
-
-                // Record metrics
-                recordActionMetrics(actionName, result, Duration.between(startTime, Instant.now()));
-
-                return result;
-
-            } catch (Exception e) {
-                logger.error("Error executing action {}: {}", actionName, e.getMessage(), e);
-                totalActionsFailed.incrementAndGet();
-                return ActionResult.error("Error executing action: " + e.getMessage(), null, 0);
-            } finally {
-                totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+            // Stop if running
+            if (state.get() == AgentState.RUNNING) {
+                stopAgent();
             }
-        }, actionExecutor);
+
+            // Call abstract shutdown method
+            onShutdown();
+
+            // Save persistent state if enabled
+            if (enableContextPersistence) {
+                savePersistentState();
+            }
+
+            // Shutdown executor
+            skillExecutor.shutdown();
+
+            logger.info("Agent shutdown completed: {}", getAgentId());
+
+        } catch (Exception e) {
+            logger.error("Error during agent shutdown: {}", getAgentId(), e);
+        }
     }
 
     /**
-     * Execute action with retry logic
+     * Execute a skill with the given parameters
+     * 
+     * @param skillName the skill name to execute
+     * @param parameters the parameters for the skill execution
+     * @return CompletableFuture with the skill execution result
      */
-    private ActionResult executeActionWithRetry(String actionName, Map<String, Object> parameters, String actionId) {
-        Exception lastException = null;
+    public CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult> executeSkill(String skillName,
+            Map<String, Object> parameters) {
+        long startTime = System.currentTimeMillis();
+        String skillId = generateSkillId();
 
-        for (int attempt = 1; attempt <= maxRetryAttempts; attempt++) {
+        logger.debug("Executing skill: {} with parameters: {}", skillName, parameters);
+
+        return CompletableFuture.supplyAsync(() -> {
             try {
-                // Execute the action
-                ActionResult result = onExecuteAction(actionName, parameters, actionId);
+                // Perform safety checks if enabled
+                if (enableSafetyChecks && !performSkillSafetyChecks(skillName, parameters)) {
+                    return createSkillErrorResult("Safety check failed for skill: " + skillName, skillId,
+                            System.currentTimeMillis() - startTime);
+                }
 
-                if (result.isSuccess()) {
-                    totalActionsSucceeded.incrementAndGet();
+                // Execute the skill via skill manager
+                if (skillManager != null) {
+                    org.openhab.core.ai.agent.api.AgentSkillResult result = skillManager.executeSkill(skillName,
+                            parameters);
+                    Duration duration = Duration.ofMillis(System.currentTimeMillis() - startTime);
+
+                    // Record metrics
+                    recordSkillMetrics(skillName, result, duration);
+
                     return result;
                 } else {
-                    logger.warn("Action {} failed (attempt {}/{}): {}", actionName, attempt, maxRetryAttempts,
-                            result.getMessage());
+                    return createSkillErrorResult("Skill manager not available", skillId,
+                            System.currentTimeMillis() - startTime);
                 }
 
             } catch (Exception e) {
-                lastException = e;
-                logger.warn("Action {} threw exception (attempt {}/{}): {}", actionName, attempt, maxRetryAttempts,
-                        e.getMessage());
+                logger.error("Error executing skill: {}", skillName, e);
+                return createSkillErrorResult("Error executing skill: " + e.getMessage(), skillId,
+                        System.currentTimeMillis() - startTime);
+            }
+        }, skillExecutor);
+    }
+
+    /**
+     * Execute multiple composed skills
+     * 
+     * @param skillRequests list of skill execution requests
+     * @return CompletableFuture with the composed skill execution result
+     */
+    public CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult> executeComposedSkills(
+            List<SkillExecutionRequest> skillRequests) {
+        long startTime = System.currentTimeMillis();
+        String compositionId = generateCompositionId();
+
+        logger.debug("Executing composed skills: {} skills", skillRequests.size());
+
+        List<CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult>> futures = new ArrayList<>();
+
+        for (SkillExecutionRequest request : skillRequests) {
+            CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult> future = executeSkill(
+                    request.getSkillName(), request.getParameters());
+            futures.add(future);
+        }
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(v -> {
+            List<org.openhab.core.ai.agent.api.AgentSkillResult> results = new ArrayList<>();
+            for (CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult> future : futures) {
+                try {
+                    results.add(future.get());
+                } catch (Exception e) {
+                    logger.error("Error getting skill result", e);
+                    results.add(createSkillErrorResult("Error getting skill result: " + e.getMessage(), compositionId,
+                            System.currentTimeMillis() - startTime));
+                }
             }
 
-            // Wait before retry (except on last attempt)
-            if (attempt < maxRetryAttempts) {
-                try {
-                    Thread.sleep(retryDelay.toMillis());
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+            long totalExecutionTime = System.currentTimeMillis() - startTime;
+            return createComposedSkillResult(results, compositionId, totalExecutionTime);
+        });
+    }
+
+    /**
+     * Decide which skill to execute based on context
+     * 
+     * @param context the execution context
+     * @param availableSkills list of available skills
+     * @return the selected skill name
+     */
+    protected String decideSkillToExecute(Map<String, Object> context, List<String> availableSkills) {
+        // TODO: Implement intelligent skill selection based on context
+        // For now, return the first available skill
+        return availableSkills.isEmpty() ? null : availableSkills.get(0);
+    }
+
+    /**
+     * Convert a skill to a task request
+     * 
+     * @param skillName the skill name
+     * @param parameters the skill parameters
+     * @return the task request
+     */
+    protected SkillExecutionRequest convertSkillToTask(String skillName, Map<String, Object> parameters) {
+        return new SkillExecutionRequest(skillName, parameters);
+    }
+
+    /**
+     * Enhance context for skill execution
+     * 
+     * @param skillContext the skill context to enhance
+     */
+    protected void enhanceContextForSkills(Map<String, Object> skillContext) {
+        // Add agent-specific context
+        skillContext.put("agentId", getAgentId());
+        skillContext.put("agentState", getState().name());
+        skillContext.put("timestamp", Instant.now().toEpochMilli());
+
+        // Add persistent state
+        skillContext.putAll(persistentState);
+
+        // Add current context
+        AgentContext currentContext = getContext();
+        skillContext.put("currentContext", currentContext);
+    }
+
+    /**
+     * Get agent capabilities
+     * 
+     * @return list of agent capabilities
+     */
+    protected List<String> getAgentCapabilities() {
+        // TODO: Implement dynamic capability discovery
+        return new ArrayList<>();
+    }
+
+    /**
+     * Perform safety checks for skill execution
+     * 
+     * @param skillName the skill name
+     * @param parameters the skill parameters
+     * @return true if safety checks pass
+     */
+    private boolean performSkillSafetyChecks(String skillName, Map<String, Object> parameters) {
+        try {
+            return onSkillSafetyCheck(skillName, parameters);
+        } catch (Exception e) {
+            logger.error("Error during safety check for skill {}: {}", skillName, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Record skill execution metrics
+     * 
+     * @param skillName the skill name
+     * @param result the skill result
+     * @param duration the execution duration
+     */
+    private void recordSkillMetrics(String skillName, org.openhab.core.ai.agent.api.AgentSkillResult result,
+            Duration duration) {
+        totalSkillsExecuted.incrementAndGet();
+
+        if (result.isSuccess()) {
+            totalSkillsSucceeded.incrementAndGet();
+        } else {
+            totalSkillsFailed.incrementAndGet();
+        }
+
+        totalProcessingTime.addAndGet(duration.toMillis());
+
+        // Record analytics if available
+        if (analytics != null) {
+            analytics.recordPerformanceMetric(getAgentId(), skillName, duration, result.isSuccess());
+            if (!result.isSuccess()) {
+                analytics.recordError(getAgentId(), skillName, result.getErrorMessage(), null);
+            }
+        }
+    }
+
+    /**
+     * Generate a unique skill ID
+     * 
+     * @return the skill ID
+     */
+    private String generateSkillId() {
+        return getAgentId() + "_skill_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
+    }
+
+    /**
+     * Generate a unique composition ID
+     * 
+     * @return the composition ID
+     */
+    private String generateCompositionId() {
+        return getAgentId() + "_composition_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
+    }
+
+    /**
+     * Create a skill error result
+     * 
+     * @param message the error message
+     * @param skillId the skill ID
+     * @param executionTime the execution time in milliseconds
+     * @return the skill error result
+     */
+    private org.openhab.core.ai.agent.api.AgentSkillResult createSkillErrorResult(String message, String skillId,
+            long executionTime) {
+        return org.openhab.core.ai.agent.api.AgentSkillResult.failure(message, executionTime);
+    }
+
+    /**
+     * Create a composed skill result
+     * 
+     * @param results the individual skill results
+     * @param compositionId the composition ID
+     * @param totalExecutionTime the total execution time in milliseconds
+     * @return the composed skill result
+     */
+    private org.openhab.core.ai.agent.api.AgentSkillResult createComposedSkillResult(
+            List<org.openhab.core.ai.agent.api.AgentSkillResult> results, String compositionId,
+            long totalExecutionTime) {
+        // Aggregate results
+        Map<String, Object> aggregatedData = new HashMap<>();
+        boolean allSuccessful = true;
+        StringBuilder errorMessages = new StringBuilder();
+
+        for (int i = 0; i < results.size(); i++) {
+            org.openhab.core.ai.agent.api.AgentSkillResult result = results.get(i);
+            aggregatedData.put("skill_" + i, result.getData());
+
+            if (!result.isSuccess()) {
+                allSuccessful = false;
+                errorMessages.append("Skill ").append(i).append(": ").append(result.getErrorMessage()).append("; ");
             }
         }
 
-        totalActionsFailed.incrementAndGet();
-        String errorMessage = lastException != null ? lastException.getMessage()
-                : "Action failed after " + maxRetryAttempts + " attempts";
-        return ActionResult.error(errorMessage, null, 0);
+        if (allSuccessful) {
+            return org.openhab.core.ai.agent.api.AgentSkillResult.success(aggregatedData, totalExecutionTime);
+        } else {
+            return org.openhab.core.ai.agent.api.AgentSkillResult.failure(errorMessages.toString(), "COMPOSITION_ERROR",
+                    totalExecutionTime);
+        }
     }
 
     /**
-     * Register an action
-     */
-    protected void registerAction(String name, String description, List<String> requiredParameters,
-            List<String> optionalParameters) {
-        ActionDefinition actionDef = new ActionDefinition(name, description, requiredParameters, optionalParameters);
-        registeredActions.put(name, actionDef);
-        logger.debug("Registered action {} for agent {}", name, getAgentId());
-    }
-
-    /**
-     * Update agent context
+     * Update the agent context
+     * 
+     * @param key the context key
+     * @param value the context value
      */
     protected void updateContext(String key, Object value) {
         AgentContext currentContext = context.get();
-        AgentContext newContext = new AgentContext(currentContext);
-        newContext.put(key, value);
-        context.set(newContext);
+        if (currentContext != null) {
+            currentContext.put(key, value);
+        }
     }
 
     /**
-     * Get agent context
+     * Get the current agent context
+     * 
+     * @return the agent context
      */
     protected AgentContext getContext() {
         return context.get();
     }
 
     /**
-     * Get persistent state
+     * Get the persistent state
+     * 
+     * @return the persistent state map
      */
     protected Map<String, Object> getPersistentState() {
         return new HashMap<>(persistentState);
     }
 
     /**
-     * Set persistent state
+     * Set a persistent state value
+     * 
+     * @param key the state key
+     * @param value the state value
      */
     protected void setPersistentState(String key, Object value) {
         persistentState.put(key, value);
     }
 
     /**
-     * Get agent state
+     * Get the current agent state
+     * 
+     * @return the agent state
      */
     public AgentState getState() {
         return state.get();
@@ -350,84 +525,19 @@ public abstract class BaseAutonomousAgent {
 
     /**
      * Get agent metrics
+     * 
+     * @return the agent metrics
      */
     public AgentMetrics getMetrics() {
-        return new AgentMetrics(getAgentId(), state.get(), totalActionsExecuted.get(), totalActionsSucceeded.get(),
-                totalActionsFailed.get(), totalProcessingTime.get(), new ArrayList<>(metrics), Instant.now());
-    }
-
-    /**
-     * Get registered actions
-     */
-    public List<ActionDefinition> getRegisteredActions() {
-        return new ArrayList<>(registeredActions.values());
-    }
-
-    /**
-     * Validate action parameters
-     */
-    private boolean validateActionParameters(ActionDefinition actionDef, Map<String, Object> parameters) {
-        // Check required parameters
-        for (String requiredParam : actionDef.getRequiredParameters()) {
-            if (!parameters.containsKey(requiredParam)) {
-                logger.warn("Missing required parameter {} for action {}", requiredParam, actionDef.getName());
-                return false;
-            }
-        }
-
-        // Check parameter types (basic validation)
-        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
-            if (entry.getValue() == null) {
-                logger.warn("Parameter {} cannot be null for action {}", entry.getKey(), actionDef.getName());
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Perform safety checks
-     */
-    private boolean performSafetyChecks(String actionName, Map<String, Object> parameters) {
-        try {
-            return onSafetyCheck(actionName, parameters);
-        } catch (Exception e) {
-            logger.error("Error during safety check for action {}: {}", actionName, e.getMessage(), e);
-            return false;
-        }
-    }
-
-    /**
-     * Record action metrics
-     */
-    private void recordActionMetrics(String actionName, ActionResult result, Duration duration) {
-        totalActionsExecuted.incrementAndGet();
-
-        ActionMetric metric = new ActionMetric(actionName, result.isSuccess(), duration, result.getMessage(),
-                Instant.now());
-
-        metrics.add(metric);
-
-        // Keep only recent metrics
-        if (metrics.size() > 1000) {
-            metrics.remove(0);
-        }
-
-        // Record analytics if available
-        if (analytics != null) {
-            analytics.recordPerformanceMetric(getAgentId(), actionName, duration, result.isSuccess());
-            if (!result.isSuccess()) {
-                analytics.recordError(getAgentId(), actionName, result.getMessage(), null);
-            }
-        }
+        return new AgentMetrics(getAgentId(), state.get(), totalSkillsExecuted.get(), totalSkillsSucceeded.get(),
+                totalSkillsFailed.get(), totalProcessingTime.get(), new ArrayList<>(), java.time.Instant.now());
     }
 
     /**
      * Start background processing
      */
     private void startBackgroundProcessing() {
-        actionExecutor.submit(this::backgroundProcessingLoop);
+        skillExecutor.submit(this::backgroundProcessingLoop);
     }
 
     /**
@@ -457,7 +567,6 @@ public abstract class BaseAutonomousAgent {
     private void loadPersistentState() {
         try {
             onLoadPersistentState(persistentState);
-            logger.debug("Loaded persistent state for agent {}", getAgentId());
         } catch (Exception e) {
             logger.error("Error loading persistent state for agent {}: {}", getAgentId(), e.getMessage(), e);
         }
@@ -469,35 +578,18 @@ public abstract class BaseAutonomousAgent {
     private void savePersistentState() {
         try {
             onSavePersistentState(persistentState);
-            logger.debug("Saved persistent state for agent {}", getAgentId());
         } catch (Exception e) {
             logger.error("Error saving persistent state for agent {}: {}", getAgentId(), e.getMessage(), e);
         }
     }
 
-    /**
-     * Register default actions
-     */
-    private void registerDefaultActions() {
-        registerAction("getStatus", "Get agent status", new ArrayList<>(), new ArrayList<>());
-        registerAction("getMetrics", "Get agent metrics", new ArrayList<>(), new ArrayList<>());
-        registerAction("updateConfig", "Update agent configuration", List.of("config"), new ArrayList<>());
+    // Configuration setters
+    public void setSkillTimeout(Duration skillTimeout) {
+        this.skillTimeout = skillTimeout;
     }
 
-    /**
-     * Generate unique action ID
-     */
-    protected String generateActionId() {
-        return getAgentId() + "_action_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
-    }
-
-    // Configuration methods
-    public void setActionTimeout(Duration actionTimeout) {
-        this.actionTimeout = actionTimeout;
-    }
-
-    public void setMaxConcurrentActions(int maxConcurrentActions) {
-        this.maxConcurrentActions = maxConcurrentActions;
+    public void setMaxConcurrentSkills(int maxConcurrentSkills) {
+        this.maxConcurrentSkills = maxConcurrentSkills;
     }
 
     public void setMaxRetryAttempts(int maxRetryAttempts) {
@@ -520,7 +612,7 @@ public abstract class BaseAutonomousAgent {
         this.enableContextPersistence = enableContextPersistence;
     }
 
-    // Abstract methods to be implemented by subclasses
+    // Abstract methods
     protected abstract String getAgentId();
 
     protected abstract void onInitialize() throws Exception;
@@ -531,16 +623,13 @@ public abstract class BaseAutonomousAgent {
 
     protected abstract void onShutdown();
 
-    protected abstract ActionResult onExecuteAction(String actionName, Map<String, Object> parameters, String actionId)
-            throws Exception;
-
-    protected abstract boolean onSafetyCheck(String actionName, Map<String, Object> parameters) throws Exception;
-
     protected abstract void onBackgroundProcessing() throws Exception;
 
     protected abstract void onLoadPersistentState(Map<String, Object> state) throws Exception;
 
     protected abstract void onSavePersistentState(Map<String, Object> state) throws Exception;
+
+    protected abstract boolean onSkillSafetyCheck(String skillName, Map<String, Object> parameters) throws Exception;
 
     // Exception classes
     public static class AgentInitializationException extends RuntimeException {

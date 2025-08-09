@@ -5,12 +5,12 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.api.tool.Tool;
-import org.openhab.core.ai.api.tool.ToolContext;
-import org.openhab.core.ai.api.tool.ToolException;
-import org.openhab.core.ai.api.tool.ToolMetadata;
-import org.openhab.core.ai.api.tool.ToolResult;
-import org.openhab.core.ai.api.tool.ToolValidationResult;
+import org.openhab.core.ai.tool.api.Tool;
+import org.openhab.core.ai.tool.api.ToolContext;
+import org.openhab.core.ai.tool.api.ToolException;
+import org.openhab.core.ai.tool.api.ToolMetadata;
+import org.openhab.core.ai.tool.api.ToolResult;
+import org.openhab.core.ai.tool.api.ToolValidationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,10 +72,9 @@ public class CompletionManagementTool implements Tool {
         Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
         schema.put("properties",
-                Map.of("success", Map.of("type", "boolean", "description", "Whether the operation was successful"),
-                        "message", Map.of("type", "string", "description", "Result message"), "data",
-                        Map.of("type", "object", "description", "Operation result data"), "error",
-                        Map.of("type", "string", "description", "Error message if operation failed")));
+                Map.of("success", Map.of("type", "boolean", "description", "Operation success status"), "data",
+                        Map.of("type", "object", "description", "Operation result data"), "message",
+                        Map.of("type", "string", "description", "Operation message")));
         return schema;
     }
 

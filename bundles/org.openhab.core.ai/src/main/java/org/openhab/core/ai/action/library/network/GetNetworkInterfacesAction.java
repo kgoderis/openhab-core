@@ -14,8 +14,8 @@ import org.openhab.core.ai.action.ActionContext;
 import org.openhab.core.ai.action.ActionMetadata;
 import org.openhab.core.ai.action.ActionResult;
 import org.openhab.core.ai.action.ActionValidationResult;
-import org.openhab.core.ai.api.action.Action;
-import org.openhab.core.ai.api.action.ActionException;
+import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.action.api.ActionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

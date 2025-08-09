@@ -6,9 +6,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.api.model.ModelClient;
-import org.openhab.core.ai.api.model.ModelConfigurationService;
-import org.openhab.core.ai.api.model.ModelProviderType;
+import org.openhab.core.ai.model.api.ModelClient;
+import org.openhab.core.ai.model.api.ModelConfigurationService;
+import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -248,7 +248,7 @@ public class LLMProviderFactory {
             var openAIConfig = config.getOpenAIConfig();
             if (openAIConfig != null && openAIConfig.isEnabled()) {
                 logger.debug("Creating OpenAI client with configuration");
-                return new OpenAIClientImpl(openAIConfig, actionRegistry);
+                return new OpenAIClient(openAIConfig, actionRegistry);
             }
         }
         logger.debug("Creating OpenAI client (stub implementation)");
@@ -263,7 +263,7 @@ public class LLMProviderFactory {
             var anthropicConfig = config.getAnthropicConfig();
             if (anthropicConfig != null && anthropicConfig.isEnabled()) {
                 logger.debug("Creating Anthropic client with configuration");
-                return new AnthropicClientImpl(anthropicConfig, actionRegistry);
+                return new AnthropicClient(anthropicConfig, actionRegistry);
             }
         }
         logger.debug("Creating Anthropic client (stub implementation)");
@@ -278,7 +278,7 @@ public class LLMProviderFactory {
             var googleConfig = config.getGoogleConfig();
             if (googleConfig != null && googleConfig.isEnabled()) {
                 logger.debug("Creating Google GenAI client with configuration");
-                return new GoogleGenAIClientImpl(googleConfig, actionRegistry);
+                return new GoogleGenAIClient(googleConfig, actionRegistry);
             }
         }
         logger.debug("Creating Google GenAI client (stub implementation)");
@@ -293,7 +293,7 @@ public class LLMProviderFactory {
             var azureConfig = config.getAzureConfig();
             if (azureConfig != null && azureConfig.isEnabled()) {
                 logger.debug("Creating Azure OpenAI client with configuration");
-                return new AzureOpenAIClientImpl(azureConfig, actionRegistry);
+                return new AzureOpenAIClient(azureConfig, actionRegistry);
             }
         }
         logger.debug("Creating Azure OpenAI client (stub implementation)");
@@ -308,7 +308,7 @@ public class LLMProviderFactory {
             var ollamaConfig = config.getOllamaConfig();
             if (ollamaConfig != null && ollamaConfig.isEnabled()) {
                 logger.debug("Creating Ollama client with configuration");
-                return new OllamaClientImpl(ollamaConfig, actionRegistry);
+                return new OllamaClient(ollamaConfig, actionRegistry);
             }
         }
         logger.debug("Creating Ollama client (stub implementation)");
@@ -323,7 +323,7 @@ public class LLMProviderFactory {
             var localAIConfig = config.getLocalAIConfig();
             if (localAIConfig != null && localAIConfig.isEnabled()) {
                 logger.debug("Creating LocalAI client with configuration");
-                return new LocalAIClientImpl(localAIConfig, actionRegistry);
+                return new LocalAIClient(localAIConfig, actionRegistry);
             }
         }
         logger.debug("Creating LocalAI client (stub implementation)");
@@ -338,7 +338,7 @@ public class LLMProviderFactory {
             var vllmConfig = config.getVLLMConfig();
             if (vllmConfig != null && vllmConfig.isEnabled()) {
                 logger.debug("Creating vLLM client with configuration");
-                return new VModelClientImpl(vllmConfig, actionRegistry);
+                return new VModelClient(vllmConfig, actionRegistry);
             }
         }
         logger.debug("Creating vLLM client (stub implementation)");
@@ -353,7 +353,7 @@ public class LLMProviderFactory {
             var lmStudioConfig = config.getLMStudioConfig();
             if (lmStudioConfig != null && lmStudioConfig.isEnabled()) {
                 logger.debug("Creating LM Studio client with configuration");
-                return new LMStudioClientImpl(lmStudioConfig, actionRegistry);
+                return new LMStudioClient(lmStudioConfig, actionRegistry);
             }
         }
         logger.debug("Creating LM Studio client (stub implementation)");

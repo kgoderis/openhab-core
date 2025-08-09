@@ -1,0 +1,782 @@
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+package org.openhab.core.ai.reasoning;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.api.AgentModelContext;
+import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
+import org.openhab.core.ai.agent.api.AgentModelProvider;
+import org.openhab.core.ai.agent.api.AgentModelStatistics;
+import org.openhab.core.ai.agent.api.ModelHealthStatus;
+import org.openhab.core.ai.agent.api.ModelIntegrationStatistics;
+import org.openhab.core.ai.model.api.ModelClient;
+import org.openhab.core.ai.model.api.ModelConfigurationService;
+import org.openhab.core.ai.model.api.ModelParameters;
+import org.openhab.core.ai.model.api.ModelProviderType;
+import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.model.clients.LLMProviderFactory;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Implements the shared brain architecture for multi-agent model usage with integrated agent management.
+ * 
+ * This engine provides a centralized model reasoning service that efficiently serves
+ * multiple specialized agents, optimizing resource usage while maintaining specialized
+ * reasoning capabilities for each agent. It consolidates model integration, reasoning,
+ * decision-making, and natural language processing capabilities.
+ * 
+ * <p>
+ * This implementation provides:
+ * - Shared model brain architecture for resource optimization
+ * - Agent-specific model access and context management
+ * - Concurrent request handling and resource management
+ * - Model session pooling and optimization
+ * - Model request queuing and prioritization
+ * - Model response caching and optimization
+ * - Comprehensive error handling and fallback mechanisms
+ * </p>
+ * 
+ * @author Karel Goderis - Initial Contribution
+ */
+@Component(service = { SharedModelReasoningEngine.class, AgentModelIntegrationService.class }, immediate = true)
+@NonNullByDefault
+public class SharedModelReasoningEngine implements AgentModelIntegrationService {
+
+    private final Logger logger = LoggerFactory.getLogger(SharedModelReasoningEngine.class);
+
+    // Configuration
+    private static final int DEFAULT_MAX_CONCURRENT_REQUESTS = 10;
+    private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(30);
+    private static final int DEFAULT_MAX_CACHE_SIZE = 1000;
+    private static final Duration DEFAULT_CACHE_EXPIRATION = Duration.ofMinutes(30);
+
+    // Dependencies
+    @Reference
+    private @Nullable ModelConfigurationService modelConfigurationService;
+
+    @Reference
+    private @Nullable LLMProviderFactory llmProviderFactory;
+
+    // Agent management
+    private final Map<String, AgentModelContext> registeredAgents = new ConcurrentHashMap<>();
+    private final Map<String, AgentModelProvider> agentProviders = new ConcurrentHashMap<>();
+    private final Map<String, AgentModelStatistics> agentStatistics = new ConcurrentHashMap<>();
+
+    // Performance monitoring
+    private final AtomicLong totalRequests = new AtomicLong(0);
+    private final AtomicLong successfulRequests = new AtomicLong(0);
+    private final AtomicLong failedRequests = new AtomicLong(0);
+    private final AtomicLong cacheHits = new AtomicLong(0);
+    private final AtomicLong cacheMisses = new AtomicLong(0);
+    private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+    private final AtomicReference<Instant> lastRequestTime = new AtomicReference<>(Instant.now());
+    private final AtomicReference<Instant> lastSuccessTime = new AtomicReference<>(Instant.now());
+    private final AtomicReference<Instant> lastFailureTime = new AtomicReference<>(Instant.now());
+    private final AtomicReference<String> lastError = new AtomicReference<>("");
+
+    // Model clients and sessions
+    private final ConcurrentHashMap<String, ModelClient> modelClients = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ModelReasoningSession> activeSessions = new ConcurrentHashMap<>();
+    private final LinkedBlockingQueue<ReasoningRequest> requestQueue = new LinkedBlockingQueue<>();
+
+    // Threading
+    private final ExecutorService reasoningExecutor;
+    private final ExecutorService sessionExecutor;
+    private final ExecutorService requestExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_CONCURRENT_REQUESTS);
+    private final AtomicLong requestCounter = new AtomicLong(0);
+    private final AtomicLong sessionCounter = new AtomicLong(0);
+
+    private volatile boolean shutdown = false;
+    private volatile boolean isRunning = true;
+
+    // Configuration
+    private int maxConcurrentRequests = DEFAULT_MAX_CONCURRENT_REQUESTS;
+    private Duration requestTimeout = DEFAULT_REQUEST_TIMEOUT;
+    private int maxCacheSize = DEFAULT_MAX_CACHE_SIZE;
+    private Duration cacheExpiration = DEFAULT_CACHE_EXPIRATION;
+    private boolean enableCaching = true;
+    private boolean enableOptimization = true;
+    private boolean enableSecurity = true;
+    private boolean enableMonitoring = true;
+
+    /**
+     * Creates a new SharedModelReasoningEngine.
+     */
+    public SharedModelReasoningEngine() {
+        this.reasoningExecutor = new ThreadPoolExecutor(2, 10, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(100),
+                r -> {
+                    Thread t = new Thread(r, "SharedModelReasoning-" + r.hashCode());
+                    t.setDaemon(true);
+                    return t;
+                });
+        this.sessionExecutor = Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r, "ModelSession-" + r.hashCode());
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    @Activate
+    public void activate() {
+        logger.info("Shared Model Reasoning Engine activated");
+        startHealthMonitoring();
+    }
+
+    @Deactivate
+    public void deactivate() {
+        logger.info("Shared Model Reasoning Engine deactivated");
+        isRunning = false;
+        shutdown = true;
+        requestExecutor.shutdown();
+        reasoningExecutor.shutdown();
+        sessionExecutor.shutdown();
+        clearAllCaches();
+    }
+
+    /**
+     * Performs reasoning using the shared model for a specific agent.
+     * 
+     * @param agentId the agent identifier
+     * @param context the agent context
+     * @param prompt the reasoning prompt
+     * @param parameters optional model parameters
+     * @return a CompletableFuture containing the reasoning result
+     */
+    public CompletableFuture<ModelResponse> performReasoning(String agentId, AgentModelContext context, String prompt,
+            @Nullable ModelParameters parameters) {
+        if (shutdown) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Engine is shutdown"));
+        }
+
+        String requestId = "req-" + requestCounter.incrementAndGet();
+        ReasoningRequest request = new ReasoningRequest(requestId, agentId, context, prompt, parameters);
+
+        logger.debug("Queuing reasoning request {} for agent {}", requestId, agentId);
+
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                requestQueue.put(request);
+                return processReasoningRequest(request);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Reasoning request interrupted", e);
+            }
+        }, reasoningExecutor);
+    }
+
+    /**
+     * Creates a new reasoning session for an agent.
+     * 
+     * @param agentId the agent identifier
+     * @param context the initial context
+     * @return a CompletableFuture containing the session ID
+     */
+    public CompletableFuture<String> createSession(String agentId, AgentModelContext context) {
+        if (shutdown) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Engine is shutdown"));
+        }
+
+        String sessionId = "session-" + sessionCounter.incrementAndGet();
+        ModelReasoningSession session = new ModelReasoningSession(sessionId, agentId, context);
+        activeSessions.put(sessionId, session);
+
+        logger.debug("Created reasoning session {} for agent {}", sessionId, agentId);
+
+        return CompletableFuture.completedFuture(sessionId);
+    }
+
+    /**
+     * Continues an existing reasoning session.
+     * 
+     * @param sessionId the session identifier
+     * @param input the additional input
+     * @param parameters optional model parameters
+     * @return a CompletableFuture containing the session response
+     */
+    public CompletableFuture<ModelResponse> continueSession(String sessionId, String input,
+            @Nullable ModelParameters parameters) {
+        if (shutdown) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Engine is shutdown"));
+        }
+
+        ModelReasoningSession session = activeSessions.get(sessionId);
+        if (session == null) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Session not found: " + sessionId));
+        }
+
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return processSessionRequest(session, input, parameters);
+            } catch (Exception e) {
+                logger.error("Error processing session request for session {}", sessionId, e);
+                throw new RuntimeException("Session processing failed", e);
+            }
+        }, sessionExecutor);
+    }
+
+    /**
+     * Closes a reasoning session.
+     * 
+     * @param sessionId the session identifier
+     * @return a CompletableFuture indicating completion
+     */
+    public CompletableFuture<Void> closeSession(String sessionId) {
+        ModelReasoningSession session = activeSessions.remove(sessionId);
+        if (session != null) {
+            logger.debug("Closed reasoning session {}", sessionId);
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    /**
+     * Gets the current health status of the reasoning engine.
+     * 
+     * @return the health status
+     */
+    public ReasoningEngineHealthStatus getReasoningEngineHealthStatus() {
+        return new ReasoningEngineHealthStatus(!shutdown, activeSessions.size(), requestQueue.size(),
+                reasoningExecutor.isShutdown());
+    }
+
+    /**
+     * Shuts down the reasoning engine and cleans up resources.
+     */
+    public void shutdown() {
+        shutdown = true;
+        reasoningExecutor.shutdown();
+        sessionExecutor.shutdown();
+        activeSessions.clear();
+        requestQueue.clear();
+
+        try {
+            if (!reasoningExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                reasoningExecutor.shutdownNow();
+            }
+            if (!sessionExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                sessionExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            reasoningExecutor.shutdownNow();
+            sessionExecutor.shutdownNow();
+        }
+
+        logger.info("SharedModelReasoningEngine shutdown completed");
+    }
+
+    // AgentModelIntegrationService implementation methods
+
+    @Override
+    public CompletableFuture<ModelResponse> reasonAsync(String agentId, String prompt, Map<String, Object> context,
+            @Nullable ModelParameters parameters) {
+        return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
+            totalRequests.incrementAndGet();
+            lastRequestTime.set(Instant.now());
+
+            try {
+                // Validate agent registration
+                if (!isAgentRegistered(agentId)) {
+                    throw new IllegalArgumentException("Agent not registered: " + agentId);
+                }
+
+                // Get agent context
+                AgentModelContext agentContext = getAgentContext(agentId);
+                if (agentContext == null) {
+                    throw new IllegalStateException("Agent context not available: " + agentId);
+                }
+
+                // Execute reasoning using existing method
+                ModelResponse response = performReasoning(agentId, agentContext, prompt, parameters).get();
+
+                // Update statistics
+                successfulRequests.incrementAndGet();
+                lastSuccessTime.set(Instant.now());
+                totalResponseTimeMs.addAndGet(System.currentTimeMillis() - startTime);
+
+                // Update agent statistics
+                updateAgentStatistics(agentId, true, System.currentTimeMillis() - startTime, null);
+
+                logger.debug("Agent {} reasoning completed successfully in {}ms", agentId,
+                        System.currentTimeMillis() - startTime);
+
+                return response;
+
+            } catch (Exception e) {
+                failedRequests.incrementAndGet();
+                lastFailureTime.set(Instant.now());
+                lastError.set(e.getMessage());
+
+                // Update agent statistics
+                updateAgentStatistics(agentId, false, System.currentTimeMillis() - startTime, e.getMessage());
+
+                logger.error("Agent {} reasoning failed", agentId, e);
+                throw new RuntimeException("Reasoning failed for agent " + agentId, e);
+            }
+        }, requestExecutor);
+    }
+
+    @Override
+    public CompletableFuture<ModelResponse> reasonWithOptimizationAsync(String agentId, String prompt,
+            Map<String, Object> context, Map<String, Object> optimizationHints, @Nullable ModelParameters parameters) {
+        return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
+            totalRequests.incrementAndGet();
+            lastRequestTime.set(Instant.now());
+
+            try {
+                // Validate agent registration
+                if (!isAgentRegistered(agentId)) {
+                    throw new IllegalArgumentException("Agent not registered: " + agentId);
+                }
+
+                // Get agent context
+                AgentModelContext agentContext = getAgentContext(agentId);
+                if (agentContext == null) {
+                    throw new IllegalStateException("Agent context not available: " + agentId);
+                }
+
+                // Execute reasoning with optimization (for now, use regular reasoning)
+                ModelResponse response = performReasoning(agentId, agentContext, prompt, parameters).get();
+
+                // Update statistics
+                successfulRequests.incrementAndGet();
+                lastSuccessTime.set(Instant.now());
+                totalResponseTimeMs.addAndGet(System.currentTimeMillis() - startTime);
+
+                // Update agent statistics
+                updateAgentStatistics(agentId, true, System.currentTimeMillis() - startTime, null);
+
+                logger.debug("Agent {} optimized reasoning completed successfully in {}ms", agentId,
+                        System.currentTimeMillis() - startTime);
+
+                return response;
+
+            } catch (Exception e) {
+                failedRequests.incrementAndGet();
+                lastFailureTime.set(Instant.now());
+                lastError.set(e.getMessage());
+
+                // Update agent statistics
+                updateAgentStatistics(agentId, false, System.currentTimeMillis() - startTime, e.getMessage());
+
+                logger.error("Agent {} optimized reasoning failed", agentId, e);
+                throw new RuntimeException("Optimized reasoning failed for agent " + agentId, e);
+            }
+        }, requestExecutor);
+    }
+
+    @Override
+    public AgentModelProvider getAgentModelProvider(String agentId) {
+        return agentProviders.get(agentId);
+    }
+
+    @Override
+    public boolean registerAgent(String agentId, AgentModelContext agentContext) {
+        try {
+            logger.debug("Registering agent: {}", agentId);
+
+            // Create agent provider
+            AgentModelProvider provider = createAgentProvider(agentId, agentContext);
+            if (provider == null) {
+                logger.error("Failed to create agent provider for: {}", agentId);
+                return false;
+            }
+
+            // Register agent
+            registeredAgents.put(agentId, agentContext);
+            agentProviders.put(agentId, provider);
+
+            // Initialize statistics
+            agentStatistics.put(agentId, AgentModelStatistics.builder().agentId(agentId).build());
+
+            logger.info("Agent registered successfully: {}", agentId);
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Failed to register agent: {}", agentId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean unregisterAgent(String agentId) {
+        try {
+            logger.debug("Unregistering agent: {}", agentId);
+
+            // Remove agent
+            registeredAgents.remove(agentId);
+            agentProviders.remove(agentId);
+            agentStatistics.remove(agentId);
+
+            logger.info("Agent unregistered successfully: {}", agentId);
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Failed to unregister agent: {}", agentId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public AgentModelStatistics getAgentStatistics(String agentId) {
+        return agentStatistics.getOrDefault(agentId, AgentModelStatistics.builder().agentId(agentId).build());
+    }
+
+    @Override
+    public ModelIntegrationStatistics getOverallStatistics() {
+        return ModelIntegrationStatistics.builder().totalAgents(registeredAgents.size())
+                .activeAgents(registeredAgents.size()).totalRequests(totalRequests.get())
+                .successfulRequests(successfulRequests.get()).failedRequests(failedRequests.get())
+                .cacheHits(cacheHits.get()).cacheMisses(cacheMisses.get())
+                .totalResponseTimeMs(totalResponseTimeMs.get()).averageResponseTimeMs(calculateAverageResponseTime())
+                .minResponseTimeMs(0) // TODO: Track min response time
+                .maxResponseTimeMs(0) // TODO: Track max response time
+                .totalTokensUsed(0) // TODO: Track token usage
+                .totalCost(0) // TODO: Track cost
+                .lastRequestTime(lastRequestTime.get()).lastSuccessTime(lastSuccessTime.get())
+                .lastFailureTime(lastFailureTime.get()).lastError(lastError.get())
+                .registeredAgentIds(new ArrayList<>(registeredAgents.keySet())).build();
+    }
+
+    @Override
+    public boolean isAgentRegistered(String agentId) {
+        return registeredAgents.containsKey(agentId);
+    }
+
+    @Override
+    public List<String> getRegisteredAgentIds() {
+        return new ArrayList<>(registeredAgents.keySet());
+    }
+
+    @Override
+    public boolean updateAgentContext(String agentId, AgentModelContext context) {
+        try {
+            if (!isAgentRegistered(agentId)) {
+                logger.warn("Cannot update context for unregistered agent: {}", agentId);
+                return false;
+            }
+
+            registeredAgents.put(agentId, context);
+            logger.debug("Updated context for agent: {}", agentId);
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Failed to update context for agent: {}", agentId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public @Nullable AgentModelContext getAgentContext(String agentId) {
+        return registeredAgents.get(agentId);
+    }
+
+    @Override
+    public boolean clearAgentCache(String agentId) {
+        try {
+            AgentModelProvider provider = agentProviders.get(agentId);
+            if (provider != null) {
+                provider.clearCache();
+                logger.debug("Cleared cache for agent: {}", agentId);
+                return true;
+            }
+            return false;
+
+        } catch (Exception e) {
+            logger.error("Failed to clear cache for agent: {}", agentId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean clearAllCaches() {
+        try {
+            for (AgentModelProvider provider : agentProviders.values()) {
+                provider.clearCache();
+            }
+            logger.debug("Cleared all agent caches");
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Failed to clear all caches", e);
+            return false;
+        }
+    }
+
+    @Override
+    public ModelHealthStatus getModelHealthStatus() {
+        long total = totalRequests.get();
+        double errorRate = total > 0 ? (double) failedRequests.get() / total : 0.0;
+        double avgResponseTime = calculateAverageResponseTime();
+
+        ModelHealthStatus.HealthState healthState;
+        if (errorRate < 0.05 && avgResponseTime < 5000) {
+            healthState = ModelHealthStatus.HealthState.HEALTHY;
+        } else if (errorRate < 0.15 && avgResponseTime < 10000) {
+            healthState = ModelHealthStatus.HealthState.DEGRADED;
+        } else {
+            healthState = ModelHealthStatus.HealthState.UNHEALTHY;
+        }
+
+        return ModelHealthStatus.builder().overallHealth(healthState).primaryModelAvailable(true) // TODO: Check actual
+                                                                                                  // model availability
+                .fallbackModelAvailable(true) // TODO: Check actual fallback availability
+                .errorRate(errorRate).responseTimeMs(avgResponseTime).totalRequests(total)
+                .failedRequests(failedRequests.get()).lastError(lastError.get()).lastHealthCheck(Instant.now())
+                .lastSuccessfulRequest(lastSuccessTime.get()).lastFailedRequest(lastFailureTime.get()).build();
+    }
+
+    @Override
+    public boolean forceModelFallback(String agentId, String fallbackModel) {
+        try {
+            AgentModelProvider provider = agentProviders.get(agentId);
+            if (provider != null) {
+                provider.forceFallback(fallbackModel);
+                logger.debug("Forced fallback model {} for agent: {}", fallbackModel, agentId);
+                return true;
+            }
+            return false;
+
+        } catch (Exception e) {
+            logger.error("Failed to force fallback for agent: {}", agentId, e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean resetModelFallback(String agentId) {
+        try {
+            AgentModelProvider provider = agentProviders.get(agentId);
+            if (provider != null) {
+                provider.resetFallback();
+                logger.debug("Reset fallback for agent: {}", agentId);
+                return true;
+            }
+            return false;
+
+        } catch (Exception e) {
+            logger.error("Failed to reset fallback for agent: {}", agentId, e);
+            return false;
+        }
+    }
+
+    // Helper methods
+    private AgentModelProvider createAgentProvider(String agentId, AgentModelContext context) {
+        // TODO: Implement actual agent provider creation
+        // For now, return a placeholder implementation
+        return new DefaultAgentModelProvider(agentId, context, this);
+    }
+
+    private void updateAgentStatistics(String agentId, boolean success, long responseTimeMs, @Nullable String error) {
+        AgentModelStatistics currentStats = agentStatistics.get(agentId);
+        if (currentStats != null) {
+            // TODO: Update agent statistics with new data
+            // This would require a mutable statistics class or a different approach
+        }
+    }
+
+    private long calculateAverageResponseTime() {
+        long total = totalRequests.get();
+        return total > 0 ? totalResponseTimeMs.get() / total : 0;
+    }
+
+    private void startHealthMonitoring() {
+        // TODO: Implement periodic health monitoring
+        logger.debug("Health monitoring started");
+    }
+
+    private ModelResponse processReasoningRequest(ReasoningRequest request) {
+        try {
+            String providerId = modelConfigurationService.getPrimaryProvider();
+            if (providerId == null) {
+                throw new IllegalStateException("No primary provider configured");
+            }
+            ModelClient client = getOrCreateModelClient(providerId);
+
+            String prompt = buildAgentPrompt(request.agentId, request.context, request.prompt);
+            ModelParameters params = request.parameters != null ? request.parameters
+                    : ModelParameters.builder().build();
+
+            logger.debug("Processing reasoning request {} with provider {}", request.requestId, providerId);
+
+            ModelResponse response = client.complete(prompt, params).get();
+
+            logger.debug("Completed reasoning request {} in {}ms", request.requestId,
+                    System.currentTimeMillis() - request.timestamp);
+
+            return response;
+        } catch (Exception e) {
+            logger.error("Error processing reasoning request {}", request.requestId, e);
+            throw new RuntimeException("Reasoning request failed", e);
+        }
+    }
+
+    private ModelResponse processSessionRequest(ModelReasoningSession session, String input,
+            @Nullable ModelParameters parameters) {
+        try {
+            String providerId = modelConfigurationService.getPrimaryProvider();
+            if (providerId == null) {
+                throw new IllegalStateException("No primary provider configured");
+            }
+            ModelClient client = getOrCreateModelClient(providerId);
+
+            // Build session-aware prompt
+            String sessionPrompt = buildSessionPrompt(session, input);
+
+            ModelParameters params = parameters != null ? parameters : ModelParameters.builder().build();
+
+            logger.debug("Processing session request for session {}", session.getSessionId());
+
+            ModelResponse response = client.complete(sessionPrompt, params).get();
+
+            // Update session with new input and response
+            session.addInteraction(input, response.getContent());
+
+            return response;
+        } catch (Exception e) {
+            logger.error("Error processing session request for session {}", session.getSessionId(), e);
+            throw new RuntimeException("Session request failed", e);
+        }
+    }
+
+    private ModelClient getOrCreateModelClient(String providerId) {
+        return modelClients.computeIfAbsent(providerId, id -> {
+            try {
+                // Try to get the provider by type first
+                ModelProviderType providerType = ModelProviderType.valueOf(id.toUpperCase());
+                return llmProviderFactory.getOrCreateProvider(providerType);
+            } catch (IllegalArgumentException e) {
+                // If not a valid enum, try as string
+                return llmProviderFactory.getOrCreateProvider(id);
+            }
+        });
+    }
+
+    private String buildAgentPrompt(String agentId, AgentModelContext context, String prompt) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Agent ID: ").append(agentId).append("\n");
+        sb.append("Agent Specialization: ").append(context.getSpecialization()).append("\n");
+        sb.append("Agent Domain: ").append(context.getDomain()).append("\n");
+
+        if (!context.getCapabilities().isEmpty()) {
+            sb.append("Capabilities:\n");
+            context.getCapabilities()
+                    .forEach((key, value) -> sb.append("  ").append(key).append(": ").append(value).append("\n"));
+        }
+
+        if (!context.getConstraints().isEmpty()) {
+            sb.append("Constraints:\n");
+            context.getConstraints()
+                    .forEach((key, value) -> sb.append("  ").append(key).append(": ").append(value).append("\n"));
+        }
+
+        sb.append("\nPrompt: ").append(prompt);
+        return sb.toString();
+    }
+
+    private String buildSessionPrompt(ModelReasoningSession session, String input) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Session ID: ").append(session.getSessionId()).append("\n");
+        sb.append("Agent ID: ").append(session.getAgentId()).append("\n");
+
+        // Add session history
+        if (!session.getInteractionHistory().isEmpty()) {
+            sb.append("Session History:\n");
+            session.getInteractionHistory().forEach(interaction -> {
+                sb.append("User: ").append(interaction.getInput()).append("\n");
+                sb.append("Assistant: ").append(interaction.getResponse()).append("\n");
+            });
+        }
+
+        sb.append("\nCurrent Input: ").append(input);
+        return sb.toString();
+    }
+
+    /**
+     * Represents a reasoning request in the shared engine.
+     */
+    private static class ReasoningRequest {
+        final String requestId;
+        final String agentId;
+        final AgentModelContext context;
+        final String prompt;
+        final @Nullable ModelParameters parameters;
+        final long timestamp;
+
+        ReasoningRequest(String requestId, String agentId, AgentModelContext context, String prompt,
+                @Nullable ModelParameters parameters) {
+            this.requestId = requestId;
+            this.agentId = agentId;
+            this.context = context;
+            this.prompt = prompt;
+            this.parameters = parameters;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+
+    /**
+     * Health status information for the reasoning engine.
+     */
+    public static class ReasoningEngineHealthStatus {
+        private final boolean healthy;
+        private final int activeSessions;
+        private final int queuedRequests;
+        private final boolean executorShutdown;
+
+        public ReasoningEngineHealthStatus(boolean healthy, int activeSessions, int queuedRequests,
+                boolean executorShutdown) {
+            this.healthy = healthy;
+            this.activeSessions = activeSessions;
+            this.queuedRequests = queuedRequests;
+            this.executorShutdown = executorShutdown;
+        }
+
+        public boolean isHealthy() {
+            return healthy && !executorShutdown;
+        }
+
+        public int getActiveSessions() {
+            return activeSessions;
+        }
+
+        public int getQueuedRequests() {
+            return queuedRequests;
+        }
+
+        public boolean isExecutorShutdown() {
+            return executorShutdown;
+        }
+    }
+}

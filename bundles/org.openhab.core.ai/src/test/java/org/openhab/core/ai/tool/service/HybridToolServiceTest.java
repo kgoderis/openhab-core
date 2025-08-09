@@ -10,7 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openhab.core.ai.action.ActionContext;
 import org.openhab.core.ai.action.ActionResult;
-import org.openhab.core.ai.api.model.ModelProviderType;
+import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**
  * Unit tests for HybridToolService

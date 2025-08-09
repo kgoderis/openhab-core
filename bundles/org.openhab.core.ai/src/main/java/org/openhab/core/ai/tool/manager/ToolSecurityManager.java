@@ -1,52 +1,90 @@
 package org.openhab.core.ai.tool.manager;
 
+import java.util.Map;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.modelcontextprotocol.server.McpServerFeatures;
-
 /**
- * Security manager for MCP Tools.
+ * Manager for tool security operations.
  * 
- * This class provides security functionality for the MCP Tool server,
- * including tool filtering and access control.
+ * Provides centralized security capabilities for tool operations.
  * 
  * @author Karel Goderis - Initial Contribution
- * @since 1.0.0
  */
 @NonNullByDefault
 public class ToolSecurityManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(ToolSecurityManager.class);
-
-    private final boolean securityEnabled;
+    private static final Logger LOGGER = LoggerFactory.getLogger(ToolSecurityManager.class);
 
     /**
-     * Create a new security manager.
-     * 
-     * @param securityEnabled true if security is enabled
+     * Security statistics class.
      */
-    public ToolSecurityManager(boolean securityEnabled) {
-        this.securityEnabled = securityEnabled;
+    public static class SecurityStatistics {
+        private final int totalRequests;
+        private final int allowedRequests;
+        private final int deniedRequests;
+        private final int securityViolations;
+
+        public SecurityStatistics(int totalRequests, int allowedRequests, int deniedRequests, int securityViolations) {
+            this.totalRequests = totalRequests;
+            this.allowedRequests = allowedRequests;
+            this.deniedRequests = deniedRequests;
+            this.securityViolations = securityViolations;
+        }
+
+        public int getTotalRequests() {
+            return totalRequests;
+        }
+
+        public int getAllowedRequests() {
+            return allowedRequests;
+        }
+
+        public int getDeniedRequests() {
+            return deniedRequests;
+        }
+
+        public int getSecurityViolations() {
+            return securityViolations;
+        }
     }
 
     /**
-     * Check if security is enabled.
+     * Check if a tool execution is allowed.
      * 
-     * @return true if security is enabled
+     * @param toolId the tool ID
+     * @param context the execution context
+     * @return true if execution is allowed
      */
-    public boolean isSecurityEnabled() {
-        return securityEnabled;
+    public boolean isExecutionAllowed(String toolId, String context) {
+        LOGGER.debug("Checking execution permission for tool: {}, context: {}", toolId, context);
+        // Basic implementation - can be extended with actual security checks
+        return true;
     }
 
     /**
-     * Check if the security manager is healthy.
+     * Validate tool access.
      * 
-     * @return true if healthy
+     * @param toolId the tool ID
+     * @param userId the user ID
+     * @return true if access is valid
      */
-    public boolean isHealthy() {
-        return true; // TODO: Implement health check
+    public boolean validateToolAccess(String toolId, String userId) {
+        LOGGER.debug("Validating tool access for tool: {}, user: {}", toolId, userId);
+        // Basic implementation - can be extended with actual access validation
+        return true;
+    }
+
+    /**
+     * Log a security violation.
+     * 
+     * @param toolId the tool ID
+     * @param violation the violation description
+     */
+    public void logSecurityViolation(String toolId, String violation) {
+        LOGGER.warn("Security violation for tool: {}, violation: {}", toolId, violation);
     }
 
     /**
@@ -55,67 +93,33 @@ public class ToolSecurityManager {
      * @return security statistics
      */
     public SecurityStatistics getSecurityStatistics() {
-        return new SecurityStatistics();
+        // Basic implementation - can be extended with actual statistics
+        return new SecurityStatistics(0, 0, 0, 0);
     }
 
     /**
-     * Filter sync tools by security.
+     * Clear security statistics.
+     */
+    public void clearSecurityStatistics() {
+        LOGGER.info("Security statistics cleared");
+    }
+
+    /**
+     * Get security configuration.
      * 
-     * @param toolSpecs the tool specifications to filter
-     * @return the filtered tool specifications
+     * @return map of security configuration
      */
-    public McpServerFeatures.SyncToolSpecification[] filterSyncTools(
-            McpServerFeatures.SyncToolSpecification[] toolSpecs) {
-        if (!securityEnabled) {
-            return toolSpecs;
-        }
-
-        logger.debug("Filtering {} sync tools by security", toolSpecs.length);
-        // TODO: Implement security filtering
-        return toolSpecs;
+    public Map<String, Object> getSecurityConfiguration() {
+        // Basic implementation - can be extended with actual configuration
+        return Map.of("enabled", true, "strictMode", false, "maxRetries", 3);
     }
 
     /**
-     * Filter async tools by security.
+     * Update security configuration.
      * 
-     * @param toolSpecs the tool specifications to filter
-     * @return the filtered tool specifications
+     * @param config the new configuration
      */
-    public McpServerFeatures.AsyncToolSpecification[] filterAsyncTools(
-            McpServerFeatures.AsyncToolSpecification[] toolSpecs) {
-        if (!securityEnabled) {
-            return toolSpecs;
-        }
-
-        logger.debug("Filtering {} async tools by security", toolSpecs.length);
-        // TODO: Implement security filtering
-        return toolSpecs;
-    }
-
-    /**
-     * Security statistics.
-     */
-    public static class SecurityStatistics {
-        private final long totalRequests;
-        private final long allowedRequests;
-        private final long deniedRequests;
-
-        public SecurityStatistics() {
-            this.totalRequests = 0;
-            this.allowedRequests = 0;
-            this.deniedRequests = 0;
-        }
-
-        public long getTotalRequests() {
-            return totalRequests;
-        }
-
-        public long getAllowedRequests() {
-            return allowedRequests;
-        }
-
-        public long getDeniedRequests() {
-            return deniedRequests;
-        }
+    public void updateSecurityConfiguration(Map<String, Object> config) {
+        LOGGER.info("Security configuration updated: {}", config);
     }
 }

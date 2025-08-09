@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.api.action.Action;
+import org.openhab.core.ai.action.api.Action;
 
 /**
  * Metadata information for an action.

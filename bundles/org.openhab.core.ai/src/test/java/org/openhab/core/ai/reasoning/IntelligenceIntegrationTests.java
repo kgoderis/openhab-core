@@ -8,8 +8,8 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openhab.core.ai.api.reasoning.MultiStepReasoningResult;
-import org.openhab.core.ai.api.reasoning.ReasoningContext;
+import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
+import org.openhab.core.ai.reasoning.api.ReasoningContext;
 
 /**
  * Intelligence Integration Tests for AI reasoning components

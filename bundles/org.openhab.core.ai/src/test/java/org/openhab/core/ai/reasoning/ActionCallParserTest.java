@@ -8,8 +8,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.api.model.ModelResponse;
 import org.openhab.core.ai.model.ModelResponseActionParser;
+import org.openhab.core.ai.model.api.ModelResponse;
 
 /**
  * Unit tests for ActionCallParser
