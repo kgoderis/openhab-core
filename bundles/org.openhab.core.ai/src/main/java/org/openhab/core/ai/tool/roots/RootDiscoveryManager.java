@@ -140,7 +140,7 @@ public class RootDiscoveryManager implements RootsService {
             }
 
             // Create and add root
-            Root root = new RootImpl(rootId, path, description, readOnly);
+            Root root = new DefaultRoot(rootId, path, description, readOnly);
             activeRoots.put(rootId, root);
 
             successfulRequests.incrementAndGet();
@@ -209,13 +209,13 @@ public class RootDiscoveryManager implements RootsService {
     /**
      * Concrete implementation of Root interface.
      */
-    private static class RootImpl implements Root {
+    private static class DefaultRoot implements Root {
         private final String id;
         private final String path;
         private final String description;
         private final boolean readOnly;
 
-        public RootImpl(String id, String path, String description, boolean readOnly) {
+        public DefaultRoot(String id, String path, String description, boolean readOnly) {
             this.id = id;
             this.path = path;
             this.description = description;

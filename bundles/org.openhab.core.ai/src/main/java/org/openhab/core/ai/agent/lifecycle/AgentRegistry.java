@@ -100,7 +100,7 @@ public class AgentRegistry {
         agents.put(agentId, agent);
         agentCapabilities.putIfAbsent(agentId, new CopyOnWriteArraySet<>());
         agentStatus.put(agentId, Agent.AgentStatus.OFFLINE);
-        agentMetrics.putIfAbsent(agentId, new AgentMetricsImpl(agentId));
+        agentMetrics.putIfAbsent(agentId, new DefaultAgentMetrics(agentId));
 
         // Set up security context
         agentSecurityContexts.put(agentId, securityContext);
@@ -290,15 +290,15 @@ public class AgentRegistry {
         if (!hasPermission(requestingUserId, agentId, "read")) {
             return null;
         }
-        return agentMetrics.computeIfAbsent(agentId, k -> new AgentMetricsImpl(k));
+        return agentMetrics.computeIfAbsent(agentId, k -> new DefaultAgentMetrics(k));
     }
 
     /**
      * Record an agent execution for metrics.
      */
     public void recordAgentExecution(String agentId, long executionTime, boolean success) {
-        AgentMetricsImpl metrics = (AgentMetricsImpl) agentMetrics.computeIfAbsent(agentId,
-                k -> new AgentMetricsImpl(k));
+        DefaultAgentMetrics metrics = (DefaultAgentMetrics) agentMetrics.computeIfAbsent(agentId,
+                k -> new DefaultAgentMetrics(k));
         metrics.recordExecution(executionTime, success);
     }
 
@@ -538,13 +538,13 @@ public class AgentRegistry {
     /**
      * Implementation of AgentMetrics interface.
      */
-    private static class AgentMetricsImpl implements Agent.AgentMetrics {
+    private static class DefaultAgentMetrics implements Agent.AgentMetrics {
         private final String agentId;
         private final List<Long> executionTimes = new CopyOnWriteArrayList<>();
         private int successCount = 0;
         private int failureCount = 0;
 
-        public AgentMetricsImpl(String agentId) {
+        public DefaultAgentMetrics(String agentId) {
             this.agentId = agentId;
         }
 

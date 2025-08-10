@@ -1,4 +1,4 @@
-package org.openhab.core.ai.agent.negotiation;
+package org.openhab.core.ai.agent.collaboration.negotiation;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 

@@ -39,6 +39,7 @@ import io.a2a.spec.EventKind;
 import io.a2a.spec.JSONRPCError;
 import io.a2a.spec.MessageSendParams;
 import io.a2a.spec.Task;
+import io.a2a.spec.TaskQueryParams;
 import io.a2a.spec.TaskState;
 import io.a2a.spec.TaskStatus;
 import io.a2a.spec.TaskStatusUpdateEvent;
@@ -275,10 +276,11 @@ public class AgentTaskManager {
         if (store != null) {
             Task task = store.get(taskId);
             if (task != null) {
-                // Update task status to cancelled
-                TaskStatus cancelledStatus = new TaskStatus(TaskState.CANCELED, "Task cancelled by user", null);
-                Task cancelledTask = new Task(task.getId(), task.getName(), task.getDescription(), task.getInput(),
-                        cancelledStatus, task.getCreatedAt(), System.currentTimeMillis(), task.getMetadata());
+                // Update task status to cancelled (use available constructor)
+                TaskStatus cancelledStatus = new TaskStatus(TaskState.CANCELED);
+                // Preserve existing fields we have access to; use empty lists for attachments/messages
+                Task cancelledTask = new Task(task.getId(), task.getContextId(), cancelledStatus, new ArrayList<>(),
+                        new ArrayList<>(), task.getMetadata(), "task");
 
                 // Save updated task
                 store.save(cancelledTask);
@@ -298,7 +300,14 @@ public class AgentTaskManager {
      * @return list of tasks matching the criteria
      * @throws JSONRPCError if there's an error listing tasks
      */
-    public List<Task> listTasks(@Nullable io.a2a.spec.TaskQueryParams params) throws JSONRPCError {
+    public List<Task> listTasks(@Nullable TaskQueryParams params) throws JSONRPCError {
+        // TODO(openHAB AI): Implement server-side filtering and pagination for tasks/list
+        // - The A2A SDK's TaskQueryParams currently only offers historyLength for single-task queries
+        // - For compliance, keep tasks/list unfiltered; layering options:
+        // 1) Introduce an internal DTO (e.g., org.openhab...ListTasksParams) consumed by a non-SDK endpoint
+        // 2) Apply filtering in AgentProtocolHandler before returning to clients
+        // 3) Revisit when the SDK exposes rich list query params and wire those getters here
+        // Tracked in doc/BRAIN_PLAN.md under "Implement server-side filtering for tasks/list (AgentTaskManager)"
         logger.debug("Listing tasks with params: {}", params);
 
         try {
@@ -310,22 +319,6 @@ public class AgentTaskManager {
             // Get all tasks from the store
             List<Task> allTasks = getAllTasksFromStore(store);
 
-            // Apply filtering if params are provided
-            if (params != null) {
-                allTasks = applyTaskFilters(allTasks, params);
-            }
-
-            // Apply pagination if specified
-            if (params != null && params.limit() != null) {
-                int limit = params.limit();
-                int offset = params.offset() != null ? params.offset() : 0;
-
-                int startIndex = Math.min(offset, allTasks.size());
-                int endIndex = Math.min(startIndex + limit, allTasks.size());
-
-                allTasks = allTasks.subList(startIndex, endIndex);
-            }
-
             logger.debug("Returning {} tasks", allTasks.size());
             return allTasks;
 
@@ -333,6 +326,76 @@ public class AgentTaskManager {
             logger.error("Error listing tasks", e);
             throw new JSONRPCError(-32603, "Internal error listing tasks: " + e.getMessage(), null);
         }
+    }
+
+    /**
+     * List tasks with server-side filtering and pagination using internal params.
+     * This does not alter SDK surface; callers within openHAB can use this for UI/API needs.
+     */
+    public List<Task> listTasksFiltered(ListTasksParams filter) throws JSONRPCError {
+        try {
+            TaskStore store = taskStore;
+            if (store == null) {
+                throw new JSONRPCError(-32603, "Internal error: TaskStore not available", null);
+            }
+
+            List<Task> all = getAllTasksFromStore(store);
+
+            // Apply filters
+            List<Task> filtered = new ArrayList<>();
+            for (Task t : all) {
+                if (!matchesFilters(t, filter)) {
+                    continue;
+                }
+                filtered.add(t);
+            }
+
+            // Pagination
+            int fromIndex = Math.min(filter.offset(), filtered.size());
+            int toIndex = Math.min(fromIndex + filter.limit(), filtered.size());
+            return filtered.subList(fromIndex, toIndex);
+        } catch (Exception e) {
+            logger.error("Error listing tasks (filtered)", e);
+            throw new JSONRPCError(-32603, "Internal error listing tasks: " + e.getMessage(), null);
+        }
+    }
+
+    private boolean matchesFilters(Task task, ListTasksParams filter) {
+        // Status
+        if (filter.status() != null && task.getStatus() != null && task.getStatus().state() != filter.status()) {
+            return false;
+        }
+
+        // Agent assignment
+        if (filter.agentId() != null && !filter.agentId().isEmpty()) {
+            String assigned = taskAgentAssignments.get(task.getId());
+            if (assigned == null || !assigned.equals(filter.agentId())) {
+                return false;
+            }
+        }
+
+        // Skill
+        if (filter.skillId() != null && !filter.skillId().isEmpty()) {
+            String skill = extractSkillId(task);
+            if (skill == null || !filter.skillId().equals(skill)) {
+                return false;
+            }
+        }
+
+        // Created time window from metadata
+        Long created = null;
+        Map<String, Object> md = task.getMetadata();
+        if (md != null && md.get("created") instanceof Number) {
+            created = ((Number) md.get("created")).longValue();
+        }
+        if (filter.createdAfter() != null && created != null && created <= filter.createdAfter()) {
+            return false;
+        }
+        if (filter.createdBefore() != null && created != null && created >= filter.createdBefore()) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -354,58 +417,6 @@ public class AgentTaskManager {
         }
 
         return tasks;
-    }
-
-    /**
-     * Apply filters to the task list based on query parameters.
-     * 
-     * @param tasks the list of tasks to filter
-     * @param params the query parameters
-     * @return filtered list of tasks
-     */
-    private List<Task> applyTaskFilters(List<Task> tasks, io.a2a.spec.TaskQueryParams params) {
-        List<Task> filteredTasks = new ArrayList<>(tasks);
-
-        // Filter by status if specified
-        if (params.status() != null) {
-            filteredTasks = filteredTasks.stream().filter(task -> task.getStatus().getState() == params.status())
-                    .collect(java.util.stream.Collectors.toList());
-        }
-
-        // Filter by agent if specified
-        if (params.agent() != null) {
-            filteredTasks = filteredTasks.stream().filter(task -> {
-                String assignedAgent = taskAgentAssignments.get(task.getId());
-                return params.agent().equals(assignedAgent);
-            }).collect(java.util.stream.Collectors.toList());
-        }
-
-        // Filter by skill if specified
-        if (params.skill() != null) {
-            filteredTasks = filteredTasks.stream().filter(task -> {
-                String skillId = extractSkillId(task);
-                return params.skill().equals(skillId);
-            }).collect(java.util.stream.Collectors.toList());
-        }
-
-        // Filter by creation time range if specified
-        if (params.createdAfter() != null || params.createdBefore() != null) {
-            filteredTasks = filteredTasks.stream().filter(task -> {
-                long createdAt = task.getCreatedAt();
-
-                if (params.createdAfter() != null && createdAt < params.createdAfter()) {
-                    return false;
-                }
-
-                if (params.createdBefore() != null && createdAt > params.createdBefore()) {
-                    return false;
-                }
-
-                return true;
-            }).collect(java.util.stream.Collectors.toList());
-        }
-
-        return filteredTasks;
     }
 
     /**
@@ -837,7 +848,7 @@ public class AgentTaskManager {
 
     private Task createTaskFromMessage(MessageSendParams params) {
         String taskId = "task-" + System.currentTimeMillis();
-        String content = extractTextContent(params.getMessage());
+        String content = extractTextContent(params.message());
 
         // Create task using SDK patterns
         TaskStatus initialStatus = new TaskStatus(TaskState.SUBMITTED);
@@ -845,7 +856,7 @@ public class AgentTaskManager {
         metadata.put("content", content);
         metadata.put("created", System.currentTimeMillis());
 
-        return new Task(taskId, "OpenHAB A2A Task", initialStatus, new ArrayList<>(), List.of(params.getMessage()),
+        return new Task(taskId, "OpenHAB A2A Task", initialStatus, new ArrayList<>(), List.of(params.message()),
                 metadata, "task");
     }
 
@@ -874,7 +885,7 @@ public class AgentTaskManager {
     private String extractTextContent(io.a2a.spec.Message message) {
         if (message.getParts() != null) {
             StringBuilder textBuilder = new StringBuilder();
-            for (io.a2a.spec.Part part : message.getParts()) {
+            for (io.a2a.spec.Part<?> part : message.getParts()) {
                 if (part instanceof io.a2a.spec.TextPart textPart) {
                     textBuilder.append(textPart.getText());
                 }
@@ -2282,7 +2293,7 @@ public class AgentTaskManager {
 
         try {
             // Convert A2A message to A2A SDK Task early
-            Task task = convertMessageToTask(params.getMessage());
+            Task task = convertMessageToTask(params.message());
             logger.debug("Converted A2A message to A2A SDK Task: {}", task.getId());
 
             // Get message type from task metadata

@@ -81,7 +81,7 @@ public class ProgressTrackingManager implements ProgressService {
             }
 
             // Create and add operation
-            ProgressOperation operation = new ProgressOperationImpl(operationId, description, totalSteps,
+            ProgressOperation operation = new DefaultProgressOperation(operationId, description, totalSteps,
                     ProgressStatus.IN_PROGRESS, System.currentTimeMillis());
             activeOperations.put(operationId, operation);
 
@@ -203,7 +203,7 @@ public class ProgressTrackingManager implements ProgressService {
     /**
      * Concrete implementation of ProgressOperation interface.
      */
-    private static class ProgressOperationImpl implements ProgressOperation {
+    private static class DefaultProgressOperation implements ProgressOperation {
         private final String id;
         private final String description;
         private final int totalSteps;
@@ -214,7 +214,7 @@ public class ProgressTrackingManager implements ProgressService {
         private long lastUpdateTime;
         private long completionTime;
 
-        public ProgressOperationImpl(String id, String description, int totalSteps, ProgressStatus status,
+        public DefaultProgressOperation(String id, String description, int totalSteps, ProgressStatus status,
                 long startTime) {
             this.id = id;
             this.description = description;

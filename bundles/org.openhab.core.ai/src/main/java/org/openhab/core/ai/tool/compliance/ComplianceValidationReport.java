@@ -1,4 +1,4 @@
-package org.openhab.core.ai.tool.compliance.tests;
+package org.openhab.core.ai.tool.compliance;
 
 import java.util.List;
 import java.util.Map;

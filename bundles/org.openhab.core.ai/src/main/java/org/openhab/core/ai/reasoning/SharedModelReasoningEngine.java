@@ -35,12 +35,12 @@ import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.api.AgentModelStatistics;
 import org.openhab.core.ai.agent.api.ModelHealthStatus;
 import org.openhab.core.ai.agent.api.ModelIntegrationStatistics;
+import org.openhab.core.ai.model.DefaultAgentModelProvider;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.model.api.ModelParameters;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelResponse;
-import org.openhab.core.ai.model.clients.LLMProviderFactory;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -86,7 +86,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService 
     private @Nullable ModelConfigurationService modelConfigurationService;
 
     @Reference
-    private @Nullable LLMProviderFactory llmProviderFactory;
+    private @Nullable DefaultAgentModelProvider defaultAgentModelProvider;
 
     // Agent management
     private final Map<String, AgentModelContext> registeredAgents = new ConcurrentHashMap<>();
@@ -594,9 +594,8 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService 
 
     // Helper methods
     private AgentModelProvider createAgentProvider(String agentId, AgentModelContext context) {
-        // TODO: Implement actual agent provider creation
-        // For now, return a placeholder implementation
-        return new DefaultAgentModelProvider(agentId, context, this);
+        // Create a DefaultAgentModelProvider with the required dependencies
+        return new DefaultAgentModelProvider(agentId, context, this, modelConfigurationService, null, null);
     }
 
     private void updateAgentStatistics(String agentId, boolean success, long responseTimeMs, @Nullable String error) {
@@ -617,56 +616,93 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService 
         logger.debug("Health monitoring started");
     }
 
+    /**
+     * Estimates the number of tokens in a text string.
+     * 
+     * @param text The text to estimate tokens for
+     * @return Estimated token count
+     */
+    private int estimateTokens(String text) {
+        // Simple token estimation: ~4 characters per token
+        // This is a rough approximation - real tokenization would be more accurate
+        return Math.max(1, text.length() / 4);
+    }
+
+    /**
+     * Estimates the cost for a given number of tokens.
+     * 
+     * @param tokens The number of tokens
+     * @return Estimated cost
+     */
+    private double estimateCost(int tokens) {
+        // Use a default cost per 1K tokens (this could be made configurable)
+        double costPer1k = 0.01; // Default $0.01 per 1K tokens
+        return (tokens / 1000.0) * costPer1k;
+    }
+
     private ModelResponse processReasoningRequest(ReasoningRequest request) {
+        long startTime = System.currentTimeMillis();
         try {
             String providerId = modelConfigurationService.getPrimaryProvider();
             if (providerId == null) {
                 throw new IllegalStateException("No primary provider configured");
             }
-            ModelClient client = getOrCreateModelClient(providerId);
+            // Use agent-aware client creation for automatic tracking
+            ModelClient client = getOrCreateModelClientForAgent(providerId, request.agentId);
 
             String prompt = buildAgentPrompt(request.agentId, request.context, request.prompt);
             ModelParameters params = request.parameters != null ? request.parameters
                     : ModelParameters.builder().build();
 
-            logger.debug("Processing reasoning request {} with provider {}", request.requestId, providerId);
+            logger.debug("Processing reasoning request {} with provider {} for agent {}", request.requestId, providerId,
+                    request.agentId);
 
             ModelResponse response = client.complete(prompt, params).get();
 
-            logger.debug("Completed reasoning request {} in {}ms", request.requestId,
-                    System.currentTimeMillis() - request.timestamp);
+            long responseTime = System.currentTimeMillis() - startTime;
+            logger.debug("Completed reasoning request {} in {}ms", request.requestId, responseTime);
 
             return response;
         } catch (Exception e) {
+            long responseTime = System.currentTimeMillis() - startTime;
             logger.error("Error processing reasoning request {}", request.requestId, e);
+
             throw new RuntimeException("Reasoning request failed", e);
         }
     }
 
     private ModelResponse processSessionRequest(ModelReasoningSession session, String input,
             @Nullable ModelParameters parameters) {
+        long startTime = System.currentTimeMillis();
         try {
             String providerId = modelConfigurationService.getPrimaryProvider();
             if (providerId == null) {
                 throw new IllegalStateException("No primary provider configured");
             }
-            ModelClient client = getOrCreateModelClient(providerId);
+            // Use agent-aware client creation with session tracking
+            ModelClient client = getOrCreateModelClientForAgent(providerId, session.getAgentId(),
+                    session.getSessionId());
 
             // Build session-aware prompt
             String sessionPrompt = buildSessionPrompt(session, input);
 
             ModelParameters params = parameters != null ? parameters : ModelParameters.builder().build();
 
-            logger.debug("Processing session request for session {}", session.getSessionId());
+            logger.debug("Processing session request for session {} (agent: {})", session.getSessionId(),
+                    session.getAgentId());
 
             ModelResponse response = client.complete(sessionPrompt, params).get();
+
+            long responseTime = System.currentTimeMillis() - startTime;
 
             // Update session with new input and response
             session.addInteraction(input, response.getContent());
 
             return response;
         } catch (Exception e) {
+            long responseTime = System.currentTimeMillis() - startTime;
             logger.error("Error processing session request for session {}", session.getSessionId(), e);
+
             throw new RuntimeException("Session request failed", e);
         }
     }
@@ -676,12 +712,59 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService 
             try {
                 // Try to get the provider by type first
                 ModelProviderType providerType = ModelProviderType.valueOf(id.toUpperCase());
-                return llmProviderFactory.getOrCreateProvider(providerType);
+                return defaultAgentModelProvider.getOrCreateProvider(providerType);
             } catch (IllegalArgumentException e) {
                 // If not a valid enum, try as string
-                return llmProviderFactory.getOrCreateProvider(id);
+                return defaultAgentModelProvider.getOrCreateProvider(id);
             }
         });
+    }
+
+    /**
+     * Gets or creates a ModelClient with automatic tracking for a specific agent.
+     * 
+     * @param providerId The provider ID
+     * @param agentId The agent ID for tracking
+     * @return The ModelClient with tracking enabled
+     */
+    private ModelClient getOrCreateModelClientForAgent(String providerId, String agentId) {
+        DefaultAgentModelProvider provider = defaultAgentModelProvider;
+        if (provider == null) {
+            throw new IllegalStateException("DefaultAgentModelProvider not available");
+        }
+
+        try {
+            // Try to get the provider by type first
+            ModelProviderType providerType = ModelProviderType.valueOf(providerId.toUpperCase());
+            return provider.getOrCreateProviderForAgent(providerType);
+        } catch (IllegalArgumentException e) {
+            // If not a valid enum, try as string
+            return provider.getOrCreateProviderForAgent(providerId);
+        }
+    }
+
+    /**
+     * Gets or creates a ModelClient with automatic tracking for a specific agent and session.
+     * 
+     * @param providerId The provider ID
+     * @param agentId The agent ID for tracking
+     * @param sessionId The session ID for tracking
+     * @return The ModelClient with tracking enabled
+     */
+    private ModelClient getOrCreateModelClientForAgent(String providerId, String agentId, String sessionId) {
+        DefaultAgentModelProvider provider = defaultAgentModelProvider;
+        if (provider == null) {
+            throw new IllegalStateException("DefaultAgentModelProvider not available");
+        }
+
+        try {
+            // Try to get the provider by type first
+            ModelProviderType providerType = ModelProviderType.valueOf(providerId.toUpperCase());
+            return provider.getOrCreateProviderForAgent(providerType, sessionId);
+        } catch (IllegalArgumentException e) {
+            // If not a valid enum, try as string
+            return provider.getOrCreateProviderForAgent(providerId, sessionId);
+        }
     }
 
     private String buildAgentPrompt(String agentId, AgentModelContext context, String prompt) {

@@ -108,8 +108,10 @@ public class AgentServlet extends HttpServlet {
         }
 
         String path = request.getRequestURI();
-        if (path.endsWith("/.well-known/agent.json")) {
+        if (path.endsWith("/.well-known/agent.json") || path.endsWith("/.well-known/agent-card.json")) {
             handleAgentCard(response);
+        } else if (path.endsWith("/message/stream")) {
+            handleMessageStream(response);
         } else if (path.endsWith("/health")) {
             handleHealthCheck(response);
         } else if (path.endsWith("/status")) {
@@ -311,6 +313,25 @@ public class AgentServlet extends HttpServlet {
         response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType("application/json");
         response.getWriter().write(agentCard.toString());
+    }
+
+    /**
+     * Handle SSE message stream subscription.
+     */
+    private void handleMessageStream(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_OK);
+        response.setHeader("Cache-Control", "no-cache");
+        response.setHeader("Connection", "keep-alive");
+        response.setContentType("text/event-stream");
+
+        // Initial handshake event: client connected
+        response.getWriter().write(":ok\n\n");
+        response.getWriter().write("event: ready\n");
+        response.getWriter().write("data: {\"status\":\"ready\",\"protocol\":\"a2a\"}\n\n");
+        response.getWriter().flush();
+
+        // TODO: For now we end the stream immediately after initial signal. A future
+        // update will keep the connection open and dispatch streaming events.
     }
 
     /**

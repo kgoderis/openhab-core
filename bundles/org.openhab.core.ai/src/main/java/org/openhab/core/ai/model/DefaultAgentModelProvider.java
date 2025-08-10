@@ -9,14 +9,27 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.agent.api.AgentModelConfiguration;
 import org.openhab.core.ai.agent.api.AgentModelContext;
 import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.api.AgentModelStatistics;
 import org.openhab.core.ai.agent.api.ModelHealthStatus;
+import org.openhab.core.ai.model.api.ModelClient;
+import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.model.api.ModelParameters;
+import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.model.clients.AnthropicClient;
+import org.openhab.core.ai.model.clients.AzureOpenAIClient;
+import org.openhab.core.ai.model.clients.GoogleGenAIClient;
+import org.openhab.core.ai.model.clients.LMStudioClient;
+import org.openhab.core.ai.model.clients.LocalAIClient;
+import org.openhab.core.ai.model.clients.OllamaClient;
+import org.openhab.core.ai.model.clients.OpenAIClient;
+import org.openhab.core.ai.model.clients.StubModelClient;
+import org.openhab.core.ai.model.clients.VModelClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +46,8 @@ import org.slf4j.LoggerFactory;
  * - Agent-specific model error handling and recovery
  * - Agent-specific model performance monitoring
  * - Agent-specific model security and access controls
+ * - LLM client creation and management
+ * - Agent-specific tracking and analytics
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
@@ -50,6 +65,15 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
     private final Map<String, Object> optimizationSettings = new HashMap<>();
     private final Map<String, Object> securitySettings = new HashMap<>();
     private final Map<String, Object> monitoringSettings = new HashMap<>();
+
+    // LLM Client Management
+    private final Map<String, ModelClient> clientCache = new ConcurrentHashMap<>();
+    private final Map<ModelProviderType, ModelClient> typedClientCache = new ConcurrentHashMap<>();
+
+    // Dependencies
+    private final @Nullable ModelConfigurationService modelConfigurationService;
+    private final @Nullable ActionRegistry actionRegistry;
+    private final @Nullable ModelTrackingService trackingService;
 
     // Configuration
     private AgentModelConfiguration configuration;
@@ -74,10 +98,15 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
     private String lastError = "";
 
     public DefaultAgentModelProvider(String agentId, AgentModelContext context,
-            AgentModelIntegrationService integrationService) {
+            AgentModelIntegrationService integrationService,
+            @Nullable ModelConfigurationService modelConfigurationService, @Nullable ActionRegistry actionRegistry,
+            @Nullable ModelTrackingService trackingService) {
         this.agentId = agentId;
         this.context = context;
         this.integrationService = integrationService;
+        this.modelConfigurationService = modelConfigurationService;
+        this.actionRegistry = actionRegistry;
+        this.trackingService = trackingService;
         this.configuration = createDefaultConfiguration();
         initializeProvider();
     }
@@ -391,5 +420,331 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
 
     private long calculateAverageResponseTime() {
         return totalRequests > 0 ? totalResponseTimeMs / totalRequests : 0;
+    }
+
+    // LLM Client Management Methods
+
+    /**
+     * Gets an LLM client for the specified provider type, creating it if necessary.
+     * 
+     * @param providerType The provider type
+     * @return The LLM client
+     * @throws IllegalArgumentException if the provider type is not supported
+     */
+    public ModelClient getOrCreateProvider(ModelProviderType providerType) {
+        ModelClient client = typedClientCache.get(providerType);
+        if (client == null) {
+            client = createProvider(providerType);
+            typedClientCache.put(providerType, client);
+        }
+        return client;
+    }
+
+    /**
+     * Gets an LLM client for the specified provider type string, creating it if necessary.
+     * 
+     * @param providerType The provider type string
+     * @return The LLM client
+     * @throws IllegalArgumentException if the provider type is not supported
+     */
+    public ModelClient getOrCreateProvider(String providerType) {
+        ModelClient client = clientCache.get(providerType.toLowerCase());
+        if (client == null) {
+            client = createProvider(providerType);
+            clientCache.put(providerType.toLowerCase(), client);
+        }
+        return client;
+    }
+
+    /**
+     * Gets an LLM client for the specified provider type and records usage for this agent.
+     * 
+     * @param providerType The provider type
+     * @return The LLM client
+     * @throws IllegalArgumentException if the provider type is not supported
+     */
+    public ModelClient getOrCreateProviderForAgent(ModelProviderType providerType) {
+        ModelClient client = getOrCreateProvider(providerType);
+        recordClientUsage(providerType, client.getModelName(), null);
+        return client;
+    }
+
+    /**
+     * Gets an LLM client for the specified provider type string.
+     * 
+     * @param providerType The provider type string
+     * @return The LLM client
+     * @throws IllegalArgumentException if the provider type is not supported
+     */
+    public ModelClient getOrCreateProviderForAgent(String providerType) {
+        return getOrCreateProvider(providerType);
+    }
+
+    /**
+     * Gets an LLM client for the specified provider type and session.
+     * 
+     * @param providerType The provider type
+     * @param sessionId The session ID for tracking
+     * @return The LLM client
+     * @throws IllegalArgumentException if the provider type is not supported
+     */
+    public ModelClient getOrCreateProviderForAgent(ModelProviderType providerType, String sessionId) {
+        return getOrCreateProvider(providerType);
+    }
+
+    /**
+     * Gets an LLM client for the specified provider type string and session.
+     * 
+     * @param providerType The provider type string
+     * @param sessionId The session ID for tracking
+     * @return The LLM client
+     * @throws IllegalArgumentException if the provider type is not supported
+     */
+    public ModelClient getOrCreateProviderForAgent(String providerType, String sessionId) {
+        return getOrCreateProvider(providerType);
+    }
+
+    /**
+     * Gets the primary provider for this agent.
+     * 
+     * @return The primary provider, or null if not configured
+     */
+    public @Nullable ModelClient getPrimaryProviderForAgent() {
+        return getPrimaryProvider();
+    }
+
+    /**
+     * Gets the fallback provider for this agent.
+     * 
+     * @return The fallback provider, or null if not configured
+     */
+    public @Nullable ModelClient getFallbackProviderForAgent() {
+        return getFallbackProvider();
+    }
+
+    /**
+     * Gets the primary provider based on configuration.
+     * 
+     * @return The primary provider, or null if not configured
+     */
+    public @Nullable ModelClient getPrimaryProvider() {
+        if (modelConfigurationService == null) {
+            return null;
+        }
+
+        String primaryProvider = modelConfigurationService.getPrimaryProvider();
+        if (primaryProvider != null) {
+            return getOrCreateProvider(primaryProvider);
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets the fallback provider based on configuration.
+     * 
+     * @return The fallback provider, or null if not configured
+     */
+    public @Nullable ModelClient getFallbackProvider() {
+        if (modelConfigurationService == null) {
+            return null;
+        }
+
+        String fallbackProvider = modelConfigurationService.getFallbackProvider();
+        if (fallbackProvider != null) {
+            return getOrCreateProvider(fallbackProvider);
+        }
+
+        return null;
+    }
+
+    /**
+     * Creates an LLM client for the specified provider type.
+     * 
+     * @param providerType The provider type
+     * @return The created LLM client
+     * @throws IllegalArgumentException if the provider type is not supported
+     */
+    private ModelClient createProvider(ModelProviderType providerType) {
+        if (modelConfigurationService == null) {
+            throw new IllegalStateException("Configuration service not available");
+        }
+
+        switch (providerType) {
+            case OPENAI:
+                return createOpenAIClient(modelConfigurationService);
+            case ANTHROPIC:
+                return createAnthropicClient(modelConfigurationService);
+            case GOOGLE:
+                return createGoogleGenAIClient(modelConfigurationService);
+            case AZURE:
+                return createAzureOpenAIClient(modelConfigurationService);
+            case OLLAMA:
+                return createOllamaClient(modelConfigurationService);
+            case LOCALAI:
+                return createLocalAIClient(modelConfigurationService);
+            case VLLM:
+                return createVModelClient(modelConfigurationService);
+            case LMSTUDIO:
+                return createLMStudioClient(modelConfigurationService);
+            default:
+                throw new IllegalArgumentException("Unsupported LLM provider: " + providerType);
+        }
+    }
+
+    /**
+     * Creates an LLM client for the specified provider type string.
+     * 
+     * @param providerType The provider type string
+     * @return The created LLM client
+     * @throws IllegalArgumentException if the provider type is not supported
+     */
+    private ModelClient createProvider(String providerType) {
+        try {
+            ModelProviderType type = ModelProviderType.valueOf(providerType.toUpperCase());
+            return createProvider(type);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unsupported LLM provider: " + providerType);
+        }
+    }
+
+    /**
+     * Creates an OpenAI client.
+     */
+    private ModelClient createOpenAIClient(@Nullable ModelConfigurationService config) {
+        if (config != null) {
+            var openAIConfig = config.getOpenAIConfig();
+            if (openAIConfig != null && openAIConfig.isEnabled()) {
+                logger.debug("Creating OpenAI client with configuration for agent: {}", agentId);
+                return new OpenAIClient(openAIConfig, actionRegistry);
+            }
+        }
+        logger.debug("Creating OpenAI client (stub implementation) for agent: {}", agentId);
+        return new StubModelClient(ModelProviderType.OPENAI, "gpt-4o-mini");
+    }
+
+    /**
+     * Creates an Anthropic client.
+     */
+    private ModelClient createAnthropicClient(@Nullable ModelConfigurationService config) {
+        if (config != null) {
+            var anthropicConfig = config.getAnthropicConfig();
+            if (anthropicConfig != null && anthropicConfig.isEnabled()) {
+                logger.debug("Creating Anthropic client with configuration for agent: {}", agentId);
+                return new AnthropicClient(anthropicConfig, actionRegistry);
+            }
+        }
+        logger.debug("Creating Anthropic client (stub implementation) for agent: {}", agentId);
+        return new StubModelClient(ModelProviderType.ANTHROPIC, "claude-3-5-sonnet");
+    }
+
+    /**
+     * Creates a Google GenAI client.
+     */
+    private ModelClient createGoogleGenAIClient(@Nullable ModelConfigurationService config) {
+        if (config != null) {
+            var googleConfig = config.getGoogleConfig();
+            if (googleConfig != null && googleConfig.isEnabled()) {
+                logger.debug("Creating Google GenAI client with configuration for agent: {}", agentId);
+                return new GoogleGenAIClient(googleConfig, actionRegistry);
+            }
+        }
+        logger.debug("Creating Google GenAI client (stub implementation) for agent: {}", agentId);
+        return new StubModelClient(ModelProviderType.GOOGLE, "gemini-1.5-pro");
+    }
+
+    /**
+     * Creates an Azure OpenAI client.
+     */
+    private ModelClient createAzureOpenAIClient(@Nullable ModelConfigurationService config) {
+        if (config != null) {
+            var azureConfig = config.getAzureConfig();
+            if (azureConfig != null && azureConfig.isEnabled()) {
+                logger.debug("Creating Azure OpenAI client with configuration for agent: {}", agentId);
+                return new AzureOpenAIClient(azureConfig, actionRegistry);
+            }
+        }
+        logger.debug("Creating Azure OpenAI client (stub implementation) for agent: {}", agentId);
+        return new StubModelClient(ModelProviderType.AZURE, "gpt-4o-mini");
+    }
+
+    /**
+     * Creates an Ollama client.
+     */
+    private ModelClient createOllamaClient(@Nullable ModelConfigurationService config) {
+        if (config != null) {
+            var ollamaConfig = config.getOllamaConfig();
+            if (ollamaConfig != null && ollamaConfig.isEnabled()) {
+                logger.debug("Creating Ollama client with configuration for agent: {}", agentId);
+                return new OllamaClient(ollamaConfig, actionRegistry);
+            }
+        }
+        logger.debug("Creating Ollama client (stub implementation) for agent: {}", agentId);
+        return new StubModelClient(ModelProviderType.OLLAMA, "llama3.1:8b");
+    }
+
+    /**
+     * Creates a LocalAI client.
+     */
+    private ModelClient createLocalAIClient(@Nullable ModelConfigurationService config) {
+        if (config != null) {
+            var localAIConfig = config.getLocalAIConfig();
+            if (localAIConfig != null && localAIConfig.isEnabled()) {
+                logger.debug("Creating LocalAI client with configuration for agent: {}", agentId);
+                return new LocalAIClient(localAIConfig, actionRegistry);
+            }
+        }
+        logger.debug("Creating LocalAI client (stub implementation) for agent: {}", agentId);
+        return new StubModelClient(ModelProviderType.LOCALAI, "llama3.1:8b");
+    }
+
+    /**
+     * Creates a vLLM client.
+     */
+    private ModelClient createVModelClient(@Nullable ModelConfigurationService config) {
+        if (config != null) {
+            var vllmConfig = config.getVLLMConfig();
+            if (vllmConfig != null && vllmConfig.isEnabled()) {
+                logger.debug("Creating vLLM client with configuration for agent: {}", agentId);
+                return new VModelClient(vllmConfig, actionRegistry);
+            }
+        }
+        logger.debug("Creating vLLM client (stub implementation) for agent: {}", agentId);
+        return new StubModelClient(ModelProviderType.VLLM, "llama3.1:8b");
+    }
+
+    /**
+     * Creates an LM Studio client.
+     */
+    private ModelClient createLMStudioClient(@Nullable ModelConfigurationService config) {
+        if (config != null) {
+            var lmStudioConfig = config.getLMStudioConfig();
+            if (lmStudioConfig != null && lmStudioConfig.isEnabled()) {
+                logger.debug("Creating LM Studio client with configuration for agent: {}", agentId);
+                return new LMStudioClient(lmStudioConfig, actionRegistry);
+            }
+        }
+        logger.debug("Creating LM Studio client (stub implementation) for agent: {}", agentId);
+        return new StubModelClient(ModelProviderType.LMSTUDIO, "llama3.1:8b");
+    }
+
+    /**
+     * Records client usage for tracking purposes.
+     * 
+     * @param providerType The provider type
+     * @param modelName The model name
+     * @param sessionId The session ID (optional)
+     */
+    private void recordClientUsage(ModelProviderType providerType, String modelName, @Nullable String sessionId) {
+        ModelTrackingService service = trackingService;
+        if (service != null) {
+            try {
+                service.recordClientUsage(agentId, providerType, modelName, sessionId);
+                logger.debug("Recorded client usage: agent={}, provider={}, model={}", agentId, providerType,
+                        modelName);
+            } catch (Exception e) {
+                logger.warn("Failed to record client usage for agent: {}", agentId, e);
+            }
+        }
     }
 }

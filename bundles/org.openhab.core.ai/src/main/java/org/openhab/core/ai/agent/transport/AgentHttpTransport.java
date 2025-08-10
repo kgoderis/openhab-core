@@ -13,21 +13,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * REST Transport Implementation for A2A Protocol.
+ * A2A HTTP Transport (REST/SSE) Implementation.
  * 
  * <p>
- * This class implements the REST transport protocol for A2A communication,
- * providing HTTP+JSON based communication with Server-Sent Events for streaming.
+ * Provides HTTP+JSON-based A2A transport with SSE streaming support.
+ * This is a transport engine, not a JAX-RS resource.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
-@Component(service = AgentTransport.class, property = { "transport.type=rest" })
+@Component(service = AgentTransport.class, property = { "transport.type=http" })
 @NonNullByDefault
-public class AgentRestTransport implements AgentTransport {
+public class AgentHttpTransport implements AgentTransport {
 
-    private static final Logger logger = LoggerFactory.getLogger(AgentRestTransport.class);
+    private static final Logger logger = LoggerFactory.getLogger(AgentHttpTransport.class);
 
     private final String transportId;
     private final TransportCapabilities capabilities;
@@ -42,7 +42,7 @@ public class AgentRestTransport implements AgentTransport {
     private long lastHealthCheck;
 
     @Activate
-    public AgentRestTransport() {
+    public AgentHttpTransport() {
         this.transportId = "rest-transport-" + System.currentTimeMillis();
         this.capabilities = new RestTransportCapabilities();
         this.metrics = new ConcurrentHashMap<>();
