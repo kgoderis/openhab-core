@@ -151,7 +151,7 @@ public class PromptManagementTool implements Tool {
     }
 
     /**
-     * List prompts based on filter criteria.
+     * List all available prompts.
      */
     private ToolResult listPrompts(Map<String, Object> parameters, ToolContext context) {
         @SuppressWarnings("unchecked")
@@ -160,6 +160,7 @@ public class PromptManagementTool implements Tool {
         Map<String, Object> result = new HashMap<>();
         result.put("operation", "list");
         result.put("filter", filter);
+        // TODO: Implement actual prompt listing logic
         result.put("prompts", java.util.List.of()); // Placeholder for actual prompt list
         result.put("count", 0);
         result.put("message", "Prompt listing completed successfully");
@@ -176,6 +177,7 @@ public class PromptManagementTool implements Tool {
         Map<String, Object> result = new HashMap<>();
         result.put("operation", "get");
         result.put("promptId", promptId);
+        // TODO: Implement actual prompt retrieval logic
         result.put("prompt", Map.of("id", promptId, "name", "Sample Prompt", "description", "A sample prompt",
                 "template", "Hello {{name}}, how can I help you?", "variables", java.util.List.of("name")));
         result.put("message", "Prompt retrieved successfully");
@@ -193,6 +195,7 @@ public class PromptManagementTool implements Tool {
         Map<String, Object> result = new HashMap<>();
         result.put("operation", "create");
         result.put("promptData", promptData);
+        // TODO: Implement actual prompt creation logic
         result.put("promptId", "new-prompt-id"); // Placeholder for actual prompt ID
         result.put("message", "Prompt created successfully");
 
@@ -242,6 +245,7 @@ public class PromptManagementTool implements Tool {
         result.put("operation", "execute");
         result.put("promptId", promptId);
         result.put("input", input);
+        // TODO: Implement actual prompt execution logic
         result.put("output", "Hello World, how can I help you?"); // Placeholder for actual prompt execution
         result.put("message", "Prompt executed successfully");
 

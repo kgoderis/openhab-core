@@ -346,6 +346,7 @@ public class AgentModelContextEnricher {
      * @return True if consistent, false otherwise
      */
     private boolean isConsistent(String agentType, String domain) {
+        // TODO: Implement proper agent type and domain consistency validation
         // Simple consistency check - can be enhanced
         return true; // Placeholder implementation
     }

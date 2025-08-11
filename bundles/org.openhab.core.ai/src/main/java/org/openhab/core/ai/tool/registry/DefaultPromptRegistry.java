@@ -108,11 +108,44 @@ public class DefaultPromptRegistry implements PromptRegistry {
         try {
             LOGGER.debug("Creating sync prompt specifications for {} prompts", prompts.size());
 
-            // TODO: Implement actual MCP prompt specification creation
-            // For now, return empty array until MCP SDK integration is properly implemented
-            // The MCP SDK needs to provide proper builders for prompt specifications
-            LOGGER.debug("Returning empty sync prompt specifications (MCP SDK integration pending)");
-            return new McpServerFeatures.SyncPromptSpecification[0];
+            // Create prompt specifications using MCP SDK builders
+            var specs = new java.util.ArrayList<McpServerFeatures.SyncPromptSpecification>();
+
+            for (var entry : getAllPrompts().entrySet()) {
+                var prompt = entry.getValue();
+
+                try {
+                    // Convert internal prompt arguments to MCP format
+                    var mcpArguments = prompt.getArguments().stream()
+                            .map(arg -> new io.modelcontextprotocol.spec.McpSchema.PromptArgument(arg.getName(),
+                                    arg.getDescription(), arg.isRequired()))
+                            .collect(java.util.stream.Collectors.toList());
+
+                    // Create MCP prompt specification using the correct SDK structure
+                    var mcpPrompt = new io.modelcontextprotocol.spec.McpSchema.Prompt(prompt.getName(),
+                            prompt.getDescription(), mcpArguments);
+
+                    var syncPromptSpec = new McpServerFeatures.SyncPromptSpecification(mcpPrompt,
+                            (exchange, request) -> {
+                                LOGGER.debug("Handling sync prompt for: {}", prompt.getName());
+
+                                // Return a simple prompt result with description and empty messages
+                                // TODO: Implement proper message handling when internal Prompt class supports messages
+                                return new io.modelcontextprotocol.spec.McpSchema.GetPromptResult(
+                                        prompt.getDescription(), java.util.List.of() // Empty messages for now
+                                );
+                            });
+
+                    specs.add(syncPromptSpec);
+                    LOGGER.debug("Created sync prompt specification for: {}", prompt.getName());
+
+                } catch (Exception e) {
+                    LOGGER.error("Error creating sync prompt specification for: {}", prompt.getName(), e);
+                }
+            }
+
+            LOGGER.debug("Created {} sync prompt specifications", specs.size());
+            return specs.toArray(new McpServerFeatures.SyncPromptSpecification[0]);
 
         } catch (Exception e) {
             LOGGER.error("Error creating sync prompt specifications", e);
@@ -125,11 +158,47 @@ public class DefaultPromptRegistry implements PromptRegistry {
         try {
             LOGGER.debug("Creating async prompt specifications for {} prompts", prompts.size());
 
-            // TODO: Implement actual MCP prompt specification creation
-            // For now, return empty array until MCP SDK integration is properly implemented
-            // The MCP SDK needs to provide proper builders for prompt specifications
-            LOGGER.debug("Returning empty async prompt specifications (MCP SDK integration pending)");
-            return new McpServerFeatures.AsyncPromptSpecification[0];
+            // Create prompt specifications using MCP SDK builders
+            var specs = new java.util.ArrayList<McpServerFeatures.AsyncPromptSpecification>();
+
+            for (var entry : getAllPrompts().entrySet()) {
+                var prompt = entry.getValue();
+
+                try {
+                    // Convert internal prompt arguments to MCP format
+                    var mcpArguments = prompt.getArguments().stream()
+                            .map(arg -> new io.modelcontextprotocol.spec.McpSchema.PromptArgument(arg.getName(),
+                                    arg.getDescription(), arg.isRequired()))
+                            .collect(java.util.stream.Collectors.toList());
+
+                    // Create MCP prompt specification using the correct SDK structure
+                    var mcpPrompt = new io.modelcontextprotocol.spec.McpSchema.Prompt(prompt.getName(),
+                            prompt.getDescription(), mcpArguments);
+
+                    var asyncPromptSpec = new McpServerFeatures.AsyncPromptSpecification(mcpPrompt,
+                            (exchange, request) -> {
+                                LOGGER.debug("Handling async prompt for: {}", prompt.getName());
+
+                                return reactor.core.publisher.Mono.fromCallable(() -> {
+                                    // Return a simple prompt result with description and empty messages
+                                    // TODO: Implement proper message handling when internal Prompt class supports
+                                    // messages
+                                    return new io.modelcontextprotocol.spec.McpSchema.GetPromptResult(
+                                            prompt.getDescription(), java.util.List.of() // Empty messages for now
+                                    );
+                                });
+                            });
+
+                    specs.add(asyncPromptSpec);
+                    LOGGER.debug("Created async prompt specification for: {}", prompt.getName());
+
+                } catch (Exception e) {
+                    LOGGER.error("Error creating async prompt specification for: {}", prompt.getName(), e);
+                }
+            }
+
+            LOGGER.debug("Created {} async prompt specifications", specs.size());
+            return specs.toArray(new McpServerFeatures.AsyncPromptSpecification[0]);
 
         } catch (Exception e) {
             LOGGER.error("Error creating async prompt specifications", e);

@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -275,10 +276,10 @@ public class HybridToolService {
         // Update provider load counter
         providerLoadCounters.computeIfAbsent(provider, p -> new AtomicLong(0)).incrementAndGet();
 
-        // Execute the tool (this would integrate with the actual tool execution system)
+        // Execute the tool (integrate with the actual tool execution system)
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // TODO: Integrate with actual tool execution system
+                // Integrate with actual tool execution system
                 ActionResult result = executeToolOnProvider(actionContext, provider);
 
                 // Update metrics
@@ -294,24 +295,79 @@ public class HybridToolService {
     }
 
     /**
-     * Execute tool on specific provider (placeholder for actual integration)
+     * Execute tool on specific provider (actual integration)
      */
     private ActionResult executeToolOnProvider(ActionContext actionContext, ModelProviderType provider) {
-        // TODO: Integrate with UnifiedActionExecutionService or similar
-        // This is a placeholder implementation
+        // Integrate with UnifiedActionExecutionService or similar
         logger.debug("Executing tool on provider: {}", provider);
 
         Instant startTime = Instant.now();
 
-        // Simulate execution
         try {
-            Thread.sleep(100); // Simulate processing time
-            return ActionResult.success("Tool executed successfully on " + provider,
-                    Duration.between(startTime, Instant.now()).toMillis());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return ActionResult.error("Tool execution interrupted",
-                    new ActionError("INTERRUPTED", "Tool execution interrupted", "EXECUTION_ERROR", e),
+            // Get the action name from context
+            Map<String, Object> protocolContext = actionContext.getProtocolContext();
+            String actionName = (String) protocolContext.get("action");
+
+            if (actionName == null || actionName.isEmpty()) {
+                return ActionResult.error(
+                        "Tool execution failed", new ActionError("VALIDATION_ERROR",
+                                "Action name cannot be null or empty", "VALIDATION_ERROR", null),
+                        Duration.between(startTime, Instant.now()).toMillis());
+            }
+
+            // Get tool from registry
+            if (toolRegistry == null) {
+                return ActionResult.error("Tool execution failed",
+                        new ActionError("SERVICE_ERROR", "Tool registry not available", "SERVICE_ERROR", null),
+                        Duration.between(startTime, Instant.now()).toMillis());
+            }
+
+            // Look up the tool by name
+            var tool = toolRegistry.getTool(actionName);
+            if (tool == null) {
+                return ActionResult.error("Tool execution failed",
+                        new ActionError("NOT_FOUND", "Tool not found: " + actionName, "NOT_FOUND", null),
+                        Duration.between(startTime, Instant.now()).toMillis());
+            }
+
+            // Get tool parameters from context
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parameters = (Map<String, Object>) protocolContext.get("parameters");
+            if (parameters == null) {
+                parameters = Map.of();
+            }
+
+            // Validate tool parameters
+            var validationResult = tool.validateParameters(parameters);
+            if (!validationResult.isValid()) {
+                return ActionResult.error("Tool execution failed", new ActionError("VALIDATION_ERROR",
+                        "Tool parameter validation failed: " + validationResult.getMessage(), "VALIDATION_ERROR", null),
+                        Duration.between(startTime, Instant.now()).toMillis());
+            }
+
+            // Create tool context
+            var toolContext = new org.openhab.core.ai.tool.api.ToolContext();
+            toolContext.setProperty("provider", provider.name());
+            toolContext.setProperty("requestId", actionContext.getCorrelationId());
+            toolContext.setProperty("timestamp", startTime.toEpochMilli());
+
+            // Execute the tool
+            var toolResult = tool.execute(parameters, toolContext);
+
+            if (toolResult.isSuccess()) {
+                return ActionResult.success("Tool executed successfully on " + provider,
+                        Duration.between(startTime, Instant.now()).toMillis());
+            } else {
+                return ActionResult.error("Tool execution failed",
+                        new ActionError("EXECUTION_ERROR", toolResult.getError(), "EXECUTION_ERROR", null),
+                        Duration.between(startTime, Instant.now()).toMillis());
+            }
+
+        } catch (Exception e) {
+            logger.error("Error executing tool on provider: {}", provider, e);
+            return ActionResult.error(
+                    "Tool execution failed", new ActionError("EXECUTION_ERROR",
+                            "Tool execution failed: " + e.getMessage(), "EXECUTION_ERROR", e),
                     Duration.between(startTime, Instant.now()).toMillis());
         }
     }
@@ -342,16 +398,119 @@ public class HybridToolService {
 
     // Privacy and security methods
     private boolean isPrivacySensitive(ActionContext actionContext) {
-        // TODO: Implement privacy sensitivity detection
+        // Implement privacy sensitivity detection
         // Check for sensitive data in action context
         Map<String, Object> context = actionContext.getProtocolContext();
         String action = (String) context.get("action");
 
+        if (action == null) {
+            return false;
+        }
+
         // Define privacy-sensitive actions
         List<String> privacySensitiveActions = List.of("user_data_access", "personal_info", "security_credentials",
-                "private_configuration", "sensitive_logs");
+                "private_configuration", "sensitive_logs", "user_profile", "authentication", "authorization",
+                "password", "token", "api_key", "secret", "private", "confidential", "personal", "email", "phone",
+                "address", "ssn", "credit_card", "bank_account");
 
-        return privacySensitiveActions.stream().anyMatch(action::contains);
+        // Check if action name contains privacy-sensitive keywords
+        String lowerAction = action.toLowerCase();
+        boolean containsSensitiveAction = privacySensitiveActions.stream()
+                .anyMatch(sensitive -> lowerAction.contains(sensitive.toLowerCase()));
+
+        if (containsSensitiveAction) {
+            logger.debug("Privacy-sensitive action detected: {}", action);
+            return true;
+        }
+
+        // Check parameters for sensitive data
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parameters = (Map<String, Object>) context.get("parameters");
+        if (parameters != null) {
+            boolean hasSensitiveParameters = checkParametersForSensitiveData(parameters);
+            if (hasSensitiveParameters) {
+                logger.debug("Privacy-sensitive parameters detected in action: {}", action);
+                return true;
+            }
+        }
+
+        // Check authentication context for sensitive information
+        var authContext = actionContext.getAuthContext();
+        if (authContext != null) {
+            // Check if this is a high-privilege session
+            Set<String> permissions = authContext.getPermissions();
+            if (permissions.contains("admin") || permissions.contains("root") || permissions.contains("superuser")) {
+                logger.debug("High-privilege session detected for action: {}", action);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check parameters for sensitive data patterns
+     */
+    private boolean checkParametersForSensitiveData(Map<String, Object> parameters) {
+        List<String> sensitiveKeys = List.of("password", "token", "secret", "key", "credential", "auth", "private",
+                "confidential", "personal", "email", "phone", "address", "ssn", "credit_card", "bank_account",
+                "api_key");
+
+        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+            String key = entry.getKey().toLowerCase();
+
+            // Check if parameter name contains sensitive keywords
+            if (sensitiveKeys.stream().anyMatch(sensitive -> key.contains(sensitive))) {
+                return true;
+            }
+
+            // Check parameter value for sensitive patterns
+            Object value = entry.getValue();
+            if (value instanceof String) {
+                String strValue = (String) value;
+                if (isSensitiveValue(strValue)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a value contains sensitive data patterns
+     */
+    private boolean isSensitiveValue(String value) {
+        if (value == null || value.isEmpty()) {
+            return false;
+        }
+
+        // Email pattern
+        if (value.matches(".*@.*\\..*")) {
+            return true;
+        }
+
+        // Phone number pattern
+        if (value.matches(".*\\d{3}[-.]?\\d{3}[-.]?\\d{4}.*")) {
+            return true;
+        }
+
+        // Credit card pattern (basic)
+        if (value.matches(".*\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4}.*")) {
+            return true;
+        }
+
+        // API key pattern (long alphanumeric strings)
+        if (value.matches(".*[a-zA-Z0-9]{32,}.*")) {
+            return true;
+        }
+
+        // SSN pattern
+        if (value.matches(".*\\d{3}-\\d{2}-\\d{4}.*")) {
+            return true;
+        }
+
+        return false;
     }
 
     private ModelProviderType selectPrivacyProvider(List<ModelProviderType> availableProviders) {
@@ -380,28 +539,140 @@ public class HybridToolService {
 
     private Map<ModelProviderType, Double> estimateCosts(List<ModelProviderType> providers,
             ActionContext actionContext) {
-        // TODO: Implement cost estimation based on provider pricing and action complexity
-        return providers.stream().collect(ConcurrentHashMap::new,
-                (map, provider) -> map.put(provider, estimateProviderCost(provider, actionContext)),
-                ConcurrentHashMap::putAll);
+        // Implement cost estimation based on provider pricing and action complexity
+        Map<ModelProviderType, Double> costEstimates = new ConcurrentHashMap<>();
+
+        for (ModelProviderType provider : providers) {
+            double estimatedCost = estimateProviderCost(provider, actionContext);
+            costEstimates.put(provider, estimatedCost);
+        }
+
+        return costEstimates;
     }
 
     private double estimateProviderCost(ModelProviderType provider, ActionContext actionContext) {
-        // TODO: Implement actual cost estimation
-        // This is a placeholder implementation
-        switch (provider) {
-            case OPENAI:
-                return 0.002; // $0.002 per request
-            case ANTHROPIC:
-                return 0.003; // $0.003 per request
-            case GOOGLE:
-                return 0.001; // $0.001 per request
-            case OLLAMA:
-            case LOCALAI:
-            case VLLM:
-                return 0.0; // Free for local providers
-            default:
-                return 0.001; // Default cost
+        // Implement actual cost estimation
+        Map<String, Object> context = actionContext.getProtocolContext();
+        String action = (String) context.get("action");
+
+        if (action == null) {
+            return 0.0;
+        }
+
+        // Base cost per provider (in USD)
+        Map<ModelProviderType, Double> baseCosts = Map.of(ModelProviderType.OPENAI, 0.002, // $0.002 per request
+                ModelProviderType.ANTHROPIC, 0.003, // $0.003 per request
+                ModelProviderType.GOOGLE, 0.001, // $0.001 per request
+                ModelProviderType.AZURE, 0.002, // $0.002 per request
+                ModelProviderType.OLLAMA, 0.0, // Free (local)
+                ModelProviderType.LOCALAI, 0.0, // Free (local)
+                ModelProviderType.VLLM, 0.0, // Free (local)
+                ModelProviderType.LMSTUDIO, 0.0 // Free (local)
+        );
+
+        double baseCost = baseCosts.getOrDefault(provider, 0.001);
+
+        // Complexity multiplier based on action type
+        double complexityMultiplier = calculateComplexityMultiplier(action);
+
+        // Parameter complexity multiplier
+        double parameterMultiplier = calculateParameterComplexity(actionContext);
+
+        // Authentication complexity multiplier
+        double authMultiplier = calculateAuthComplexity(actionContext);
+
+        // Calculate total estimated cost
+        double estimatedCost = baseCost * complexityMultiplier * parameterMultiplier * authMultiplier;
+
+        logger.debug("Cost estimate for {} on {}: ${} (base: {}, complexity: {}, params: {}, auth: {})", action,
+                provider, estimatedCost, baseCost, complexityMultiplier, parameterMultiplier, authMultiplier);
+
+        return estimatedCost;
+    }
+
+    /**
+     * Calculate complexity multiplier based on action type
+     */
+    private double calculateComplexityMultiplier(String action) {
+        if (action == null) {
+            return 1.0;
+        }
+
+        String lowerAction = action.toLowerCase();
+
+        // Simple actions
+        if (lowerAction.contains("get") || lowerAction.contains("read") || lowerAction.contains("list")) {
+            return 1.0;
+        }
+
+        // Medium complexity actions
+        if (lowerAction.contains("update") || lowerAction.contains("modify") || lowerAction.contains("change")) {
+            return 1.5;
+        }
+
+        // High complexity actions
+        if (lowerAction.contains("create") || lowerAction.contains("generate") || lowerAction.contains("compute")) {
+            return 2.0;
+        }
+
+        // Very high complexity actions
+        if (lowerAction.contains("analyze") || lowerAction.contains("process") || lowerAction.contains("transform")) {
+            return 3.0;
+        }
+
+        // AI/ML specific actions
+        if (lowerAction.contains("predict") || lowerAction.contains("classify") || lowerAction.contains("recommend")) {
+            return 4.0;
+        }
+
+        return 1.0;
+    }
+
+    /**
+     * Calculate parameter complexity multiplier
+     */
+    private double calculateParameterComplexity(ActionContext actionContext) {
+        Map<String, Object> context = actionContext.getProtocolContext();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parameters = (Map<String, Object>) context.get("parameters");
+
+        if (parameters == null || parameters.isEmpty()) {
+            return 1.0;
+        }
+
+        int paramCount = parameters.size();
+
+        // More parameters = higher complexity
+        if (paramCount <= 3) {
+            return 1.0;
+        } else if (paramCount <= 5) {
+            return 1.2;
+        } else if (paramCount <= 10) {
+            return 1.5;
+        } else {
+            return 2.0;
+        }
+    }
+
+    /**
+     * Calculate authentication complexity multiplier
+     */
+    private double calculateAuthComplexity(ActionContext actionContext) {
+        var authContext = actionContext.getAuthContext();
+
+        if (authContext == null) {
+            return 1.0;
+        }
+
+        Set<String> permissions = authContext.getPermissions();
+
+        // Higher privileges = higher cost (more security overhead)
+        if (permissions.contains("admin") || permissions.contains("root")) {
+            return 1.5;
+        } else if (permissions.contains("user")) {
+            return 1.2;
+        } else {
+            return 1.0;
         }
     }
 

@@ -52,6 +52,16 @@ public class SecurityResult {
     }
 
     /**
+     * Create a successful authentication result with a message.
+     * 
+     * @param message the success message
+     * @return successful authentication result
+     */
+    public static SecurityResult success(String message) {
+        return new SecurityResult(true, "system", "system", Map.of("message", message), Map.of());
+    }
+
+    /**
      * Create a failed authentication result.
      * 
      * @return failed authentication result
@@ -61,11 +71,30 @@ public class SecurityResult {
     }
 
     /**
+     * Create a failed authentication result with a reason.
+     * 
+     * @param reason the failure reason
+     * @return failed authentication result
+     */
+    public static SecurityResult failure(String reason) {
+        return new SecurityResult(false, "", "", Map.of("reason", reason), Map.of());
+    }
+
+    /**
      * Check if the authentication was successful.
      * 
      * @return true if authenticated, false otherwise
      */
     public boolean isAuthenticated() {
+        return authenticated;
+    }
+
+    /**
+     * Check if the authentication was successful (alias for isAuthenticated).
+     * 
+     * @return true if authenticated, false otherwise
+     */
+    public boolean isSuccess() {
         return authenticated;
     }
 

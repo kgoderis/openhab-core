@@ -1,6 +1,7 @@
 package org.openhab.core.ai.tool.security;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -80,7 +81,66 @@ public class SecurityManager {
      * @return true if healthy
      */
     public boolean isHealthy() {
-        return true; // TODO: Implement health check
+        try {
+            // Check if security processor is running
+            if (securityProcessor.isShutdown() || securityProcessor.isTerminated()) {
+                logger.warn("Security processor is not running");
+                return false;
+            }
+
+            // Check if alert processor is running
+            if (alertProcessor.isShutdown() || alertProcessor.isTerminated()) {
+                logger.warn("Alert processor is not running");
+                return false;
+            }
+
+            // Check memory usage
+            Runtime runtime = Runtime.getRuntime();
+            long maxMemory = runtime.maxMemory();
+            long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+            double memoryUsage = (double) usedMemory / maxMemory;
+
+            if (memoryUsage > 0.9) { // 90% threshold
+                logger.warn("High memory usage detected: {}%", String.format("%.1f", memoryUsage * 100));
+                return false;
+            }
+
+            // Check if critical security components are accessible
+            if (specificationPermissions == null || userRoles == null || accessLog == null || rateLimits == null) {
+                logger.warn("Critical security components are null");
+                return false;
+            }
+
+            // Check if security statistics are being tracked
+            long totalAttempts = totalAccessAttempts.get();
+            long allowedAttempts = allowedAccessAttempts.get();
+            long deniedAttempts = deniedAccessAttempts.get();
+
+            // Basic sanity check on statistics
+            if (totalAttempts < 0 || allowedAttempts < 0 || deniedAttempts < 0) {
+                logger.warn("Invalid security statistics detected");
+                return false;
+            }
+
+            if (totalAttempts != (allowedAttempts + deniedAttempts)) {
+                logger.warn("Security statistics mismatch: total={}, allowed={}, denied={}", totalAttempts,
+                        allowedAttempts, deniedAttempts);
+                return false;
+            }
+
+            // Check if security features are properly configured
+            if (securityEnabled && !roleBasedAccessControl.get() && !rateLimiting.get()) {
+                logger.warn("Security enabled but no security features are active");
+                return false;
+            }
+
+            logger.debug("Security manager health check passed");
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Health check failed", e);
+            return false;
+        }
     }
 
     /**
@@ -96,8 +156,32 @@ public class SecurityManager {
         }
 
         logger.debug("Filtering {} sync tools by security", toolSpecs.length);
-        // TODO: Implement security filtering
-        return toolSpecs;
+
+        // Implement security filtering
+        List<McpServerFeatures.SyncToolSpecification> filteredSpecs = new ArrayList<>();
+
+        for (McpServerFeatures.SyncToolSpecification spec : toolSpecs) {
+            try {
+                // Get tool information for filtering
+                String toolName = spec.tool().name();
+                String toolDescription = spec.tool().description();
+
+                // Check if tool should be filtered based on security rules
+                if (shouldAllowTool(toolName, toolDescription)) {
+                    filteredSpecs.add(spec);
+                    logger.debug("Allowed sync tool: {}", toolName);
+                } else {
+                    logger.debug("Filtered out sync tool: {}", toolName);
+                }
+
+            } catch (Exception e) {
+                logger.error("Error filtering sync tool specification", e);
+                // In case of error, be conservative and filter out the tool
+            }
+        }
+
+        logger.debug("Filtered {} sync tools to {} tools", toolSpecs.length, filteredSpecs.size());
+        return filteredSpecs.toArray(new McpServerFeatures.SyncToolSpecification[0]);
     }
 
     /**
@@ -113,8 +197,71 @@ public class SecurityManager {
         }
 
         logger.debug("Filtering {} async tools by security", toolSpecs.length);
-        // TODO: Implement security filtering
-        return toolSpecs;
+
+        // Implement security filtering
+        List<McpServerFeatures.AsyncToolSpecification> filteredSpecs = new ArrayList<>();
+
+        for (McpServerFeatures.AsyncToolSpecification spec : toolSpecs) {
+            try {
+                // Get tool information for filtering
+                String toolName = spec.tool().name();
+                String toolDescription = spec.tool().description();
+
+                // Check if tool should be filtered based on security rules
+                if (shouldAllowTool(toolName, toolDescription)) {
+                    filteredSpecs.add(spec);
+                    logger.debug("Allowed async tool: {}", toolName);
+                } else {
+                    logger.debug("Filtered out async tool: {}", toolName);
+                }
+
+            } catch (Exception e) {
+                logger.error("Error filtering async tool specification", e);
+                // In case of error, be conservative and filter out the tool
+            }
+        }
+
+        logger.debug("Filtered {} async tools to {} tools", toolSpecs.length, filteredSpecs.size());
+        return filteredSpecs.toArray(new McpServerFeatures.AsyncToolSpecification[0]);
+    }
+
+    /**
+     * Check if a tool should be allowed based on security rules
+     * 
+     * @param toolName the tool name
+     * @param toolDescription the tool description
+     * @return true if the tool should be allowed
+     */
+    private boolean shouldAllowTool(String toolName, String toolDescription) {
+        if (toolName == null || toolName.trim().isEmpty()) {
+            logger.warn("Tool name is null or empty");
+            return false;
+        }
+
+        // Check for dangerous tool names
+        List<String> dangerousToolPatterns = List.of("delete", "remove", "destroy", "format", "wipe", "clear",
+                "shutdown", "restart", "reboot", "kill", "terminate", "admin", "root", "system", "privileged",
+                "elevated");
+
+        String lowerToolName = toolName.toLowerCase();
+        String lowerDescription = toolDescription != null ? toolDescription.toLowerCase() : "";
+
+        // Check if tool name contains dangerous patterns
+        for (String pattern : dangerousToolPatterns) {
+            if (lowerToolName.contains(pattern) || lowerDescription.contains(pattern)) {
+                logger.warn("Tool filtered due to dangerous pattern '{}': {}", pattern, toolName);
+                return false;
+            }
+        }
+
+        // Check if tool requires special permissions
+        if (lowerToolName.contains("admin") || lowerToolName.contains("system")) {
+            // These tools require special handling - for now, filter them out
+            logger.warn("Tool filtered due to requiring special permissions: {}", toolName);
+            return false;
+        }
+
+        return true;
     }
 
     // Record classes for security data

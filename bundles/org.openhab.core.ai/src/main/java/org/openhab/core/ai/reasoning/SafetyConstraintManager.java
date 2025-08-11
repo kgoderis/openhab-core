@@ -10,17 +10,24 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.auth.AuditLogger;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Safety and Constraint Management System for AI agents
+ * Safety and Constraint Management System - Focuses on action safety validation and user-defined constraints.
  * 
- * Implements action safety validation, user-defined constraint enforcement,
- * safety policy management, and constraint violation detection.
+ * This class provides safety management for AI actions, focusing on:
+ * - Action safety validation and risk assessment
+ * - User-defined constraint enforcement
+ * - Safety policy management and violation detection
+ * - Integration with openHAB audit logging system
+ * 
+ * Note: Authentication and authorization are handled by AgentModelSecurityManager
  * 
  * @author Karel Goderis - Initial Contribution
  */
@@ -29,6 +36,10 @@ import org.slf4j.LoggerFactory;
 public class SafetyConstraintManager {
 
     private final Logger logger = LoggerFactory.getLogger(SafetyConstraintManager.class);
+
+    // Auth system integration
+    @Reference
+    private AuditLogger auditLogger;
 
     // Data storage
     private final Map<String, SafetyPolicy> safetyPolicies = new ConcurrentHashMap<>();
@@ -89,6 +100,8 @@ public class SafetyConstraintManager {
                 if (!policyResult.isValid()) {
                     recordConstraintViolation(agentId, actionType, actionParameters, userId,
                             "Safety policy violation: " + policyResult.getReason());
+                    auditLogger.logSecurityViolation(userId, "SAFETY_POLICY_VIOLATION",
+                            "Safety policy violation for action: " + actionType, "ai-safety", Instant.now());
                     return policyResult;
                 }
             }
@@ -100,6 +113,8 @@ public class SafetyConstraintManager {
                 if (!constraintResult.isValid()) {
                     recordConstraintViolation(agentId, actionType, actionParameters, userId,
                             "User constraint violation: " + constraintResult.getReason());
+                    auditLogger.logSecurityViolation(userId, "USER_CONSTRAINT_VIOLATION",
+                            "User constraint violation for action: " + actionType, "ai-safety", Instant.now());
                     return constraintResult;
                 }
             }
@@ -109,10 +124,12 @@ public class SafetyConstraintManager {
             if (!globalResult.isValid()) {
                 recordConstraintViolation(agentId, actionType, actionParameters, userId,
                         "Global safety rule violation: " + globalResult.getReason());
+                auditLogger.logSecurityViolation(userId, "GLOBAL_SAFETY_VIOLATION",
+                        "Global safety rule violation for action: " + actionType, "ai-safety", Instant.now());
                 return globalResult;
             }
 
-            logger.debug("Action validated successfully: {} for agent: {}", actionType, agentId);
+            logger.debug("Action safety validation passed for agent: {} action: {}", agentId, actionType);
             return SafetyValidationResult.valid();
         } finally {
             policyLock.readLock().unlock();

@@ -83,7 +83,7 @@ public class AgentModelNLPProcessor {
                 .withExpectedOutput("Provide intent classification with confidence score")
                 .withType(AgentModelPromptBuilder.PromptType.ANALYSIS).build();
 
-        // Execute reasoning (placeholder implementation)
+        // Integrate with SharedModelReasoningEngine for actual intent recognition
         String reasoningResult = executeIntentRecognition(prompt);
 
         return parseIntent(reasoningResult);
@@ -97,17 +97,15 @@ public class AgentModelNLPProcessor {
      * @return The extracted entities
      */
     private Map<String, Object> extractEntities(String input, AgentModelContextBuilder.AgentModelContext context) {
-        Map<String, Object> entities = new ConcurrentHashMap<>();
-
         // Create entity extraction prompt
         AgentModelPromptBuilder.AgentModelPrompt prompt = promptBuilder.create()
                 .withSystemRole("You are an intelligent entity extraction system for home automation.")
                 .withAgentContext(context).withTask("Extract relevant entities from the natural language input")
                 .withCurrentState("User Input: " + input)
-                .withExpectedOutput("Provide extracted entities with their types and values")
+                .withExpectedOutput("Provide entity extraction with confidence scores")
                 .withType(AgentModelPromptBuilder.PromptType.ANALYSIS).build();
 
-        // Execute reasoning (placeholder implementation)
+        // Integrate with SharedModelReasoningEngine for actual entity extraction
         String reasoningResult = executeEntityExtraction(prompt);
 
         return parseEntities(reasoningResult);
@@ -129,6 +127,7 @@ public class AgentModelNLPProcessor {
                 .withExpectedOutput("Provide sentiment analysis with emotion detection")
                 .withType(AgentModelPromptBuilder.PromptType.ANALYSIS).build();
 
+        // TODO: Integrate with SharedModelReasoningEngine for actual sentiment analysis
         // Execute reasoning (placeholder implementation)
         String reasoningResult = executeSentimentAnalysis(prompt);
 
@@ -158,6 +157,7 @@ public class AgentModelNLPProcessor {
                 .withExpectedOutput("Provide a natural, helpful response")
                 .withType(AgentModelPromptBuilder.PromptType.GENERAL).build();
 
+        // TODO: Integrate with SharedModelReasoningEngine for actual response generation
         // Execute reasoning (placeholder implementation)
         return executeResponseGeneration(prompt);
     }
@@ -169,8 +169,17 @@ public class AgentModelNLPProcessor {
      * @return The reasoning result
      */
     private String executeIntentRecognition(AgentModelPromptBuilder.AgentModelPrompt prompt) {
-        // Placeholder implementation - would integrate with SharedModelReasoningEngine
-        return "Intent: CONTROL_DEVICE\nConfidence: 0.85\nDevice: thermostat\nAction: set_temperature";
+        try {
+            // Integrate with SharedModelReasoningEngine for actual intent recognition
+            CompletableFuture<org.openhab.core.ai.model.api.ModelResponse> future = reasoningEngine
+                    .reasonAsync("nlp-processor", prompt.getPromptText(), new ConcurrentHashMap<>(), null);
+
+            org.openhab.core.ai.model.api.ModelResponse response = future.get();
+            return response.getContent();
+        } catch (Exception e) {
+            logger.error("Error executing intent recognition: {}", e.getMessage(), e);
+            return "Intent: UNKNOWN\nConfidence: 0.0";
+        }
     }
 
     /**
@@ -180,8 +189,17 @@ public class AgentModelNLPProcessor {
      * @return The reasoning result
      */
     private String executeEntityExtraction(AgentModelPromptBuilder.AgentModelPrompt prompt) {
-        // Placeholder implementation - would integrate with SharedModelReasoningEngine
-        return "Device: thermostat\nAction: set_temperature\nValue: 22\nUnit: celsius";
+        try {
+            // Integrate with SharedModelReasoningEngine for actual entity extraction
+            CompletableFuture<org.openhab.core.ai.model.api.ModelResponse> future = reasoningEngine
+                    .reasonAsync("nlp-processor", prompt.getPromptText(), new ConcurrentHashMap<>(), null);
+
+            org.openhab.core.ai.model.api.ModelResponse response = future.get();
+            return response.getContent();
+        } catch (Exception e) {
+            logger.error("Error executing entity extraction: {}", e.getMessage(), e);
+            return "Device: unknown\nAction: unknown\nValue: unknown";
+        }
     }
 
     /**
@@ -191,8 +209,17 @@ public class AgentModelNLPProcessor {
      * @return The reasoning result
      */
     private String executeSentimentAnalysis(AgentModelPromptBuilder.AgentModelPrompt prompt) {
-        // Placeholder implementation - would integrate with SharedModelReasoningEngine
-        return "Sentiment: NEUTRAL\nEmotion: calm\nConfidence: 0.75";
+        try {
+            // Integrate with SharedModelReasoningEngine for actual sentiment analysis
+            CompletableFuture<org.openhab.core.ai.model.api.ModelResponse> future = reasoningEngine
+                    .reasonAsync("nlp-processor", prompt.getPromptText(), new ConcurrentHashMap<>(), null);
+
+            org.openhab.core.ai.model.api.ModelResponse response = future.get();
+            return response.getContent();
+        } catch (Exception e) {
+            logger.error("Error executing sentiment analysis: {}", e.getMessage(), e);
+            return "Sentiment: NEUTRAL\nEmotion: NEUTRAL\nConfidence: 0.0";
+        }
     }
 
     /**
@@ -202,8 +229,17 @@ public class AgentModelNLPProcessor {
      * @return The generated response
      */
     private String executeResponseGeneration(AgentModelPromptBuilder.AgentModelPrompt prompt) {
-        // Placeholder implementation - would integrate with SharedModelReasoningEngine
-        return "I'll set the thermostat to 22°C for you. Is there anything else you'd like me to help you with?";
+        try {
+            // Integrate with SharedModelReasoningEngine for actual response generation
+            CompletableFuture<org.openhab.core.ai.model.api.ModelResponse> future = reasoningEngine
+                    .reasonAsync("nlp-processor", prompt.getPromptText(), new ConcurrentHashMap<>(), null);
+
+            org.openhab.core.ai.model.api.ModelResponse response = future.get();
+            return response.getContent();
+        } catch (Exception e) {
+            logger.error("Error executing response generation: {}", e.getMessage(), e);
+            return "I'm sorry, I couldn't process your request. Please try again.";
+        }
     }
 
     /**

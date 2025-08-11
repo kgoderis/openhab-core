@@ -179,10 +179,8 @@ public class GetItemStatisticsAction implements Action {
             if (persistenceServiceRegistry != null) {
                 PersistenceService service = persistenceServiceRegistry.get(serviceId);
                 if (service instanceof QueryablePersistenceService queryableService) {
-                    // For now, use a stub implementation since the ItemHistoryDTO API needs to be properly configured
-                    // This will be enhanced when the correct persistence API is available
-                    Map<String, Object> statistics = calculateBasicStatistics(item, duration);
-                    statistics.put("note", "Persistence API integration pending. Using basic statistics.");
+                    // Implement real persistence API integration with ItemHistoryDTO
+                    Map<String, Object> statistics = calculateAdvancedStatistics(item, duration, queryableService);
                     result.putAll(statistics);
                 } else {
                     // Fallback to basic statistics without historical data

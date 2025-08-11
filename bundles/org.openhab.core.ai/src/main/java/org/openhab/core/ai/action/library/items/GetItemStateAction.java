@@ -1,9 +1,15 @@
 package org.openhab.core.ai.action.library.items;
 
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+
+import org.openhab.core.persistence.FilterCriteria;
+import org.openhab.core.persistence.HistoricItem;
+import org.openhab.core.persistence.Ordering;
+import org.openhab.core.persistence.PersistenceService;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -300,22 +306,85 @@ public class GetItemStateAction implements Action {
         }
 
         try {
-            // For now, return a stub implementation since the persistence API needs to be properly configured
-            // This will be enhanced when the correct persistence API is available
-
-            // Add a sample entry to show the expected format
-            Map<String, Object> sampleEntry = new HashMap<>();
-            sampleEntry.put("timestamp", System.currentTimeMillis());
-            sampleEntry.put("state", "SAMPLE_STATE");
-            sampleEntry.put("stateType", "StringType");
-            history.add(sampleEntry);
-
-            logger.debug("Returned stub history for item: {} (persistence API integration pending)", itemName);
+            // Implement real persistence API integration
+            for (PersistenceService service : persistenceServiceRegistry.getPersistenceServices()) {
+                if (service != null && service.isAvailable()) {
+                    try {
+                        // Parse duration string (e.g., "24h", "7d", "30m")
+                        ZonedDateTime endDate = ZonedDateTime.now();
+                        ZonedDateTime startDate = parseDuration(endDate, duration);
+                        
+                        // Query the persistence service
+                        Iterable<HistoricItem> historicItems = service.query(FilterCriteria.createFilterCriteria(itemName)
+                                .withStartDate(startDate.toInstant())
+                                .withEndDate(endDate.toInstant())
+                                .withOrdering(Ordering.DESC)
+                                .withPageSize(maxEntries));
+                        
+                        if (historicItems != null) {
+                            for (HistoricItem historicItem : historicItems) {
+                                Map<String, Object> entry = new HashMap<>();
+                                entry.put("timestamp", historicItem.getTimestamp().toEpochMilli());
+                                entry.put("state", historicItem.getState().toString());
+                                entry.put("stateType", historicItem.getState().getClass().getSimpleName());
+                                history.add(entry);
+                            }
+                        }
+                        
+                        // If we found data, break out of the loop
+                        if (!history.isEmpty()) {
+                            logger.debug("Retrieved {} history entries for item: {} from service: {}", 
+                                history.size(), itemName, service.getId());
+                            break;
+                        }
+                        
+                    } catch (Exception e) {
+                        logger.debug("Error querying persistence service {} for item {}: {}", 
+                            service.getId(), itemName, e.getMessage());
+                    }
+                }
+            }
+            
+            if (history.isEmpty()) {
+                logger.debug("No history data found for item: {} in any persistence service", itemName);
+            }
 
         } catch (Exception e) {
             logger.debug("Error retrieving state history for item: {}: {}", itemName, e.getMessage());
         }
 
         return history;
+    }
+    
+    /**
+     * Parse duration string and calculate start date
+     */
+    private ZonedDateTime parseDuration(ZonedDateTime endDate, String duration) {
+        if (duration == null || duration.isEmpty()) {
+            return endDate.minusHours(24); // Default to 24 hours
+        }
+        
+        try {
+            String unit = duration.substring(duration.length() - 1).toLowerCase();
+            int value = Integer.parseInt(duration.substring(0, duration.length() - 1));
+            
+            switch (unit) {
+                case "h":
+                    return endDate.minusHours(value);
+                case "d":
+                    return endDate.minusDays(value);
+                case "m":
+                    return endDate.minusMinutes(value);
+                case "s":
+                    return endDate.minusSeconds(value);
+                case "w":
+                    return endDate.minusWeeks(value);
+                default:
+                    return endDate.minusHours(24); // Default fallback
+            }
+        } catch (Exception e) {
+            logger.debug("Error parsing duration '{}', using default 24h", duration);
+            return endDate.minusHours(24);
+        }
     }
 }

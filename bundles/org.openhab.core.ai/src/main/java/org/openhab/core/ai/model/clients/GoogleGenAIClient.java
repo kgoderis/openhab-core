@@ -1,9 +1,14 @@
 package org.openhab.core.ai.model.clients;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -28,9 +33,10 @@ import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 
 /**
- * Google GenAI LLM Client implementation using official Google GenAI Java SDK.
+ * Google GenAI client implementation.
  * 
  * @author Karel Goderis - Initial Contribution
+ * @since 4.0.0
  */
 @NonNullByDefault
 public class GoogleGenAIClient implements ModelClient {
@@ -41,6 +47,16 @@ public class GoogleGenAIClient implements ModelClient {
     private final ExecutorService executorService;
     private final ModelClientInfo providerInfo;
     private final Client genaiClient;
+
+    // Metrics tracking fields
+    private final AtomicLong totalResponseTime = new AtomicLong(0);
+    private final AtomicInteger totalRequests = new AtomicInteger(0);
+    private final AtomicInteger successfulRequests = new AtomicInteger(0);
+    private final AtomicInteger errorCount = new AtomicInteger(0);
+    private final AtomicReference<String> lastError = new AtomicReference<>();
+    private final AtomicReference<java.time.Instant> lastErrorTime = new AtomicReference<>();
+    private final AtomicLong minResponseTime = new AtomicLong(Long.MAX_VALUE);
+    private final AtomicLong maxResponseTime = new AtomicLong(0);
 
     public GoogleGenAIClient(GoogleGenAIConfiguration config, @Nullable ActionRegistry actionRegistry) {
         this.config = config;
@@ -59,6 +75,7 @@ public class GoogleGenAIClient implements ModelClient {
     @Override
     public CompletableFuture<ModelResponse> complete(String prompt, ModelParameters params) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
             try {
                 // Build content
                 Content content = buildContent(prompt);
@@ -78,10 +95,18 @@ public class GoogleGenAIClient implements ModelClient {
                 // Extract response content
                 String responseContent = response.text();
 
+                // Track success metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, true, null);
+
                 return ModelResponse.builder().content(responseContent).modelName(config.getModelName())
                         .providerType(ModelProviderType.GOOGLE.name()).build();
 
             } catch (Exception e) {
+                // Track error metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, false, e.getMessage() != null ? e.getMessage() : "Unknown error");
+
                 logger.error("Error completing Google GenAI request", e);
                 throw new RuntimeException("Google GenAI completion failed", e);
             }
@@ -100,6 +125,7 @@ public class GoogleGenAIClient implements ModelClient {
     public CompletableFuture<ModelResponse> completeWithStreaming(String prompt, ModelParameters params,
             ModelStreamHandler handler) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
             try {
                 // Build content
                 Content content = buildContent(prompt);
@@ -129,10 +155,18 @@ public class GoogleGenAIClient implements ModelClient {
                 ModelResponse llmResponse = ModelResponse.builder().content(responseContent.toString())
                         .modelName(this.config.getModelName()).providerType(ModelProviderType.GOOGLE.name()).build();
 
+                // Track success metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, true, null);
+
                 handler.onComplete(llmResponse);
                 return llmResponse;
 
             } catch (Exception e) {
+                // Track error metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, false, e.getMessage() != null ? e.getMessage() : "Unknown error");
+
                 logger.error("Error completing Google GenAI streaming request", e);
                 handler.onError(e);
                 throw new RuntimeException("Google GenAI streaming completion failed", e);
@@ -143,10 +177,10 @@ public class GoogleGenAIClient implements ModelClient {
     @Override
     public boolean isAvailable() {
         try {
-            // Simple health check by testing connection
-            return testConnection().get();
+            // Simple availability check
+            return config.isEnabled() && config.getApiKey() != null && !config.getApiKey().isEmpty();
         } catch (Exception e) {
-            logger.debug("Google GenAI client not available", e);
+            logger.debug("Google GenAI availability check failed", e);
             return false;
         }
     }
@@ -160,17 +194,15 @@ public class GoogleGenAIClient implements ModelClient {
     public ModelHealthStatus getHealthStatus() {
         try {
             boolean available = isAvailable();
-            return new ModelHealthStatus(available, java.time.Instant.now(), available ? 100 : -1, // TODO: Measure
-                                                                                                   // actual
-                                                                                                   // response time
-                    1.0, // TODO: Calculate actual success rate
-                    0, // TODO: Track error count
-                    null, // TODO: Track last error
-                    null // TODO: Track last error time
-            );
+            long avgResponseTime = totalRequests.get() > 0 ? totalResponseTime.get() / totalRequests.get() : -1;
+            double successRate = totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get()
+                    : 0.0;
+
+            return new ModelHealthStatus(available, java.time.Instant.now(), avgResponseTime, successRate,
+                    errorCount.get(), lastError.get(), lastErrorTime.get());
         } catch (Exception e) {
-            return new ModelHealthStatus(false, java.time.Instant.now(), -1, 0.0, 1, e.getMessage(),
-                    java.time.Instant.now());
+            return new ModelHealthStatus(false, java.time.Instant.now(), -1, 0.0, errorCount.get() + 1,
+                    e.getMessage() != null ? e.getMessage() : "Unknown error", java.time.Instant.now());
         }
     }
 
@@ -238,15 +270,47 @@ public class GoogleGenAIClient implements ModelClient {
 
     @Override
     public @Nullable ModelRateLimitInfo getRateLimitInfo() {
-        // TODO: Extract rate limit info from response headers when SDK is available
+        // Extract rate limit info from response headers when SDK is available
+        // For now, return null as the Google GenAI SDK doesn't expose rate limit headers directly
+        // In a real implementation, this would extract from response headers
         return null;
+    }
+
+    /**
+     * Track metrics for request performance and errors
+     */
+    private void trackMetrics(long responseTime, boolean success, @Nullable String errorMessage) {
+        totalResponseTime.addAndGet(responseTime);
+        totalRequests.incrementAndGet();
+
+        if (success) {
+            successfulRequests.incrementAndGet();
+        } else {
+            errorCount.incrementAndGet();
+            if (errorMessage != null) {
+                lastError.set(errorMessage);
+                lastErrorTime.set(java.time.Instant.now());
+            }
+        }
+
+        // Update min/max response times
+        minResponseTime.updateAndGet(current -> Math.min(current, responseTime));
+        maxResponseTime.updateAndGet(current -> Math.max(current, responseTime));
     }
 
     /**
      * Get available actions from the registry
      */
     private List<Action> getAvailableActions() {
-        // TODO: Implement proper action retrieval
+        if (actionRegistry != null) {
+            try {
+                Map<String, Action> actionsMap = actionRegistry.getAllActions();
+                return new ArrayList<>(actionsMap.values());
+            } catch (Exception e) {
+                logger.warn("Error retrieving actions from registry", e);
+                return List.of();
+            }
+        }
         return List.of();
     }
 }

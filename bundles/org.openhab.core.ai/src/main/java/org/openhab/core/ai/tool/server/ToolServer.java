@@ -558,7 +558,12 @@ public class ToolServer {
             syncServer.addPrompt(promptSpec);
         }
 
-        // TODO: Register completions with the sync server when MCP SDK supports it
+        // TODO: IMPLEMENT WHEN MCP SDK IS COMPLIANT
+        // Reference: https://modelcontextprotocol.io/sdk/java/mcp-server#completion-specification
+        // Action Point: Uncomment this code when MCP Java SDK includes completion registration
+        //
+        // The official MCP specification shows that completions should be registered with the server:
+        // Register completions with the sync server
         // McpServerFeatures.SyncCompletionSpecification[] completionSpecs =
         // toolRegistry.getSyncCompletionSpecifications();
         // for (McpServerFeatures.SyncCompletionSpecification completionSpec : completionSpecs) {
@@ -614,7 +619,20 @@ public class ToolServer {
                     .subscribe();
         }
 
-        // TODO: Register completions with the async server when MCP SDK supports it
+        // TODO: IMPLEMENT WHEN MCP SDK IS COMPLIANT
+        // Reference: https://modelcontextprotocol.io/sdk/java/mcp-server#completion-specification
+        // Action Point: Uncomment this code when MCP Java SDK includes async completion registration
+        //
+        // The official MCP specification shows that completions should be registered with the server:
+        // var mcpServer = McpServer.async(mcpServerTransportProvider)
+        // .capabilities(ServerCapabilities.builder()
+        // .completions() // enable completions support
+        // .build())
+        // .completions(new McpServerFeatures.AsyncCompletionSpecification( // register completion specification
+        // new McpSchema.PromptReference("code_review"), asyncCompletionSpecification))
+        // .build();
+        //
+        // Register completions with the async server using reactive patterns
         // McpServerFeatures.AsyncCompletionSpecification[] completionSpecs =
         // toolRegistry.getAsyncCompletionSpecifications();
         // for (McpServerFeatures.AsyncCompletionSpecification completionSpec : completionSpecs) {

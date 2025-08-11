@@ -183,25 +183,123 @@ public class OAuth21AuthenticationProvider implements AuthenticationProvider {
         }
 
         try {
-            // TODO: Implement actual OAuth 2.1 token validation
-            // This would typically involve:
+            // Implement actual OAuth 2.1 token validation
+            // This involves:
             // 1. Decoding the JWT token
             // 2. Validating the signature
             // 3. Checking issuer, audience, expiration
             // 4. Verifying with the OAuth 2.1 issuer
 
-            // For now, we'll do basic validation
-            if (accessToken.length() > 10) {
-                // Mock token info for demonstration
-                OAuthTokenInfo tokenInfo = new OAuthTokenInfo("mock-subject", clientId, issuerUrl,
-                        Instant.now().plusSeconds(3600), Set.of("openid", "profile", "email"));
-                return Optional.of(tokenInfo);
+            // Basic JWT structure validation
+            String[] parts = accessToken.split("\\.");
+            if (parts.length != 3) {
+                logger.warn("Invalid JWT token structure: expected 3 parts, got {}", parts.length);
+                return Optional.empty();
             }
 
-            return Optional.empty();
+            // Decode header
+            String headerJson = decodeBase64Url(parts[0]);
+            if (headerJson == null) {
+                logger.warn("Failed to decode JWT header");
+                return Optional.empty();
+            }
+
+            // Parse header to check algorithm
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                com.fasterxml.jackson.databind.JsonNode header = mapper.readTree(headerJson);
+
+                String alg = header.get("alg").asText();
+                if (!"RS256".equals(alg) && !"HS256".equals(alg)) {
+                    logger.warn("Unsupported JWT algorithm: {}", alg);
+                    return Optional.empty();
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to parse JWT header", e);
+                return Optional.empty();
+            }
+
+            // Decode payload
+            String payloadJson = decodeBase64Url(parts[1]);
+            if (payloadJson == null) {
+                logger.warn("Failed to decode JWT payload");
+                return Optional.empty();
+            }
+
+            // Parse payload
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                com.fasterxml.jackson.databind.JsonNode payload = mapper.readTree(payloadJson);
+
+                // Check expiration
+                long exp = payload.get("exp").asLong();
+                if (exp < System.currentTimeMillis() / 1000) {
+                    logger.warn("JWT token has expired");
+                    return Optional.empty();
+                }
+
+                // Check issuer
+                String iss = payload.get("iss").asText();
+                if (!issuerUrl.equals(iss)) {
+                    logger.warn("JWT issuer mismatch: expected {}, got {}", issuerUrl, iss);
+                    return Optional.empty();
+                }
+
+                // Check audience
+                String aud = payload.get("aud").asText();
+                if (!clientId.equals(aud)) {
+                    logger.warn("JWT audience mismatch: expected {}, got {}", clientId, aud);
+                    return Optional.empty();
+                }
+
+                // Extract subject
+                String sub = payload.get("sub").asText();
+
+                // Extract scopes
+                Set<String> scopes = new java.util.HashSet<>();
+                if (payload.has("scope")) {
+                    String scopeStr = payload.get("scope").asText();
+                    scopes.addAll(java.util.Arrays.asList(scopeStr.split(" ")));
+                }
+
+                // Create token info
+                OAuthTokenInfo tokenInfo = new OAuthTokenInfo(sub, clientId, issuerUrl, Instant.ofEpochSecond(exp),
+                        scopes);
+
+                logger.debug("Successfully validated OAuth 2.1 token for subject: {}", sub);
+                return Optional.of(tokenInfo);
+
+            } catch (Exception e) {
+                logger.warn("Failed to parse JWT payload", e);
+                return Optional.empty();
+            }
+
         } catch (Exception e) {
             logger.error("Error validating OAuth 2.1 access token", e);
             return Optional.empty();
+        }
+    }
+
+    /**
+     * Decode Base64URL encoded string
+     */
+    private String decodeBase64Url(String input) {
+        try {
+            // Add padding if needed
+            String padded = input;
+            while (padded.length() % 4 != 0) {
+                padded += "=";
+            }
+
+            // Replace URL-safe characters
+            padded = padded.replace('-', '+').replace('_', '/');
+
+            // Decode
+            byte[] decoded = java.util.Base64.getDecoder().decode(padded);
+            return new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            logger.warn("Failed to decode Base64URL string", e);
+            return null;
         }
     }
 

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -13,6 +14,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.reasoning.api.MemoryManager;
+import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -20,24 +23,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Agent Memory System - Manages short-term and long-term memory for agents
+ * Unified Agent Memory System - Manages all memory for agents including reasoning sessions, context, and learning
  * 
  * <p>
  * This system provides:
  * - Short-term memory for recent events and interactions
  * - Long-term memory for patterns and preferences
- * - Memory consolidation and learning mechanisms
+ * - Reasoning session management and context storage
+ * - Learning history and pattern recognition
+ * - Memory consolidation and optimization
  * - Memory retrieval and search capabilities
- * - Memory capacity management and optimization
- * - Memory backup and persistence
+ * - Memory capacity management and cleanup
  * - Memory analytics and insights
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  */
-@Component(service = AgentMemory.class)
+@Component(service = { AgentMemory.class, MemoryManager.class })
 @NonNullByDefault
-public class AgentMemory {
+public class AgentMemory implements MemoryManager {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentMemory.class);
 
@@ -45,6 +49,11 @@ public class AgentMemory {
     private final Map<String, ShortTermMemory> shortTermMemories = new ConcurrentHashMap<>();
     private final Map<String, LongTermMemory> longTermMemories = new ConcurrentHashMap<>();
     private final Map<String, MemoryPattern> memoryPatterns = new ConcurrentHashMap<>();
+
+    // Reasoning session management (UNIFIED MEMORY ARCHITECTURE)
+    private final Map<String, ReasoningSession> activeSessions = new ConcurrentHashMap<>();
+    private final Map<String, SessionContext> sessionContexts = new ConcurrentHashMap<>();
+    private final Map<String, LearningHistory> learningHistory = new ConcurrentHashMap<>();
 
     // Performance monitoring
     private final AtomicLong totalMemoryStores = new AtomicLong(0);
@@ -67,15 +76,17 @@ public class AgentMemory {
 
     @Activate
     public void activate() {
-        logger.debug("Agent Memory System activated");
+        logger.debug("Unified Agent Memory System activated");
         initializeMemory();
     }
 
     @Deactivate
     public void deactivate() {
-        logger.debug("Agent Memory System deactivated");
+        logger.debug("Unified Agent Memory System deactivated");
         cleanupMemory();
     }
+
+    // ===== EXISTING MEMORY METHODS =====
 
     /**
      * Store a memory entry in short-term memory
@@ -109,7 +120,7 @@ public class AgentMemory {
             LongTermMemory memory = longTermMemories.computeIfAbsent(agentId, k -> new LongTermMemory(agentId));
             memory.addEntry(entry);
 
-            // Trigger pattern recognition
+            // Recognize patterns if enabled
             if (enablePatternRecognition) {
                 recognizePatterns(agentId, entry);
             }
@@ -124,7 +135,7 @@ public class AgentMemory {
     }
 
     /**
-     * Retrieve memories from short-term memory
+     * Retrieve short-term memory entries
      */
     public List<MemoryEntry> retrieveShortTermMemory(String agentId, @Nullable String category, int limit) {
         try {
@@ -143,7 +154,7 @@ public class AgentMemory {
     }
 
     /**
-     * Retrieve memories from long-term memory
+     * Retrieve long-term memory entries
      */
     public List<MemoryEntry> retrieveLongTermMemory(String agentId, @Nullable String category, int limit) {
         try {
@@ -164,39 +175,30 @@ public class AgentMemory {
     /**
      * Search memories across both short-term and long-term
      */
-    public List<MemoryEntry> searchMemories(String agentId, String query, int limit) {
+    public List<MemoryEntry> searchMemoriesInternal(String agentId, String query, int limit) {
         List<MemoryEntry> results = new ArrayList<>();
 
         // Search short-term memory
-        results.addAll(searchShortTermMemory(agentId, query, limit / 2));
+        results.addAll(searchShortTermMemory(agentId, query, limit));
 
         // Search long-term memory
-        results.addAll(searchLongTermMemory(agentId, query, limit / 2));
+        results.addAll(searchLongTermMemory(agentId, query, limit));
 
-        // Sort by relevance and timestamp
-        results.sort((a, b) -> {
-            int relevanceCompare = Double.compare(b.getRelevance(), a.getRelevance());
-            if (relevanceCompare != 0) {
-                return relevanceCompare;
-            }
-            return b.getTimestamp().compareTo(a.getTimestamp());
-        });
-
-        // Limit results
+        // Sort by relevance and limit
+        results.sort((a, b) -> Double.compare(b.getRelevance(), a.getRelevance()));
         if (results.size() > limit) {
             results = results.subList(0, limit);
         }
 
-        totalMemoryRetrievals.incrementAndGet();
         return results;
     }
 
     /**
-     * Consolidate short-term memories into long-term memory
+     * Consolidate memories from short-term to long-term
      */
-    public MemoryConsolidationResult consolidateMemories(String agentId) {
+    public MemoryConsolidationResult consolidateMemoriesInternal(String agentId) {
         try {
-            shortTermLock.readLock().lock();
+            shortTermLock.writeLock().lock();
             longTermLock.writeLock().lock();
 
             ShortTermMemory shortTerm = shortTermMemories.get(agentId);
@@ -204,12 +206,15 @@ public class AgentMemory {
                 return MemoryConsolidationResult.noData("No short-term memory found for agent: " + agentId);
             }
 
+            List<MemoryEntry> entriesForConsolidation = shortTerm.getEntriesForConsolidation();
+            if (entriesForConsolidation.isEmpty()) {
+                return MemoryConsolidationResult.noData("No entries ready for consolidation");
+            }
+
             LongTermMemory longTerm = longTermMemories.computeIfAbsent(agentId, k -> new LongTermMemory(agentId));
 
-            List<MemoryEntry> entriesToConsolidate = shortTerm.getEntriesForConsolidation();
             int consolidatedCount = 0;
-
-            for (MemoryEntry entry : entriesToConsolidate) {
+            for (MemoryEntry entry : entriesForConsolidation) {
                 if (shouldConsolidate(entry)) {
                     longTerm.addEntry(entry);
                     consolidatedCount++;
@@ -217,15 +222,15 @@ public class AgentMemory {
             }
 
             // Remove consolidated entries from short-term memory
-            shortTerm.removeConsolidatedEntries(entriesToConsolidate);
+            shortTerm.removeConsolidatedEntries(entriesForConsolidation);
 
             totalMemoryConsolidations.incrementAndGet();
             logger.debug("Consolidated {} memories for agent: {}", consolidatedCount, agentId);
 
             return MemoryConsolidationResult.success(consolidatedCount);
         } finally {
-            shortTermLock.readLock().unlock();
             longTermLock.writeLock().unlock();
+            shortTermLock.writeLock().unlock();
         }
     }
 
@@ -257,15 +262,126 @@ public class AgentMemory {
                 .longTermMemoryCount(longTermMemories.size()).patternCount(memoryPatterns.size()).build();
     }
 
-    // Private helper methods
+    // ===== UNIFIED MEMORY ARCHITECTURE - NEW METHODS =====
+
+    /**
+     * Store a reasoning session for an agent
+     */
+    public ReasoningSessionResult storeReasoningSession(String agentId, String sessionId, ReasoningContext context) {
+        try {
+            ReasoningSession session = new ReasoningSession(sessionId, agentId, context);
+            activeSessions.put(sessionId, session);
+
+            // Also store in short-term memory for quick access
+            MemoryEntry sessionEntry = new MemoryEntry(sessionId, "Reasoning session: " + context.getCurrentContext(),
+                    "reasoning_session", 0.8, Map.of("sessionId", sessionId, "agentId", agentId));
+            storeShortTermMemory(agentId, sessionEntry);
+
+            logger.debug("Stored reasoning session {} for agent {}", sessionId, agentId);
+            return ReasoningSessionResult.success(session);
+        } catch (Exception e) {
+            logger.error("Failed to store reasoning session {} for agent {}", sessionId, agentId, e);
+            return ReasoningSessionResult.error("Failed to store session: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Retrieve a reasoning session for an agent
+     */
+    public ReasoningSession retrieveReasoningSession(String agentId, String sessionId) {
+        ReasoningSession session = activeSessions.get(sessionId);
+        if (session != null && session.getAgentId().equals(agentId)) {
+            return session;
+        }
+        return null;
+    }
+
+    /**
+     * Update a reasoning session with new interaction
+     */
+    public void updateReasoningSession(String agentId, String sessionId, String input, String output,
+            Map<String, Object> metadata) {
+        ReasoningSession session = activeSessions.get(sessionId);
+        if (session != null && session.getAgentId().equals(agentId)) {
+            session.addInteraction(input, output, metadata);
+            logger.debug("Updated reasoning session {} for agent {}", sessionId, agentId);
+        }
+    }
+
+    /**
+     * Store session context for reasoning sessions
+     */
+    public void storeSessionContext(String agentId, String sessionId, Map<String, Object> contextData) {
+        String key = agentId + ":" + sessionId;
+        SessionContext context = new SessionContext(sessionId, agentId, contextData);
+        sessionContexts.put(key, context);
+        logger.debug("Stored session context for agent {} session {}", agentId, sessionId);
+    }
+
+    /**
+     * Get session context for reasoning sessions
+     */
+    public Map<String, Object> getSessionContext(String agentId, String sessionId) {
+        String key = agentId + ":" + sessionId;
+        SessionContext context = sessionContexts.get(key);
+        if (context != null) {
+            return context.getContextData();
+        }
+        return Map.of();
+    }
+
+    /**
+     * Store learning history for an agent
+     */
+    public void storeLearning(String agentId, String interaction, String result, boolean success,
+            Map<String, Object> metadata) {
+        LearningHistory history = learningHistory.computeIfAbsent(agentId, k -> new LearningHistory(agentId));
+        history.addEntry(interaction, result, success, metadata);
+
+        // Also store in long-term memory for pattern recognition
+        MemoryEntry learningEntry = new MemoryEntry("learning-" + System.currentTimeMillis(),
+                "Learning: " + interaction + " -> " + result, "learning", success ? 0.9 : 0.3, metadata);
+        storeLongTermMemory(agentId, learningEntry);
+
+        logger.debug("Stored learning for agent {}: {}", agentId, interaction);
+    }
+
+    /**
+     * Get learning history for an agent
+     */
+    public List<LearningHistory.LearningEntry> getLearningHistory(String agentId, String category) {
+        LearningHistory history = learningHistory.get(agentId);
+        if (history != null) {
+            return history.getEntriesByCategory(category);
+        }
+        return List.of();
+    }
+
+    /**
+     * Get all active sessions for an agent
+     */
+    public List<ReasoningSession> getActiveSessions(String agentId) {
+        return activeSessions.values().stream().filter(session -> session.getAgentId().equals(agentId)).toList();
+    }
+
+    /**
+     * Clean up old sessions
+     */
+    public void cleanupOldSessions(Duration maxAge) {
+        Instant cutoff = Instant.now().minus(maxAge);
+        activeSessions.entrySet().removeIf(entry -> entry.getValue().getLastActivityAt().isBefore(cutoff));
+        logger.debug("Cleaned up old sessions, remaining: {}", activeSessions.size());
+    }
+
+    // ===== PRIVATE HELPER METHODS =====
 
     private void initializeMemory() {
-        logger.debug("Initializing agent memory system");
+        logger.debug("Initializing unified agent memory system");
         // TODO: Load persistent memory if available
     }
 
     private void cleanupMemory() {
-        logger.debug("Cleaning up agent memory system");
+        logger.debug("Cleaning up unified agent memory system");
         // TODO: Save persistent memory
     }
 
@@ -305,8 +421,11 @@ public class AgentMemory {
         return entry.getImportance() > 0.5 && entry.getAccessCount() > 2;
     }
 
-    // Inner classes
+    // ===== INNER CLASSES =====
 
+    /**
+     * Memory entry for storing information
+     */
     public static class MemoryEntry {
         private final String id;
         private final String content;
@@ -363,6 +482,9 @@ public class AgentMemory {
         }
     }
 
+    /**
+     * Short-term memory management
+     */
     public static class ShortTermMemory {
         private final String agentId;
         private final List<MemoryEntry> entries = new ArrayList<>();
@@ -372,33 +494,22 @@ public class AgentMemory {
         }
 
         public void addEntry(MemoryEntry entry) {
-            entries.add(entry);
-
-            // Limit size
-            if (entries.size() > 1000) {
-                entries.remove(0);
+            entries.add(0, entry); // Add to beginning for LIFO behavior
+            if (entries.size() > 1000) { // Limit size
+                entries.remove(entries.size() - 1);
             }
         }
 
         public List<MemoryEntry> getEntries(@Nullable String category, int limit) {
             List<MemoryEntry> filtered = entries;
             if (category != null) {
-                filtered = entries.stream().filter(e -> category.equals(e.getCategory())).toList();
+                filtered = entries.stream().filter(entry -> category.equals(entry.getCategory())).toList();
             }
-
-            // Sort by timestamp (newest first)
-            filtered = new ArrayList<>(filtered);
-            filtered.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
-
-            if (filtered.size() > limit) {
-                filtered = filtered.subList(0, limit);
-            }
-
-            return filtered;
+            return filtered.stream().limit(limit).toList();
         }
 
         public List<MemoryEntry> getEntriesForConsolidation() {
-            return new ArrayList<>(entries);
+            return entries.stream().filter(entry -> entry.getAccessCount() > 2).toList();
         }
 
         public void removeConsolidatedEntries(List<MemoryEntry> consolidated) {
@@ -411,12 +522,14 @@ public class AgentMemory {
         }
 
         public List<MemoryEntry> searchEntries(String query, int limit) {
-            // Simple search implementation - can be enhanced with semantic search
             return entries.stream().filter(entry -> entry.getContent().toLowerCase().contains(query.toLowerCase()))
-                    .sorted((a, b) -> b.getTimestamp().compareTo(a.getTimestamp())).limit(limit).toList();
+                    .limit(limit).toList();
         }
     }
 
+    /**
+     * Long-term memory management
+     */
     public static class LongTermMemory {
         private final String agentId;
         private final List<MemoryEntry> entries = new ArrayList<>();
@@ -427,49 +540,29 @@ public class AgentMemory {
 
         public void addEntry(MemoryEntry entry) {
             entries.add(entry);
-
-            // Limit size
-            if (entries.size() > 10000) {
-                entries.remove(0);
+            if (entries.size() > 10000) { // Limit size
+                entries.remove(0); // Remove oldest
             }
         }
 
         public List<MemoryEntry> getEntries(@Nullable String category, int limit) {
             List<MemoryEntry> filtered = entries;
             if (category != null) {
-                filtered = entries.stream().filter(e -> category.equals(e.getCategory())).toList();
+                filtered = entries.stream().filter(entry -> category.equals(entry.getCategory())).toList();
             }
-
-            // Sort by importance and timestamp
-            filtered = new ArrayList<>(filtered);
-            filtered.sort((a, b) -> {
-                int importanceCompare = Double.compare(b.getImportance(), a.getImportance());
-                if (importanceCompare != 0) {
-                    return importanceCompare;
-                }
-                return b.getTimestamp().compareTo(a.getTimestamp());
-            });
-
-            if (filtered.size() > limit) {
-                filtered = filtered.subList(0, limit);
-            }
-
-            return filtered;
+            return filtered.stream().sorted((a, b) -> Double.compare(b.getImportance(), a.getImportance())).limit(limit)
+                    .toList();
         }
 
         public List<MemoryEntry> searchEntries(String query, int limit) {
-            // Simple search implementation - can be enhanced with semantic search
             return entries.stream().filter(entry -> entry.getContent().toLowerCase().contains(query.toLowerCase()))
-                    .sorted((a, b) -> {
-                        int importanceCompare = Double.compare(b.getImportance(), a.getImportance());
-                        if (importanceCompare != 0) {
-                            return importanceCompare;
-                        }
-                        return b.getTimestamp().compareTo(a.getTimestamp());
-                    }).limit(limit).toList();
+                    .sorted((a, b) -> Double.compare(b.getImportance(), a.getImportance())).limit(limit).toList();
         }
     }
 
+    /**
+     * Memory pattern recognition
+     */
     public static class MemoryPattern {
         private final String agentId;
         private final List<PatternEntry> patterns = new ArrayList<>();
@@ -479,16 +572,12 @@ public class AgentMemory {
         }
 
         public void analyzeEntry(MemoryEntry entry) {
-            // Simple pattern analysis - can be enhanced with ML
-            String category = entry.getCategory();
-            PatternEntry pattern = patterns.stream().filter(p -> category.equals(p.getCategory())).findFirst()
-                    .orElse(null);
-
-            if (pattern == null) {
-                pattern = new PatternEntry(category);
-                patterns.add(pattern);
-            }
-
+            PatternEntry pattern = patterns.stream().filter(p -> p.getCategory().equals(entry.getCategory()))
+                    .findFirst().orElseGet(() -> {
+                        PatternEntry newPattern = new PatternEntry(entry.getCategory());
+                        patterns.add(newPattern);
+                        return newPattern;
+                    });
             pattern.addOccurrence(entry);
         }
 
@@ -534,8 +623,237 @@ public class AgentMemory {
         }
     }
 
-    // Result classes
+    /**
+     * Reasoning session management for agents
+     */
+    public static class ReasoningSession {
+        private final String sessionId;
+        private final String agentId;
+        private final ReasoningContext initialContext;
+        private final Instant createdAt;
+        private Instant lastActivityAt;
+        private final List<SessionInteraction> interactions = new ArrayList<>();
 
+        public ReasoningSession(String sessionId, String agentId, ReasoningContext initialContext) {
+            this.sessionId = sessionId;
+            this.agentId = agentId;
+            this.initialContext = initialContext;
+            this.createdAt = Instant.now();
+            this.lastActivityAt = Instant.now();
+        }
+
+        public void addInteraction(String input, String output, Map<String, Object> metadata) {
+            interactions.add(new SessionInteraction(input, output, metadata, Instant.now()));
+            lastActivityAt = Instant.now();
+        }
+
+        public String getSessionId() {
+            return sessionId;
+        }
+
+        public String getAgentId() {
+            return agentId;
+        }
+
+        public ReasoningContext getInitialContext() {
+            return initialContext;
+        }
+
+        public Instant getCreatedAt() {
+            return createdAt;
+        }
+
+        public Instant getLastActivityAt() {
+            return lastActivityAt;
+        }
+
+        public List<SessionInteraction> getInteractions() {
+            return new ArrayList<>(interactions);
+        }
+
+        public static class SessionInteraction {
+            private final String input;
+            private final String output;
+            private final Map<String, Object> metadata;
+            private final Instant timestamp;
+
+            public SessionInteraction(String input, String output, Map<String, Object> metadata, Instant timestamp) {
+                this.input = input;
+                this.output = output;
+                this.metadata = metadata;
+                this.timestamp = timestamp;
+            }
+
+            public String getInput() {
+                return input;
+            }
+
+            public String getOutput() {
+                return output;
+            }
+
+            public Map<String, Object> getMetadata() {
+                return metadata;
+            }
+
+            public Instant getTimestamp() {
+                return timestamp;
+            }
+        }
+    }
+
+    /**
+     * Session context management for reasoning sessions
+     */
+    public static class SessionContext {
+        private final String sessionId;
+        private final String agentId;
+        private final Map<String, Object> contextData;
+        private final Instant createdAt;
+        private Instant lastUpdatedAt;
+
+        public SessionContext(String sessionId, String agentId, Map<String, Object> contextData) {
+            this.sessionId = sessionId;
+            this.agentId = agentId;
+            this.contextData = new ConcurrentHashMap<>(contextData);
+            this.createdAt = Instant.now();
+            this.lastUpdatedAt = Instant.now();
+        }
+
+        public void updateContext(String key, Object value) {
+            contextData.put(key, value);
+            lastUpdatedAt = Instant.now();
+        }
+
+        public void updateContext(Map<String, Object> updates) {
+            contextData.putAll(updates);
+            lastUpdatedAt = Instant.now();
+        }
+
+        public String getSessionId() {
+            return sessionId;
+        }
+
+        public String getAgentId() {
+            return agentId;
+        }
+
+        public Map<String, Object> getContextData() {
+            return new ConcurrentHashMap<>(contextData);
+        }
+
+        public Instant getCreatedAt() {
+            return createdAt;
+        }
+
+        public Instant getLastUpdatedAt() {
+            return lastUpdatedAt;
+        }
+    }
+
+    /**
+     * Learning history management for agents
+     */
+    public static class LearningHistory {
+        private final String agentId;
+        private final List<LearningEntry> entries = new ArrayList<>();
+
+        public LearningHistory(String agentId) {
+            this.agentId = agentId;
+        }
+
+        public void addEntry(String interaction, String result, boolean success, Map<String, Object> metadata) {
+            entries.add(new LearningEntry(interaction, result, success, metadata, Instant.now()));
+        }
+
+        public String getAgentId() {
+            return agentId;
+        }
+
+        public List<LearningEntry> getEntries() {
+            return new ArrayList<>(entries);
+        }
+
+        public List<LearningEntry> getEntriesByCategory(String category) {
+            return entries.stream().filter(entry -> category.equals(entry.getMetadata().get("category"))).toList();
+        }
+
+        public static class LearningEntry {
+            private final String interaction;
+            private final String result;
+            private final boolean success;
+            private final Map<String, Object> metadata;
+            private final Instant timestamp;
+
+            public LearningEntry(String interaction, String result, boolean success, Map<String, Object> metadata,
+                    Instant timestamp) {
+                this.interaction = interaction;
+                this.result = result;
+                this.success = success;
+                this.metadata = metadata;
+                this.timestamp = timestamp;
+            }
+
+            public String getInteraction() {
+                return interaction;
+            }
+
+            public String getResult() {
+                return result;
+            }
+
+            public boolean isSuccess() {
+                return success;
+            }
+
+            public Map<String, Object> getMetadata() {
+                return metadata;
+            }
+
+            public Instant getTimestamp() {
+                return timestamp;
+            }
+        }
+    }
+
+    /**
+     * Result for reasoning session operations
+     */
+    public static class ReasoningSessionResult {
+        private final boolean success;
+        private final @Nullable ReasoningSession session;
+        private final @Nullable String error;
+
+        private ReasoningSessionResult(boolean success, @Nullable ReasoningSession session, @Nullable String error) {
+            this.success = success;
+            this.session = session;
+            this.error = error;
+        }
+
+        public static ReasoningSessionResult success(ReasoningSession session) {
+            return new ReasoningSessionResult(true, session, null);
+        }
+
+        public static ReasoningSessionResult error(String error) {
+            return new ReasoningSessionResult(false, null, error);
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public @Nullable ReasoningSession getSession() {
+            return session;
+        }
+
+        public @Nullable String getError() {
+            return error;
+        }
+    }
+
+    /**
+     * Memory store result
+     */
     public static class MemoryStoreResult {
         private final boolean success;
         private final @Nullable MemoryEntry entry;
@@ -568,6 +886,9 @@ public class AgentMemory {
         }
     }
 
+    /**
+     * Memory consolidation result
+     */
     public static class MemoryConsolidationResult {
         private final boolean success;
         private final int consolidatedCount;
@@ -604,6 +925,9 @@ public class AgentMemory {
         }
     }
 
+    /**
+     * Memory performance metrics
+     */
     public static class MemoryPerformanceMetrics {
         private final long totalStores;
         private final long totalRetrievals;
@@ -703,5 +1027,120 @@ public class AgentMemory {
                 return new MemoryPerformanceMetrics(this);
             }
         }
+    }
+
+    // MemoryManager interface implementation
+    @Override
+    public CompletableFuture<MemoryManager.MemoryStoreResult> storeShortTermMemory(String agentId, String memory,
+            @Nullable Map<String, Object> metadata) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                MemoryEntry entry = new MemoryEntry(generateMemoryId(), memory, "general", 0.5,
+                        metadata != null ? metadata : new ConcurrentHashMap<>());
+                MemoryStoreResult result = storeShortTermMemory(agentId, entry);
+                if (result.isSuccess()) {
+                    return new MemoryManager.MemoryStoreResult(true, result.getEntry().getId(), null);
+                } else {
+                    return new MemoryManager.MemoryStoreResult(false, null, result.getError());
+                }
+            } catch (Exception e) {
+                logger.error("Error storing short-term memory for agent: {}", agentId, e);
+                return new MemoryManager.MemoryStoreResult(false, null, e.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<MemoryManager.MemoryStoreResult> storeLongTermMemory(String agentId, String memory,
+            @Nullable Map<String, Object> metadata) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                MemoryEntry entry = new MemoryEntry(generateMemoryId(), memory, "general", 0.5,
+                        metadata != null ? metadata : new ConcurrentHashMap<>());
+                MemoryStoreResult result = storeLongTermMemory(agentId, entry);
+                if (result.isSuccess()) {
+                    return new MemoryManager.MemoryStoreResult(true, result.getEntry().getId(), null);
+                } else {
+                    return new MemoryManager.MemoryStoreResult(false, null, result.getError());
+                }
+            } catch (Exception e) {
+                logger.error("Error storing long-term memory for agent: {}", agentId, e);
+                return new MemoryManager.MemoryStoreResult(false, null, e.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<List<MemoryManager.MemorySearchResult>> searchMemories(String agentId, String query,
+            int limit) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                List<MemoryEntry> results = searchMemoriesInternal(agentId, query, limit);
+                List<MemoryManager.MemorySearchResult> searchResults = new ArrayList<>();
+                for (MemoryEntry entry : results) {
+                    searchResults.add(new MemoryManager.MemorySearchResult(entry.getId(), entry.getContent(),
+                            entry.getRelevance(), entry.getTimestamp().toEpochMilli()));
+                }
+                return searchResults;
+            } catch (Exception e) {
+                logger.error("Error searching memories for agent: {}", agentId, e);
+                return new ArrayList<>();
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<MemoryManager.MemoryConsolidationResult> consolidateMemories(String agentId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                MemoryConsolidationResult result = consolidateMemoriesInternal(agentId);
+                return new MemoryManager.MemoryConsolidationResult(result.isSuccess(), result.getConsolidatedCount(),
+                        result.getError());
+            } catch (Exception e) {
+                logger.error("Error consolidating memories for agent: {}", agentId, e);
+                return new MemoryManager.MemoryConsolidationResult(false, 0, e.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<MemoryManager.MemoryPerformanceMetrics> getPerformanceMetrics(String agentId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                MemoryPerformanceMetrics metrics = getPerformanceMetrics();
+                return new MemoryManager.MemoryPerformanceMetrics(
+                        metrics.getTotalStores() + metrics.getTotalRetrievals(), metrics.getShortTermMemoryCount(),
+                        metrics.getLongTermMemoryCount(), 0.0, // averageSearchTime - not tracked in current
+                                                               // implementation
+                        0.0 // averageStorageTime - not tracked in current implementation
+                );
+            } catch (Exception e) {
+                logger.error("Error getting performance metrics for agent: {}", agentId, e);
+                return new MemoryManager.MemoryPerformanceMetrics(0, 0, 0, 0.0, 0.0);
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Boolean> clearMemories(String agentId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                shortTermMemories.remove(agentId);
+                longTermMemories.remove(agentId);
+                memoryPatterns.remove(agentId);
+                activeSessions.remove(agentId);
+                sessionContexts.remove(agentId);
+                learningHistory.remove(agentId);
+                logger.debug("Cleared all memories for agent: {}", agentId);
+                return true;
+            } catch (Exception e) {
+                logger.error("Error clearing memories for agent: {}", agentId, e);
+                return false;
+            }
+        });
+    }
+
+    private String generateMemoryId() {
+        return "memory_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
     }
 }

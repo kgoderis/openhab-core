@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
+import io.modelcontextprotocol.spec.McpSchema;
 
 /**
  * Implementation of CompletionRegistry for MCP Completions.
@@ -108,11 +109,35 @@ public class DefaultCompletionRegistry implements CompletionRegistry {
         try {
             LOGGER.debug("Creating sync completion specifications for {} completions", completions.size());
 
-            // TODO: Implement actual MCP completion specification creation
-            // For now, return empty array until MCP SDK integration is properly implemented
-            // The MCP SDK needs to provide proper builders for completion specifications
-            LOGGER.debug("Returning empty sync completion specifications (MCP SDK integration pending)");
-            return new McpServerFeatures.SyncCompletionSpecification[0];
+            // Create completion specifications using MCP SDK builders
+            var specs = new java.util.ArrayList<McpServerFeatures.SyncCompletionSpecification>();
+
+            for (var entry : getAllCompletions().entrySet()) {
+                var completion = entry.getValue();
+
+                try {
+                    // Create MCP completion specification using the correct SDK structure
+                    var promptReference = new McpSchema.PromptReference(completion.getPromptReference());
+
+                    var syncCompletionSpec = new McpServerFeatures.SyncCompletionSpecification(promptReference,
+                            (exchange, request) -> {
+                                LOGGER.debug("Handling sync completion for: {}", completion.getPromptReference());
+
+                                return new McpSchema.CompleteResult(new McpSchema.CompleteResult.CompleteCompletion(
+                                        completion.getSuggestions(), completion.getTotal(), completion.hasMore()));
+                            });
+
+                    specs.add(syncCompletionSpec);
+                    LOGGER.debug("Created sync completion specification for: {}", completion.getPromptReference());
+
+                } catch (Exception e) {
+                    LOGGER.error("Error creating sync completion specification for: {}",
+                            completion.getPromptReference(), e);
+                }
+            }
+
+            LOGGER.debug("Created {} sync completion specifications", specs.size());
+            return specs.toArray(new McpServerFeatures.SyncCompletionSpecification[0]);
 
         } catch (Exception e) {
             LOGGER.error("Error creating sync completion specifications", e);
@@ -125,11 +150,37 @@ public class DefaultCompletionRegistry implements CompletionRegistry {
         try {
             LOGGER.debug("Creating async completion specifications for {} completions", completions.size());
 
-            // TODO: Implement actual MCP completion specification creation
-            // For now, return empty array until MCP SDK integration is properly implemented
-            // The MCP SDK needs to provide proper builders for completion specifications
-            LOGGER.debug("Returning empty async completion specifications (MCP SDK integration pending)");
-            return new McpServerFeatures.AsyncCompletionSpecification[0];
+            // Create completion specifications using MCP SDK builders
+            var specs = new java.util.ArrayList<McpServerFeatures.AsyncCompletionSpecification>();
+
+            for (var entry : getAllCompletions().entrySet()) {
+                var completion = entry.getValue();
+
+                try {
+                    // Create MCP completion specification using the correct SDK structure
+                    var promptReference = new McpSchema.PromptReference(completion.getPromptReference());
+
+                    var asyncCompletionSpec = new McpServerFeatures.AsyncCompletionSpecification(promptReference,
+                            (exchange, request) -> {
+                                LOGGER.debug("Handling async completion for: {}", completion.getPromptReference());
+
+                                return reactor.core.publisher.Mono.fromCallable(() -> {
+                                    return new McpSchema.CompleteResult(new McpSchema.CompleteResult.CompleteCompletion(
+                                            completion.getSuggestions(), completion.getTotal(), completion.hasMore()));
+                                });
+                            });
+
+                    specs.add(asyncCompletionSpec);
+                    LOGGER.debug("Created async completion specification for: {}", completion.getPromptReference());
+
+                } catch (Exception e) {
+                    LOGGER.error("Error creating async completion specification for: {}",
+                            completion.getPromptReference(), e);
+                }
+            }
+
+            LOGGER.debug("Created {} async completion specifications", specs.size());
+            return specs.toArray(new McpServerFeatures.AsyncCompletionSpecification[0]);
 
         } catch (Exception e) {
             LOGGER.error("Error creating async completion specifications", e);

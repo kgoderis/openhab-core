@@ -49,9 +49,6 @@ class ReasoningOrchestrationServiceTest {
     private MultiStepReasoningEngine mockReasoningEngine;
 
     @Mock
-    private ContextMemoryManager mockContextMemoryManager;
-
-    @Mock
     private AgentMemory mockAgentMemory;
 
     @Mock

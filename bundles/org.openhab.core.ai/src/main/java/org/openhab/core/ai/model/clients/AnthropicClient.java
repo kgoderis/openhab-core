@@ -1,9 +1,14 @@
 package org.openhab.core.ai.model.clients;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -27,9 +32,10 @@ import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.MessageParam;
 
 /**
- * Anthropic LLM Client implementation using official Anthropic Java SDK.
+ * Anthropic Claude client implementation.
  * 
  * @author Karel Goderis - Initial Contribution
+ * @since 4.0.0
  */
 @NonNullByDefault
 public class AnthropicClient implements ModelClient {
@@ -40,6 +46,16 @@ public class AnthropicClient implements ModelClient {
     private final ExecutorService executorService;
     private final ModelClientInfo providerInfo;
     private final com.anthropic.client.AnthropicClient anthropicClient;
+
+    // Metrics tracking fields
+    private final AtomicLong totalResponseTime = new AtomicLong(0);
+    private final AtomicInteger totalRequests = new AtomicInteger(0);
+    private final AtomicInteger successfulRequests = new AtomicInteger(0);
+    private final AtomicInteger errorCount = new AtomicInteger(0);
+    private final AtomicReference<String> lastError = new AtomicReference<>();
+    private final AtomicReference<java.time.Instant> lastErrorTime = new AtomicReference<>();
+    private final AtomicLong minResponseTime = new AtomicLong(Long.MAX_VALUE);
+    private final AtomicLong maxResponseTime = new AtomicLong(0);
 
     public AnthropicClient(AnthropicConfiguration config, @Nullable ActionRegistry actionRegistry) {
         this.config = config;
@@ -58,11 +74,12 @@ public class AnthropicClient implements ModelClient {
     @Override
     public CompletableFuture<ModelResponse> complete(String prompt, ModelParameters params) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
             try {
-                // Build messages array
+                // Build messages
                 List<MessageParam> messages = buildMessages(prompt);
 
-                // Create request
+                // Build request
                 MessageCreateParams request = MessageCreateParams.builder().model(config.getModelName())
                         .maxTokens(params.getMaxTokens()).temperature(params.getTemperature()).messages(messages)
                         .build();
@@ -83,30 +100,35 @@ public class AnthropicClient implements ModelClient {
                     }
                 }
 
-                return ModelResponse.builder().content(responseContent).modelName(response.model().toString())
+                // Track success metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, true, null);
+
+                return ModelResponse.builder().content(responseContent).modelName(config.getModelName())
                         .providerType(ModelProviderType.ANTHROPIC.name()).build();
 
             } catch (Exception e) {
+                // Track error metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, false, e.getMessage() != null ? e.getMessage() : "Unknown error");
+
                 logger.error("Error completing Anthropic request", e);
                 throw new RuntimeException("Anthropic completion failed", e);
             }
         }, executorService);
     }
 
-    /**
-     * Build messages array for Anthropic API
-     */
     private List<MessageParam> buildMessages(String prompt) {
-        List<MessageParam> messages = new java.util.ArrayList<>();
+        List<MessageParam> messages = new ArrayList<>();
 
-        // Add system message first if configured
+        // Add system message if configured
         if (config.getSystemPrompt() != null && !config.getSystemPrompt().isEmpty()) {
             messages.add(MessageParam.builder().role(MessageParam.Role.USER)
-                    .content("System: " + config.getSystemPrompt() + "\n\nUser: " + prompt).build());
-        } else {
-            // Add user message
-            messages.add(MessageParam.builder().role(MessageParam.Role.USER).content(prompt).build());
+                    .content("System: " + config.getSystemPrompt()).build());
         }
+
+        // Add user message
+        messages.add(MessageParam.builder().role(MessageParam.Role.USER).content(prompt).build());
 
         return messages;
     }
@@ -115,8 +137,9 @@ public class AnthropicClient implements ModelClient {
     public CompletableFuture<ModelResponse> completeWithStreaming(String prompt, ModelParameters params,
             ModelStreamHandler handler) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
             try {
-                // Build messages array
+                // Build messages
                 List<MessageParam> messages = buildMessages(prompt);
 
                 // Create request
@@ -154,10 +177,18 @@ public class AnthropicClient implements ModelClient {
                     }
                 });
 
+                // Track success metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, true, null);
+
                 return ModelResponse.builder().content(responseContent.toString()).modelName(modelNameRef.get())
                         .providerType(ModelProviderType.ANTHROPIC.name()).build();
 
             } catch (Exception e) {
+                // Track error metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, false, e.getMessage() != null ? e.getMessage() : "Unknown error");
+
                 logger.error("Error completing Anthropic streaming request", e);
                 handler.onError(e);
                 throw new RuntimeException("Anthropic streaming completion failed", e);
@@ -168,9 +199,10 @@ public class AnthropicClient implements ModelClient {
     @Override
     public boolean isAvailable() {
         try {
-            return testConnection().get();
+            // Simple availability check
+            return config.isEnabled() && config.getApiKey() != null && !config.getApiKey().isEmpty();
         } catch (Exception e) {
-            logger.debug("Anthropic client not available", e);
+            logger.debug("Anthropic availability check failed", e);
             return false;
         }
     }
@@ -184,17 +216,15 @@ public class AnthropicClient implements ModelClient {
     public ModelHealthStatus getHealthStatus() {
         try {
             boolean available = isAvailable();
-            return new ModelHealthStatus(available, java.time.Instant.now(), available ? 100 : -1, // TODO: Measure
-                                                                                                   // actual
-                                                                                                   // response time
-                    1.0, // TODO: Calculate actual success rate
-                    0, // TODO: Track error count
-                    null, // TODO: Track last error
-                    null // TODO: Track last error time
-            );
+            long avgResponseTime = totalRequests.get() > 0 ? totalResponseTime.get() / totalRequests.get() : -1;
+            double successRate = totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get()
+                    : 0.0;
+
+            return new ModelHealthStatus(available, java.time.Instant.now(), avgResponseTime, successRate,
+                    errorCount.get(), lastError.get(), lastErrorTime.get());
         } catch (Exception e) {
-            return new ModelHealthStatus(false, java.time.Instant.now(), -1, 0.0, 1, e.getMessage(),
-                    java.time.Instant.now());
+            return new ModelHealthStatus(false, java.time.Instant.now(), -1, 0.0, errorCount.get() + 1,
+                    e.getMessage() != null ? e.getMessage() : "Unknown error", java.time.Instant.now());
         }
     }
 
@@ -264,15 +294,47 @@ public class AnthropicClient implements ModelClient {
 
     @Override
     public @Nullable ModelRateLimitInfo getRateLimitInfo() {
-        // TODO: Extract rate limit info from response headers
+        // Extract rate limit info from response headers
+        // For now, return null as the Anthropic SDK doesn't expose rate limit headers directly
+        // In a real implementation, this would extract from response headers
         return null;
+    }
+
+    /**
+     * Track metrics for request performance and errors
+     */
+    private void trackMetrics(long responseTime, boolean success, @Nullable String errorMessage) {
+        totalResponseTime.addAndGet(responseTime);
+        totalRequests.incrementAndGet();
+
+        if (success) {
+            successfulRequests.incrementAndGet();
+        } else {
+            errorCount.incrementAndGet();
+            if (errorMessage != null) {
+                lastError.set(errorMessage);
+                lastErrorTime.set(java.time.Instant.now());
+            }
+        }
+
+        // Update min/max response times
+        minResponseTime.updateAndGet(current -> Math.min(current, responseTime));
+        maxResponseTime.updateAndGet(current -> Math.max(current, responseTime));
     }
 
     /**
      * Get available actions from the registry
      */
     private List<Action> getAvailableActions() {
-        // TODO: Implement proper action retrieval
+        if (actionRegistry != null) {
+            try {
+                Map<String, Action> actionsMap = actionRegistry.getAllActions();
+                return new ArrayList<>(actionsMap.values());
+            } catch (Exception e) {
+                logger.warn("Error retrieving actions from registry", e);
+                return List.of();
+            }
+        }
         return List.of();
     }
 }

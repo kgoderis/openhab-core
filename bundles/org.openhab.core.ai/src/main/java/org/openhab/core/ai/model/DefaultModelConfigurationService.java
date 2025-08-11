@@ -489,9 +489,10 @@ public class DefaultModelConfigurationService implements ModelConfigurationServi
         String apiKey = getNullableStringConfig(config, "azure.apiKey", null);
         String endpoint = getStringConfig(config, "azure.endpoint", "");
         String deploymentName = getStringConfig(config, "azure.deploymentName", "gpt-4o-mini");
+        double costPer1kTokens = getDoubleConfig(config, "azure.costPer1kTokens", 0.03);
 
         return new AzureOpenAIConfiguration(enabled, modelName, temperature, maxTokens, timeoutMs, retryAttempts,
-                systemPrompt, apiKey, endpoint, deploymentName);
+                systemPrompt, apiKey, endpoint, deploymentName, costPer1kTokens);
     }
 
     /**

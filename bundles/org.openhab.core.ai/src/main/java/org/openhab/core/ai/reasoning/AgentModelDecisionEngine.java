@@ -116,11 +116,17 @@ public class AgentModelDecisionEngine {
      * @return The reasoning result
      */
     private String executeReasoning(AgentModelPromptBuilder.AgentModelPrompt prompt) {
-        // This would integrate with the SharedModelReasoningEngine
-        // For now, return a placeholder result
-        return "Decision: Implement energy optimization strategy\n"
-                + "Reasoning: Current energy usage is high during peak hours\n"
-                + "Expected Outcome: 15% energy savings\n" + "Confidence: 85%";
+        try {
+            // Integrate with SharedModelReasoningEngine for actual reasoning execution
+            CompletableFuture<org.openhab.core.ai.model.api.ModelResponse> future = reasoningEngine
+                    .reasonAsync("decision-engine", prompt.getPromptText(), new ConcurrentHashMap<>(), null);
+
+            org.openhab.core.ai.model.api.ModelResponse response = future.get();
+            return response.getContent();
+        } catch (Exception e) {
+            logger.error("Error executing decision reasoning: {}", e.getMessage(), e);
+            return "Decision: No decision available\nReasoning: Error occurred during reasoning\nExpected Outcome: None\nConfidence: 0%";
+        }
     }
 
     /**

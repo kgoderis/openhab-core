@@ -1,9 +1,14 @@
 package org.openhab.core.ai.model.clients;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -43,6 +48,16 @@ public class OpenAIClient implements ModelClient {
     private final ExecutorService executorService;
     private final ModelClientInfo providerInfo;
 
+    // Metrics tracking fields
+    private final AtomicLong totalResponseTime = new AtomicLong(0);
+    private final AtomicInteger totalRequests = new AtomicInteger(0);
+    private final AtomicInteger successfulRequests = new AtomicInteger(0);
+    private final AtomicInteger errorCount = new AtomicInteger(0);
+    private final AtomicReference<String> lastError = new AtomicReference<>();
+    private final AtomicReference<java.time.Instant> lastErrorTime = new AtomicReference<>();
+    private final AtomicLong minResponseTime = new AtomicLong(Long.MAX_VALUE);
+    private final AtomicLong maxResponseTime = new AtomicLong(0);
+
     public OpenAIClient(OpenAIConfiguration config, @Nullable ActionRegistry actionRegistry) {
         this.config = config;
         this.actionRegistry = actionRegistry;
@@ -62,6 +77,7 @@ public class OpenAIClient implements ModelClient {
     @Override
     public CompletableFuture<ModelResponse> complete(String prompt, ModelParameters params) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
             try {
                 ChatCompletionCreateParams.Builder paramsBuilder = ChatCompletionCreateParams.builder()
                         .model(config.getModelName()).addUserMessage(prompt).temperature(params.getTemperature())
@@ -69,12 +85,15 @@ public class OpenAIClient implements ModelClient {
 
                 // Add system prompt if configured
                 if (config.getSystemPrompt() != null && !config.getSystemPrompt().isEmpty()) {
-                    // TODO: Add system message when ChatMessage import is resolved
-                    logger.debug("System prompt configured but not yet implemented: {}", config.getSystemPrompt());
+                    paramsBuilder.addSystemMessage(config.getSystemPrompt());
                 }
 
                 ChatCompletionCreateParams requestParams = paramsBuilder.build();
                 ChatCompletion response = openAIClient.chat().completions().create(requestParams);
+
+                // Track metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, true, null);
 
                 // Return regular text response
                 String content = response.choices().get(0).message().content().orElse("");
@@ -82,6 +101,10 @@ public class OpenAIClient implements ModelClient {
                         .providerType(ModelProviderType.OPENAI.name()).build();
 
             } catch (Exception e) {
+                // Track error metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, false, e.getMessage() != null ? e.getMessage() : "Unknown error");
+
                 logger.error("Error completing OpenAI request", e);
                 throw new RuntimeException("OpenAI completion failed", e);
             }
@@ -92,6 +115,7 @@ public class OpenAIClient implements ModelClient {
     public CompletableFuture<ModelResponse> completeWithStreaming(String prompt, ModelParameters params,
             ModelStreamHandler handler) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
             try {
                 ChatCompletionCreateParams.Builder paramsBuilder = ChatCompletionCreateParams.builder()
                         .model(config.getModelName()).addUserMessage(prompt).temperature(params.getTemperature())
@@ -99,8 +123,7 @@ public class OpenAIClient implements ModelClient {
 
                 // Add system prompt if configured
                 if (config.getSystemPrompt() != null && !config.getSystemPrompt().isEmpty()) {
-                    // TODO: Add system message when ChatMessage import is resolved
-                    logger.debug("System prompt configured but not yet implemented: {}", config.getSystemPrompt());
+                    paramsBuilder.addSystemMessage(config.getSystemPrompt());
                 }
 
                 ChatCompletionCreateParams requestParams = paramsBuilder.build();
@@ -120,6 +143,10 @@ public class OpenAIClient implements ModelClient {
                 ChatCompletion finalResponse = accumulator.chatCompletion();
                 String content = finalResponse.choices().get(0).message().content().orElse("");
 
+                // Track metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, true, null);
+
                 ModelResponse response = ModelResponse.builder().content(content).modelName(finalResponse.model())
                         .providerType(ModelProviderType.OPENAI.name()).build();
 
@@ -127,11 +154,35 @@ public class OpenAIClient implements ModelClient {
                 return response;
 
             } catch (Exception e) {
+                // Track error metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                trackMetrics(responseTime, false, e.getMessage() != null ? e.getMessage() : "Unknown error");
+
                 logger.error("Error completing OpenAI streaming request", e);
                 handler.onError(e);
                 throw new RuntimeException("OpenAI streaming completion failed", e);
             }
         }, executorService);
+    }
+
+    /**
+     * Track metrics for request performance and errors
+     */
+    private void trackMetrics(long responseTime, boolean success, @Nullable String errorMessage) {
+        totalRequests.incrementAndGet();
+        totalResponseTime.addAndGet(responseTime);
+
+        // Update min/max response times
+        minResponseTime.updateAndGet(current -> Math.min(current, responseTime));
+        maxResponseTime.updateAndGet(current -> Math.max(current, responseTime));
+
+        if (success) {
+            successfulRequests.incrementAndGet();
+        } else {
+            errorCount.incrementAndGet();
+            lastError.set(errorMessage);
+            lastErrorTime.set(java.time.Instant.now());
+        }
     }
 
     @Override
@@ -154,17 +205,15 @@ public class OpenAIClient implements ModelClient {
     public ModelHealthStatus getHealthStatus() {
         try {
             boolean available = isAvailable();
-            return new ModelHealthStatus(available, java.time.Instant.now(), available ? 100 : -1, // TODO: Measure
-                                                                                                   // actual
-                                                                                                   // response time
-                    1.0, // TODO: Calculate actual success rate
-                    0, // TODO: Track error count
-                    null, // TODO: Track last error
-                    null // TODO: Track last error time
-            );
+            long avgResponseTime = totalRequests.get() > 0 ? totalResponseTime.get() / totalRequests.get() : 0;
+            double successRate = totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get()
+                    : 1.0;
+
+            return new ModelHealthStatus(available, java.time.Instant.now(), avgResponseTime, successRate,
+                    errorCount.get(), lastError.get(), lastErrorTime.get());
         } catch (Exception e) {
-            return new ModelHealthStatus(false, java.time.Instant.now(), -1, 0.0, 1, e.getMessage(),
-                    java.time.Instant.now());
+            return new ModelHealthStatus(false, java.time.Instant.now(), -1, 0.0, errorCount.get() + 1,
+                    e.getMessage() != null ? e.getMessage() : "Unknown error", java.time.Instant.now());
         }
     }
 
@@ -231,7 +280,14 @@ public class OpenAIClient implements ModelClient {
 
     @Override
     public @Nullable ModelRateLimitInfo getRateLimitInfo() {
-        // TODO: Extract rate limit info from response headers
+        // Extract rate limit info from response headers
+        // Note: This would require access to the HTTP response headers
+        // For now, return null as the OpenAI SDK doesn't expose headers directly
+        // In a real implementation, this would parse headers like:
+        // - x-ratelimit-remaining-requests
+        // - x-ratelimit-reset-requests
+        // - x-ratelimit-limit-requests
+        logger.debug("Rate limit info not available from OpenAI SDK - headers not exposed");
         return null;
     }
 
@@ -239,7 +295,65 @@ public class OpenAIClient implements ModelClient {
      * Get available actions from the registry
      */
     private List<Action> getAvailableActions() {
-        // TODO: Implement proper action retrieval
+        if (actionRegistry != null) {
+            try {
+                Map<String, Action> actionsMap = actionRegistry.getAllActions();
+                return new ArrayList<>(actionsMap.values());
+            } catch (Exception e) {
+                logger.warn("Error retrieving actions from registry", e);
+                return List.of();
+            }
+        }
         return List.of();
+    }
+
+    /**
+     * Get minimum response time in milliseconds
+     */
+    public long getMinResponseTime() {
+        long min = minResponseTime.get();
+        return min == Long.MAX_VALUE ? 0 : min;
+    }
+
+    /**
+     * Get maximum response time in milliseconds
+     */
+    public long getMaxResponseTime() {
+        return maxResponseTime.get();
+    }
+
+    /**
+     * Get total number of requests made
+     */
+    public int getTotalRequests() {
+        return totalRequests.get();
+    }
+
+    /**
+     * Get total number of successful requests
+     */
+    public int getSuccessfulRequests() {
+        return successfulRequests.get();
+    }
+
+    /**
+     * Get total number of failed requests
+     */
+    public int getFailedRequests() {
+        return errorCount.get();
+    }
+
+    /**
+     * Reset all metrics
+     */
+    public void resetMetrics() {
+        totalResponseTime.set(0);
+        totalRequests.set(0);
+        successfulRequests.set(0);
+        errorCount.set(0);
+        lastError.set(null);
+        lastErrorTime.set(null);
+        minResponseTime.set(Long.MAX_VALUE);
+        maxResponseTime.set(0);
     }
 }

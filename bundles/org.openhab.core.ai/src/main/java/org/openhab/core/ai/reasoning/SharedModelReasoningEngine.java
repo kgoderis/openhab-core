@@ -41,6 +41,8 @@ import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.model.api.ModelParameters;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.reasoning.api.ReasoningContext;
+import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -69,9 +71,10 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Karel Goderis - Initial Contribution
  */
-@Component(service = { SharedModelReasoningEngine.class, AgentModelIntegrationService.class }, immediate = true)
+@Component(service = { SharedModelReasoningEngine.class, AgentModelIntegrationService.class,
+        ReasoningEngine.class }, immediate = true)
 @NonNullByDefault
-public class SharedModelReasoningEngine implements AgentModelIntegrationService {
+public class SharedModelReasoningEngine implements AgentModelIntegrationService, ReasoningEngine {
 
     private final Logger logger = LoggerFactory.getLogger(SharedModelReasoningEngine.class);
 
@@ -473,6 +476,49 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService 
     @Override
     public boolean isAgentRegistered(String agentId) {
         return registeredAgents.containsKey(agentId);
+    }
+
+    // ReasoningEngine interface implementation
+    @Override
+    public CompletableFuture<ModelResponse> reasonAsync(String agentId, ReasoningContext context, String prompt,
+            @Nullable ModelParameters parameters) {
+        // Convert ReasoningContext to AgentModelContext for compatibility
+        AgentModelContext agentContext = convertToAgentModelContext(context);
+        return performReasoning(agentId, agentContext, prompt, parameters);
+    }
+
+    @Override
+    public boolean isHealthy() {
+        return !shutdown && isRunning && getReasoningEngineHealthStatus().isHealthy();
+    }
+
+    @Override
+    public String getEngineType() {
+        return "shared-model-reasoning";
+    }
+
+    @Override
+    public EngineStatus getStatus() {
+        if (shutdown) {
+            return EngineStatus.SHUTDOWN;
+        }
+        if (!isRunning) {
+            return EngineStatus.ERROR;
+        }
+        ReasoningEngineHealthStatus health = getReasoningEngineHealthStatus();
+        if (health.isHealthy()) {
+            return EngineStatus.ACTIVE;
+        } else {
+            return EngineStatus.DEGRADED;
+        }
+    }
+
+    private AgentModelContext convertToAgentModelContext(ReasoningContext context) {
+        // Create a simple AgentModelContext from ReasoningContext
+        // This is a basic conversion - can be enhanced based on actual needs
+        return AgentModelContext.builder().agentId(context.getUserId() != null ? context.getUserId() : "unknown")
+                .specialization("reasoning-agent").domain(context.getDomain() != null ? context.getDomain() : "general")
+                .capabilities(context.getMetadata()).build();
     }
 
     @Override

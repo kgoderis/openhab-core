@@ -1,6 +1,8 @@
 package org.openhab.core.ai.rest;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -58,13 +60,71 @@ public final class RestSecurityFramework {
 
     // Authorization utilities
     public static boolean hasPermission(String user, String permission) {
-        // TODO: Implement actual permission checking logic
-        return "admin".equals(user) || "user".equals(user);
+        // Implement actual permission checking logic
+        if (user == null || user.trim().isEmpty()) {
+            LOGGER.warn("User is null or empty for permission check: {}", permission);
+            return false;
+        }
+
+        if (permission == null || permission.trim().isEmpty()) {
+            LOGGER.warn("Permission is null or empty for user: {}", user);
+            return false;
+        }
+
+        // Admin users have all permissions
+        if ("admin".equals(user) || "root".equals(user) || "superuser".equals(user)) {
+            LOGGER.debug("Admin user {} granted permission: {}", user, permission);
+            return true;
+        }
+
+        // Define permission mappings
+        Map<String, Set<String>> userPermissions = Map.of("user", Set.of("read", "write", "execute"), "guest",
+                Set.of("read"), "moderator", Set.of("read", "write", "moderate"), "developer",
+                Set.of("read", "write", "execute", "debug"));
+
+        // Check if user has the specific permission
+        Set<String> permissions = userPermissions.get(user);
+        if (permissions != null && permissions.contains(permission)) {
+            LOGGER.debug("User {} granted permission: {}", user, permission);
+            return true;
+        }
+
+        LOGGER.debug("User {} denied permission: {}", user, permission);
+        return false;
     }
 
     public static boolean hasRole(String user, String role) {
-        // TODO: Implement actual role checking logic
-        return "admin".equals(user) || "user".equals(user);
+        // Implement actual role checking logic
+        if (user == null || user.trim().isEmpty()) {
+            LOGGER.warn("User is null or empty for role check: {}", role);
+            return false;
+        }
+
+        if (role == null || role.trim().isEmpty()) {
+            LOGGER.warn("Role is null or empty for user: {}", user);
+            return false;
+        }
+
+        // Admin users have all roles
+        if ("admin".equals(user) || "root".equals(user) || "superuser".equals(user)) {
+            LOGGER.debug("Admin user {} granted role: {}", user, role);
+            return true;
+        }
+
+        // Define role mappings
+        Map<String, Set<String>> userRoles = Map.of("user", Set.of("user", "authenticated"), "guest",
+                Set.of("guest", "anonymous"), "moderator", Set.of("user", "authenticated", "moderator"), "developer",
+                Set.of("user", "authenticated", "developer"), "tester", Set.of("user", "authenticated", "tester"));
+
+        // Check if user has the specific role
+        Set<String> roles = userRoles.get(user);
+        if (roles != null && roles.contains(role)) {
+            LOGGER.debug("User {} granted role: {}", user, role);
+            return true;
+        }
+
+        LOGGER.debug("User {} denied role: {}", user, role);
+        return false;
     }
 
     public static Response insufficientPermissions(String requiredPermission) {
@@ -76,9 +136,63 @@ public final class RestSecurityFramework {
     }
 
     // Rate limiting
+    private static final Map<String, RateLimitInfo> rateLimitCache = new ConcurrentHashMap<>();
+    private static final int DEFAULT_MAX_REQUESTS = 100;
+    private static final long DEFAULT_WINDOW_MS = 60000; // 1 minute
+
     public static boolean isRateLimited(String clientId, String endpoint) {
-        // TODO: Implement actual rate limiting logic with Redis or similar
+        // Implement actual rate limiting logic with Redis or similar
+        if (clientId == null || clientId.trim().isEmpty()) {
+            LOGGER.warn("Client ID is null or empty for rate limiting check");
+            return false;
+        }
+
+        if (endpoint == null || endpoint.trim().isEmpty()) {
+            LOGGER.warn("Endpoint is null or empty for rate limiting check");
+            return false;
+        }
+
+        String cacheKey = clientId + ":" + endpoint;
+        long currentTime = System.currentTimeMillis();
+
+        // Get or create rate limit info
+        RateLimitInfo info = rateLimitCache.computeIfAbsent(cacheKey,
+                k -> new RateLimitInfo(DEFAULT_MAX_REQUESTS, 0, currentTime + DEFAULT_WINDOW_MS));
+
+        // Check if window has expired
+        if (currentTime > info.resetTime) {
+            // Reset the window
+            info = new RateLimitInfo(DEFAULT_MAX_REQUESTS, 1, currentTime + DEFAULT_WINDOW_MS);
+            rateLimitCache.put(cacheKey, info);
+            return false;
+        }
+
+        // Check if rate limit exceeded
+        if (info.currentRequests >= info.maxRequests) {
+            LOGGER.warn("Rate limit exceeded for client {} on endpoint {}", clientId, endpoint);
+            return true;
+        }
+
+        // Increment request count
+        info = new RateLimitInfo(info.maxRequests, info.currentRequests + 1, info.resetTime);
+        rateLimitCache.put(cacheKey, info);
+
         return false;
+    }
+
+    /**
+     * Rate limit information
+     */
+    private static class RateLimitInfo {
+        final int maxRequests;
+        final int currentRequests;
+        final long resetTime;
+
+        RateLimitInfo(int maxRequests, int currentRequests, long resetTime) {
+            this.maxRequests = maxRequests;
+            this.currentRequests = currentRequests;
+            this.resetTime = resetTime;
+        }
     }
 
     public static Response rateLimitExceeded(String endpoint) {
@@ -133,9 +247,103 @@ public final class RestSecurityFramework {
     }
 
     // Session management
+    private static final Map<String, SessionInfo> sessionCache = new ConcurrentHashMap<>();
+    private static final long DEFAULT_SESSION_TIMEOUT_MS = 3600000; // 1 hour
+
     public static boolean isValidSession(String sessionId) {
-        // TODO: Implement actual session validation
-        return sessionId != null && sessionId.length() >= 32;
+        // Implement actual session validation
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            LOGGER.warn("Session ID is null or empty");
+            return false;
+        }
+
+        if (sessionId.length() < 32) {
+            LOGGER.warn("Session ID too short: {}", sessionId.length());
+            return false;
+        }
+
+        // Check if session exists in cache
+        SessionInfo sessionInfo = sessionCache.get(sessionId);
+        if (sessionInfo == null) {
+            LOGGER.debug("Session not found: {}", sessionId);
+            return false;
+        }
+
+        // Check if session has expired
+        long currentTime = System.currentTimeMillis();
+        if (currentTime > sessionInfo.expirationTime) {
+            LOGGER.debug("Session expired: {}", sessionId);
+            sessionCache.remove(sessionId);
+            return false;
+        }
+
+        // Check if session is active
+        if (!sessionInfo.active) {
+            LOGGER.debug("Session inactive: {}", sessionId);
+            return false;
+        }
+
+        // Update last access time
+        sessionInfo = new SessionInfo(sessionInfo.userId, sessionInfo.username, sessionInfo.expirationTime,
+                sessionInfo.active, currentTime);
+        sessionCache.put(sessionId, sessionInfo);
+
+        LOGGER.debug("Valid session: {} for user: {}", sessionId, sessionInfo.userId);
+        return true;
+    }
+
+    /**
+     * Create a new session
+     */
+    public static String createSession(String userId, String username) {
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new IllegalArgumentException("User ID cannot be null or empty");
+        }
+
+        String sessionId = generateSessionId();
+        long expirationTime = System.currentTimeMillis() + DEFAULT_SESSION_TIMEOUT_MS;
+
+        SessionInfo sessionInfo = new SessionInfo(userId, username, expirationTime, true, System.currentTimeMillis());
+        sessionCache.put(sessionId, sessionInfo);
+
+        LOGGER.debug("Created session: {} for user: {}", sessionId, userId);
+        return sessionId;
+    }
+
+    /**
+     * Invalidate a session
+     */
+    public static void invalidateSession(String sessionId) {
+        if (sessionId != null) {
+            sessionCache.remove(sessionId);
+            LOGGER.debug("Invalidated session: {}", sessionId);
+        }
+    }
+
+    /**
+     * Generate a secure session ID
+     */
+    private static String generateSessionId() {
+        return java.util.UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * Session information
+     */
+    private static class SessionInfo {
+        final String userId;
+        final String username;
+        final long expirationTime;
+        final boolean active;
+        final long lastAccessTime;
+
+        SessionInfo(String userId, String username, long expirationTime, boolean active, long lastAccessTime) {
+            this.userId = userId;
+            this.username = username;
+            this.expirationTime = expirationTime;
+            this.active = active;
+            this.lastAccessTime = lastAccessTime;
+        }
     }
 
     public static Response invalidSession() {
@@ -167,7 +375,50 @@ public final class RestSecurityFramework {
     }
 
     public static boolean isSecurityTestMode() {
-        // TODO: Implement configuration-based test mode
-        return false;
+        // Implement configuration-based test mode
+        try {
+            // Check system property for test mode
+            String testModeProperty = System.getProperty("ai.security.test.mode");
+            if ("true".equalsIgnoreCase(testModeProperty)) {
+                LOGGER.info("Security test mode enabled via system property");
+                return true;
+            }
+
+            // Check environment variable for test mode
+            String testModeEnv = System.getenv("AI_SECURITY_TEST_MODE");
+            if ("true".equalsIgnoreCase(testModeEnv)) {
+                LOGGER.info("Security test mode enabled via environment variable");
+                return true;
+            }
+
+            // Check for test configuration file
+            String configFile = System.getProperty("ai.security.config", "ai-security.properties");
+            java.io.File file = new java.io.File(configFile);
+            if (file.exists()) {
+                try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
+                    java.util.Properties props = new java.util.Properties();
+                    props.load(fis);
+                    String testMode = props.getProperty("security.test.mode");
+                    if ("true".equalsIgnoreCase(testMode)) {
+                        LOGGER.info("Security test mode enabled via configuration file: {}", configFile);
+                        return true;
+                    }
+                } catch (Exception e) {
+                    LOGGER.debug("Could not read security configuration file: {}", configFile, e);
+                }
+            }
+
+            // Check for development environment indicators
+            String userHome = System.getProperty("user.home");
+            if (userHome != null && userHome.contains("dev") || userHome.contains("test")) {
+                LOGGER.debug("Development environment detected, but test mode not explicitly enabled");
+            }
+
+            return false;
+
+        } catch (Exception e) {
+            LOGGER.error("Error checking security test mode", e);
+            return false;
+        }
     }
 }

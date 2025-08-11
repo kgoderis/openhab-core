@@ -30,8 +30,9 @@ public class ToolMetricsEndpoint {
         this.serverInstance = serverInstance;
         this.config = config;
 
-        // Create HTTP server on port 8080 (configurable)
-        int port = 8080; // TODO: Make configurable
+        // Create HTTP server on configurable port
+        // Use SSE port from config or default to 8080
+        int port = config.getSsePort();
         this.httpServer = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(port), 0);
 
         // Set up endpoints - always enable health and metrics for now

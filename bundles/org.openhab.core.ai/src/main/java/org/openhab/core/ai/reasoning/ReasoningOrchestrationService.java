@@ -65,9 +65,6 @@ public class ReasoningOrchestrationService {
     private @Nullable MultiStepReasoningEngine reasoningEngine;
 
     @Reference
-    private @Nullable ContextMemoryManager contextMemoryManager;
-
-    @Reference
     private @Nullable AgentMemory agentMemory;
 
     @Reference

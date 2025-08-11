@@ -23,7 +23,6 @@ import org.openhab.core.ai.reasoning.api.ReasoningContext;
 class IntelligenceIntegrationTests {
 
     private MultiStepReasoningEngine reasoningEngine;
-    private ContextMemoryManager contextMemoryManager;
     private AgentMemory agentMemory;
     private AutonomousEventProcessor autonomousEventProcessor;
     private LearningAdaptationSystem learningAdaptationSystem;
@@ -33,7 +32,6 @@ class IntelligenceIntegrationTests {
     @BeforeEach
     void setUp() {
         reasoningEngine = new MultiStepReasoningEngine();
-        contextMemoryManager = new ContextMemoryManager();
         agentMemory = new AgentMemory();
         autonomousEventProcessor = new AutonomousEventProcessor();
         learningAdaptationSystem = new LearningAdaptationSystem();
@@ -42,7 +40,6 @@ class IntelligenceIntegrationTests {
 
         // Activate all components
         reasoningEngine.activate();
-        contextMemoryManager.activate();
         agentMemory.activate();
         autonomousEventProcessor.activate();
         learningAdaptationSystem.activate();
@@ -52,14 +49,14 @@ class IntelligenceIntegrationTests {
 
     @Test
     void testMultiStepReasoningIntegration() {
-        // Test multi-step reasoning with context memory integration
+        // Test multi-step reasoning with unified agent memory integration
         ReasoningContext context = ReasoningContext.builder().initialContext("User wants to control home lighting")
                 .currentContext("Need to identify available lights and their states").domain("home-automation")
                 .userId("testUser").build();
 
-        // Store context in memory manager
-        ContextMemoryManager.ContextStoreResult storeResult = contextMemoryManager.storeContext("test-reasoning-1",
-                context, "testUser");
+        // Store reasoning session in agent memory
+        AgentMemory.ReasoningSessionResult storeResult = agentMemory.storeReasoningSession("testAgent",
+                "test-reasoning-1", context);
         assertTrue(storeResult.isSuccess());
 
         // Execute multi-step reasoning
@@ -68,37 +65,35 @@ class IntelligenceIntegrationTests {
         assertNotNull(result.getSteps());
         assertTrue(result.getSteps().size() > 0);
 
-        // Verify context was updated during reasoning
-        ContextMemoryManager.ContextRetrieveResult retrieveResult = contextMemoryManager
-                .retrieveContext("test-reasoning-1", "testUser");
-        assertTrue(retrieveResult.isSuccess());
-        assertNotNull(retrieveResult.getEntry());
+        // Verify reasoning session was stored in agent memory
+        AgentMemory.ReasoningSession session = agentMemory.retrieveReasoningSession("testAgent", "test-reasoning-1");
+        assertNotNull(session);
+        assertEquals("test-reasoning-1", session.getSessionId());
     }
 
     @Test
-    void testContextMemoryManagementIntegration() {
-        // Test context memory with versioning and access control
+    void testAgentMemoryManagementIntegration() {
+        // Test unified agent memory with session context management
         ReasoningContext context1 = ReasoningContext.builder().initialContext("Initial context")
                 .currentContext("Current context").domain("test").userId("testUser").build();
 
-        // Store initial context
-        ContextMemoryManager.ContextStoreResult storeResult1 = contextMemoryManager.storeContext("test-context-1",
-                context1, "testUser");
+        // Store initial reasoning session
+        AgentMemory.ReasoningSessionResult storeResult1 = agentMemory.storeReasoningSession("testAgent",
+                "test-session-1", context1);
         assertTrue(storeResult1.isSuccess());
 
-        // Update context
-        ReasoningContext context2 = ReasoningContext.builder().initialContext("Initial context")
-                .currentContext("Updated context").domain("test").userId("testUser").build();
+        // Store session context
+        Map<String, Object> contextData = Map.of("key1", "value1", "key2", "value2");
+        agentMemory.storeSessionContext("testAgent", "test-session-1", contextData);
 
-        ContextMemoryManager.ContextUpdateResult updateResult = contextMemoryManager.updateContext("test-context-1",
-                context2, "testUser");
-        assertTrue(updateResult.isSuccess());
+        // Update session context
+        Map<String, Object> updatedContextData = Map.of("key1", "updated-value1", "key3", "value3");
+        agentMemory.storeSessionContext("testAgent", "test-session-1", updatedContextData);
 
-        // Verify version history
-        List<ContextMemoryManager.ContextVersion.VersionEntry> history = contextMemoryManager
-                .getVersionHistory("test-context-1", "testUser");
-        assertNotNull(history);
-        assertTrue(history.size() >= 2); // At least initial and update
+        // Verify session context was stored
+        Map<String, Object> retrievedContext = agentMemory.getSessionContext("testAgent", "test-session-1");
+        assertNotNull(retrievedContext);
+        assertTrue(retrievedContext.containsKey("key3"));
     }
 
     @Test
@@ -163,19 +158,15 @@ class IntelligenceIntegrationTests {
         // Test performance with multiple concurrent operations
         int numOperations = 100;
 
-        // Concurrent context storage
+        // Test unified agent memory performance with reasoning sessions
         for (int i = 0; i < numOperations; i++) {
             ReasoningContext context = ReasoningContext.builder().initialContext("Test context " + i)
                     .currentContext("Current context " + i).domain("test").userId("testUser").build();
 
-            ContextMemoryManager.ContextStoreResult result = contextMemoryManager.storeContext("test-context-" + i,
-                    context, "testUser");
+            AgentMemory.ReasoningSessionResult result = agentMemory.storeReasoningSession("testAgent",
+                    "test-session-" + i, context);
             assertTrue(result.isSuccess());
         }
-
-        // Verify performance metrics
-        ContextMemoryManager.ContextPerformanceMetrics contextMetrics = contextMemoryManager.getPerformanceMetrics();
-        assertTrue(contextMetrics.getTotalStores() >= numOperations);
 
         // Test agent memory performance
         for (int i = 0; i < numOperations; i++) {
@@ -193,15 +184,15 @@ class IntelligenceIntegrationTests {
     @Test
     void testErrorHandlingAndRecovery() {
         // Test error handling with invalid inputs
-        ContextMemoryManager.ContextStoreResult invalidResult = contextMemoryManager.storeContext("", null, "testUser");
+        AgentMemory.ReasoningSessionResult invalidResult = agentMemory.storeReasoningSession("testAgent", "", null);
         assertFalse(invalidResult.isSuccess());
 
         // Test recovery from errors
         ReasoningContext validContext = ReasoningContext.builder().initialContext("Valid context")
                 .currentContext("Valid context").domain("test").userId("testUser").build();
 
-        ContextMemoryManager.ContextStoreResult validResult = contextMemoryManager.storeContext("test-recovery",
-                validContext, "testUser");
+        AgentMemory.ReasoningSessionResult validResult = agentMemory.storeReasoningSession("testAgent", "test-recovery",
+                validContext);
         assertTrue(validResult.isSuccess());
 
         // Test autonomous behavior error handling
@@ -216,20 +207,19 @@ class IntelligenceIntegrationTests {
 
     @Test
     void testSecurityAndPrivacy() {
-        // Test access control in context memory
+        // Test access control in unified agent memory
         ReasoningContext context = ReasoningContext.builder().initialContext("Private context")
                 .currentContext("Private context").domain("private").userId("user1").build();
 
-        // Store with one user
-        ContextMemoryManager.ContextStoreResult storeResult = contextMemoryManager.storeContext("private-context",
-                context, "user1");
+        // Store with one agent
+        AgentMemory.ReasoningSessionResult storeResult = agentMemory.storeReasoningSession("agent1", "private-session",
+                context);
         assertTrue(storeResult.isSuccess());
 
-        // Try to access with different user (should be denied or return empty)
-        ContextMemoryManager.ContextRetrieveResult retrieveResult = contextMemoryManager
-                .retrieveContext("private-context", "user2");
-        // Depending on implementation, this might return not found or empty result
-        assertNotNull(retrieveResult);
+        // Try to access with different agent (should be denied or return null)
+        AgentMemory.ReasoningSession retrieveResult = agentMemory.retrieveReasoningSession("agent2", "private-session");
+        // Should return null for different agent
+        assertNull(retrieveResult);
 
         // Test safety constraint enforcement
         Map<String, Object> privateDataParams = Map.of("data", "sensitive_information");
@@ -271,10 +261,6 @@ class IntelligenceIntegrationTests {
     @Test
     void testMonitoringAndAnalytics() {
         // Test performance monitoring across all components
-        ContextMemoryManager.ContextPerformanceMetrics contextMetrics = contextMemoryManager.getPerformanceMetrics();
-        assertNotNull(contextMetrics);
-        assertTrue(contextMetrics.getTotalStores() >= 0);
-
         AgentMemory.MemoryPerformanceMetrics memoryMetrics = agentMemory.getPerformanceMetrics();
         assertNotNull(memoryMetrics);
         assertTrue(memoryMetrics.getTotalStores() >= 0);
@@ -321,9 +307,9 @@ class IntelligenceIntegrationTests {
                 .currentContext("Analyzing current energy consumption patterns").domain("energy-optimization")
                 .userId(userId).build();
 
-        // 3. Store context
-        ContextMemoryManager.ContextStoreResult storeResult = contextMemoryManager.storeContext("energy-optimization",
-                context, userId);
+        // 3. Store reasoning session
+        AgentMemory.ReasoningSessionResult storeResult = agentMemory.storeReasoningSession(agentId,
+                "energy-optimization", context);
         assertTrue(storeResult.isSuccess());
 
         // 4. Execute reasoning
@@ -357,9 +343,9 @@ class IntelligenceIntegrationTests {
         assertTrue(memoryResult.isSuccess());
 
         // 9. Verify complete workflow
-        ContextMemoryManager.ContextRetrieveResult retrieveResult = contextMemoryManager
-                .retrieveContext("energy-optimization", userId);
-        assertTrue(retrieveResult.isSuccess());
+        AgentMemory.ReasoningSession retrieveResult = agentMemory.retrieveReasoningSession(agentId,
+                "energy-optimization");
+        assertNotNull(retrieveResult);
 
         List<AgentMemory.MemoryEntry> memories = agentMemory.searchMemories(agentId, "energy", 10);
         assertNotNull(memories);
