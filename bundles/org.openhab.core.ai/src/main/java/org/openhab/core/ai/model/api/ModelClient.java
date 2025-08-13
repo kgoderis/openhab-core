@@ -4,6 +4,12 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.model.ModelClientInfo;
+import org.openhab.core.ai.model.ModelException;
+import org.openhab.core.ai.model.ModelHealthStatus;
+import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.ModelRateLimitInfo;
+import org.openhab.core.ai.model.ModelResponse;
 
 /**
  * Core interface for LLM (Large Language Model) clients.

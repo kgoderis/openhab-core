@@ -384,27 +384,5 @@ public class ConfigurationExportAction implements Action {
         return filesByType;
     }
 
-    private static class ExportFile {
-        String path = "";
-        String name = "";
-        String type = "";
-        String content = "";
-        Long size;
-        Instant lastModified;
-        Boolean readable;
-        Boolean writable;
-
-        Map<String, Object> toMap() {
-            Map<String, Object> map = new HashMap<>();
-            map.put("path", path);
-            map.put("name", name);
-            map.put("type", type);
-            map.put("content", content);
-            map.put("size", size);
-            map.put("lastModified", lastModified != null ? lastModified.toString() : null);
-            map.put("readable", readable);
-            map.put("writable", writable);
-            return map;
-        }
-    }
+    
 }

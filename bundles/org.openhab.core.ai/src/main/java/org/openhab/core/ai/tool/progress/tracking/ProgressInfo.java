@@ -1,8 +1,11 @@
 package org.openhab.core.ai.tool.progress.tracking;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.tool.api.validation.ValidationResult;
 
 /**
  * Information about operation progress.
@@ -130,8 +133,113 @@ public class ProgressInfo {
         return "COMPLETED".equals(status);
     }
 
-    // TODO: Implement progress info validation
-    // TODO: Add support for progress info serialization
-    // TODO: Implement progress info comparison
-    // TODO: Add support for progress info metrics
+    /**
+     * Validate this progress info.
+     * 
+     * @return validation result
+     */
+    public ValidationResult validate() {
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+
+        // Validate required fields
+        if (operationId == null || operationId.isEmpty()) {
+            errors.add("Operation ID cannot be null or empty");
+        }
+        if (status == null || status.isEmpty()) {
+            errors.add("Status cannot be null or empty");
+        }
+        if (message == null) {
+            errors.add("Message cannot be null");
+        }
+
+        // Validate numeric constraints
+        if (currentStep < 0) {
+            errors.add("Current step cannot be negative");
+        }
+        if (totalSteps < 0) {
+            errors.add("Total steps cannot be negative");
+        }
+        if (currentStep > totalSteps && totalSteps > 0) {
+            warnings.add("Current step exceeds total steps");
+        }
+        if (timestamp < 0) {
+            errors.add("Timestamp cannot be negative");
+        }
+
+        // Validate status values
+        if (!isValidStatus(status)) {
+            warnings.add("Unknown status value: " + status);
+        }
+
+        boolean isValid = errors.isEmpty();
+        Map<String, Object> details = Map.of("errors", errors, "warnings", warnings);
+        return new ValidationResult(isValid, errors, warnings, details);
+    }
+
+    /**
+     * Check if the status is valid.
+     * 
+     * @param status the status to check
+     * @return true if valid
+     */
+    private boolean isValidStatus(String status) {
+        return "PENDING".equals(status) || "IN_PROGRESS".equals(status) || "COMPLETED".equals(status)
+                || "FAILED".equals(status) || "CANCELLED".equals(status);
+    }
+
+    /**
+     * Compare this progress info with another.
+     * 
+     * @param other the other progress info
+     * @return comparison result
+     */
+    public ProgressComparisonResult compare(ProgressInfo other) {
+        if (other == null) {
+            return new ProgressComparisonResult(false, false, false, false, false);
+        }
+
+        boolean sameOperation = this.operationId.equals(other.operationId);
+        boolean sameProgress = this.currentStep == other.currentStep && this.totalSteps == other.totalSteps;
+        boolean sameStatus = this.status.equals(other.status);
+        boolean sameMessage = this.message.equals(other.message);
+        boolean sameTimestamp = this.timestamp == other.timestamp;
+
+        return new ProgressComparisonResult(sameOperation, sameProgress, sameStatus, sameMessage, sameTimestamp);
+    }
+
+    /**
+     * Check if this progress info is equivalent to another.
+     * 
+     * @param other the other progress info
+     * @return true if equivalent
+     */
+    public boolean isEquivalent(ProgressInfo other) {
+        if (other == null) {
+            return false;
+        }
+        return this.operationId.equals(other.operationId) && this.currentStep == other.currentStep
+                && this.totalSteps == other.totalSteps && this.status.equals(other.status)
+                && this.message.equals(other.message);
+    }
+
+    /**
+     * Get progress metrics.
+     * 
+     * @return progress metrics
+     */
+    public ProgressMetrics getMetrics() {
+        return new ProgressMetrics(currentStep, totalSteps, getProgressPercentage(), isCompleted(), timestamp,
+                System.currentTimeMillis());
+    }
+
+    /**
+     * Result of progress comparison.
+     */
+    // ProgressComparisonResult extracted to org.openhab.core.ai.tool.progress.tracking.ProgressComparisonResult
+
+    /**
+     * Progress metrics.
+     */
+    // ProgressMetrics extracted to org.openhab.core.ai.tool.progress.tracking.ProgressMetrics
 }

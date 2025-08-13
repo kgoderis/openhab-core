@@ -1,110 +1,127 @@
-package org.openhab.core.ai.common.internal;
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+package org.openhab.core.ai.internal;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionError;
-import org.openhab.core.ai.action.ActionMetadata;
-import org.openhab.core.ai.action.ActionResult;
-import org.openhab.core.ai.action.ActionValidationResult;
+import org.osgi.framework.BundleContext;
 
+/**
+ * Unit tests for AIBundleActivator
+ * 
+ * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
+ */
 @ExtendWith(MockitoExtension.class)
-class ActionFrameworkTest {
+class AIBundleActivatorTest {
+
+    @Mock
+    private BundleContext bundleContext;
+
+    private AIBundleActivator activator;
 
     @BeforeEach
     void setUp() {
-        // Setup for Action framework tests
+        activator = new AIBundleActivator();
     }
 
     @Test
-    void testActionContextBuilder() {
-        // Test ActionContext builder
-        ActionContext context = ActionContext.builder().protocol("mcp").clientId("test-client")
-                .sessionId("test-session").correlationId("test-correlation").build();
-
-        assertEquals("mcp", context.getProtocol());
-        assertEquals("test-client", context.getClientId());
-        assertEquals("test-session", context.getSessionId());
-        assertEquals("test-correlation", context.getCorrelationId());
+    void testBundleActivatorCreation() {
+        assertNotNull(activator);
     }
 
     @Test
-    void testActionResultSuccess() {
-        // Test successful ActionResult
-        Map<String, Object> data = Map.of("key", "value");
-        ActionResult result = ActionResult.success(data, 100L);
+    void testStartBundle() throws Exception {
+        // When
+        activator.start(bundleContext);
 
-        assertTrue(result.isSuccess());
-        assertEquals("Success", result.getMessage());
-        assertEquals(data, result.getData());
-        assertEquals(100L, result.getExecutionTimeMs());
-        assertNull(result.getError());
+        // Then
+        // Should not throw any exceptions
+        assertDoesNotThrow(() -> activator.start(bundleContext));
     }
 
     @Test
-    void testActionResultError() {
-        // Test error ActionResult
-        ActionError error = new ActionError("TEST_ERROR", "Test error message");
-        ActionResult result = ActionResult.error("Operation failed", error, 50L);
+    void testStopBundle() throws Exception {
+        // Given
+        activator.start(bundleContext);
 
-        assertFalse(result.isSuccess());
-        assertEquals("Operation failed", result.getMessage());
-        assertNull(result.getData());
-        assertEquals(50L, result.getExecutionTimeMs());
-        assertEquals(error, result.getError());
+        // When
+        activator.stop(bundleContext);
+
+        // Then
+        // Should not throw any exceptions
+        assertDoesNotThrow(() -> activator.stop(bundleContext));
     }
 
     @Test
-    void testActionError() {
-        // Test ActionError
-        ActionError error = new ActionError("VALIDATION_ERROR", "Invalid parameters", "VALIDATION_ERROR");
+    void testGetBundleContextBeforeStart() {
+        // When
+        BundleContext context = AIBundleActivator.getBundleContext();
 
-        assertEquals("VALIDATION_ERROR", error.getErrorCode());
-        assertEquals("Invalid parameters", error.getErrorMessage());
-        assertEquals("VALIDATION_ERROR", error.getErrorType());
-        assertNull(error.getCause());
+        // Then
+        assertNull(context);
     }
 
     @Test
-    void testActionValidationResultValid() {
-        // Test valid ActionValidationResult
-        Map<String, Object> sanitizedParams = Map.of("param1", "value1");
-        ActionValidationResult result = ActionValidationResult.valid(sanitizedParams);
+    void testGetBundleContextAfterStart() throws Exception {
+        // Given
+        activator.start(bundleContext);
 
-        assertTrue(result.isValid());
-        assertTrue(result.getErrors().isEmpty());
-        assertTrue(result.getWarnings().isEmpty());
-        assertEquals(sanitizedParams, result.getSanitizedParameters());
+        // When
+        BundleContext context = AIBundleActivator.getBundleContext();
+
+        // Then
+        assertEquals(bundleContext, context);
     }
 
     @Test
-    void testActionValidationResultInvalid() {
-        // Test invalid ActionValidationResult
-        ActionValidationResult result = ActionValidationResult
-                .invalid(java.util.List.of("Parameter 'name' is required"));
+    void testGetBundleContextAfterStop() throws Exception {
+        // Given
+        activator.start(bundleContext);
+        activator.stop(bundleContext);
 
-        assertFalse(result.isValid());
-        assertEquals(1, result.getErrors().size());
-        assertTrue(result.getWarnings().isEmpty());
-        assertTrue(result.getSanitizedParameters().isEmpty());
+        // When
+        BundleContext context = AIBundleActivator.getBundleContext();
+
+        // Then
+        assertNull(context);
     }
 
     @Test
-    void testActionMetadataBuilder() {
-        // Test ActionMetadata builder
-        ActionMetadata metadata = ActionMetadata.builder().version("1.0.0").author("Test Author")
-                .description("Test action").build();
+    void testMultipleStartStopCycles() throws Exception {
+        // When/Then
+        assertDoesNotThrow(() -> {
+            activator.start(bundleContext);
+            activator.stop(bundleContext);
+            activator.start(bundleContext);
+            activator.stop(bundleContext);
+        });
+    }
 
-        assertEquals("1.0.0", metadata.getVersion());
-        assertEquals("Test Author", metadata.getAuthor());
-        assertEquals("Test action", metadata.getDescription());
-        assertNotNull(metadata.getCreated());
-        assertNotNull(metadata.getLastModified());
+    @Test
+    void testStartWithNullContext() throws Exception {
+        // When/Then
+        assertDoesNotThrow(() -> activator.start(null));
+    }
+
+    @Test
+    void testStopWithNullContext() throws Exception {
+        // When/Then
+        assertDoesNotThrow(() -> activator.stop(null));
     }
 }

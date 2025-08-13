@@ -7,6 +7,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.progress.tracking.ProgressOperation;
 import org.openhab.core.ai.tool.progress.tracking.ProgressStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of Progress Tracking Service for MCP Tools.
@@ -19,6 +21,8 @@ import org.openhab.core.ai.tool.progress.tracking.ProgressStatus;
  */
 @NonNullByDefault
 public class DefaultProgressTrackingService implements ProgressService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultProgressTrackingService.class);
 
     private final ConcurrentHashMap<String, ProgressOperation> operations = new ConcurrentHashMap<>();
 
@@ -37,6 +41,11 @@ public class DefaultProgressTrackingService implements ProgressService {
             operation.setCurrentStep(currentStep);
             operation.setMessage(message);
             operation.setLastUpdateTime(System.currentTimeMillis());
+
+            // Persist progress and send notification
+            persistProgress(operationId, operation);
+            sendProgressNotification(operationId, operation);
+
             return true;
         }
         return false;
@@ -49,6 +58,11 @@ public class DefaultProgressTrackingService implements ProgressService {
             operation.setStatus(status);
             operation.setMessage(finalMessage);
             operation.setCompletionTime(System.currentTimeMillis());
+
+            // Persist progress and send notification
+            persistProgress(operationId, operation);
+            sendProgressNotification(operationId, operation);
+
             return true;
         }
         return false;
@@ -86,114 +100,54 @@ public class DefaultProgressTrackingService implements ProgressService {
                 (int) operations.values().stream().filter(op -> op.getStatus() == ProgressStatus.COMPLETED).count());
     }
 
-    // TODO: Implement progress persistence
-    // TODO: Add support for progress notifications
-    // TODO: Implement progress cleanup
-    // TODO: Add support for progress metrics
+    // Progress persistence and cleanup
+    private final Map<String, ProgressOperation> completedOperations = new ConcurrentHashMap<>();
+    private final java.util.concurrent.ScheduledExecutorService cleanupExecutor = java.util.concurrent.Executors
+            .newSingleThreadScheduledExecutor();
+
+    public DefaultProgressTrackingService() {
+        // Schedule cleanup task to run every hour
+        cleanupExecutor.scheduleAtFixedRate(this::cleanupOldOperations, 1, 1, java.util.concurrent.TimeUnit.HOURS);
+    }
+
+    /**
+     * Clean up old completed operations to prevent memory leaks.
+     */
+    private void cleanupOldOperations() {
+        long cutoffTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000); // 24 hours ago
+        completedOperations.entrySet().removeIf(entry -> entry.getValue().getCompletionTime() < cutoffTime);
+
+        // Also clean up old active operations that haven't been updated in a while
+        long staleCutoff = System.currentTimeMillis() - (60 * 60 * 1000); // 1 hour ago
+        operations.entrySet().removeIf(entry -> {
+            ProgressOperation op = entry.getValue();
+            return op.getStatus() != ProgressStatus.IN_PROGRESS && op.getLastUpdateTime() < staleCutoff;
+        });
+    }
+
+    /**
+     * Persist progress information to storage.
+     */
+    private void persistProgress(String operationId, ProgressOperation operation) {
+        // TODO: Implement actual persistence to database or file system
+        // For now, just store in memory
+        if (operation.getStatus() == ProgressStatus.COMPLETED || operation.getStatus() == ProgressStatus.FAILED) {
+            completedOperations.put(operationId, operation);
+        }
+    }
+
+    /**
+     * Send progress notification to subscribers.
+     */
+    private void sendProgressNotification(String operationId, ProgressOperation operation) {
+        // TODO: Implement actual notification system (WebSocket, SSE, etc.)
+        // For now, just log the notification
+        LOGGER.debug("Progress notification for operation {}: {} - {}%", operationId, operation.getStatus(),
+                operation.getProgressPercentage());
+    }
 
     /**
      * Concrete implementation of ProgressOperation interface.
      */
-    private static class DefaultProgressOperation implements ProgressOperation {
-        private final String id;
-        private final String description;
-        private final int totalSteps;
-        private ProgressStatus status;
-        private int currentStep;
-        private String message;
-        private final long startTime;
-        private long lastUpdateTime;
-        private long completionTime;
-
-        public DefaultProgressOperation(String id, String description, int totalSteps, ProgressStatus status,
-                long startTime) {
-            this.id = id;
-            this.description = description;
-            this.totalSteps = totalSteps;
-            this.status = status;
-            this.currentStep = 0;
-            this.message = "Operation started";
-            this.startTime = startTime;
-            this.lastUpdateTime = startTime;
-            this.completionTime = 0;
-        }
-
-        @Override
-        public String getId() {
-            return id;
-        }
-
-        @Override
-        public String getDescription() {
-            return description;
-        }
-
-        @Override
-        public int getTotalSteps() {
-            return totalSteps;
-        }
-
-        @Override
-        public ProgressStatus getStatus() {
-            return status;
-        }
-
-        @Override
-        public void setStatus(ProgressStatus status) {
-            this.status = status;
-        }
-
-        @Override
-        public int getCurrentStep() {
-            return currentStep;
-        }
-
-        @Override
-        public void setCurrentStep(int currentStep) {
-            this.currentStep = currentStep;
-        }
-
-        @Override
-        public String getMessage() {
-            return message;
-        }
-
-        @Override
-        public void setMessage(String message) {
-            this.message = message;
-        }
-
-        @Override
-        public long getStartTime() {
-            return startTime;
-        }
-
-        @Override
-        public long getLastUpdateTime() {
-            return lastUpdateTime;
-        }
-
-        @Override
-        public void setLastUpdateTime(long lastUpdateTime) {
-            this.lastUpdateTime = lastUpdateTime;
-        }
-
-        @Override
-        public long getCompletionTime() {
-            return completionTime;
-        }
-
-        @Override
-        public void setCompletionTime(long completionTime) {
-            this.completionTime = completionTime;
-        }
-
-        @Override
-        public double getProgressPercentage() {
-            if (totalSteps <= 0) {
-                return 0.0;
-            }
-            return Math.min(100.0, (double) currentStep / totalSteps * 100.0);
-        }
-    }
+    // Extracted: org.openhab.core.ai.tool.progress.DefaultProgressOperation
 }

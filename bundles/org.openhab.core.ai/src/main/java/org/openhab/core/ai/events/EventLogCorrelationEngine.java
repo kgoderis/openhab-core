@@ -153,14 +153,14 @@ public class EventLogCorrelationEngine {
      * Correlate events with log entries
      */
     public CompletableFuture<List<EventLogCorrelation>> correlateEventsWithLogs(List<Object> events,
-            List<LogIngestionPipeline.LogEntry> logEntries) {
+            List<LogEntry> logEntries) {
         return CompletableFuture.supplyAsync(() -> {
             Instant startTime = Instant.now();
             List<EventLogCorrelation> correlations = new ArrayList<>();
 
             try {
                 for (Object event : events) {
-                    for (LogIngestionPipeline.LogEntry logEntry : logEntries) {
+                    for (LogEntry logEntry : logEntries) {
                         EventLogCorrelation correlation = createCorrelation(event, logEntry);
                         if (correlation != null && correlation.getConfidence() >= confidenceThreshold) {
                             correlations.add(correlation);
@@ -192,13 +192,13 @@ public class EventLogCorrelationEngine {
      * Correlate a single event with log entries
      */
     public CompletableFuture<List<EventLogCorrelation>> correlateEventWithLogs(Object event,
-            List<LogIngestionPipeline.LogEntry> logEntries) {
+            List<LogEntry> logEntries) {
         return CompletableFuture.supplyAsync(() -> {
             Instant startTime = Instant.now();
             List<EventLogCorrelation> correlations = new ArrayList<>();
 
             try {
-                for (LogIngestionPipeline.LogEntry logEntry : logEntries) {
+                for (LogEntry logEntry : logEntries) {
                     EventLogCorrelation correlation = createCorrelation(event, logEntry);
                     if (correlation != null && correlation.getConfidence() >= confidenceThreshold) {
                         correlations.add(correlation);
@@ -229,13 +229,13 @@ public class EventLogCorrelationEngine {
      * Correlate log entries with events
      */
     public CompletableFuture<List<EventLogCorrelation>> correlateLogsWithEvents(
-            List<LogIngestionPipeline.LogEntry> logEntries, List<Object> events) {
+            List<LogEntry> logEntries, List<Object> events) {
         return CompletableFuture.supplyAsync(() -> {
             Instant startTime = Instant.now();
             List<EventLogCorrelation> correlations = new ArrayList<>();
 
             try {
-                for (LogIngestionPipeline.LogEntry logEntry : logEntries) {
+                for (LogEntry logEntry : logEntries) {
                     for (Object event : events) {
                         EventLogCorrelation correlation = createCorrelation(event, logEntry);
                         if (correlation != null && correlation.getConfidence() >= confidenceThreshold) {
@@ -267,7 +267,7 @@ public class EventLogCorrelationEngine {
     /**
      * Create correlation between event and log entry
      */
-    private @Nullable EventLogCorrelation createCorrelation(Object event, LogIngestionPipeline.LogEntry logEntry) {
+    private @Nullable EventLogCorrelation createCorrelation(Object event, LogEntry logEntry) {
         try {
             // Extract event information
             EventInfo eventInfo = extractEventInfo(event);
@@ -355,7 +355,7 @@ public class EventLogCorrelationEngine {
     /**
      * Calculate temporal correlation between event and log entry
      */
-    private double calculateTemporalCorrelation(EventInfo eventInfo, LogIngestionPipeline.LogEntry logEntry) {
+    private double calculateTemporalCorrelation(EventInfo eventInfo, LogEntry logEntry) {
         if (!enableTemporalCorrelation) {
             return 0.0;
         }
@@ -384,7 +384,7 @@ public class EventLogCorrelationEngine {
     /**
      * Calculate pattern correlation between event and log entry
      */
-    private double calculatePatternCorrelation(EventInfo eventInfo, LogIngestionPipeline.LogEntry logEntry) {
+    private double calculatePatternCorrelation(EventInfo eventInfo, LogEntry logEntry) {
         if (!enablePatternCorrelation) {
             return 0.0;
         }
@@ -435,7 +435,7 @@ public class EventLogCorrelationEngine {
     /**
      * Calculate causality correlation between event and log entry
      */
-    private double calculateCausalityCorrelation(EventInfo eventInfo, LogIngestionPipeline.LogEntry logEntry) {
+    private double calculateCausalityCorrelation(EventInfo eventInfo, LogEntry logEntry) {
         if (!enableCausalityDetection) {
             return 0.0;
         }
@@ -483,7 +483,7 @@ public class EventLogCorrelationEngine {
      * Determine correlation type
      */
     private EventLogCorrelation.CorrelationType determineCorrelationType(EventInfo eventInfo,
-            LogIngestionPipeline.LogEntry logEntry) {
+            LogEntry logEntry) {
         // Determine correlation type based on event and log characteristics
         if (logEntry.getLevel() == LogIngestionPipeline.LogLevel.ERROR) {
             return EventLogCorrelation.CorrelationType.ERROR_CORRELATION;
@@ -686,228 +686,7 @@ public class EventLogCorrelationEngine {
         this.enablePerformanceMonitoring = enablePerformanceMonitoring;
     }
 
-    // Data classes
-    public static class EventInfo {
-        private final String id;
-        private final String type;
-        private final String source;
-        private final Instant timestamp;
-        private final Map<String, Object> data;
-
-        public EventInfo(String id, String type, String source, Instant timestamp, Map<String, Object> data) {
-            this.id = id;
-            this.type = type;
-            this.source = source;
-            this.timestamp = timestamp;
-            this.data = new HashMap<>(data);
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public String getSource() {
-            return source;
-        }
-
-        public Instant getTimestamp() {
-            return timestamp;
-        }
-
-        public Map<String, Object> getData() {
-            return data;
-        }
-    }
-
-    public static class EventLogCorrelation {
-        private final String id;
-        private final EventInfo eventInfo;
-        private final LogIngestionPipeline.LogEntry logEntry;
-        private double confidence;
-        private double temporalConfidence;
-        private double patternConfidence;
-        private double causalityConfidence;
-        private final CorrelationType type;
-        private final Instant createdAt;
-
-        public EventLogCorrelation(String id, EventInfo eventInfo, LogIngestionPipeline.LogEntry logEntry,
-                double confidence, double temporalConfidence, double patternConfidence, double causalityConfidence,
-                CorrelationType type, Instant createdAt) {
-            this.id = id;
-            this.eventInfo = eventInfo;
-            this.logEntry = logEntry;
-            this.confidence = confidence;
-            this.temporalConfidence = temporalConfidence;
-            this.patternConfidence = patternConfidence;
-            this.causalityConfidence = causalityConfidence;
-            this.type = type;
-            this.createdAt = createdAt;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public EventInfo getEventInfo() {
-            return eventInfo;
-        }
-
-        public LogIngestionPipeline.LogEntry getLogEntry() {
-            return logEntry;
-        }
-
-        public double getConfidence() {
-            return confidence;
-        }
-
-        public double getTemporalConfidence() {
-            return temporalConfidence;
-        }
-
-        public double getPatternConfidence() {
-            return patternConfidence;
-        }
-
-        public double getCausalityConfidence() {
-            return causalityConfidence;
-        }
-
-        public CorrelationType getType() {
-            return type;
-        }
-
-        public Instant getCreatedAt() {
-            return createdAt;
-        }
-
-        public void updateConfidence(double confidence, double temporalConfidence, double patternConfidence,
-                double causalityConfidence) {
-            this.confidence = confidence;
-            this.temporalConfidence = temporalConfidence;
-            this.patternConfidence = patternConfidence;
-            this.causalityConfidence = causalityConfidence;
-        }
-
-        public enum CorrelationType {
-            ERROR_CORRELATION,
-            WARNING_CORRELATION,
-            SECURITY_CORRELATION,
-            PERFORMANCE_CORRELATION,
-            GENERAL_CORRELATION
-        }
-    }
-
-    public static class CorrelationPattern {
-        private final String id;
-        private final Pattern pattern;
-        private final double weight;
-
-        public CorrelationPattern(String id, Pattern pattern, double weight) {
-            this.id = id;
-            this.pattern = pattern;
-            this.weight = weight;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public Pattern getPattern() {
-            return pattern;
-        }
-
-        public double getWeight() {
-            return weight;
-        }
-    }
-
-    public static class CorrelationValidationResult {
-        private final boolean valid;
-        private final double confidence;
-        private final String error;
-
-        private CorrelationValidationResult(boolean valid, double confidence, String error) {
-            this.valid = valid;
-            this.confidence = confidence;
-            this.error = error;
-        }
-
-        public static CorrelationValidationResult valid(double confidence) {
-            return new CorrelationValidationResult(true, confidence, null);
-        }
-
-        public static CorrelationValidationResult notFound(String reason) {
-            return new CorrelationValidationResult(false, 0.0, reason);
-        }
-
-        public static CorrelationValidationResult error(String reason) {
-            return new CorrelationValidationResult(false, 0.0, reason);
-        }
-
-        public boolean isValid() {
-            return valid;
-        }
-
-        public double getConfidence() {
-            return confidence;
-        }
-
-        public String getError() {
-            return error;
-        }
-    }
-
-    public static class CorrelationPerformanceMetrics {
-        private final long totalCorrelationsCreated;
-        private final long totalCorrelationsValidated;
-        private final long totalProcessingTime;
-        private final int correlationCount;
-        private final int eventCorrelationCount;
-        private final int logCorrelationCount;
-        private final int patternCount;
-
-        public CorrelationPerformanceMetrics(long totalCorrelationsCreated, long totalCorrelationsValidated,
-                long totalProcessingTime, int correlationCount, int eventCorrelationCount, int logCorrelationCount,
-                int patternCount) {
-            this.totalCorrelationsCreated = totalCorrelationsCreated;
-            this.totalCorrelationsValidated = totalCorrelationsValidated;
-            this.totalProcessingTime = totalProcessingTime;
-            this.correlationCount = correlationCount;
-            this.eventCorrelationCount = eventCorrelationCount;
-            this.logCorrelationCount = logCorrelationCount;
-            this.patternCount = patternCount;
-        }
-
-        public long getTotalCorrelationsCreated() {
-            return totalCorrelationsCreated;
-        }
-
-        public long getTotalCorrelationsValidated() {
-            return totalCorrelationsValidated;
-        }
-
-        public long getTotalProcessingTime() {
-            return totalProcessingTime;
-        }
-
-        public int getCorrelationCount() {
-            return correlationCount;
-        }
-
-        public int getEventCorrelationCount() {
-            return eventCorrelationCount;
-        }
-
-        public int getLogCorrelationCount() {
-            return logCorrelationCount;
-        }
-
-        public int getPatternCount() {
-            return patternCount;
-        }
-    }
+    // (Inner data classes extracted to top-level in org.openhab.core.ai.events:)
+    // EventInfo, EventLogCorrelation, CorrelationPattern,
+    // CorrelationValidationResult, CorrelationPerformanceMetrics
 }

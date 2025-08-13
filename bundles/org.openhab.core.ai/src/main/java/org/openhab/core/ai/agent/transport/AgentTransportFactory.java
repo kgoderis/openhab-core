@@ -37,69 +37,12 @@ public class AgentTransportFactory {
     private final Map<String, AgentTransport> activeTransports = new ConcurrentHashMap<>();
     private final AtomicInteger transportIdCounter = new AtomicInteger(0);
 
-    /**
-     * Transport selection strategy.
-     */
-    public enum TransportSelectionStrategy {
-        /**
-         * Select the first available transport.
-         */
-        FIRST_AVAILABLE,
-
-        /**
-         * Select the transport with the best performance.
-         */
-        BEST_PERFORMANCE,
-
-        /**
-         * Select the transport with the lowest latency.
-         */
-        LOWEST_LATENCY,
-
-        /**
-         * Select the transport with the highest reliability.
-         */
-        HIGHEST_RELIABILITY,
-
-        /**
-         * Select the transport based on client preference.
-         */
-        CLIENT_PREFERENCE
-    }
+    // TransportSelectionStrategy extracted to top-level enum in this package
 
     /**
      * Transport negotiation result.
      */
-    public static class TransportNegotiationResult {
-        private final AgentTransport.TransportType selectedTransport;
-        private final Map<String, Object> negotiationData;
-        private final boolean success;
-        private final String reason;
-
-        public TransportNegotiationResult(AgentTransport.TransportType selectedTransport,
-                Map<String, Object> negotiationData, boolean success, String reason) {
-            this.selectedTransport = selectedTransport;
-            this.negotiationData = negotiationData;
-            this.success = success;
-            this.reason = reason;
-        }
-
-        public AgentTransport.TransportType getSelectedTransport() {
-            return selectedTransport;
-        }
-
-        public Map<String, Object> getNegotiationData() {
-            return negotiationData;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public String getReason() {
-            return reason;
-        }
-    }
+    // Inner class extracted to top-level: org.openhab.core.ai.agent.transport.TransportNegotiationResult
 
     /**
      * Register a transport provider.
@@ -155,17 +98,21 @@ public class AgentTransportFactory {
 
                 // Create the selected transport
                 AgentTransport.TransportType selectedType = negotiation.getSelectedTransport();
-                AgentTransportProvider provider = selectProvider(selectedType);
 
-                if (provider == null) {
-                    throw new IllegalStateException("No provider available for transport type: " + selectedType);
+                // For HTTP transport, we need to ensure AgentServlet is running
+                if (selectedType == AgentTransport.TransportType.REST) {
+                    validateHttpTransportAvailability();
                 }
 
-                // Merge configuration with negotiation data
-                Map<String, Object> finalConfig = mergeConfiguration(configuration, negotiation.getNegotiationData());
+                // For gRPC transport, we need to reserve a port
+                if (selectedType == AgentTransport.TransportType.GRPC) {
+                    int port = portManager.findAvailablePort(selectedType);
+                    portManager.reservePort(selectedType, port);
+                    configuration.put("port", port);
+                }
 
-                // Create and register the transport
-                AgentTransport transport = provider.createTransport(selectedType, finalConfig);
+                // Create transport instance based on type
+                AgentTransport transport = createTransportInstance(selectedType, configuration);
                 String transportId = generateTransportId();
                 activeTransports.put(transportId, transport);
 
@@ -174,10 +121,43 @@ public class AgentTransportFactory {
                 return transport;
 
             } catch (Exception e) {
-                logger.error("Failed to create transport with strategy: {}", strategy, e);
+                logger.error("Failed to create transport with strategy {}", strategy, e);
                 throw new RuntimeException("Transport creation failed", e);
             }
         });
+    }
+
+    /**
+     * Create a transport instance based on type.
+     * 
+     * @param transportType the transport type
+     * @param configuration the configuration
+     * @return the transport instance
+     */
+    private AgentTransport createTransportInstance(AgentTransport.TransportType transportType,
+            Map<String, Object> configuration) {
+        switch (transportType) {
+            case REST:
+                // HTTP transport is client-side, communicates with AgentServlet
+                return new AgentHttpTransport();
+            case GRPC:
+                // gRPC transport is server-side, needs port allocation
+                return new AgentGrpcTransport();
+            case JSON_RPC:
+                // JSON-RPC transport (if implemented)
+                throw new UnsupportedOperationException("JSON-RPC transport not yet implemented");
+            default:
+                throw new IllegalArgumentException("Unsupported transport type: " + transportType);
+        }
+    }
+
+    /**
+     * Validate that HTTP transport (AgentServlet) is available.
+     */
+    private void validateHttpTransportAvailability() {
+        // TODO: Check if AgentServlet is registered and running
+        // This could be done by checking OSGi service registry or making a test request
+        logger.debug("Validating HTTP transport availability");
     }
 
     /**
@@ -266,9 +246,67 @@ public class AgentTransportFactory {
      * @return the selected transport type
      */
     private AgentTransport.TransportType selectByPerformance(Set<AgentTransport.TransportType> availableTypes) {
-        // TODO: Implement performance-based selection
-        // This would involve measuring actual performance metrics
-        return availableTypes.iterator().next();
+        // Implement performance-based selection
+        if (availableTypes.isEmpty()) {
+            return null;
+        }
+
+        AgentTransport.TransportType bestTransport = null;
+        double bestPerformance = -1.0;
+
+        for (AgentTransport.TransportType transportType : availableTypes) {
+            double performance = calculateTransportPerformance(transportType);
+            if (performance > bestPerformance) {
+                bestPerformance = performance;
+                bestTransport = transportType;
+            }
+        }
+
+        return bestTransport != null ? bestTransport : availableTypes.iterator().next();
+    }
+
+    /**
+     * Calculate performance score for a transport type
+     * 
+     * @param transportType the transport type to evaluate
+     * @return the performance score (higher is better)
+     */
+    private double calculateTransportPerformance(AgentTransport.TransportType transportType) {
+        double performance = 0.0;
+
+        // Get performance metrics for this transport type
+        Map<String, Object> metrics = getTransportPerformanceMonitoring();
+
+        // Extract relevant metrics for this transport type
+        @SuppressWarnings("unchecked")
+        Map<String, Object> transportMetrics = (Map<String, Object>) metrics.get(transportType.name());
+        if (transportMetrics != null) {
+            // Score based on throughput
+            Double throughput = (Double) transportMetrics.get("throughput");
+            if (throughput != null) {
+                performance += throughput * 0.4; // 40% weight for throughput
+            }
+
+            // Score based on response time
+            Double responseTime = (Double) transportMetrics.get("responseTime");
+            if (responseTime != null) {
+                performance += (1000.0 / responseTime) * 0.3; // 30% weight for response time (inverse)
+            }
+
+            // Score based on success rate
+            Double successRate = (Double) transportMetrics.get("successRate");
+            if (successRate != null) {
+                performance += successRate * 0.2; // 20% weight for success rate
+            }
+
+            // Score based on resource usage
+            Double resourceUsage = (Double) transportMetrics.get("resourceUsage");
+            if (resourceUsage != null) {
+                performance += (1.0 - resourceUsage) * 0.1; // 10% weight for resource efficiency
+            }
+        }
+
+        return performance;
     }
 
     /**
@@ -278,9 +316,56 @@ public class AgentTransportFactory {
      * @return the selected transport type
      */
     private AgentTransport.TransportType selectByLatency(Set<AgentTransport.TransportType> availableTypes) {
-        // TODO: Implement latency-based selection
-        // This would involve measuring actual latency metrics
-        return availableTypes.iterator().next();
+        // Implement latency-based selection
+        if (availableTypes.isEmpty()) {
+            return null;
+        }
+
+        AgentTransport.TransportType bestTransport = null;
+        double lowestLatency = Double.MAX_VALUE;
+
+        for (AgentTransport.TransportType transportType : availableTypes) {
+            double latency = measureTransportLatency(transportType);
+            if (latency < lowestLatency) {
+                lowestLatency = latency;
+                bestTransport = transportType;
+            }
+        }
+
+        return bestTransport != null ? bestTransport : availableTypes.iterator().next();
+    }
+
+    /**
+     * Measure latency for a transport type
+     * 
+     * @param transportType the transport type to measure
+     * @return the latency in milliseconds
+     */
+    private double measureTransportLatency(AgentTransport.TransportType transportType) {
+        // Get latency metrics for this transport type
+        Map<String, Object> monitoring = getTransportPerformanceMonitoring();
+
+        // Extract latency information
+        @SuppressWarnings("unchecked")
+        Map<String, Object> transportMetrics = (Map<String, Object>) monitoring.get(transportType.name());
+        if (transportMetrics != null) {
+            Double latency = (Double) transportMetrics.get("latency");
+            if (latency != null) {
+                return latency;
+            }
+        }
+
+        // Return default latency values based on transport type
+        switch (transportType) {
+            case REST:
+                return 50.0; // Typical REST latency
+            case JSON_RPC:
+                return 30.0; // JSON-RPC latency
+            case GRPC:
+                return 5.0; // gRPC typically has low latency
+            default:
+                return 100.0; // Default high latency for unknown types
+        }
     }
 
     /**
@@ -290,9 +375,85 @@ public class AgentTransportFactory {
      * @return the selected transport type
      */
     private AgentTransport.TransportType selectByReliability(Set<AgentTransport.TransportType> availableTypes) {
-        // TODO: Implement reliability-based selection
-        // This would involve measuring actual reliability metrics
-        return availableTypes.iterator().next();
+        // Implement reliability-based selection
+        if (availableTypes.isEmpty()) {
+            return null;
+        }
+
+        AgentTransport.TransportType bestTransport = null;
+        double highestReliability = -1.0;
+
+        for (AgentTransport.TransportType transportType : availableTypes) {
+            double reliability = calculateTransportReliability(transportType);
+            if (reliability > highestReliability) {
+                highestReliability = reliability;
+                bestTransport = transportType;
+            }
+        }
+
+        return bestTransport != null ? bestTransport : availableTypes.iterator().next();
+    }
+
+    /**
+     * Calculate reliability score for a transport type
+     * 
+     * @param transportType the transport type to evaluate
+     * @return the reliability score (0.0 to 1.0, higher is better)
+     */
+    private double calculateTransportReliability(AgentTransport.TransportType transportType) {
+        double reliability = 0.0;
+
+        // Get reliability metrics for this transport type
+        Map<String, Object> monitoring = getTransportPerformanceMonitoring();
+
+        // Extract reliability information
+        @SuppressWarnings("unchecked")
+        Map<String, Object> transportMetrics = (Map<String, Object>) monitoring.get(transportType.name());
+        if (transportMetrics != null) {
+            // Score based on success rate
+            Double successRate = (Double) transportMetrics.get("successRate");
+            if (successRate != null) {
+                reliability += successRate * 0.4; // 40% weight for success rate
+            }
+
+            // Score based on error rate
+            Double errorRate = (Double) transportMetrics.get("errorRate");
+            if (errorRate != null) {
+                reliability += (1.0 - errorRate) * 0.3; // 30% weight for error rate (inverse)
+            }
+
+            // Score based on uptime
+            Double uptime = (Double) transportMetrics.get("uptime");
+            if (uptime != null) {
+                reliability += uptime * 0.2; // 20% weight for uptime
+            }
+
+            // Score based on connection stability
+            Double connectionStability = (Double) transportMetrics.get("connectionStability");
+            if (connectionStability != null) {
+                reliability += connectionStability * 0.1; // 10% weight for connection stability
+            }
+        }
+
+        // If no metrics available, use default reliability values
+        if (reliability == 0.0) {
+            switch (transportType) {
+                case GRPC:
+                    reliability = 0.95; // gRPC is typically very reliable
+                    break;
+                case JSON_RPC:
+                    reliability = 0.90; // JSON-RPC is reliable
+                    break;
+                case REST:
+                    reliability = 0.85; // REST is generally reliable
+                    break;
+                default:
+                    reliability = 0.80; // Default reliability
+                    break;
+            }
+        }
+
+        return Math.min(reliability, 1.0); // Ensure reliability is between 0.0 and 1.0
     }
 
     /**
@@ -369,14 +530,80 @@ public class AgentTransportFactory {
     public Map<String, Object> getTransportPerformanceMonitoring() {
         Map<String, Object> monitoring = new ConcurrentHashMap<>();
 
-        // TODO: Implement actual performance monitoring
-        // This would involve collecting metrics from active transports
-
+        // Implement actual performance monitoring
         monitoring.put("activeTransports", activeTransports.size());
         monitoring.put("registeredProviders", transportProviders.size());
         monitoring.put("timestamp", System.currentTimeMillis());
 
+        // Collect metrics from active transports
+        Map<String, Object> transportMetrics = new ConcurrentHashMap<>();
+        for (Map.Entry<String, AgentTransport> entry : activeTransports.entrySet()) {
+            String transportId = entry.getKey();
+            AgentTransport transport = entry.getValue();
+
+            try {
+                Map<String, Object> metrics = transport.getMetrics();
+                transportMetrics.put(transportId, metrics);
+            } catch (Exception e) {
+                logger.warn("Failed to get metrics for transport {}: {}", transportId, e.getMessage());
+            }
+        }
+        monitoring.put("transportMetrics", transportMetrics);
+
+        // Collect provider metrics
+        Map<String, Object> providerMetrics = new ConcurrentHashMap<>();
+        for (Map.Entry<String, AgentTransportProvider> entry : transportProviders.entrySet()) {
+            String providerId = entry.getKey();
+            AgentTransportProvider provider = entry.getValue();
+
+            try {
+                Map<String, Object> metrics = provider.getProviderMetrics();
+                providerMetrics.put(providerId, metrics);
+            } catch (Exception e) {
+                logger.warn("Failed to get metrics for provider {}: {}", providerId, e.getMessage());
+            }
+        }
+        monitoring.put("providerMetrics", providerMetrics);
+
+        // Calculate aggregate metrics
+        Map<String, Object> aggregateMetrics = calculateAggregateMetrics(transportMetrics, providerMetrics);
+        monitoring.put("aggregateMetrics", aggregateMetrics);
+
         return monitoring;
+    }
+
+    /**
+     * Calculate aggregate metrics from transport and provider metrics
+     * 
+     * @param transportMetrics the transport metrics
+     * @param providerMetrics the provider metrics
+     * @return the aggregate metrics
+     */
+    private Map<String, Object> calculateAggregateMetrics(Map<String, Object> transportMetrics,
+            Map<String, Object> providerMetrics) {
+        Map<String, Object> aggregate = new ConcurrentHashMap<>();
+
+        // Calculate total throughput
+        double totalThroughput = 0.0;
+        int transportCount = 0;
+
+        for (Object metrics : transportMetrics.values()) {
+            if (metrics instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> metricMap = (Map<String, Object>) metrics;
+                Double throughput = (Double) metricMap.get("throughput");
+                if (throughput != null) {
+                    totalThroughput += throughput;
+                    transportCount++;
+                }
+            }
+        }
+
+        aggregate.put("totalThroughput", totalThroughput);
+        aggregate.put("averageThroughput", transportCount > 0 ? totalThroughput / transportCount : 0.0);
+        aggregate.put("activeTransportCount", transportCount);
+
+        return aggregate;
     }
 
     /**
@@ -387,14 +614,128 @@ public class AgentTransportFactory {
     public Map<String, Object> getTransportLoadBalancing() {
         Map<String, Object> loadBalancing = new ConcurrentHashMap<>();
 
-        // TODO: Implement actual load balancing logic
-        // This would involve distributing load across available transports
-
+        // Implement actual load balancing logic
         loadBalancing.put("totalTransports", activeTransports.size());
-        loadBalancing.put("loadDistribution", Map.of()); // Placeholder
-        loadBalancing.put("balancingStrategy", "round-robin"); // Placeholder
+
+        // Calculate load distribution across transports
+        Map<String, Object> loadDistribution = calculateLoadDistribution();
+        loadBalancing.put("loadDistribution", loadDistribution);
+
+        // Determine optimal balancing strategy
+        String balancingStrategy = determineOptimalBalancingStrategy(loadDistribution);
+        loadBalancing.put("balancingStrategy", balancingStrategy);
+
+        // Calculate load balancing metrics
+        Map<String, Object> balancingMetrics = calculateBalancingMetrics(loadDistribution);
+        loadBalancing.put("balancingMetrics", balancingMetrics);
 
         return loadBalancing;
+    }
+
+    /**
+     * Calculate load distribution across active transports
+     * 
+     * @return the load distribution map
+     */
+    private Map<String, Object> calculateLoadDistribution() {
+        Map<String, Object> distribution = new ConcurrentHashMap<>();
+
+        if (activeTransports.isEmpty()) {
+            return distribution;
+        }
+
+        double totalLoad = 0.0;
+        Map<String, Double> transportLoads = new ConcurrentHashMap<>();
+
+        // Calculate individual transport loads
+        for (Map.Entry<String, AgentTransport> entry : activeTransports.entrySet()) {
+            String transportId = entry.getKey();
+            AgentTransport transport = entry.getValue();
+
+            try {
+                Map<String, Object> metrics = transport.getMetrics();
+                Double load = (Double) metrics.get("currentLoad");
+                if (load == null) {
+                    load = 0.0; // Default load if not available
+                }
+
+                transportLoads.put(transportId, load);
+                totalLoad += load;
+            } catch (Exception e) {
+                logger.warn("Failed to get load for transport {}: {}", transportId, e.getMessage());
+                transportLoads.put(transportId, 0.0);
+            }
+        }
+
+        // Calculate load percentages
+        Map<String, Double> loadPercentages = new ConcurrentHashMap<>();
+        for (Map.Entry<String, Double> entry : transportLoads.entrySet()) {
+            String transportId = entry.getKey();
+            Double load = entry.getValue();
+            double percentage = totalLoad > 0 ? (load / totalLoad) * 100.0 : 0.0;
+            loadPercentages.put(transportId, percentage);
+        }
+
+        distribution.put("totalLoad", totalLoad);
+        distribution.put("transportLoads", transportLoads);
+        distribution.put("loadPercentages", loadPercentages);
+
+        return distribution;
+    }
+
+    /**
+     * Determine optimal balancing strategy based on load distribution
+     * 
+     * @param loadDistribution the load distribution data
+     * @return the optimal balancing strategy
+     */
+    private String determineOptimalBalancingStrategy(Map<String, Object> loadDistribution) {
+        @SuppressWarnings("unchecked")
+        Map<String, Double> loadPercentages = (Map<String, Double>) loadDistribution.get("loadPercentages");
+
+        if (loadPercentages == null || loadPercentages.isEmpty()) {
+            return "round-robin";
+        }
+
+        // Check if load is evenly distributed
+        double maxLoad = loadPercentages.values().stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+        double minLoad = loadPercentages.values().stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
+        double loadVariance = maxLoad - minLoad;
+
+        if (loadVariance < 10.0) {
+            return "round-robin"; // Load is fairly even
+        } else if (loadVariance < 30.0) {
+            return "weighted-round-robin"; // Moderate load variance
+        } else {
+            return "least-connections"; // High load variance
+        }
+    }
+
+    /**
+     * Calculate load balancing metrics
+     * 
+     * @param loadDistribution the load distribution data
+     * @return the balancing metrics
+     */
+    private Map<String, Object> calculateBalancingMetrics(Map<String, Object> loadDistribution) {
+        Map<String, Object> metrics = new ConcurrentHashMap<>();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Double> loadPercentages = (Map<String, Double>) loadDistribution.get("loadPercentages");
+
+        if (loadPercentages != null && !loadPercentages.isEmpty()) {
+            double maxLoad = loadPercentages.values().stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+            double minLoad = loadPercentages.values().stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
+            double avgLoad = loadPercentages.values().stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+
+            metrics.put("maxLoadPercentage", maxLoad);
+            metrics.put("minLoadPercentage", minLoad);
+            metrics.put("averageLoadPercentage", avgLoad);
+            metrics.put("loadVariance", maxLoad - minLoad);
+            metrics.put("loadBalanceEfficiency", 100.0 - (maxLoad - minLoad)); // Higher is better
+        }
+
+        return metrics;
     }
 
     /**

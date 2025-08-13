@@ -73,7 +73,7 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
     private @Nullable Storage<Map<String, Object>> metadataStorage;
     private @Nullable Storage<Map<String, Object>> statisticsStorage;
     private @Nullable Storage<Map<String, Object>> configStorage;
-    private @Nullable Storage<Map<String, Object>> recoveryStorage;
+
     private @Nullable Storage<Map<String, Object>> pushNotificationsStorage;
 
     // Enhanced in-memory storage with openHAB integration
@@ -92,7 +92,6 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
     private final AtomicLong failedTasks = new AtomicLong(0);
     private final AtomicLong cancelledTasks = new AtomicLong(0);
     private final AtomicLong activeTasks = new AtomicLong(0);
-    private final AtomicLong totalExecutionTime = new AtomicLong(0);
 
     // openHAB persistence service integration
     private @Nullable PersistenceService primaryPersistenceService;
@@ -100,51 +99,7 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
     private final Map<String, PersistenceService> taskPersistenceServices = new HashMap<>();
 
     // Enhanced task execution state tracking with openHAB integration
-    public static class TaskExecutionState {
-        private final String taskId;
-        private final TaskState state;
-        private final long startTime;
-        private final String executor;
-        private final Map<String, Object> context;
-
-        public TaskExecutionState(String taskId, TaskState state, String executor) {
-            this.taskId = taskId;
-            this.state = state;
-            this.startTime = System.currentTimeMillis();
-            this.executor = executor;
-            this.context = new HashMap<>();
-        }
-
-        // Getters
-        public String getTaskId() {
-            return taskId;
-        }
-
-        public TaskState getState() {
-            return state;
-        }
-
-        public long getStartTime() {
-            return startTime;
-        }
-
-        public String getExecutor() {
-            return executor;
-        }
-
-        public Map<String, Object> getContext() {
-            return context;
-        }
-
-        public void addContext(String key, Object value) {
-            context.put(key, value);
-        }
-
-        public void updateState(TaskState newState) {
-            // Note: This is a simplified approach - in real implementation,
-            // you'd need to handle state transitions properly
-        }
-    }
+    // Extracted: org.openhab.core.ai.agent.infrastructure.persistence.TaskExecutionState
 
     @Activate
     public void activate() {
@@ -212,7 +167,7 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
             metadataStorage = storageService.getStorage(METADATA_STORAGE_KEY, this.getClass().getClassLoader());
             statisticsStorage = storageService.getStorage(STATISTICS_STORAGE_KEY, this.getClass().getClassLoader());
             configStorage = storageService.getStorage(CONFIG_STORAGE_KEY, this.getClass().getClassLoader());
-            recoveryStorage = storageService.getStorage(RECOVERY_STORAGE_KEY, this.getClass().getClassLoader());
+
             pushNotificationsStorage = storageService.getStorage(PUSH_NOTIFICATIONS_STORAGE_KEY,
                     this.getClass().getClassLoader());
 

@@ -13,6 +13,7 @@ import org.openhab.core.ai.action.ActionResult;
 import org.openhab.core.ai.action.ActionValidationResult;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionException;
+import org.openhab.core.events.Event;
 import org.openhab.core.events.EventPublisher;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -234,32 +235,29 @@ public class SendEventAction implements Action {
         // Send event
         if (eventPublisher != null) {
             try {
-                // Create a simple custom event
-                // Note: In a real implementation, you would use specific event factories
-                // For now, we'll create a basic event structure and log it
-                Map<String, Object> eventData = new java.util.HashMap<>();
-                eventData.put("type", eventType);
-                eventData.put("topic", topic);
-                eventData.put("payload", payload);
-                eventData.put("source", source);
-                eventData.put("timestamp", System.currentTimeMillis());
+                // Implement proper event creation using specific event factories
+                Event event = createEvent(eventType, topic, payload, source, priority);
 
-                // Log the event data for now
-                // Note: In a real implementation, you would use proper event factories to create Event objects
-                logger.info("Event data prepared: {}", eventData);
+                if (event != null) {
+                    // Publish the event
+                    eventPublisher.post(event);
 
-                // TODO: Implement proper event creation using specific event factories
-                // For now, we'll simulate successful event publishing
+                    result.put("eventId", eventId);
+                    result.put("topic", topic);
+                    result.put("eventType", eventType);
+                    result.put("source", source);
+                    result.put("priority", priority);
+                    result.put("status", "sent");
+                    result.put("message", "Event sent successfully");
 
-                result.put("eventId", eventId);
-                result.put("topic", topic);
-                result.put("eventType", eventType);
-                result.put("source", source);
-                result.put("priority", priority);
-                result.put("status", "sent");
-                result.put("message", "Event sent successfully");
-
-                logger.info("Sent event: id={}, topic={}, type={}, source={}", eventId, topic, eventType, source);
+                    logger.info("Sent event: id={}, topic={}, type={}, source={}", eventId, topic, eventType, source);
+                } else {
+                    result.put("eventId", eventId);
+                    result.put("topic", topic);
+                    result.put("status", "error");
+                    result.put("message", "Failed to create event: unsupported event type");
+                    logger.error("Failed to create event: unsupported event type: {}", eventType);
+                }
 
             } catch (Exception e) {
                 result.put("eventId", eventId);
@@ -278,5 +276,66 @@ public class SendEventAction implements Action {
         }
 
         return result;
+    }
+
+    /**
+     * Create an event based on the event type
+     */
+    private Event createEvent(String eventType, String topic, Map<String, Object> payload, String source,
+            String priority) {
+        try {
+            // For now, create a basic custom event
+            // In a real implementation, you would use specific event factories for different event types
+            // such as ItemEventFactory, ThingEventFactory, etc.
+
+            // Create a custom event with the provided data
+            Map<String, Object> eventData = new java.util.HashMap<>();
+            eventData.put("type", eventType);
+            eventData.put("topic", topic);
+            eventData.put("payload", payload);
+            eventData.put("source", source);
+            eventData.put("priority", priority);
+            eventData.put("timestamp", System.currentTimeMillis());
+
+            // For now, we'll create a simple event structure
+            // In a real implementation, you would use the appropriate EventFactory
+            // based on the event type (ItemEventFactory, ThingEventFactory, etc.)
+
+            // Create a custom event that can be posted to the EventBus
+            // This is a simplified implementation - in practice, you would use
+            // specific event factories for different types of events
+
+            return new Event() {
+                @Override
+                public String getType() {
+                    return eventType;
+                }
+
+                @Override
+                public String getTopic() {
+                    return topic;
+                }
+
+                @Override
+                public String getPayload() {
+                    // Convert payload to JSON string
+                    try {
+                        return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(eventData);
+                    } catch (Exception e) {
+                        logger.warn("Failed to serialize event payload", e);
+                        return "{}";
+                    }
+                }
+
+                @Override
+                public String getSource() {
+                    return source;
+                }
+            };
+
+        } catch (Exception e) {
+            logger.error("Failed to create event: {}", e.getMessage(), e);
+            return null;
+        }
     }
 }

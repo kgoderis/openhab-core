@@ -176,9 +176,12 @@ public interface SecurityFilter {
         /**
          * Get authentication metrics
          */
-        public AuthMetrics getMetrics() {
-            return new AuthMetrics(totalRequests.get(), successfulAuthentications.get(), failedAuthentications.get(),
-                    cacheHits.get(), cacheMisses.get(), authCache.size());
+        public org.openhab.core.ai.tool.security.filters.AuthMetrics getMetrics() {
+            // Using top-level AuthMetrics class
+
+            return new org.openhab.core.ai.tool.security.filters.AuthMetrics(totalRequests.get(),
+                    successfulAuthentications.get(), failedAuthentications.get(), cacheHits.get(), cacheMisses.get(),
+                    authCache.size());
         }
 
         /**
@@ -191,49 +194,11 @@ public interface SecurityFilter {
         /**
          * Cached authentication result
          */
-        protected static class CachedAuthResult {
-            final SecurityResult result;
-            final long expirationTime;
-
-            CachedAuthResult(SecurityResult result, long expirationTime) {
-                this.result = result;
-                this.expirationTime = expirationTime;
-            }
-
-            boolean isExpired() {
-                return System.currentTimeMillis() > expirationTime;
-            }
-        }
+        // Inner class extracted to top-level: org.openhab.core.ai.tool.security.filters.CachedAuthResult
 
         /**
          * Authentication metrics
          */
-        public static class AuthMetrics {
-            public final long totalRequests;
-            public final long successfulAuthentications;
-            public final long failedAuthentications;
-            public final long cacheHits;
-            public final long cacheMisses;
-            public final int cacheSize;
-
-            public AuthMetrics(long totalRequests, long successfulAuthentications, long failedAuthentications,
-                    long cacheHits, long cacheMisses, int cacheSize) {
-                this.totalRequests = totalRequests;
-                this.successfulAuthentications = successfulAuthentications;
-                this.failedAuthentications = failedAuthentications;
-                this.cacheHits = cacheHits;
-                this.cacheMisses = cacheMisses;
-                this.cacheSize = cacheSize;
-            }
-
-            public double getSuccessRate() {
-                return totalRequests > 0 ? (double) successfulAuthentications / totalRequests : 0.0;
-            }
-
-            public double getCacheHitRate() {
-                long totalCacheAccess = cacheHits + cacheMisses;
-                return totalCacheAccess > 0 ? (double) cacheHits / totalCacheAccess : 0.0;
-            }
-        }
+        // Inner class extracted earlier to top-level: org.openhab.core.ai.tool.security.filters.AuthMetrics
     }
 }

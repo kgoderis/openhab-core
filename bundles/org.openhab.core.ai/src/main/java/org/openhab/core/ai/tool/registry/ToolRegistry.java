@@ -35,7 +35,7 @@ import io.modelcontextprotocol.server.McpServerFeatures;
 @Component(immediate = true)
 public class ToolRegistry {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ToolRegistry.class);
+    static final Logger LOGGER = LoggerFactory.getLogger(ToolRegistry.class);
 
     /** Map of tool adapters by tool ID. */
     private final Map<String, ToolAdapter> toolAdapters = new ConcurrentHashMap<>();
@@ -101,7 +101,7 @@ public class ToolRegistry {
             return;
         }
 
-        toolTracker = new ServiceTracker<>(context, Tool.class, new ToolServiceCustomizer());
+        toolTracker = new ServiceTracker<>(context, Tool.class, new ToolServiceCustomizer(this));
         toolTracker.open();
         LOGGER.debug("Tool service tracking started");
     }
@@ -167,7 +167,7 @@ public class ToolRegistry {
      * @param tool the tool to register
      * @param reference the OSGi service reference
      */
-    private void registerToolWithReference(final Tool tool, final ServiceReference<Tool> reference) {
+    void registerToolWithReference(final Tool tool, final ServiceReference<Tool> reference) {
         try {
             registerTool(tool);
             registeredTools.put(reference, tool);
@@ -194,7 +194,7 @@ public class ToolRegistry {
      * @param tool the tool to unregister
      * @param reference the OSGi service reference
      */
-    private void unregisterToolWithReference(final Tool tool, final ServiceReference<Tool> reference) {
+    void unregisterToolWithReference(final Tool tool, final ServiceReference<Tool> reference) {
         try {
             unregisterTool(tool.getId());
             registeredTools.remove(reference);
@@ -356,39 +356,7 @@ public class ToolRegistry {
     /**
      * Service tracker customizer for Tool services.
      */
-    private class ToolServiceCustomizer implements ServiceTrackerCustomizer<Tool, Tool> {
-
-        @Override
-        public Tool addingService(ServiceReference<Tool> reference) {
-            BundleContext context = bundleContext;
-            if (context == null) {
-                LOGGER.warn("Bundle context not available for adding tool service");
-                return null;
-            }
-
-            Tool tool = context.getService(reference);
-            if (tool != null) {
-                registerToolWithReference(tool, reference);
-            }
-            return tool;
-        }
-
-        @Override
-        public void modifiedService(ServiceReference<Tool> reference, Tool tool) {
-            // Re-register the tool if it was modified
-            unregisterToolWithReference(tool, reference);
-            registerToolWithReference(tool, reference);
-            LOGGER.debug("Modified tool service: {}", tool.getId());
-        }
-
-        @Override
-        public void removedService(ServiceReference<Tool> reference, Tool tool) {
-            unregisterToolWithReference(tool, reference);
-
-            BundleContext context = bundleContext;
-            if (context != null) {
-                context.ungetService(reference);
-            }
-        }
+    BundleContext getBundleContext() {
+        return bundleContext;
     }
 }

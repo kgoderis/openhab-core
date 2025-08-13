@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 package org.openhab.core.ai.agent;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,12 +30,12 @@ import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.api.AgentModelStatistics;
 import org.openhab.core.ai.agent.api.ModelHealthStatus;
 import org.openhab.core.ai.agent.api.ModelIntegrationStatistics;
-import org.openhab.core.ai.model.AgentModelIntegrationServiceImpl;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
-import org.openhab.core.ai.model.api.ModelParameters;
+import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.reasoning.SharedModelReasoningEngine;
 
 /**
- * Unit tests for AgentModelIntegrationService
+ * Unit tests for SharedModelReasoningEngine (AgentModelIntegrationService implementation)
  * 
  * @author Karel Goderis - Initial Contribution
  */
@@ -33,11 +45,11 @@ class AgentModelIntegrationServiceTest {
     @Mock
     private ModelConfigurationService modelConfigurationService;
 
-    private AgentModelIntegrationServiceImpl integrationService;
+    private SharedModelReasoningEngine integrationService;
 
     @BeforeEach
     void setUp() {
-        integrationService = new AgentModelIntegrationServiceImpl();
+        integrationService = new SharedModelReasoningEngine();
         // Inject mock dependencies
         // Note: In a real OSGi environment, this would be done via dependency injection
     }

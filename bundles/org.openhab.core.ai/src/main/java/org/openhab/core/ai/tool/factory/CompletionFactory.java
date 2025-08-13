@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.completions.BaseCompletion;
+import org.openhab.core.ai.tool.factory.api.CompletionFactoryMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,15 +24,6 @@ public class CompletionFactory {
     private static final Logger LOGGER = LoggerFactory.getLogger(CompletionFactory.class);
     private final Map<String, BaseCompletion> activeCompletions = new ConcurrentHashMap<>();
     private static final long DEFAULT_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-
-    /**
-     * Functional interface for creating completions.
-     */
-    @FunctionalInterface
-    public interface CompletionFactoryMethod {
-        @Nullable
-        BaseCompletion create(String completionName, long refreshIntervalMs) throws Exception;
-    }
 
     /**
      * Create a completion with default refresh interval.

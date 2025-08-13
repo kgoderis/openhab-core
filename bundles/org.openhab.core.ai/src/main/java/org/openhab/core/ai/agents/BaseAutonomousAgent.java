@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -140,7 +141,8 @@ public abstract class BaseAutonomousAgent {
             logger.debug("Starting agent: {}", getAgentId());
 
             if (state.get() != AgentState.READY) {
-                throw new AgentStartupException("Agent is not ready to start: " + getAgentId(), null);
+                throw new AgentStartupException("Agent is not ready to start: " + getAgentId(),
+                        new IllegalStateException("Agent is not ready to start"));
             }
 
             // Set state to starting
@@ -316,12 +318,76 @@ public abstract class BaseAutonomousAgent {
      * 
      * @param context the execution context
      * @param availableSkills list of available skills
-     * @return the selected skill name
+     * @return the selected skill name, or null if no skills available
      */
-    protected String decideSkillToExecute(Map<String, Object> context, List<String> availableSkills) {
-        // TODO: Implement intelligent skill selection based on context
-        // For now, return the first available skill
-        return availableSkills.isEmpty() ? null : availableSkills.get(0);
+    protected @Nullable String decideSkillToExecute(Map<String, Object> context, List<String> availableSkills) {
+        // Implement intelligent skill selection based on context
+        if (availableSkills.isEmpty()) {
+            return null;
+        }
+
+        // If only one skill available, return it
+        if (availableSkills.size() == 1) {
+            return availableSkills.get(0);
+        }
+
+        // Score each skill based on context relevance
+        Map<String, Double> skillScores = new HashMap<>();
+        for (String skill : availableSkills) {
+            double score = calculateSkillRelevanceScore(skill, context);
+            skillScores.put(skill, score);
+        }
+
+        // Return the skill with the highest score
+        return skillScores.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
+                .orElse(availableSkills.get(0));
+    }
+
+    /**
+     * Calculate relevance score for a skill based on context
+     * 
+     * @param skillName the skill name
+     * @param context the execution context
+     * @return the relevance score (higher is better)
+     */
+    private double calculateSkillRelevanceScore(String skillName, Map<String, Object> context) {
+        double score = 0.0;
+
+        // Check if skill name matches context keywords
+        String contextStr = context.toString().toLowerCase();
+        String skillLower = skillName.toLowerCase();
+
+        // Score based on keyword matching
+        if (contextStr.contains(skillLower)) {
+            score += 10.0;
+        }
+
+        // Score based on skill type matching context type
+        String contextType = (String) context.get("type");
+        if (contextType != null && skillName.toLowerCase().contains(contextType.toLowerCase())) {
+            score += 5.0;
+        }
+
+        // Score based on priority
+        Integer priority = (Integer) context.get("priority");
+        if (priority != null && priority > 0) {
+            score += priority * 0.1;
+        }
+
+        // Score based on recent usage (prefer less recently used skills)
+        Long lastUsed = (Long) context.get("lastUsed_" + skillName);
+        if (lastUsed != null) {
+            long timeSinceLastUse = System.currentTimeMillis() - lastUsed;
+            score += Math.min(timeSinceLastUse / 60000.0, 2.0); // Max 2 points for time-based scoring
+        }
+
+        // Score based on success rate (if available)
+        Double successRate = (Double) context.get("successRate_" + skillName);
+        if (successRate != null) {
+            score += successRate * 3.0; // Up to 3 points for success rate
+        }
+
+        return score;
     }
 
     /**
@@ -360,8 +426,123 @@ public abstract class BaseAutonomousAgent {
      * @return list of agent capabilities
      */
     protected List<String> getAgentCapabilities() {
-        // TODO: Implement dynamic capability discovery
-        return new ArrayList<>();
+        // Implement dynamic capability discovery
+        List<String> capabilities = new ArrayList<>();
+
+        // Get capabilities from skill manager if available
+        if (skillManager != null) {
+            try {
+                String agentId = getAgentId();
+                if (agentId != null) {
+                    List<String> availableSkills = skillManager.getAgentSkills(agentId);
+                    capabilities.addAll(availableSkills);
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to get capabilities from skill manager: {}", e.getMessage());
+            }
+        }
+
+        // Add agent-specific capabilities based on agent type
+        String agentId = getAgentId();
+        if (agentId != null) {
+            capabilities.addAll(getAgentTypeCapabilities(agentId));
+        }
+
+        // Add capabilities based on current state
+        AgentState currentState = getState();
+        capabilities.addAll(getStateBasedCapabilities(currentState));
+
+        // Add capabilities based on context
+        AgentContext currentContext = getContext();
+        capabilities.addAll(getContextBasedCapabilities(currentContext));
+
+        // Remove duplicates and return
+        return capabilities.stream().distinct().collect(Collectors.toList());
+    }
+
+    /**
+     * Get capabilities based on agent type
+     * 
+     * @param agentId the agent ID
+     * @return list of capabilities for the agent type
+     */
+    private List<String> getAgentTypeCapabilities(String agentId) {
+        List<String> capabilities = new ArrayList<>();
+
+        String agentType = agentId.toLowerCase();
+
+        if (agentType.contains("energy")) {
+            capabilities.addAll(List.of("energy_monitoring", "power_optimization", "battery_management"));
+        } else if (agentType.contains("security")) {
+            capabilities.addAll(List.of("security_monitoring", "access_control", "alarm_management"));
+        } else if (agentType.contains("comfort")) {
+            capabilities.addAll(List.of("climate_control", "lighting_control", "entertainment_control"));
+        } else if (agentType.contains("automation")) {
+            capabilities.addAll(List.of("scheduling", "rule_execution", "workflow_management"));
+        } else if (agentType.contains("health")) {
+            capabilities.addAll(List.of("health_monitoring", "medication_reminder", "wellness_tracking"));
+        } else {
+            // General capabilities for unknown agent types
+            capabilities.addAll(List.of("basic_monitoring", "data_collection", "status_reporting"));
+        }
+
+        return capabilities;
+    }
+
+    /**
+     * Get capabilities based on current state
+     * 
+     * @param state the current agent state
+     * @return list of state-based capabilities
+     */
+    private List<String> getStateBasedCapabilities(AgentState state) {
+        List<String> capabilities = new ArrayList<>();
+
+        switch (state) {
+            case RUNNING:
+                capabilities.addAll(List.of("active_monitoring", "real_time_processing", "event_handling"));
+                break;
+            case READY:
+                capabilities.addAll(List.of("passive_monitoring", "data_collection"));
+                break;
+            case ERROR:
+                capabilities.addAll(List.of("error_recovery", "diagnostic_analysis"));
+                break;
+            case INITIALIZING:
+            case STOPPING:
+                capabilities.addAll(List.of("status_reporting", "configuration_management"));
+                break;
+            default:
+                break;
+        }
+
+        return capabilities;
+    }
+
+    /**
+     * Get capabilities based on current context
+     * 
+     * @param context the current agent context
+     * @return list of context-based capabilities
+     */
+    private List<String> getContextBasedCapabilities(AgentContext context) {
+        List<String> capabilities = new ArrayList<>();
+
+        // Add capabilities based on available resources
+        if (context.containsKey("network")) {
+            capabilities.add("network_communication");
+        }
+        if (context.containsKey("database")) {
+            capabilities.add("data_persistence");
+        }
+        if (context.containsKey("sensors")) {
+            capabilities.add("sensor_data_processing");
+        }
+        if (context.containsKey("actuators")) {
+            capabilities.add("actuator_control");
+        }
+
+        return capabilities;
     }
 
     /**
@@ -403,7 +584,8 @@ public abstract class BaseAutonomousAgent {
         if (analytics != null) {
             analytics.recordPerformanceMetric(getAgentId(), skillName, duration, result.isSuccess());
             if (!result.isSuccess()) {
-                analytics.recordError(getAgentId(), skillName, result.getErrorMessage(), null);
+                analytics.recordError(getAgentId(), skillName, result.getErrorMessage(),
+                        new RuntimeException(result.getErrorMessage()));
             }
         }
     }
@@ -457,7 +639,8 @@ public abstract class BaseAutonomousAgent {
 
         for (int i = 0; i < results.size(); i++) {
             org.openhab.core.ai.agent.api.AgentSkillResult result = results.get(i);
-            aggregatedData.put("skill_" + i, result.getData());
+            Object data = result.getData();
+            aggregatedData.put("skill_" + i, data != null ? data : "null");
 
             if (!result.isSuccess()) {
                 allSuccessful = false;
@@ -631,16 +814,5 @@ public abstract class BaseAutonomousAgent {
 
     protected abstract boolean onSkillSafetyCheck(String skillName, Map<String, Object> parameters) throws Exception;
 
-    // Exception classes
-    public static class AgentInitializationException extends RuntimeException {
-        public AgentInitializationException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
-
-    public static class AgentStartupException extends RuntimeException {
-        public AgentStartupException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
+    // Exception classes moved to top-level
 }

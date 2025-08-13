@@ -260,21 +260,5 @@ public class ResourceReadingService {
     /**
      * Cached resource content with expiration
      */
-    private static class CachedResourceContent {
-        private final Object content;
-        private final long expirationTime;
-
-        public CachedResourceContent(Object content, long expirationTime) {
-            this.content = content;
-            this.expirationTime = expirationTime;
-        }
-
-        public Object getContent() {
-            return content;
-        }
-
-        public boolean isExpired() {
-            return System.currentTimeMillis() > expirationTime;
-        }
-    }
+    // CachedResourceContent extracted to org.openhab.core.ai.tool.resources.CachedResourceContent
 }

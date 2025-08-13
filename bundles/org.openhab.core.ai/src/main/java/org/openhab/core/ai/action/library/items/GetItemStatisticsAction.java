@@ -2,6 +2,7 @@ package org.openhab.core.ai.action.library.items;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,8 @@ import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
+import org.openhab.core.persistence.FilterCriteria;
+import org.openhab.core.persistence.HistoricItem;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
 import org.openhab.core.persistence.QueryablePersistenceService;
@@ -334,5 +337,127 @@ public class GetItemStatisticsAction implements Action {
         } catch (NumberFormatException e) {
             return false;
         }
+    }
+
+    /**
+     * Calculate advanced statistics using persistence service
+     */
+    private Map<String, Object> calculateAdvancedStatistics(Item item, Duration duration,
+            QueryablePersistenceService service) {
+        Map<String, Object> statistics = new HashMap<>();
+
+        try {
+            ZonedDateTime endTime = ZonedDateTime.now();
+            ZonedDateTime startTime = endTime.minus(duration);
+
+            // Query historical data
+            FilterCriteria filter = new FilterCriteria();
+            filter.setItemName(item.getName());
+            filter.setBeginDate(startTime);
+            filter.setEndDate(endTime);
+            filter.setOrdering(FilterCriteria.Ordering.DESCENDING);
+
+            Iterable<HistoricItem> historicItems = service.query(filter);
+
+            if (historicItems != null) {
+                List<HistoricItem> itemsList = new ArrayList<>();
+                for (HistoricItem historicItem : historicItems) {
+                    itemsList.add(historicItem);
+                }
+
+                if (!itemsList.isEmpty()) {
+                    // Calculate advanced statistics
+                    statistics.put("totalStateChanges", itemsList.size());
+                    statistics.put("firstStateChange",
+                            itemsList.get(itemsList.size() - 1).getTimestamp().toInstant().toEpochMilli());
+                    statistics.put("lastStateChange", itemsList.get(0).getTimestamp().toInstant().toEpochMilli());
+
+                    // Calculate state breakdown
+                    Map<String, Integer> stateBreakdown = new HashMap<>();
+                    for (HistoricItem historicItem : itemsList) {
+                        String state = historicItem.getState().toString();
+                        stateBreakdown.put(state, stateBreakdown.getOrDefault(state, 0) + 1);
+                    }
+                    statistics.put("stateBreakdown", stateBreakdown);
+
+                    // Calculate change frequency
+                    long timeSpan = endTime.toInstant().toEpochMilli() - startTime.toInstant().toEpochMilli();
+                    double changesPerHour = (itemsList.size() * 3600000.0) / timeSpan;
+                    statistics.put("changesPerHour", Math.round(changesPerHour * 100.0) / 100.0);
+
+                    // Calculate average time between changes
+                    if (itemsList.size() > 1) {
+                        long totalTimeBetweenChanges = 0;
+                        for (int i = 0; i < itemsList.size() - 1; i++) {
+                            long timeDiff = itemsList.get(i).getTimestamp().toInstant().toEpochMilli()
+                                    - itemsList.get(i + 1).getTimestamp().toInstant().toEpochMilli();
+                            totalTimeBetweenChanges += timeDiff;
+                        }
+                        double avgTimeBetweenChanges = totalTimeBetweenChanges / (itemsList.size() - 1.0);
+                        statistics.put("averageTimeBetweenChangesMs", avgTimeBetweenChanges);
+                    }
+
+                    // Calculate most common state
+                    String mostCommonState = stateBreakdown.entrySet().stream().max(Map.Entry.comparingByValue())
+                            .map(Map.Entry::getKey).orElse("unknown");
+                    statistics.put("mostCommonState", mostCommonState);
+
+                    // Calculate state change patterns
+                    Map<String, Integer> changePatterns = new HashMap<>();
+                    for (int i = 0; i < itemsList.size() - 1; i++) {
+                        String fromState = itemsList.get(i + 1).getState().toString();
+                        String toState = itemsList.get(i).getState().toString();
+                        String pattern = fromState + " -> " + toState;
+                        changePatterns.put(pattern, changePatterns.getOrDefault(pattern, 0) + 1);
+                    }
+                    statistics.put("changePatterns", changePatterns);
+
+                    // Calculate usage metrics
+                    long totalActiveTime = calculateTotalActiveTime(itemsList, startTime, endTime);
+                    statistics.put("totalActiveTimeMs", totalActiveTime);
+                    statistics.put("activeTimePercentage", (totalActiveTime * 100.0) / timeSpan);
+
+                } else {
+                    // No historical data available
+                    statistics.put("totalStateChanges", 0);
+                    statistics.put("note", "No historical data available for the specified time range");
+                }
+            }
+
+        } catch (Exception e) {
+            logger.debug("Error calculating advanced statistics for item {}: {}", item.getName(), e.getMessage());
+            // Fallback to basic statistics
+            statistics.putAll(calculateBasicStatistics(item, duration));
+            statistics.put("note", "Error calculating advanced statistics, using basic statistics");
+        }
+
+        return statistics;
+    }
+
+    /**
+     * Calculate total active time based on state changes
+     */
+    private long calculateTotalActiveTime(List<HistoricItem> items, ZonedDateTime startTime, ZonedDateTime endTime) {
+        long totalActiveTime = 0;
+
+        for (int i = 0; i < items.size(); i++) {
+            HistoricItem item = items.get(i);
+            long itemTime = item.getTimestamp().toInstant().toEpochMilli();
+
+            // Check if the state indicates "active" (customize based on item type)
+            String state = item.getState().toString().toLowerCase();
+            boolean isActive = state.equals("on") || state.equals("open") || state.equals("active")
+                    || state.equals("true") || !state.equals("off") && !state.equals("closed")
+                            && !state.equals("inactive") && !state.equals("false");
+
+            if (isActive) {
+                // Calculate duration of this active state
+                long nextTime = (i < items.size() - 1) ? items.get(i + 1).getTimestamp().toInstant().toEpochMilli()
+                        : endTime.toInstant().toEpochMilli();
+                totalActiveTime += (nextTime - itemTime);
+            }
+        }
+
+        return totalActiveTime;
     }
 }

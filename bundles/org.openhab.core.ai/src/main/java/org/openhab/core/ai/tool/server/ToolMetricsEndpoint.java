@@ -3,8 +3,6 @@ package org.openhab.core.ai.tool.server;
 import java.io.IOException;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.error.ToolErrorRecoveryManager;
-import org.openhab.core.ai.tool.security.SecurityManager;
 
 /**
  * Health metrics endpoint for MCP operations.
@@ -16,7 +14,7 @@ import org.openhab.core.ai.tool.security.SecurityManager;
 public class ToolMetricsEndpoint {
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ToolMetricsEndpoint.class);
 
-    private final ToolServer serverInstance;
+    private final DefaultToolServer serverInstance;
     private final ServerConfiguration config;
     private final com.sun.net.httpserver.HttpServer httpServer;
     private final java.util.concurrent.ScheduledExecutorService executor;
@@ -26,7 +24,7 @@ public class ToolMetricsEndpoint {
     private final java.util.concurrent.atomic.AtomicLong totalErrors = new java.util.concurrent.atomic.AtomicLong(0);
     private final long startTime = System.currentTimeMillis();
 
-    public ToolMetricsEndpoint(ToolServer serverInstance, ServerConfiguration config) throws IOException {
+    public ToolMetricsEndpoint(DefaultToolServer serverInstance, ServerConfiguration config) throws IOException {
         this.serverInstance = serverInstance;
         this.config = config;
 
@@ -36,10 +34,12 @@ public class ToolMetricsEndpoint {
         this.httpServer = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(port), 0);
 
         // Set up endpoints - always enable health and metrics for now
-        httpServer.createContext("/health", new HealthHandler());
+        httpServer.createContext("/health", new org.openhab.core.ai.tool.server.http.HealthHandler(serverInstance,
+                config, startTime, totalRequests, totalErrors));
         logger.info("Health endpoint enabled at /health");
 
-        httpServer.createContext("/metrics", new MetricsHandler());
+        httpServer.createContext("/metrics", new org.openhab.core.ai.tool.server.http.MetricsHandler(serverInstance,
+                startTime, totalRequests, totalErrors));
         logger.info("Metrics endpoint enabled at /metrics");
 
         // Create executor for background tasks
@@ -77,179 +77,6 @@ public class ToolMetricsEndpoint {
             }
         } catch (Exception e) {
             logger.error("Health check failed with exception", e);
-        }
-    }
-
-    private class HealthHandler implements com.sun.net.httpserver.HttpHandler {
-        @Override
-        public void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
-            try {
-                totalRequests.incrementAndGet();
-
-                boolean healthy = serverInstance.isHealthy();
-                ToolServer.TransportHealthInfo transportHealth = serverInstance.getTransportHealth();
-
-                // Build enhanced health response
-                StringBuilder response = new StringBuilder();
-                response.append("{\n");
-                response.append("  \"status\": \"").append(healthy ? "UP" : "DOWN").append("\",\n");
-                response.append("  \"transport\": {\n");
-                response.append("    \"type\": \"").append(transportHealth.getTransportType()).append("\",\n");
-                response.append("    \"healthy\": ").append(transportHealth.isHealthy()).append(",\n");
-                response.append("    \"uptime\": ").append(transportHealth.getUptime()).append(",\n");
-                response.append("    \"lastError\": ").append(
-                        transportHealth.getLastError() != null ? "\"" + transportHealth.getLastError() + "\"" : "null")
-                        .append("\n");
-                response.append("  },\n");
-                response.append("  \"uptime\": ").append(System.currentTimeMillis() - startTime).append(",\n");
-                response.append("  \"version\": \"").append(config.getServerVersion()).append("\",\n");
-
-                // Add security information if available
-                if (serverInstance.isSecurityEnabled()) {
-                    SecurityManager.SecurityStatistics securityStats = serverInstance.getSecurityStatistics();
-                    if (securityStats != null) {
-                        response.append("  \"security\": {\n");
-                        response.append("    \"totalRequests\": ").append(securityStats.getTotalRequests())
-                                .append(",\n");
-                        response.append("    \"allowedRequests\": ").append(securityStats.getAllowedRequests())
-                                .append(",\n");
-                        response.append("    \"deniedRequests\": ").append(securityStats.getDeniedRequests())
-                                .append("\n");
-                        response.append("  },\n");
-                    }
-                }
-
-                // Add error recovery information if available
-                if (serverInstance.isErrorRecoveryEnabled()) {
-                    ToolErrorRecoveryManager.ErrorRecoveryStatistics errorStats = serverInstance
-                            .getErrorRecoveryStatistics();
-                    if (errorStats != null) {
-                        response.append("  \"errorRecovery\": {\n");
-                        response.append("    \"totalErrors\": ").append(errorStats.getTotalErrors()).append(",\n");
-                        response.append("    \"totalRecoveries\": ").append(errorStats.getTotalRecoveries())
-                                .append(",\n");
-                        response.append("    \"totalFallbacks\": ").append(errorStats.getTotalFallbacks())
-                                .append(",\n");
-                        response.append("    \"recoveryRate\": ").append(errorStats.getRecoveryRate()).append("\n");
-                        response.append("  },\n");
-                    }
-                }
-
-                response.append("  \"timestamp\": \"").append(java.time.Instant.now()).append("\"\n");
-                response.append("}");
-
-                byte[] responseBytes = response.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                var headers = exchange.getResponseHeaders();
-                if (headers != null) {
-                    headers.add("Content-Type", "application/json");
-                }
-                exchange.sendResponseHeaders(healthy ? 200 : 503, responseBytes.length);
-
-                try (java.io.OutputStream os = exchange.getResponseBody()) {
-                    if (os != null) {
-                        os.write(responseBytes);
-                    }
-                }
-
-            } catch (Exception e) {
-                totalErrors.incrementAndGet();
-                logger.error("Error handling health check request", e);
-                String errorResponse = "{\"error\": \"Internal server error\"}";
-                byte[] responseBytes = errorResponse.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                var headers = exchange.getResponseHeaders();
-                if (headers != null) {
-                    headers.add("Content-Type", "application/json");
-                }
-                exchange.sendResponseHeaders(500, responseBytes.length);
-                try (java.io.OutputStream os = exchange.getResponseBody()) {
-                    if (os != null) {
-                        os.write(responseBytes);
-                    }
-                }
-            }
-        }
-    }
-
-    private class MetricsHandler implements com.sun.net.httpserver.HttpHandler {
-        @Override
-        public void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
-            try {
-                totalRequests.incrementAndGet();
-
-                long uptimeSeconds = (System.currentTimeMillis() - startTime) / 1000;
-
-                StringBuilder response = new StringBuilder();
-                response.append("# HELP mcp_requests_total Total number of requests\n");
-                response.append("# TYPE mcp_requests_total counter\n");
-                response.append("mcp_requests_total ").append(totalRequests.get()).append("\n");
-                response.append("# HELP mcp_errors_total Total number of errors\n");
-                response.append("# TYPE mcp_errors_total counter\n");
-                response.append("mcp_errors_total ").append(totalErrors.get()).append("\n");
-                response.append("# HELP mcp_uptime_seconds Uptime in seconds\n");
-                response.append("# TYPE mcp_uptime_seconds gauge\n");
-                response.append("mcp_uptime_seconds ").append(uptimeSeconds).append("\n");
-                response.append("# HELP mcp_server_healthy Server health status\n");
-                response.append("# TYPE mcp_server_healthy gauge\n");
-                response.append("mcp_server_healthy ").append(serverInstance.isHealthy() ? 1 : 0).append("\n");
-
-                // Add security metrics if available
-                if (serverInstance.isSecurityEnabled()) {
-                    SecurityManager.SecurityStatistics securityStats = serverInstance.getSecurityStatistics();
-                    if (securityStats != null) {
-                        response.append("# HELP mcp_security_total_requests Total number of security requests\n");
-                        response.append("# TYPE mcp_security_total_requests counter\n");
-                        response.append("mcp_security_total_requests ").append(securityStats.getTotalRequests())
-                                .append("\n");
-                        response.append("# HELP mcp_security_allowed_requests Number of allowed requests\n");
-                        response.append("# TYPE mcp_security_allowed_requests counter\n");
-                        response.append("mcp_security_allowed_requests ").append(securityStats.getAllowedRequests())
-                                .append("\n");
-                        response.append("# HELP mcp_security_denied_requests Number of denied requests\n");
-                        response.append("# TYPE mcp_security_denied_requests counter\n");
-                        response.append("mcp_security_denied_requests ").append(securityStats.getDeniedRequests())
-                                .append("\n");
-                    }
-                }
-
-                // Add error recovery metrics if available
-                if (serverInstance.isErrorRecoveryEnabled()) {
-                    ToolErrorRecoveryManager.ErrorRecoveryStatistics errorStats = serverInstance
-                            .getErrorRecoveryStatistics();
-                    if (errorStats != null) {
-                        response.append("# HELP mcp_errors_total_count Total number of errors\n");
-                        response.append("# TYPE mcp_errors_total_count counter\n");
-                        response.append("mcp_errors_total_count ").append(errorStats.getTotalErrors()).append("\n");
-                        response.append("# HELP mcp_recoveries_total Total number of successful recoveries\n");
-                        response.append("# TYPE mcp_recoveries_total counter\n");
-                        response.append("mcp_recoveries_total ").append(errorStats.getTotalRecoveries()).append("\n");
-                        response.append("# HELP mcp_fallbacks_total Total number of fallbacks\n");
-                        response.append("# TYPE mcp_fallbacks_total counter\n");
-                        response.append("mcp_fallbacks_total ").append(errorStats.getTotalFallbacks()).append("\n");
-                        response.append("# HELP mcp_recovery_rate Recovery rate\n");
-                        response.append("# TYPE mcp_recovery_rate gauge\n");
-                        response.append("mcp_recovery_rate ").append(errorStats.getRecoveryRate()).append("\n");
-                    }
-                }
-
-                byte[] responseBytes = response.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                var headers = exchange.getResponseHeaders();
-                if (headers != null) {
-                    headers.add("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
-                }
-                exchange.sendResponseHeaders(200, responseBytes.length);
-
-                try (java.io.OutputStream os = exchange.getResponseBody()) {
-                    if (os != null) {
-                        os.write(responseBytes);
-                    }
-                }
-
-            } catch (Exception e) {
-                totalErrors.incrementAndGet();
-                logger.error("Error handling metrics request", e);
-                exchange.sendResponseHeaders(500, 0);
-                exchange.close();
-            }
         }
     }
 

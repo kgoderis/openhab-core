@@ -14,14 +14,14 @@ public class ToolMetadata {
     private final String author;
     private final String description;
 
-    private ToolMetadata(String version, String author, String description) {
+    ToolMetadata(String version, String author, String description) {
         this.version = version;
         this.author = author;
         this.description = description;
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static ToolMetadataBuilder builder() {
+        return new ToolMetadataBuilder();
     }
 
     public String getVersion() {
@@ -36,28 +36,5 @@ public class ToolMetadata {
         return description;
     }
 
-    public static class Builder {
-        private String version = "1.0.0";
-        private String author = "Unknown";
-        private String description = "No description provided";
-
-        public Builder version(String version) {
-            this.version = version;
-            return this;
-        }
-
-        public Builder author(String author) {
-            this.author = author;
-            return this;
-        }
-
-        public Builder description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public ToolMetadata build() {
-            return new ToolMetadata(version, author, description);
-        }
-    }
+    // Builder extracted to org.openhab.core.ai.tool.api.ToolMetadataBuilder
 }

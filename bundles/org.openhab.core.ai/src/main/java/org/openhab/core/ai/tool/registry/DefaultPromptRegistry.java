@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
+import io.modelcontextprotocol.spec.McpSchema;
 
 /**
  * Implementation of PromptRegistry for MCP Prompts.
@@ -131,8 +132,10 @@ public class DefaultPromptRegistry implements PromptRegistry {
 
                                 // Return a simple prompt result with description and empty messages
                                 // TODO: Implement proper message handling when internal Prompt class supports messages
-                                return new io.modelcontextprotocol.spec.McpSchema.GetPromptResult(
-                                        prompt.getDescription(), java.util.List.of() // Empty messages for now
+                                return new McpSchema.GetPromptResult(prompt.getDescription(), java.util.List.of() // Empty
+                                                                                                                  // messages
+                                                                                                                  // for
+                                                                                                                  // now
                                 );
                             });
 
@@ -183,8 +186,10 @@ public class DefaultPromptRegistry implements PromptRegistry {
                                     // Return a simple prompt result with description and empty messages
                                     // TODO: Implement proper message handling when internal Prompt class supports
                                     // messages
-                                    return new io.modelcontextprotocol.spec.McpSchema.GetPromptResult(
-                                            prompt.getDescription(), java.util.List.of() // Empty messages for now
+                                    return new McpSchema.GetPromptResult(prompt.getDescription(), java.util.List.of() // Empty
+                                                                                                                      // messages
+                                                                                                                      // for
+                                                                                                                      // now
                                     );
                                 });
                             });

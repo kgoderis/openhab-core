@@ -1,4 +1,4 @@
-package org.openhab.core.ai.common.agent.integration;
+package org.openhab.core.ai.agent.integration;
 
 import java.io.IOException;
 import java.net.URI;

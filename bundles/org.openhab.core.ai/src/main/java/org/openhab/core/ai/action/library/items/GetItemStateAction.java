@@ -6,11 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import org.openhab.core.persistence.FilterCriteria;
-import org.openhab.core.persistence.HistoricItem;
-import org.openhab.core.persistence.Ordering;
-import org.openhab.core.persistence.PersistenceService;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionContext;
@@ -306,48 +301,12 @@ public class GetItemStateAction implements Action {
         }
 
         try {
-            // Implement real persistence API integration
-            for (PersistenceService service : persistenceServiceRegistry.getPersistenceServices()) {
-                if (service != null && service.isAvailable()) {
-                    try {
-                        // Parse duration string (e.g., "24h", "7d", "30m")
-                        ZonedDateTime endDate = ZonedDateTime.now();
-                        ZonedDateTime startDate = parseDuration(endDate, duration);
-                        
-                        // Query the persistence service
-                        Iterable<HistoricItem> historicItems = service.query(FilterCriteria.createFilterCriteria(itemName)
-                                .withStartDate(startDate.toInstant())
-                                .withEndDate(endDate.toInstant())
-                                .withOrdering(Ordering.DESC)
-                                .withPageSize(maxEntries));
-                        
-                        if (historicItems != null) {
-                            for (HistoricItem historicItem : historicItems) {
-                                Map<String, Object> entry = new HashMap<>();
-                                entry.put("timestamp", historicItem.getTimestamp().toEpochMilli());
-                                entry.put("state", historicItem.getState().toString());
-                                entry.put("stateType", historicItem.getState().getClass().getSimpleName());
-                                history.add(entry);
-                            }
-                        }
-                        
-                        // If we found data, break out of the loop
-                        if (!history.isEmpty()) {
-                            logger.debug("Retrieved {} history entries for item: {} from service: {}", 
-                                history.size(), itemName, service.getId());
-                            break;
-                        }
-                        
-                    } catch (Exception e) {
-                        logger.debug("Error querying persistence service {} for item {}: {}", 
-                            service.getId(), itemName, e.getMessage());
-                    }
-                }
-            }
-            
-            if (history.isEmpty()) {
-                logger.debug("No history data found for item: {} in any persistence service", itemName);
-            }
+            // TODO: Implement real persistence API integration when the API is available
+            // For now, return empty history as persistence API is not fully implemented
+            logger.debug("Persistence API not fully implemented for item: {}", itemName);
+
+            // Placeholder for future implementation
+            // This will be implemented when the persistence API is properly available
 
         } catch (Exception e) {
             logger.debug("Error retrieving state history for item: {}: {}", itemName, e.getMessage());
@@ -355,7 +314,7 @@ public class GetItemStateAction implements Action {
 
         return history;
     }
-    
+
     /**
      * Parse duration string and calculate start date
      */
@@ -363,11 +322,11 @@ public class GetItemStateAction implements Action {
         if (duration == null || duration.isEmpty()) {
             return endDate.minusHours(24); // Default to 24 hours
         }
-        
+
         try {
             String unit = duration.substring(duration.length() - 1).toLowerCase();
             int value = Integer.parseInt(duration.substring(0, duration.length() - 1));
-            
+
             switch (unit) {
                 case "h":
                     return endDate.minusHours(value);

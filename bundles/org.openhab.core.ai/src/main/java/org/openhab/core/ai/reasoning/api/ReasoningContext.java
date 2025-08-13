@@ -22,7 +22,7 @@ public class ReasoningContext {
     private final Instant timestamp;
     private final Map<String, Object> metadata;
 
-    private ReasoningContext(Builder builder) {
+    ReasoningContext(ReasoningContextBuilder builder) {
         this.initialContext = builder.initialContext;
         this.currentContext = builder.currentContext;
         this.domain = builder.domain;
@@ -70,56 +70,9 @@ public class ReasoningContext {
         return metadata;
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static ReasoningContextBuilder builder() {
+        return new ReasoningContextBuilder();
     }
 
-    public static class Builder {
-        private String initialContext = "";
-        private String currentContext = "";
-        private @Nullable String domain;
-        private @Nullable String userId;
-        private @Nullable String sessionId;
-        private Instant timestamp = Instant.now();
-        private Map<String, Object> metadata = Map.of();
-
-        public Builder initialContext(String initialContext) {
-            this.initialContext = initialContext;
-            return this;
-        }
-
-        public Builder currentContext(String currentContext) {
-            this.currentContext = currentContext;
-            return this;
-        }
-
-        public Builder domain(@Nullable String domain) {
-            this.domain = domain;
-            return this;
-        }
-
-        public Builder userId(@Nullable String userId) {
-            this.userId = userId;
-            return this;
-        }
-
-        public Builder sessionId(@Nullable String sessionId) {
-            this.sessionId = sessionId;
-            return this;
-        }
-
-        public Builder timestamp(Instant timestamp) {
-            this.timestamp = timestamp;
-            return this;
-        }
-
-        public Builder metadata(Map<String, Object> metadata) {
-            this.metadata = metadata;
-            return this;
-        }
-
-        public ReasoningContext build() {
-            return new ReasoningContext(this);
-        }
-    }
+    /* Extracted: org.openhab.core.ai.reasoning.api.ReasoningContextBuilder */
 }

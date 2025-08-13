@@ -30,9 +30,9 @@ public class AgentTransportPortManager {
     private static final Logger logger = LoggerFactory.getLogger(AgentTransportPortManager.class);
 
     // Default port assignments based on A2A_TRANSPORT_INTEGRATION_ANALYSIS.md
-    private static final int DEFAULT_JSON_RPC_PORT = 8080;
-    private static final int DEFAULT_REST_PORT = 8082;
-    private static final int DEFAULT_GRPC_PORT = 8083;
+    private static final int DEFAULT_JSON_RPC_PORT = 8080; // AgentServlet endpoint
+    private static final int DEFAULT_GRPC_PORT = 8083; // gRPC server port
+    // Note: HTTP transport is client-side, no server port needed
 
     // Port ranges for fallback allocation
     private static final int MIN_FALLBACK_PORT = 8084;
@@ -51,7 +51,7 @@ public class AgentTransportPortManager {
     public int getDefaultPort(AgentTransport.TransportType transportType) {
         return switch (transportType) {
             case JSON_RPC -> DEFAULT_JSON_RPC_PORT;
-            case REST -> DEFAULT_REST_PORT;
+            case REST -> 0; // HTTP transport is client-side, no server port
             case GRPC -> DEFAULT_GRPC_PORT;
         };
     }
@@ -81,7 +81,7 @@ public class AgentTransportPortManager {
     public int findAvailablePort(AgentTransport.TransportType transportType) {
         // First try the default port
         int defaultPort = getDefaultPort(transportType);
-        if (isPortAvailable(defaultPort)) {
+        if (defaultPort != 0 && isPortAvailable(defaultPort)) {
             logger.info("Using default port {} for transport type {}", defaultPort, transportType);
             return defaultPort;
         }
@@ -104,6 +104,9 @@ public class AgentTransportPortManager {
      * @return true if the port was successfully reserved
      */
     public boolean reservePort(AgentTransport.TransportType transportType, int port) {
+        if (port == 0) { // HTTP transport is client-side, no server port to reserve
+            return true;
+        }
         if (!isPortAvailable(port)) {
             logger.warn("Port {} is not available for transport type {}", port, transportType);
             return false;
@@ -174,7 +177,11 @@ public class AgentTransportPortManager {
             AgentTransport.TransportType transportType = entry.getKey();
             Integer port = entry.getValue();
 
-            if (port == null || !isPortAvailable(port)) {
+            if (port == null || (port == 0 && transportType != AgentTransport.TransportType.REST)) { // HTTP transport
+                                                                                                     // is client-side
+                logger.error("Invalid port assignment for transport type {}: port {}", transportType, port);
+                allValid = false;
+            } else if (port != 0 && !isPortAvailable(port)) {
                 logger.error("Invalid port assignment for transport type {}: port {}", transportType, port);
                 allValid = false;
             }

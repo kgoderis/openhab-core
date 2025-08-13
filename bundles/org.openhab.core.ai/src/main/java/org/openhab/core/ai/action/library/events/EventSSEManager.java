@@ -1,11 +1,11 @@
 package org.openhab.core.ai.action.library.events;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.action.library.events.api.SSESink;
 import org.openhab.core.events.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,25 +144,5 @@ public class EventSSEManager {
         sb.append("  \"timestamp\": \"").append(System.currentTimeMillis()).append("\"\n");
         sb.append("}\n\n");
         return sb.toString();
-    }
-
-    /**
-     * Interface for SSE sinks.
-     */
-    public interface SSESink {
-        /**
-         * Send data to the SSE client.
-         * 
-         * @param data The data to send
-         * @throws IOException if sending fails
-         */
-        void send(String data) throws IOException;
-
-        /**
-         * Check if the sink is still open.
-         * 
-         * @return true if open, false if closed
-         */
-        boolean isOpen();
     }
 }

@@ -1,4 +1,4 @@
-package org.openhab.core.ai.common.agent.integration;
+package org.openhab.core.ai.agent.integration;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;

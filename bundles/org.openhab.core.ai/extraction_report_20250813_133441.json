@@ -1,0 +1,111 @@
+{
+  "success": false,
+  "timestamp": "2025-08-13T13:34:41.303233",
+  "backup_location": "backup_20250813_133441",
+  "files_processed": 6,
+  "successful_files": 5,
+  "failed_files": 1,
+  "total_constructs_extracted": 17,
+  "total_new_files_created": 17,
+  "created_files": [
+    "test_agent_execution/ExecutionStrategyType.java",
+    "test_agent_execution/ExecutionRequest.java",
+    "test_agent_execution/ExecutionResult.java",
+    "test_agent_execution/ExecutionPriority.java",
+    "test_agent_execution/ExecutionMetric.java",
+    "test_agent_execution/CompositionResult.java",
+    "test_agent_execution/CompositionMetric.java",
+    "test_agent_execution/SkillCompositionResult.java",
+    "test_agent_execution/SkillExecutionStep.java",
+    "test_agent_execution/TaskSchema.java",
+    "test_agent_execution/SchemaParameter.java",
+    "test_agent_execution/SchemaExample.java",
+    "test_agent_execution/SchemaValidationResult.java",
+    "test_agent_execution/SchemaCompatibilityResult.java",
+    "test_agent_execution/SchemaVersion.java",
+    "test_agent_execution/SchemaStatistics.java",
+    "test_agent_execution/ExecutionStatistics.java"
+  ],
+  "modified_files": [
+    "test_agent_execution/ExecutionStrategy.java",
+    "test_agent_execution/SkillCompositionEngine.java",
+    "test_agent_execution/SkillCompositionStrategy.java",
+    "test_agent_execution/AgentTaskSchemaGenerator.java",
+    "test_agent_execution/AgentSkillExecutor.java"
+  ],
+  "detailed_results": [
+    {
+      "file": "test_agent_execution/ExecutionStrategy.java",
+      "success": true,
+      "constructs_found": 5,
+      "constructs_extracted": 5,
+      "new_files": [
+        "test_agent_execution/ExecutionStrategyType.java",
+        "test_agent_execution/ExecutionRequest.java",
+        "test_agent_execution/ExecutionResult.java",
+        "test_agent_execution/ExecutionPriority.java",
+        "test_agent_execution/ExecutionMetric.java"
+      ],
+      "errors": []
+    },
+    {
+      "file": "test_agent_execution/SkillCompositionEngine.java",
+      "success": true,
+      "constructs_found": 2,
+      "constructs_extracted": 2,
+      "new_files": [
+        "test_agent_execution/CompositionResult.java",
+        "test_agent_execution/CompositionMetric.java"
+      ],
+      "errors": []
+    },
+    {
+      "file": "test_agent_execution/SkillCompositionStrategy.java",
+      "success": true,
+      "constructs_found": 2,
+      "constructs_extracted": 2,
+      "new_files": [
+        "test_agent_execution/SkillCompositionResult.java",
+        "test_agent_execution/SkillExecutionStep.java"
+      ],
+      "errors": []
+    },
+    {
+      "file": "test_agent_execution/TaskOrchestrationState.java",
+      "success": false,
+      "constructs_found": 1,
+      "constructs_extracted": 0,
+      "new_files": [],
+      "errors": [
+        "Failed to extract State",
+        "No constructs could be extracted"
+      ]
+    },
+    {
+      "file": "test_agent_execution/AgentTaskSchemaGenerator.java",
+      "success": true,
+      "constructs_found": 7,
+      "constructs_extracted": 7,
+      "new_files": [
+        "test_agent_execution/TaskSchema.java",
+        "test_agent_execution/SchemaParameter.java",
+        "test_agent_execution/SchemaExample.java",
+        "test_agent_execution/SchemaValidationResult.java",
+        "test_agent_execution/SchemaCompatibilityResult.java",
+        "test_agent_execution/SchemaVersion.java",
+        "test_agent_execution/SchemaStatistics.java"
+      ],
+      "errors": []
+    },
+    {
+      "file": "test_agent_execution/AgentSkillExecutor.java",
+      "success": true,
+      "constructs_found": 1,
+      "constructs_extracted": 1,
+      "new_files": [
+        "test_agent_execution/ExecutionStatistics.java"
+      ],
+      "errors": []
+    }
+  ]
+}

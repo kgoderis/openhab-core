@@ -337,8 +337,8 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
     /**
      * Get performance metrics
      */
-    public PerformanceMetrics getPerformanceMetrics() {
-        return PerformanceMetrics.builder().totalDelegations(totalDelegations.get())
+    public DelegationPerformanceMetrics getPerformanceMetrics() {
+        return DelegationPerformanceMetrics.builder().totalDelegations(totalDelegations.get())
                 .successfulDelegations(successfulDelegations.get()).failedDelegations(failedDelegations.get())
                 .totalDelegationTime(totalDelegationTime.get()).registeredAgents(agentRegistry.size()).build();
     }
@@ -346,156 +346,15 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
     /**
      * Load balancing strategies
      */
-    public enum LoadBalancingStrategy {
-        ROUND_ROBIN,
-        LEAST_LOADED,
-        CAPABILITY_BASED,
-        RANDOM
-    }
+    // LoadBalancingStrategy extracted to top-level enum in same package
 
     /**
      * Agent information
      */
-    public static class AgentInfo {
-        private final String agentId;
-        private final List<String> capabilities;
-        private final AtomicLong currentLoad;
-        private final Map<String, Double> capabilityScores;
-
-        public AgentInfo(String agentId, List<String> capabilities) {
-            this.agentId = agentId;
-            this.capabilities = capabilities;
-            this.currentLoad = new AtomicLong(0);
-            this.capabilityScores = new ConcurrentHashMap<>();
-        }
-
-        public boolean canHandleAction(String actionName) {
-            return capabilities.contains(actionName);
-        }
-
-        public double getCapabilityScore(ActionContext actionContext) {
-            Map<String, Object> protocolContext = actionContext.getProtocolContext();
-            String actionName = (String) protocolContext.get("action");
-
-            if (actionName == null) {
-                return 0.0;
-            }
-
-            return capabilityScores.getOrDefault(actionName, 1.0);
-        }
-
-        public CompletableFuture<ActionResult> executeAction(ActionContext actionContext) {
-            // This would integrate with the actual agent execution system
-            // For now, return a mock implementation
-            return CompletableFuture.completedFuture(ActionResult.success("Mock result from agent " + agentId, 100));
-        }
-
-        public void incrementLoad() {
-            currentLoad.incrementAndGet();
-        }
-
-        public void decrementLoad() {
-            currentLoad.decrementAndGet();
-        }
-
-        public int getCurrentLoad() {
-            return (int) currentLoad.get();
-        }
-
-        public List<String> getCapabilities() {
-            return capabilities;
-        }
-
-        public String getAgentId() {
-            return agentId;
-        }
-    }
+    // extracted to top-level class: AgentInfo
 
     /**
      * Performance metrics data class
      */
-    public static class PerformanceMetrics {
-        private final long totalDelegations;
-        private final long successfulDelegations;
-        private final long failedDelegations;
-        private final long totalDelegationTime;
-        private final int registeredAgents;
-
-        private PerformanceMetrics(Builder builder) {
-            this.totalDelegations = builder.totalDelegations;
-            this.successfulDelegations = builder.successfulDelegations;
-            this.failedDelegations = builder.failedDelegations;
-            this.totalDelegationTime = builder.totalDelegationTime;
-            this.registeredAgents = builder.registeredAgents;
-        }
-
-        public long getTotalDelegations() {
-            return totalDelegations;
-        }
-
-        public long getSuccessfulDelegations() {
-            return successfulDelegations;
-        }
-
-        public long getFailedDelegations() {
-            return failedDelegations;
-        }
-
-        public long getTotalDelegationTime() {
-            return totalDelegationTime;
-        }
-
-        public int getRegisteredAgents() {
-            return registeredAgents;
-        }
-
-        public double getSuccessRate() {
-            return totalDelegations > 0 ? (double) successfulDelegations / totalDelegations : 0.0;
-        }
-
-        public double getAverageDelegationTime() {
-            return totalDelegations > 0 ? (double) totalDelegationTime / totalDelegations : 0.0;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private long totalDelegations;
-            private long successfulDelegations;
-            private long failedDelegations;
-            private long totalDelegationTime;
-            private int registeredAgents;
-
-            public Builder totalDelegations(long totalDelegations) {
-                this.totalDelegations = totalDelegations;
-                return this;
-            }
-
-            public Builder successfulDelegations(long successfulDelegations) {
-                this.successfulDelegations = successfulDelegations;
-                return this;
-            }
-
-            public Builder failedDelegations(long failedDelegations) {
-                this.failedDelegations = failedDelegations;
-                return this;
-            }
-
-            public Builder totalDelegationTime(long totalDelegationTime) {
-                this.totalDelegationTime = totalDelegationTime;
-                return this;
-            }
-
-            public Builder registeredAgents(int registeredAgents) {
-                this.registeredAgents = registeredAgents;
-                return this;
-            }
-
-            public PerformanceMetrics build() {
-                return new PerformanceMetrics(this);
-            }
-        }
-    }
+    // PerformanceMetrics extracted to top-level class: DelegationPerformanceMetrics
 }

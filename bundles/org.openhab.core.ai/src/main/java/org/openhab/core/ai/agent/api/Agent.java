@@ -27,17 +27,7 @@ import io.a2a.spec.TaskStatusUpdateEvent;
 @NonNullByDefault
 public interface Agent {
 
-    /**
-     * Agent status enumeration
-     */
-    enum AgentStatus {
-        IDLE,
-        BUSY,
-        OFFLINE,
-        ERROR,
-        STARTING,
-        STOPPING
-    }
+    // AgentStatus extracted to top-level enum in this package
 
     /**
      * Agent metrics interface

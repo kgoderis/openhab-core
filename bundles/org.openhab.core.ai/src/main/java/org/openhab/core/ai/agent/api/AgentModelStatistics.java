@@ -39,7 +39,7 @@ public class AgentModelStatistics {
     private final Instant lastFailureTime;
     private final String lastError;
 
-    private AgentModelStatistics(Builder builder) {
+    private AgentModelStatistics(AgentModelStatisticsBuilder builder) {
         this.agentId = builder.agentId;
         this.totalRequests = builder.totalRequests;
         this.successfulRequests = builder.successfulRequests;
@@ -135,110 +135,5 @@ public class AgentModelStatistics {
         return totalCacheRequests > 0 ? (double) cacheHits / totalCacheRequests : 0.0;
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private String agentId = "";
-        private long totalRequests = 0;
-        private long successfulRequests = 0;
-        private long failedRequests = 0;
-        private long cacheHits = 0;
-        private long cacheMisses = 0;
-        private long totalResponseTimeMs = 0;
-        private long averageResponseTimeMs = 0;
-        private long minResponseTimeMs = Long.MAX_VALUE;
-        private long maxResponseTimeMs = 0;
-        private long totalTokensUsed = 0;
-        private long totalCost = 0;
-        private Instant lastRequestTime = Instant.now();
-        private Instant lastSuccessTime = Instant.now();
-        private Instant lastFailureTime = Instant.now();
-        private String lastError = "";
-
-        public Builder agentId(String agentId) {
-            this.agentId = agentId;
-            return this;
-        }
-
-        public Builder totalRequests(long totalRequests) {
-            this.totalRequests = totalRequests;
-            return this;
-        }
-
-        public Builder successfulRequests(long successfulRequests) {
-            this.successfulRequests = successfulRequests;
-            return this;
-        }
-
-        public Builder failedRequests(long failedRequests) {
-            this.failedRequests = failedRequests;
-            return this;
-        }
-
-        public Builder cacheHits(long cacheHits) {
-            this.cacheHits = cacheHits;
-            return this;
-        }
-
-        public Builder cacheMisses(long cacheMisses) {
-            this.cacheMisses = cacheMisses;
-            return this;
-        }
-
-        public Builder totalResponseTimeMs(long totalResponseTimeMs) {
-            this.totalResponseTimeMs = totalResponseTimeMs;
-            return this;
-        }
-
-        public Builder averageResponseTimeMs(long averageResponseTimeMs) {
-            this.averageResponseTimeMs = averageResponseTimeMs;
-            return this;
-        }
-
-        public Builder minResponseTimeMs(long minResponseTimeMs) {
-            this.minResponseTimeMs = minResponseTimeMs;
-            return this;
-        }
-
-        public Builder maxResponseTimeMs(long maxResponseTimeMs) {
-            this.maxResponseTimeMs = maxResponseTimeMs;
-            return this;
-        }
-
-        public Builder totalTokensUsed(long totalTokensUsed) {
-            this.totalTokensUsed = totalTokensUsed;
-            return this;
-        }
-
-        public Builder totalCost(long totalCost) {
-            this.totalCost = totalCost;
-            return this;
-        }
-
-        public Builder lastRequestTime(Instant lastRequestTime) {
-            this.lastRequestTime = lastRequestTime;
-            return this;
-        }
-
-        public Builder lastSuccessTime(Instant lastSuccessTime) {
-            this.lastSuccessTime = lastSuccessTime;
-            return this;
-        }
-
-        public Builder lastFailureTime(Instant lastFailureTime) {
-            this.lastFailureTime = lastFailureTime;
-            return this;
-        }
-
-        public Builder lastError(String lastError) {
-            this.lastError = lastError;
-            return this;
-        }
-
-        public AgentModelStatistics build() {
-            return new AgentModelStatistics(this);
-        }
-    }
+    public static AgentModelStatisticsBuilder builder() { return new AgentModelStatisticsBuilder(); }
 }

@@ -49,11 +49,11 @@ class IntegrationTestValidation {
         // Verify that service integration test classes exist
         try {
             // Check that the integration test classes are available
-            Class.forName("org.openhab.core.ai.common.integration.service.BaseActionIntegrationTest");
-            Class.forName("org.openhab.core.ai.common.integration.service.ItemsActionIntegrationTest");
-            Class.forName("org.openhab.core.ai.common.integration.service.ThingsActionIntegrationTest");
-            Class.forName("org.openhab.core.ai.common.integration.service.PersistenceActionIntegrationTest");
-            Class.forName("org.openhab.core.ai.common.integration.service.RulesActionIntegrationTest");
+            Class.forName("org.openhab.core.ai.integration.service.BaseActionIntegrationTest");
+            Class.forName("org.openhab.core.ai.integration.service.ItemsActionIntegrationTest");
+            Class.forName("org.openhab.core.ai.integration.service.ThingsActionIntegrationTest");
+            Class.forName("org.openhab.core.ai.integration.service.PersistenceActionIntegrationTest");
+            Class.forName("org.openhab.core.ai.integration.service.RulesActionIntegrationTest");
 
             assertTrue(true, "Service integration test classes are available");
         } catch (ClassNotFoundException e) {
@@ -74,7 +74,7 @@ class IntegrationTestValidation {
 
         try {
             // Check that the cross-system integration test class is available in this bundle
-            Class.forName("org.openhab.core.ai.common.integration.protocol.CrossSystemIntegrationTest");
+            Class.forName("org.openhab.core.ai.integration.protocol.CrossSystemIntegrationTest");
 
             // Note: MCP and A2A integration tests are in separate bundles and not available in this classpath
             // They are validated separately in their respective bundles
@@ -95,7 +95,7 @@ class IntegrationTestValidation {
         // Verify that cross-system integration test classes exist
         try {
             // Check that the cross-system integration test classes are available
-            Class.forName("org.openhab.core.ai.common.integration.workflow.WorkflowIntegrationTest");
+            Class.forName("org.openhab.core.ai.integration.workflow.WorkflowIntegrationTest");
 
             assertTrue(true, "Cross-system integration test classes are available");
         } catch (ClassNotFoundException e) {

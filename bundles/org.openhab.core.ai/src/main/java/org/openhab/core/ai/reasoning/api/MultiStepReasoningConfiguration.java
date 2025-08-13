@@ -20,7 +20,7 @@ public class MultiStepReasoningConfiguration {
     private final int maxRetries;
     private final long retryDelayMs;
 
-    private MultiStepReasoningConfiguration(Builder builder) {
+    MultiStepReasoningConfiguration(MultiStepReasoningConfigurationBuilder builder) {
         this.maxSteps = builder.maxSteps;
         this.sessionTimeoutMs = builder.sessionTimeoutMs;
         this.stepTimeoutMs = builder.stepTimeoutMs;
@@ -81,68 +81,9 @@ public class MultiStepReasoningConfiguration {
         return retryDelayMs;
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static MultiStepReasoningConfigurationBuilder builder() {
+        return new MultiStepReasoningConfigurationBuilder();
     }
 
-    public static class Builder {
-        private int maxSteps = 5;
-        private long sessionTimeoutMs = 60000;
-        private long stepTimeoutMs = 10000;
-        private int maxTokensPerStep = 1000;
-        private double temperature = 0.7;
-        private double confidenceThreshold = 0.8;
-        private boolean guidancePromptsEnabled = true;
-        private int maxRetries = 3;
-        private long retryDelayMs = 1000;
-
-        public Builder maxSteps(int maxSteps) {
-            this.maxSteps = maxSteps;
-            return this;
-        }
-
-        public Builder sessionTimeoutMs(long sessionTimeoutMs) {
-            this.sessionTimeoutMs = sessionTimeoutMs;
-            return this;
-        }
-
-        public Builder stepTimeoutMs(long stepTimeoutMs) {
-            this.stepTimeoutMs = stepTimeoutMs;
-            return this;
-        }
-
-        public Builder maxTokensPerStep(int maxTokensPerStep) {
-            this.maxTokensPerStep = maxTokensPerStep;
-            return this;
-        }
-
-        public Builder temperature(double temperature) {
-            this.temperature = temperature;
-            return this;
-        }
-
-        public Builder confidenceThreshold(double confidenceThreshold) {
-            this.confidenceThreshold = confidenceThreshold;
-            return this;
-        }
-
-        public Builder guidancePromptsEnabled(boolean guidancePromptsEnabled) {
-            this.guidancePromptsEnabled = guidancePromptsEnabled;
-            return this;
-        }
-
-        public Builder maxRetries(int maxRetries) {
-            this.maxRetries = maxRetries;
-            return this;
-        }
-
-        public Builder retryDelayMs(long retryDelayMs) {
-            this.retryDelayMs = retryDelayMs;
-            return this;
-        }
-
-        public MultiStepReasoningConfiguration build() {
-            return new MultiStepReasoningConfiguration(this);
-        }
-    }
+    /* Extracted: org.openhab.core.ai.reasoning.api.MultiStepReasoningConfigurationBuilder */
 }

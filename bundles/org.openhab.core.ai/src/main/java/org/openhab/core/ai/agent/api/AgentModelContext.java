@@ -37,7 +37,7 @@ public class AgentModelContext {
     private final Instant createdAt;
     private final Instant lastUpdated;
 
-    private AgentModelContext(Builder builder) {
+    AgentModelContext(AgentModelContextBuilder builder) {
         this.agentId = builder.agentId;
         this.specialization = builder.specialization;
         this.domain = builder.domain;
@@ -100,86 +100,9 @@ public class AgentModelContext {
         return lastUpdated;
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static AgentModelContextBuilder builder() {
+        return new AgentModelContextBuilder();
     }
 
-    public static class Builder {
-        private String agentId = "";
-        private String specialization = "";
-        private String domain = "";
-        private Map<String, Object> capabilities = new HashMap<>();
-        private Map<String, Object> constraints = new HashMap<>();
-        private Map<String, String> promptTemplates = new HashMap<>();
-        private Map<String, Object> preferences = new HashMap<>();
-        private Map<String, Object> optimizationSettings = new HashMap<>();
-        private Map<String, Object> securitySettings = new HashMap<>();
-        private Map<String, Object> monitoringSettings = new HashMap<>();
-        private Instant createdAt = Instant.now();
-        private Instant lastUpdated = Instant.now();
-
-        public Builder agentId(String agentId) {
-            this.agentId = agentId;
-            return this;
-        }
-
-        public Builder specialization(String specialization) {
-            this.specialization = specialization;
-            return this;
-        }
-
-        public Builder domain(String domain) {
-            this.domain = domain;
-            return this;
-        }
-
-        public Builder capabilities(Map<String, Object> capabilities) {
-            this.capabilities = new HashMap<>(capabilities);
-            return this;
-        }
-
-        public Builder constraints(Map<String, Object> constraints) {
-            this.constraints = new HashMap<>(constraints);
-            return this;
-        }
-
-        public Builder promptTemplates(Map<String, String> promptTemplates) {
-            this.promptTemplates = new HashMap<>(promptTemplates);
-            return this;
-        }
-
-        public Builder preferences(Map<String, Object> preferences) {
-            this.preferences = new HashMap<>(preferences);
-            return this;
-        }
-
-        public Builder optimizationSettings(Map<String, Object> optimizationSettings) {
-            this.optimizationSettings = new HashMap<>(optimizationSettings);
-            return this;
-        }
-
-        public Builder securitySettings(Map<String, Object> securitySettings) {
-            this.securitySettings = new HashMap<>(securitySettings);
-            return this;
-        }
-
-        public Builder monitoringSettings(Map<String, Object> monitoringSettings) {
-            this.monitoringSettings = new HashMap<>(monitoringSettings);
-            return this;
-        }
-
-        public Builder createdAt(Instant createdAt) {
-            this.createdAt = createdAt;
-            return this;
-        }
-
-        public Builder lastUpdated(Instant lastUpdated) {
-            this.lastUpdated = lastUpdated;
-            return this;
-        }
-
-        public AgentModelContext build() {
-            return new AgentModelContext(this);
-        }
-    }
+    /* Extracted: org.openhab.core.ai.agent.api.AgentModelContextBuilder */
 }

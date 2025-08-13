@@ -1,0 +1,77 @@
+{
+  "success": false,
+  "timestamp": "2025-08-13T12:44:07.537576",
+  "backup_location": "backup_20250813_124407",
+  "files_processed": 5,
+  "successful_files": 4,
+  "failed_files": 1,
+  "total_constructs_extracted": 5,
+  "total_new_files_created": 5,
+  "created_files": [
+    "test_5_files/CircuitBreakerState.java",
+    "test_5_files/Builder.java",
+    "test_5_files/LogLevel.java",
+    "test_5_files/SecurityMetrics.java",
+    "test_5_files/SecurityIncident.java"
+  ],
+  "modified_files": [
+    "test_5_files/File5_DefaultErrorRecoveryService.java",
+    "test_5_files/File1_HttpServerConfiguration.java",
+    "test_5_files/File3_LogIngestionPipeline.java",
+    "test_5_files/File2_DefaultAuditLogger.java"
+  ],
+  "detailed_results": [
+    {
+      "file": "test_5_files/File5_DefaultErrorRecoveryService.java",
+      "success": true,
+      "constructs_found": 1,
+      "constructs_extracted": 1,
+      "new_files": [
+        "test_5_files/CircuitBreakerState.java"
+      ],
+      "errors": []
+    },
+    {
+      "file": "test_5_files/File1_HttpServerConfiguration.java",
+      "success": true,
+      "constructs_found": 1,
+      "constructs_extracted": 1,
+      "new_files": [
+        "test_5_files/Builder.java"
+      ],
+      "errors": []
+    },
+    {
+      "file": "test_5_files/File3_LogIngestionPipeline.java",
+      "success": true,
+      "constructs_found": 1,
+      "constructs_extracted": 1,
+      "new_files": [
+        "test_5_files/LogLevel.java"
+      ],
+      "errors": []
+    },
+    {
+      "file": "test_5_files/File2_DefaultAuditLogger.java",
+      "success": true,
+      "constructs_found": 2,
+      "constructs_extracted": 2,
+      "new_files": [
+        "test_5_files/SecurityMetrics.java",
+        "test_5_files/SecurityIncident.java"
+      ],
+      "errors": []
+    },
+    {
+      "file": "test_5_files/File4_LogAnomaly.java",
+      "success": false,
+      "constructs_found": 1,
+      "constructs_extracted": 0,
+      "new_files": [],
+      "errors": [
+        "Failed to extract Severity",
+        "No constructs could be extracted"
+      ]
+    }
+  ]
+}

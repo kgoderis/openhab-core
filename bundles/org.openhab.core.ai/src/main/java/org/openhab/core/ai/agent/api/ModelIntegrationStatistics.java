@@ -43,7 +43,7 @@ public class ModelIntegrationStatistics {
     private final String lastError;
     private final List<String> registeredAgentIds;
 
-    private ModelIntegrationStatistics(Builder builder) {
+    private ModelIntegrationStatistics(ModelIntegrationStatisticsBuilder builder) {
         this.totalAgents = builder.totalAgents;
         this.activeAgents = builder.activeAgents;
         this.totalRequests = builder.totalRequests;
@@ -153,122 +153,5 @@ public class ModelIntegrationStatistics {
         return totalAgents > 0 ? (double) activeAgents / totalAgents : 0.0;
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private long totalAgents = 0;
-        private long activeAgents = 0;
-        private long totalRequests = 0;
-        private long successfulRequests = 0;
-        private long failedRequests = 0;
-        private long cacheHits = 0;
-        private long cacheMisses = 0;
-        private long totalResponseTimeMs = 0;
-        private long averageResponseTimeMs = 0;
-        private long minResponseTimeMs = Long.MAX_VALUE;
-        private long maxResponseTimeMs = 0;
-        private long totalTokensUsed = 0;
-        private long totalCost = 0;
-        private Instant lastRequestTime = Instant.now();
-        private Instant lastSuccessTime = Instant.now();
-        private Instant lastFailureTime = Instant.now();
-        private String lastError = "";
-        private List<String> registeredAgentIds = List.of();
-
-        public Builder totalAgents(long totalAgents) {
-            this.totalAgents = totalAgents;
-            return this;
-        }
-
-        public Builder activeAgents(long activeAgents) {
-            this.activeAgents = activeAgents;
-            return this;
-        }
-
-        public Builder totalRequests(long totalRequests) {
-            this.totalRequests = totalRequests;
-            return this;
-        }
-
-        public Builder successfulRequests(long successfulRequests) {
-            this.successfulRequests = successfulRequests;
-            return this;
-        }
-
-        public Builder failedRequests(long failedRequests) {
-            this.failedRequests = failedRequests;
-            return this;
-        }
-
-        public Builder cacheHits(long cacheHits) {
-            this.cacheHits = cacheHits;
-            return this;
-        }
-
-        public Builder cacheMisses(long cacheMisses) {
-            this.cacheMisses = cacheMisses;
-            return this;
-        }
-
-        public Builder totalResponseTimeMs(long totalResponseTimeMs) {
-            this.totalResponseTimeMs = totalResponseTimeMs;
-            return this;
-        }
-
-        public Builder averageResponseTimeMs(long averageResponseTimeMs) {
-            this.averageResponseTimeMs = averageResponseTimeMs;
-            return this;
-        }
-
-        public Builder minResponseTimeMs(long minResponseTimeMs) {
-            this.minResponseTimeMs = minResponseTimeMs;
-            return this;
-        }
-
-        public Builder maxResponseTimeMs(long maxResponseTimeMs) {
-            this.maxResponseTimeMs = maxResponseTimeMs;
-            return this;
-        }
-
-        public Builder totalTokensUsed(long totalTokensUsed) {
-            this.totalTokensUsed = totalTokensUsed;
-            return this;
-        }
-
-        public Builder totalCost(long totalCost) {
-            this.totalCost = totalCost;
-            return this;
-        }
-
-        public Builder lastRequestTime(Instant lastRequestTime) {
-            this.lastRequestTime = lastRequestTime;
-            return this;
-        }
-
-        public Builder lastSuccessTime(Instant lastSuccessTime) {
-            this.lastSuccessTime = lastSuccessTime;
-            return this;
-        }
-
-        public Builder lastFailureTime(Instant lastFailureTime) {
-            this.lastFailureTime = lastFailureTime;
-            return this;
-        }
-
-        public Builder lastError(String lastError) {
-            this.lastError = lastError;
-            return this;
-        }
-
-        public Builder registeredAgentIds(List<String> registeredAgentIds) {
-            this.registeredAgentIds = registeredAgentIds;
-            return this;
-        }
-
-        public ModelIntegrationStatistics build() {
-            return new ModelIntegrationStatistics(this);
-        }
-    }
+    public static ModelIntegrationStatisticsBuilder builder() { return new ModelIntegrationStatisticsBuilder(); }
 }

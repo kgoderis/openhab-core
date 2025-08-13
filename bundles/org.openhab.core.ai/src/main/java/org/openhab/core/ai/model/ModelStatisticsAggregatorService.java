@@ -107,7 +107,7 @@ public class ModelStatisticsAggregatorService {
 
         // Get tracking service statistics
         ModelTrackingService tracking = trackingService;
-        ModelTrackingService.SystemUsageStats trackingStats = null;
+        SystemUsageStats trackingStats = null;
         if (tracking != null) {
             trackingStats = tracking.getSystemStats();
         }
@@ -158,7 +158,7 @@ public class ModelStatisticsAggregatorService {
      * 
      * @return Map of client usage information
      */
-    public Map<String, ModelTrackingService.ClientUsageInfo> getClientUsage() {
+    public Map<String, ClientUsageInfo> getClientUsage() {
         ModelTrackingService tracking = trackingService;
         if (tracking != null) {
             return tracking.getClientUsage();
@@ -171,7 +171,7 @@ public class ModelStatisticsAggregatorService {
      * 
      * @return List of active sessions
      */
-    public List<ModelTrackingService.AgentClientSession> getActiveSessions() {
+    public List<AgentClientSession> getActiveSessions() {
         ModelTrackingService tracking = trackingService;
         if (tracking != null) {
             return tracking.getActiveSessions();
@@ -184,7 +184,7 @@ public class ModelStatisticsAggregatorService {
      * 
      * @return Map of provider statistics
      */
-    public Map<ModelProviderType, ModelTrackingService.ProviderUsageStats> getProviderStats() {
+    public Map<ModelProviderType, ProviderUsageStats> getProviderStats() {
         ModelTrackingService tracking = trackingService;
         if (tracking != null) {
             return tracking.getProviderStats();
@@ -213,7 +213,7 @@ public class ModelStatisticsAggregatorService {
      * @param agentId The agent ID
      * @return List of client usage information
      */
-    public List<ModelTrackingService.ClientUsageInfo> getClientsUsedByAgent(String agentId) {
+    public List<ClientUsageInfo> getClientsUsedByAgent(String agentId) {
         ModelTrackingService tracking = trackingService;
         if (tracking != null) {
             return tracking.getAgentClients(agentId);
@@ -232,14 +232,14 @@ public class ModelStatisticsAggregatorService {
         private final long totalAgentResponseTime;
         private final long totalAgentTokens;
         private final double totalAgentCost;
-        private final ModelTrackingService.@Nullable SystemUsageStats trackingStats;
+        private final @Nullable SystemUsageStats trackingStats;
         private final int registeredAgentCount;
         private final Instant timestamp;
 
         public SystemAggregatedStatistics(List<AgentModelStatistics> agentStatistics, long totalAgentRequests,
                 long totalAgentSuccessfulRequests, long totalAgentFailedRequests, long totalAgentResponseTime,
                 long totalAgentTokens, double totalAgentCost,
-                ModelTrackingService.@Nullable SystemUsageStats trackingStats, int registeredAgentCount,
+                @Nullable SystemUsageStats trackingStats, int registeredAgentCount,
                 Instant timestamp) {
             this.agentStatistics = agentStatistics;
             this.totalAgentRequests = totalAgentRequests;
@@ -282,7 +282,7 @@ public class ModelStatisticsAggregatorService {
             return totalAgentCost;
         }
 
-        public ModelTrackingService.@Nullable SystemUsageStats getTrackingStats() {
+        public @Nullable SystemUsageStats getTrackingStats() {
             return trackingStats;
         }
 

@@ -38,9 +38,9 @@ import org.openhab.core.ai.agent.api.ModelIntegrationStatistics;
 import org.openhab.core.ai.model.DefaultAgentModelProvider;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
-import org.openhab.core.ai.model.api.ModelParameters;
 import org.openhab.core.ai.model.api.ModelProviderType;
-import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.osgi.service.component.annotations.Activate;
@@ -103,6 +103,10 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     private final AtomicLong cacheHits = new AtomicLong(0);
     private final AtomicLong cacheMisses = new AtomicLong(0);
     private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+    private final AtomicLong minResponseTimeMs = new AtomicLong(Long.MAX_VALUE);
+    private final AtomicLong maxResponseTimeMs = new AtomicLong(0);
+    private final AtomicLong totalTokensUsed = new AtomicLong(0);
+    private final AtomicReference<Double> totalCost = new AtomicReference<>(0.0);
     private final AtomicReference<Instant> lastRequestTime = new AtomicReference<>(Instant.now());
     private final AtomicReference<Instant> lastSuccessTime = new AtomicReference<>(Instant.now());
     private final AtomicReference<Instant> lastFailureTime = new AtomicReference<>(Instant.now());
@@ -464,10 +468,8 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
                 .successfulRequests(successfulRequests.get()).failedRequests(failedRequests.get())
                 .cacheHits(cacheHits.get()).cacheMisses(cacheMisses.get())
                 .totalResponseTimeMs(totalResponseTimeMs.get()).averageResponseTimeMs(calculateAverageResponseTime())
-                .minResponseTimeMs(0) // TODO: Track min response time
-                .maxResponseTimeMs(0) // TODO: Track max response time
-                .totalTokensUsed(0) // TODO: Track token usage
-                .totalCost(0) // TODO: Track cost
+                .minResponseTimeMs(minResponseTimeMs.get()).maxResponseTimeMs(maxResponseTimeMs.get())
+                .totalTokensUsed(totalTokensUsed.get()).totalCost(totalCost.get().longValue())
                 .lastRequestTime(lastRequestTime.get()).lastSuccessTime(lastSuccessTime.get())
                 .lastFailureTime(lastFailureTime.get()).lastError(lastError.get())
                 .registeredAgentIds(new ArrayList<>(registeredAgents.keySet())).build();
@@ -596,12 +598,12 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
             healthState = ModelHealthStatus.HealthState.UNHEALTHY;
         }
 
-        return ModelHealthStatus.builder().overallHealth(healthState).primaryModelAvailable(true) // TODO: Check actual
-                                                                                                  // model availability
-                .fallbackModelAvailable(true) // TODO: Check actual fallback availability
-                .errorRate(errorRate).responseTimeMs(avgResponseTime).totalRequests(total)
-                .failedRequests(failedRequests.get()).lastError(lastError.get()).lastHealthCheck(Instant.now())
-                .lastSuccessfulRequest(lastSuccessTime.get()).lastFailedRequest(lastFailureTime.get()).build();
+        return ModelHealthStatus.builder().overallHealth(healthState)
+                .primaryModelAvailable(checkPrimaryModelAvailability())
+                .fallbackModelAvailable(checkFallbackModelAvailability()).errorRate(errorRate)
+                .responseTimeMs(avgResponseTime).totalRequests(total).failedRequests(failedRequests.get())
+                .lastError(lastError.get()).lastHealthCheck(Instant.now()).lastSuccessfulRequest(lastSuccessTime.get())
+                .lastFailedRequest(lastFailureTime.get()).build();
     }
 
     @Override
@@ -645,6 +647,26 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     }
 
     private void updateAgentStatistics(String agentId, boolean success, long responseTimeMs, @Nullable String error) {
+        // Update global statistics
+        totalRequests.incrementAndGet();
+        totalResponseTimeMs.addAndGet(responseTimeMs);
+
+        // Update min/max response times
+        minResponseTimeMs.updateAndGet(current -> Math.min(current, responseTimeMs));
+        maxResponseTimeMs.updateAndGet(current -> Math.max(current, responseTimeMs));
+
+        if (success) {
+            successfulRequests.incrementAndGet();
+            lastSuccessTime.set(Instant.now());
+        } else {
+            failedRequests.incrementAndGet();
+            lastFailureTime.set(Instant.now());
+            if (error != null) {
+                lastError.set(error);
+            }
+        }
+
+        // Update agent-specific statistics
         AgentModelStatistics currentStats = agentStatistics.get(agentId);
         if (currentStats != null) {
             // TODO: Update agent statistics with new data
@@ -658,8 +680,119 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     }
 
     private void startHealthMonitoring() {
-        // TODO: Implement periodic health monitoring
+        // Implement periodic health monitoring
+        CompletableFuture.runAsync(() -> {
+            while (!shutdown && isRunning) {
+                try {
+                    // Check model health status
+                    ModelHealthStatus healthStatus = getModelHealthStatus();
+
+                    // Log health status if there are issues
+                    if (healthStatus.getOverallHealth() != ModelHealthStatus.HealthState.HEALTHY) {
+                        logger.warn("Model health degraded: {}", healthStatus.getOverallHealth());
+                    }
+
+                    // Check if primary model is available
+                    if (!checkPrimaryModelAvailability()) {
+                        logger.warn("Primary model is not available");
+                    }
+
+                    // Check if fallback model is available
+                    if (!checkFallbackModelAvailability()) {
+                        logger.warn("Fallback model is not available");
+                    }
+
+                    // Sleep for 5 minutes before next check
+                    Thread.sleep(300000); // 5 minutes
+
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Exception e) {
+                    logger.error("Error during health monitoring: {}", e.getMessage(), e);
+                    try {
+                        Thread.sleep(60000); // Wait 1 minute before retrying
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }, reasoningExecutor);
+
         logger.debug("Health monitoring started");
+    }
+
+    /**
+     * Check if the primary model is available.
+     * 
+     * @return True if primary model is available, false otherwise
+     */
+    private boolean checkPrimaryModelAvailability() {
+        try {
+            if (modelConfigurationService == null) {
+                return false;
+            }
+
+            String primaryProvider = modelConfigurationService.getPrimaryProvider();
+            if (primaryProvider == null) {
+                return false;
+            }
+
+            // Check if we have a client for the primary provider
+            ModelClient client = modelClients.get(primaryProvider);
+            if (client == null) {
+                // Try to create a client to test availability
+                try {
+                    client = getOrCreateModelClient(primaryProvider);
+                    return client != null;
+                } catch (Exception e) {
+                    logger.debug("Primary model {} not available: {}", primaryProvider, e.getMessage());
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (Exception e) {
+            logger.debug("Error checking primary model availability: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Check if the fallback model is available.
+     * 
+     * @return True if fallback model is available, false otherwise
+     */
+    private boolean checkFallbackModelAvailability() {
+        try {
+            if (modelConfigurationService == null) {
+                return false;
+            }
+
+            String fallbackProvider = modelConfigurationService.getFallbackProvider();
+            if (fallbackProvider == null) {
+                return false;
+            }
+
+            // Check if we have a client for the fallback provider
+            ModelClient client = modelClients.get(fallbackProvider);
+            if (client == null) {
+                // Try to create a client to test availability
+                try {
+                    client = getOrCreateModelClient(fallbackProvider);
+                    return client != null;
+                } catch (Exception e) {
+                    logger.debug("Fallback model {} not available: {}", fallbackProvider, e.getMessage());
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (Exception e) {
+            logger.debug("Error checking fallback model availability: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -853,59 +986,5 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
         return sb.toString();
     }
 
-    /**
-     * Represents a reasoning request in the shared engine.
-     */
-    private static class ReasoningRequest {
-        final String requestId;
-        final String agentId;
-        final AgentModelContext context;
-        final String prompt;
-        final @Nullable ModelParameters parameters;
-        final long timestamp;
-
-        ReasoningRequest(String requestId, String agentId, AgentModelContext context, String prompt,
-                @Nullable ModelParameters parameters) {
-            this.requestId = requestId;
-            this.agentId = agentId;
-            this.context = context;
-            this.prompt = prompt;
-            this.parameters = parameters;
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    /**
-     * Health status information for the reasoning engine.
-     */
-    public static class ReasoningEngineHealthStatus {
-        private final boolean healthy;
-        private final int activeSessions;
-        private final int queuedRequests;
-        private final boolean executorShutdown;
-
-        public ReasoningEngineHealthStatus(boolean healthy, int activeSessions, int queuedRequests,
-                boolean executorShutdown) {
-            this.healthy = healthy;
-            this.activeSessions = activeSessions;
-            this.queuedRequests = queuedRequests;
-            this.executorShutdown = executorShutdown;
-        }
-
-        public boolean isHealthy() {
-            return healthy && !executorShutdown;
-        }
-
-        public int getActiveSessions() {
-            return activeSessions;
-        }
-
-        public int getQueuedRequests() {
-            return queuedRequests;
-        }
-
-        public boolean isExecutorShutdown() {
-            return executorShutdown;
-        }
-    }
+    // Inner classes extracted to top-level files: ReasoningRequest, ReasoningEngineHealthStatus
 }

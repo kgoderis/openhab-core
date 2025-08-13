@@ -15,8 +15,8 @@ import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.api.AgentModelStatistics;
 import org.openhab.core.ai.agent.api.ModelHealthStatus;
-import org.openhab.core.ai.model.api.ModelParameters;
-import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.ModelResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

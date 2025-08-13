@@ -41,7 +41,7 @@ public class ModelHealthStatus {
     private final Instant lastSuccessfulRequest;
     private final Instant lastFailedRequest;
 
-    private ModelHealthStatus(Builder builder) {
+    private ModelHealthStatus(ModelHealthStatusBuilder builder) {
         this.overallHealth = builder.overallHealth;
         this.primaryModelAvailable = builder.primaryModelAvailable;
         this.fallbackModelAvailable = builder.fallbackModelAvailable;
@@ -111,80 +111,5 @@ public class ModelHealthStatus {
         return overallHealth == HealthState.UNHEALTHY;
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private HealthState overallHealth = HealthState.UNKNOWN;
-        private boolean primaryModelAvailable = false;
-        private boolean fallbackModelAvailable = false;
-        private double errorRate = 0.0;
-        private double responseTimeMs = 0.0;
-        private long totalRequests = 0;
-        private long failedRequests = 0;
-        private String lastError = "";
-        private Instant lastHealthCheck = Instant.now();
-        private Instant lastSuccessfulRequest = Instant.now();
-        private Instant lastFailedRequest = Instant.now();
-
-        public Builder overallHealth(HealthState overallHealth) {
-            this.overallHealth = overallHealth;
-            return this;
-        }
-
-        public Builder primaryModelAvailable(boolean primaryModelAvailable) {
-            this.primaryModelAvailable = primaryModelAvailable;
-            return this;
-        }
-
-        public Builder fallbackModelAvailable(boolean fallbackModelAvailable) {
-            this.fallbackModelAvailable = fallbackModelAvailable;
-            return this;
-        }
-
-        public Builder errorRate(double errorRate) {
-            this.errorRate = errorRate;
-            return this;
-        }
-
-        public Builder responseTimeMs(double responseTimeMs) {
-            this.responseTimeMs = responseTimeMs;
-            return this;
-        }
-
-        public Builder totalRequests(long totalRequests) {
-            this.totalRequests = totalRequests;
-            return this;
-        }
-
-        public Builder failedRequests(long failedRequests) {
-            this.failedRequests = failedRequests;
-            return this;
-        }
-
-        public Builder lastError(String lastError) {
-            this.lastError = lastError;
-            return this;
-        }
-
-        public Builder lastHealthCheck(Instant lastHealthCheck) {
-            this.lastHealthCheck = lastHealthCheck;
-            return this;
-        }
-
-        public Builder lastSuccessfulRequest(Instant lastSuccessfulRequest) {
-            this.lastSuccessfulRequest = lastSuccessfulRequest;
-            return this;
-        }
-
-        public Builder lastFailedRequest(Instant lastFailedRequest) {
-            this.lastFailedRequest = lastFailedRequest;
-            return this;
-        }
-
-        public ModelHealthStatus build() {
-            return new ModelHealthStatus(this);
-        }
-    }
+    public static ModelHealthStatusBuilder builder() { return new ModelHealthStatusBuilder(); }
 }

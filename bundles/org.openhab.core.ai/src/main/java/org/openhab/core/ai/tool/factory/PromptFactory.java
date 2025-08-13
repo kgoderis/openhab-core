@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.factory.api.PromptFactoryMethod;
 import org.openhab.core.ai.tool.prompts.BasePrompt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,15 +24,6 @@ public class PromptFactory {
     private static final Logger LOGGER = LoggerFactory.getLogger(PromptFactory.class);
     private final Map<String, BasePrompt> activePrompts = new ConcurrentHashMap<>();
     private static final long DEFAULT_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-
-    /**
-     * Functional interface for creating prompts.
-     */
-    @FunctionalInterface
-    public interface PromptFactoryMethod {
-        @Nullable
-        BasePrompt create(String promptName, long refreshIntervalMs) throws Exception;
-    }
 
     /**
      * Create a prompt with default refresh interval.

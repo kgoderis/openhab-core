@@ -356,10 +356,7 @@ public class CopyFileAction implements Action {
         return result;
     }
 
-    private static class CopyResult {
-        int itemsCopied = 0;
-        long bytesCopied = 0;
-    }
+    // Extracted: org.openhab.core.ai.action.library.filesystem.CopyResult
 
     @Override
     public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {

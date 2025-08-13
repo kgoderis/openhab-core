@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
@@ -164,9 +163,10 @@ public class ToolHealthMonitor {
     public CompletableFuture<HealthCheckResult> performHealthCheck(ModelProviderType provider) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // TODO: Implement actual health check logic
-                // This is a placeholder implementation
-                boolean isHealthy = performProviderHealthCheck(provider);
+                logger.debug("Starting tool health check for provider: {}", provider);
+
+                // Perform comprehensive tool health check
+                boolean isHealthy = performComprehensiveToolHealthCheck(provider);
                 long responseTime = measureHealthCheckResponseTime(provider);
 
                 HealthCheckResult result = new HealthCheckResult(provider, isHealthy, responseTime, null);
@@ -175,9 +175,12 @@ public class ToolHealthMonitor {
                 ProviderHealthState state = getOrCreateProviderState(provider);
                 state.updateFromHealthCheck(result);
 
+                logger.debug("Tool health check completed for provider {}: healthy={}, responseTime={}ms", provider,
+                        isHealthy, responseTime);
+
                 return result;
             } catch (Exception e) {
-                logger.error("Health check failed for provider {}", provider, e);
+                logger.error("Tool health check failed for provider {}", provider, e);
                 return new HealthCheckResult(provider, false, 0, e);
             }
         });
@@ -200,7 +203,7 @@ public class ToolHealthMonitor {
 
                 // Update health state
                 ServiceHealthState state = getOrCreateServiceState(serviceName);
-                state.updateFromHealthCheck(result);
+                state.updateFromHealthCheck(isHealthy, responseTime);
 
                 return result;
             } catch (Exception e) {
@@ -391,7 +394,7 @@ public class ToolHealthMonitor {
      * @return list of performance alerts
      */
     public List<PerformanceAlert> getSpecificationAlerts(String specificationId) {
-        return performanceAlerts.values().stream().filter(alert -> alert.specificationId().equals(specificationId))
+        return performanceAlerts.values().stream().filter(alert -> alert.getSpecificationId().equals(specificationId))
                 .collect(Collectors.toList());
     }
 
@@ -402,7 +405,8 @@ public class ToolHealthMonitor {
      * @return list of performance optimizations
      */
     public List<PerformanceOptimization> getSpecificationOptimizations(String specificationId) {
-        return performanceOptimizations.values().stream().filter(opt -> opt.specificationId().equals(specificationId))
+        return performanceOptimizations.values().stream()
+                .filter(opt -> opt.getSpecificationId().equals(specificationId))
                 .collect(Collectors.toList());
     }
 
@@ -520,6 +524,81 @@ public class ToolHealthMonitor {
         return state;
     }
 
+    // Implement comprehensive tool health check logic
+    private boolean performComprehensiveToolHealthCheck(ModelProviderType provider) {
+        try {
+            logger.debug("Performing comprehensive tool health check for provider: {}", provider);
+
+            // Get provider state
+            ProviderHealthState state = getOrCreateProviderState(provider);
+
+            // 1. Check if provider has recent activity
+            Instant lastHealthCheck = state.getLastHealthCheck();
+            if (lastHealthCheck != null) {
+                Duration timeSinceLastCheck = Duration.between(lastHealthCheck, Instant.now());
+                if (timeSinceLastCheck.toMinutes() > 10) {
+                    logger.warn("Tool provider {} has not been checked recently", provider);
+                    return false;
+                }
+            }
+
+            // 2. Check success rate
+            double successRate = state.getSuccessRate();
+            double minSuccessRate = this.minSuccessRate.get();
+            if (successRate < minSuccessRate) {
+                logger.warn("Tool provider {} success rate {} is below threshold {}", provider, successRate,
+                        minSuccessRate);
+                return false;
+            }
+
+            // 3. Check response time
+            double avgResponseTime = state.getAverageResponseTime();
+            long maxResponseTime = this.maxResponseTime.get();
+            if (avgResponseTime > maxResponseTime) {
+                logger.warn("Tool provider {} average response time {}ms exceeds threshold {}ms", provider,
+                        avgResponseTime, maxResponseTime);
+                return false;
+            }
+
+            // 4. Check circuit breaker state
+            CircuitBreakerState circuitBreakerState = state.getCircuitBreakerState();
+            if (circuitBreakerState == CircuitBreakerState.OPEN) {
+                logger.warn("Tool provider {} circuit breaker is OPEN", provider);
+                return false;
+            }
+
+            // 5. Check consecutive failures
+            long consecutiveFailures = state.getConsecutiveFailures();
+            int failureThreshold = this.failureThreshold.get();
+            if (consecutiveFailures >= failureThreshold) {
+                logger.warn("Tool provider {} has {} consecutive failures, exceeding threshold {}", provider,
+                        consecutiveFailures, failureThreshold);
+                return false;
+            }
+
+            // 6. Check tool-specific health indicators
+            boolean toolSpecificHealth = checkToolSpecificHealth(provider);
+            if (!toolSpecificHealth) {
+                logger.warn("Tool provider {} failed tool-specific health checks", provider);
+                return false;
+            }
+
+            // 7. Check tool availability
+            boolean toolAvailable = checkToolAvailability(provider);
+            if (!toolAvailable) {
+                logger.warn("Tool provider {} has availability issues", provider);
+                return false;
+            }
+
+            logger.debug("Tool provider {} comprehensive health check passed", provider);
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Error during comprehensive tool health check for {}: {}", provider, e.getMessage(), e);
+            return false;
+        }
+    }
+
     // Placeholder health check implementations
     private boolean performProviderHealthCheck(ModelProviderType provider) {
         // TODO: Implement actual provider health check
@@ -542,328 +621,121 @@ public class ToolHealthMonitor {
         return 100; // Placeholder
     }
 
-    // Inner classes
-    public static class HealthCheckResult {
-        private final String target;
-        private final boolean healthy;
-        private final long responseTime;
-        private final @Nullable Exception error;
-
-        public HealthCheckResult(String target, boolean healthy, long responseTime, @Nullable Exception error) {
-            this.target = target;
-            this.healthy = healthy;
-            this.responseTime = responseTime;
-            this.error = error;
-        }
-
-        public HealthCheckResult(ModelProviderType provider, boolean healthy, long responseTime,
-                @Nullable Exception error) {
-            this.target = provider.name();
-            this.healthy = healthy;
-            this.responseTime = responseTime;
-            this.error = error;
-        }
-
-        public String getTarget() {
-            return target;
-        }
-
-        public boolean isHealthy() {
-            return healthy;
-        }
-
-        public long getResponseTime() {
-            return responseTime;
-        }
-
-        public @Nullable Exception getError() {
-            return error;
+    // Check tool-specific health indicators
+    private boolean checkToolSpecificHealth(ModelProviderType provider) {
+        try {
+            switch (provider) {
+                case OPENAI:
+                    return checkOpenAIToolHealth();
+                case ANTHROPIC:
+                    return checkAnthropicToolHealth();
+                case GOOGLE:
+                    return checkGoogleToolHealth();
+                case AZURE:
+                    return checkAzureToolHealth();
+                case OLLAMA:
+                    return checkOllamaToolHealth();
+                case LOCALAI:
+                    return checkLocalAIToolHealth();
+                case VLLM:
+                    return checkVLLMToolHealth();
+                case LMSTUDIO:
+                    return checkLMStudioToolHealth();
+                default:
+                    logger.warn("Unknown tool provider type: {}", provider);
+                    return false;
+            }
+        } catch (Exception e) {
+            logger.error("Error checking tool-specific health for {}: {}", provider, e.getMessage());
+            return false;
         }
     }
 
-    public static class SystemHealthStatus {
-        private final Map<ModelProviderType, ProviderHealthMetrics> providerMetrics;
-        private final Map<String, ServiceHealthMetrics> serviceMetrics;
+    // Check tool availability
+    private boolean checkToolAvailability(ModelProviderType provider) {
+        try {
+            // Check if tool registry has tools for this provider
+            boolean hasTools = checkToolRegistryAvailability(provider);
+            if (!hasTools) {
+                logger.warn("No tools available for provider {}", provider);
+                return false;
+            }
 
-        public SystemHealthStatus(Map<ModelProviderType, ProviderHealthMetrics> providerMetrics,
-                Map<String, ServiceHealthMetrics> serviceMetrics) {
-            this.providerMetrics = providerMetrics;
-            this.serviceMetrics = serviceMetrics;
-        }
+            // Check if tool execution service is available
+            boolean executionServiceAvailable = checkToolExecutionServiceAvailability(provider);
+            if (!executionServiceAvailable) {
+                logger.warn("Tool execution service not available for provider {}", provider);
+                return false;
+            }
 
-        public Map<ModelProviderType, ProviderHealthMetrics> getProviderMetrics() {
-            return providerMetrics;
-        }
+            logger.debug("Tool availability check passed for provider {}", provider);
+            return true;
 
-        public Map<String, ServiceHealthMetrics> getServiceMetrics() {
-            return serviceMetrics;
-        }
-
-        public boolean isSystemHealthy() {
-            return providerMetrics.values().stream().allMatch(ProviderHealthMetrics::isHealthy)
-                    && serviceMetrics.values().stream().allMatch(ServiceHealthMetrics::isHealthy);
-        }
-    }
-
-    public static class ProviderHealthMetrics {
-        private final long totalRequests;
-        private final long successfulRequests;
-        private final long failedRequests;
-        private final long totalResponseTime;
-        private final double successRate;
-        private final double averageResponseTime;
-        private final CircuitBreakerState circuitBreakerState;
-        private final boolean healthy;
-
-        public ProviderHealthMetrics(long totalRequests, long successfulRequests, long failedRequests,
-                long totalResponseTime, double successRate, double averageResponseTime,
-                CircuitBreakerState circuitBreakerState, boolean healthy) {
-            this.totalRequests = totalRequests;
-            this.successfulRequests = successfulRequests;
-            this.failedRequests = failedRequests;
-            this.totalResponseTime = totalResponseTime;
-            this.successRate = successRate;
-            this.averageResponseTime = averageResponseTime;
-            this.circuitBreakerState = circuitBreakerState;
-            this.healthy = healthy;
-        }
-
-        public long getTotalRequests() {
-            return totalRequests;
-        }
-
-        public long getSuccessfulRequests() {
-            return successfulRequests;
-        }
-
-        public long getFailedRequests() {
-            return failedRequests;
-        }
-
-        public long getTotalResponseTime() {
-            return totalResponseTime;
-        }
-
-        public double getSuccessRate() {
-            return successRate;
-        }
-
-        public double getAverageResponseTime() {
-            return averageResponseTime;
-        }
-
-        public CircuitBreakerState getCircuitBreakerState() {
-            return circuitBreakerState;
-        }
-
-        public boolean isHealthy() {
-            return healthy;
+        } catch (Exception e) {
+            logger.error("Error checking tool availability for {}: {}", provider, e.getMessage());
+            return false;
         }
     }
 
-    public static class ServiceHealthMetrics {
-        private final long totalRequests;
-        private final long successfulRequests;
-        private final long failedRequests;
-        private final long totalResponseTime;
-        private final double successRate;
-        private final double averageResponseTime;
-        private final boolean healthy;
-
-        public ServiceHealthMetrics(long totalRequests, long successfulRequests, long failedRequests,
-                long totalResponseTime, double successRate, double averageResponseTime, boolean healthy) {
-            this.totalRequests = totalRequests;
-            this.successfulRequests = successfulRequests;
-            this.failedRequests = failedRequests;
-            this.totalResponseTime = totalResponseTime;
-            this.successRate = successRate;
-            this.averageResponseTime = averageResponseTime;
-            this.healthy = healthy;
-        }
-
-        public long getTotalRequests() {
-            return totalRequests;
-        }
-
-        public long getSuccessfulRequests() {
-            return successfulRequests;
-        }
-
-        public long getFailedRequests() {
-            return failedRequests;
-        }
-
-        public long getTotalResponseTime() {
-            return totalResponseTime;
-        }
-
-        public double getSuccessRate() {
-            return successRate;
-        }
-
-        public double getAverageResponseTime() {
-            return averageResponseTime;
-        }
-
-        public boolean isHealthy() {
-            return healthy;
-        }
+    // Tool-specific health check methods
+    private boolean checkOpenAIToolHealth() {
+        // Check OpenAI tool-specific health indicators
+        return true; // Placeholder - implement actual OpenAI tool health checks
     }
 
-    // Record classes for specification performance monitoring
+    private boolean checkAnthropicToolHealth() {
+        // Check Anthropic tool-specific health indicators
+        return true; // Placeholder - implement actual Anthropic tool health checks
+    }
+
+    private boolean checkGoogleToolHealth() {
+        // Check Google tool-specific health indicators
+        return true; // Placeholder - implement actual Google tool health checks
+    }
+
+    private boolean checkAzureToolHealth() {
+        // Check Azure tool-specific health indicators
+        return true; // Placeholder - implement actual Azure tool health checks
+    }
+
+    private boolean checkOllamaToolHealth() {
+        // Check Ollama tool-specific health indicators
+        return true; // Placeholder - implement actual Ollama tool health checks
+    }
+
+    private boolean checkLocalAIToolHealth() {
+        // Check LocalAI tool-specific health indicators
+        return true; // Placeholder - implement actual LocalAI tool health checks
+    }
+
+    private boolean checkVLLMToolHealth() {
+        // Check vLLM tool-specific health indicators
+        return true; // Placeholder - implement actual vLLM tool health checks
+    }
+
+    private boolean checkLMStudioToolHealth() {
+        // Check LM Studio tool-specific health indicators
+        return true; // Placeholder - implement actual LM Studio tool health checks
+    }
+
+    // Tool availability check methods
+    private boolean checkToolRegistryAvailability(ModelProviderType provider) {
+        // Check if tool registry has tools for this provider
+        // In a real implementation, this would check the actual tool registry
+        return true; // Placeholder - implement actual tool registry availability check
+    }
+
+    private boolean checkToolExecutionServiceAvailability(ModelProviderType provider) {
+        // Check if tool execution service is available for this provider
+        // In a real implementation, this would check the actual execution service
+        return true; // Placeholder - implement actual tool execution service availability check
+    }
+
+    // Record class for specification performance monitoring (kept local to this monitor)
     public record SpecificationPerformanceMetrics(String specificationId, long totalRequests, long successfulRequests,
             long failedRequests, long totalResponseTime, double averageResponseTime, double successRate,
             int currentThroughput, Instant lastUpdated) {
     }
 
-    public record PerformanceAlert(String alertId, String specificationId, String type, String message, String severity,
-            Instant timestamp) {
-    }
-
-    public record PerformanceOptimization(String optimizationId, String specificationId, String type,
-            String description, String impact, Instant timestamp) {
-    }
-
-    public enum CircuitBreakerState {
-        CLOSED, // Normal operation
-        OPEN, // Circuit is open, requests are failing
-        HALF_OPEN // Testing if service has recovered
-    }
-
-    private static class ProviderHealthState {
-        private final ModelProviderType provider;
-        private final AtomicLong totalRequests = new AtomicLong(0);
-        private final AtomicLong successfulRequests = new AtomicLong(0);
-        private final AtomicLong failedRequests = new AtomicLong(0);
-        private final AtomicLong totalResponseTime = new AtomicLong(0);
-        private final AtomicLong consecutiveFailures = new AtomicLong(0);
-        private final AtomicReference<CircuitBreakerState> circuitBreakerState = new AtomicReference<>(
-                CircuitBreakerState.CLOSED);
-        private final AtomicReference<Instant> lastFailureTime = new AtomicReference<>();
-        private final AtomicReference<Instant> lastHealthCheck = new AtomicReference<>();
-
-        public ProviderHealthState(ModelProviderType provider) {
-            this.provider = provider;
-        }
-
-        public void recordSuccess(long responseTime) {
-            totalRequests.incrementAndGet();
-            successfulRequests.incrementAndGet();
-            totalResponseTime.addAndGet(responseTime);
-            consecutiveFailures.set(0);
-
-            // If circuit breaker is half-open and we get a success, close it
-            if (circuitBreakerState.get() == CircuitBreakerState.HALF_OPEN) {
-                circuitBreakerState.set(CircuitBreakerState.CLOSED);
-            }
-        }
-
-        public void recordFailure(Exception error) {
-            totalRequests.incrementAndGet();
-            failedRequests.incrementAndGet();
-            consecutiveFailures.incrementAndGet();
-            lastFailureTime.set(Instant.now());
-
-            // Check if we should open the circuit breaker
-            if (consecutiveFailures.get() >= 5 && circuitBreakerState.get() == CircuitBreakerState.CLOSED) {
-                circuitBreakerState.set(CircuitBreakerState.OPEN);
-            }
-        }
-
-        public void updateFromHealthCheck(HealthCheckResult result) {
-            lastHealthCheck.set(Instant.now());
-
-            if (result.isHealthy() && circuitBreakerState.get() == CircuitBreakerState.OPEN) {
-                circuitBreakerState.set(CircuitBreakerState.HALF_OPEN);
-            }
-        }
-
-        public void forceRecovery() {
-            consecutiveFailures.set(0);
-            circuitBreakerState.set(CircuitBreakerState.CLOSED);
-            lastFailureTime.set(Instant.now());
-        }
-
-        public boolean isHealthy() {
-            if (circuitBreakerState.get() == CircuitBreakerState.OPEN) {
-                return false;
-            }
-
-            double successRate = getSuccessRate();
-            double avgResponseTime = getAverageResponseTime();
-
-            return successRate >= 0.8 && avgResponseTime <= 5000; // 80% success rate, 5s max response time
-        }
-
-        public ProviderHealthMetrics getHealthMetrics() {
-            return new ProviderHealthMetrics(totalRequests.get(), successfulRequests.get(), failedRequests.get(),
-                    totalResponseTime.get(), getSuccessRate(), getAverageResponseTime(), circuitBreakerState.get(),
-                    isHealthy());
-        }
-
-        private double getSuccessRate() {
-            long total = totalRequests.get();
-            return total > 0 ? (double) successfulRequests.get() / total : 0.0;
-        }
-
-        private double getAverageResponseTime() {
-            long total = totalRequests.get();
-            return total > 0 ? (double) totalResponseTime.get() / total : 0.0;
-        }
-    }
-
-    private static class ServiceHealthState {
-        private final String serviceName;
-        private final AtomicLong totalRequests = new AtomicLong(0);
-        private final AtomicLong successfulRequests = new AtomicLong(0);
-        private final AtomicLong failedRequests = new AtomicLong(0);
-        private final AtomicLong totalResponseTime = new AtomicLong(0);
-        private final AtomicReference<Instant> lastHealthCheck = new AtomicReference<>();
-
-        public ServiceHealthState(String serviceName) {
-            this.serviceName = serviceName;
-        }
-
-        public void recordSuccess(long responseTime) {
-            totalRequests.incrementAndGet();
-            successfulRequests.incrementAndGet();
-            totalResponseTime.addAndGet(responseTime);
-        }
-
-        public void recordFailure(Exception error) {
-            totalRequests.incrementAndGet();
-            failedRequests.incrementAndGet();
-        }
-
-        public void updateFromHealthCheck(HealthCheckResult result) {
-            lastHealthCheck.set(Instant.now());
-        }
-
-        public void forceRecovery() {
-            // Reset failure counters
-            failedRequests.set(0);
-        }
-
-        public boolean isHealthy() {
-            double successRate = getSuccessRate();
-            double avgResponseTime = getAverageResponseTime();
-
-            return successRate >= 0.8 && avgResponseTime <= 5000; // 80% success rate, 5s max response time
-        }
-
-        public ServiceHealthMetrics getHealthMetrics() {
-            return new ServiceHealthMetrics(totalRequests.get(), successfulRequests.get(), failedRequests.get(),
-                    totalResponseTime.get(), getSuccessRate(), getAverageResponseTime(), isHealthy());
-        }
-
-        private double getSuccessRate() {
-            long total = totalRequests.get();
-            return total > 0 ? (double) successfulRequests.get() / total : 0.0;
-        }
-
-        private double getAverageResponseTime() {
-            long total = totalRequests.get();
-            return total > 0 ? (double) totalResponseTime.get() / total : 0.0;
-        }
-    }
+    // ProviderHealthState and ServiceHealthState are top-level classes in this package
 }

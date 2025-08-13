@@ -327,39 +327,5 @@ public class OAuth21AuthenticationProvider implements AuthenticationProvider {
     /**
      * OAuth 2.1 token information.
      */
-    private static class OAuthTokenInfo {
-        private final String subject;
-        private final String clientId;
-        private final String issuer;
-        private final Instant expiresAt;
-        private final Set<String> scopes;
-
-        public OAuthTokenInfo(String subject, String clientId, String issuer, Instant expiresAt, Set<String> scopes) {
-            this.subject = subject;
-            this.clientId = clientId;
-            this.issuer = issuer;
-            this.expiresAt = expiresAt;
-            this.scopes = scopes;
-        }
-
-        public String getSubject() {
-            return subject;
-        }
-
-        public String getClientId() {
-            return clientId;
-        }
-
-        public String getIssuer() {
-            return issuer;
-        }
-
-        public Instant getExpiresAt() {
-            return expiresAt;
-        }
-
-        public Set<String> getScopes() {
-            return scopes;
-        }
-    }
+    // OAuthTokenInfo extracted to org.openhab.core.ai.auth.OAuthTokenInfo
 }

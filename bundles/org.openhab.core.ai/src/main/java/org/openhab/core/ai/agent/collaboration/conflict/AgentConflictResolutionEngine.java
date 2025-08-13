@@ -461,24 +461,220 @@ public class AgentConflictResolutionEngine {
     }
 
     private void performConflictAnalysis() {
-        logger.debug("Performing conflict analysis");
+        try {
+            logger.debug("Performing conflict analysis");
 
-        // Analyze active conflicts for patterns and trends
-        // This is a placeholder for actual conflict analysis
+            // Analyze active conflicts for patterns and trends
+            for (Conflict conflict : activeConflicts.values()) {
+                try {
+                    // Analyze conflict patterns
+                    analyzeConflictPattern(conflict);
+
+                    // Check for escalation conditions
+                    checkEscalationConditions(conflict);
+
+                    // Update conflict metrics
+                    updateConflictMetrics(conflict);
+
+                } catch (Exception e) {
+                    logger.error("Error analyzing conflict {}: {}", conflict.getConflictId(), e.getMessage());
+                }
+            }
+
+            // Generate conflict trend analysis
+            generateConflictTrendAnalysis();
+
+        } catch (Exception e) {
+            logger.error("Error in conflict analysis: {}", e.getMessage(), e);
+        }
+    }
+
+    private void analyzeConflictPattern(Conflict conflict) {
+        try {
+            // Analyze conflict characteristics
+            ConflictType type = conflict.getAnalysis().getConflictType();
+            ConflictPriority priority = conflict.getPriority();
+            int severity = conflict.getAnalysis().getSeverity();
+
+            // Track pattern statistics
+            String patternKey = type + "_" + priority + "_" + severity;
+            conflictPatterns.computeIfAbsent(patternKey, k -> new DefaultConflictPattern(k)).recordOccurrence(conflict);
+
+            logger.debug("Analyzed conflict pattern for conflict {}: {}", conflict.getConflictId(), patternKey);
+
+        } catch (Exception e) {
+            logger.error("Error analyzing conflict pattern for conflict {}: {}", conflict.getConflictId(),
+                    e.getMessage());
+        }
+    }
+
+    private void checkEscalationConditions(Conflict conflict) {
+        try {
+            ConflictResolutionConfiguration config = configuration.get();
+
+            if (config.isEnableAutoEscalation()) {
+                // Check if conflict has been active too long
+                Duration conflictAge = Duration.between(conflict.getDetectedAt(), Instant.now());
+
+                if (conflictAge.compareTo(config.getAutoEscalationDelay()) > 0) {
+                    // Auto-escalate the conflict
+                    escalateConflict(conflict.getConflictId(),
+                            "Auto-escalation: conflict active for " + conflictAge.toMinutes() + " minutes",
+                            EscalationLevel.SUPERVISOR);
+
+                    logger.info("Auto-escalated conflict {} after {} minutes", conflict.getConflictId(),
+                            conflictAge.toMinutes());
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Error checking escalation conditions for conflict {}: {}", conflict.getConflictId(),
+                    e.getMessage());
+        }
+    }
+
+    private void updateConflictMetrics(Conflict conflict) {
+        try {
+            // Update conflict metrics for monitoring
+            String agentId = conflict.getReportedBy();
+            ConflictHistory history = conflictHistory.get(agentId);
+
+            if (history != null) {
+                // Update agent-specific metrics
+                updateAgentConflictMetrics(agentId, conflict);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error updating conflict metrics for conflict {}: {}", conflict.getConflictId(),
+                    e.getMessage());
+        }
+    }
+
+    private void updateAgentConflictMetrics(String agentId, Conflict conflict) {
+        try {
+            // Update agent-specific conflict statistics
+            // This could include frequency, types, resolution success rates, etc.
+            logger.debug("Updated conflict metrics for agent {}: conflict {}", agentId, conflict.getConflictId());
+
+        } catch (Exception e) {
+            logger.error("Error updating agent conflict metrics for agent {}: {}", agentId, e.getMessage());
+        }
+    }
+
+    private void generateConflictTrendAnalysis() {
+        try {
+            // Generate trend analysis for recent conflicts
+            Duration analysisWindow = Duration.ofHours(1);
+            Instant cutoffTime = Instant.now().minus(analysisWindow);
+
+            long recentConflicts = conflictHistory.values().stream().flatMap(history -> history.getConflicts().stream())
+                    .filter(conflict -> conflict.getDetectedAt().isAfter(cutoffTime)).count();
+
+            if (recentConflicts > 10) {
+                logger.warn("High conflict rate detected: {} conflicts in the last hour", recentConflicts);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error generating conflict trend analysis: {}", e.getMessage());
+        }
     }
 
     private void updateLearningModels() {
-        logger.debug("Updating conflict learning models");
+        try {
+            logger.debug("Updating conflict learning models");
 
-        // Update learning models with recent conflict data
-        // This is a placeholder for actual learning model updates
+            // Update learning models with recent conflict data
+            for (Map.Entry<String, ConflictLearningModel> entry : learningModels.entrySet()) {
+                String modelId = entry.getKey();
+                ConflictLearningModel model = entry.getValue();
+
+                try {
+                    // Get recent conflicts for training
+                    List<Conflict> recentConflicts = getRecentConflictsForTraining();
+
+                    if (!recentConflicts.isEmpty()) {
+                        // Retrain the model with new data
+                        model.train(recentConflicts);
+
+                        logger.debug("Updated learning model {} with {} recent conflicts", modelId,
+                                recentConflicts.size());
+                    }
+
+                } catch (Exception e) {
+                    logger.error("Error updating learning model {}: {}", modelId, e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Error in learning model updates: {}", e.getMessage(), e);
+        }
+    }
+
+    private List<Conflict> getRecentConflictsForTraining() {
+        try {
+            // Get conflicts from the last 24 hours for training
+            Duration trainingWindow = Duration.ofHours(24);
+            Instant cutoffTime = Instant.now().minus(trainingWindow);
+
+            return conflictHistory.values().stream().flatMap(history -> history.getConflicts().stream())
+                    .filter(conflict -> conflict.getDetectedAt().isAfter(cutoffTime))
+                    .filter(conflict -> conflict.getStatus() == ConflictStatus.RESOLVED).limit(100) // Limit to prevent
+                                                                                                    // memory issues
+                    .toList();
+
+        } catch (Exception e) {
+            logger.error("Error getting recent conflicts for training: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     private void applyPreventionRules() {
-        logger.debug("Applying conflict prevention rules");
+        try {
+            logger.debug("Applying conflict prevention rules");
 
-        // Apply prevention rules to active conflicts
-        // This is a placeholder for actual prevention rule application
+            // Apply prevention rules to active conflicts
+            for (Conflict conflict : activeConflicts.values()) {
+                try {
+                    // Check if any prevention rules should be applied
+                    for (PreventionRule rule : preventionRules.values()) {
+                        if (rule.shouldPrevent(conflict)) {
+                            // Apply prevention action
+                            applyPreventionAction(conflict, rule);
+                            break; // Only apply one rule per conflict
+                        }
+                    }
+
+                } catch (Exception e) {
+                    logger.error("Error applying prevention rules to conflict {}: {}", conflict.getConflictId(),
+                            e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Error in prevention rule application: {}", e.getMessage(), e);
+        }
+    }
+
+    private void applyPreventionAction(Conflict conflict, PreventionRule rule) {
+        try {
+            logger.info("Applying prevention rule {} to conflict {}", rule.getRuleId(), conflict.getConflictId());
+
+            // Apply the prevention action based on the rule
+            // This could involve modifying the conflict, notifying agents, etc.
+
+            // Mark conflict as prevented
+            conflict.setStatus(ConflictStatus.RESOLVED);
+
+            // Remove from active conflicts
+            activeConflicts.remove(conflict.getConflictId());
+
+            // Update statistics
+            totalConflictsPrevented.incrementAndGet();
+
+        } catch (Exception e) {
+            logger.error("Error applying prevention action for conflict {}: {}", conflict.getConflictId(),
+                    e.getMessage());
+        }
     }
 
     private void shutdownExecutor(ScheduledExecutorService executor) {
@@ -493,979 +689,6 @@ public class AgentConflictResolutionEngine {
         }
     }
 
-    // Inner classes and interfaces
-
-    /**
-     * Conflict data
-     */
-    public static class ConflictData {
-        private final String description;
-        private final int severity;
-        private final Map<String, Object> data;
-        private final List<String> involvedAgents;
-        private final String resourceId;
-        private final String policyId;
-
-        public ConflictData(String description, int severity, Map<String, Object> data, List<String> involvedAgents,
-                String resourceId, String policyId) {
-            this.description = description;
-            this.severity = severity;
-            this.data = data;
-            this.involvedAgents = involvedAgents;
-            this.resourceId = resourceId;
-            this.policyId = policyId;
-        }
-
-        // Getters
-        public String getDescription() {
-            return description;
-        }
-
-        public int getSeverity() {
-            return severity;
-        }
-
-        public Map<String, Object> getData() {
-            return data;
-        }
-
-        public List<String> getInvolvedAgents() {
-            return involvedAgents;
-        }
-
-        public String getResourceId() {
-            return resourceId;
-        }
-
-        public String getPolicyId() {
-            return policyId;
-        }
-    }
-
-    /**
-     * Conflict analysis
-     */
-    public static class ConflictAnalysis {
-        private final boolean conflictDetected;
-        private final ConflictType conflictType;
-        private final ConflictPriority priority;
-        private final int severity;
-        private final String description;
-
-        public ConflictAnalysis(boolean conflictDetected, ConflictType conflictType, ConflictPriority priority,
-                int severity, String description) {
-            this.conflictDetected = conflictDetected;
-            this.conflictType = conflictType;
-            this.priority = priority;
-            this.severity = severity;
-            this.description = description;
-        }
-
-        // Getters
-        public boolean isConflictDetected() {
-            return conflictDetected;
-        }
-
-        public ConflictType getConflictType() {
-            return conflictType;
-        }
-
-        public ConflictPriority getPriority() {
-            return priority;
-        }
-
-        public int getSeverity() {
-            return severity;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-    }
-
-    /**
-     * Conflict
-     */
-    public static class Conflict {
-        private final String conflictId;
-        private final ConflictData conflictData;
-        private final String reportedBy;
-        private final Instant detectedAt;
-        private final ConflictAnalysis analysis;
-        private ConflictStatus status;
-        private ConflictPriority priority;
-        private String resolutionStrategy;
-        private String mediator;
-        private ConflictResolution resolution;
-        private Instant resolvedAt;
-        private ConflictEscalation escalation;
-
-        private Conflict(Builder builder) {
-            this.conflictId = builder.conflictId;
-            this.conflictData = builder.conflictData;
-            this.reportedBy = builder.reportedBy;
-            this.detectedAt = builder.detectedAt;
-            this.analysis = builder.analysis;
-            this.status = builder.status;
-            this.priority = builder.priority;
-        }
-
-        // Getters
-        public String getConflictId() {
-            return conflictId;
-        }
-
-        public ConflictData getConflictData() {
-            return conflictData;
-        }
-
-        public String getReportedBy() {
-            return reportedBy;
-        }
-
-        public Instant getDetectedAt() {
-            return detectedAt;
-        }
-
-        public ConflictAnalysis getAnalysis() {
-            return analysis;
-        }
-
-        public ConflictStatus getStatus() {
-            return status;
-        }
-
-        public ConflictPriority getPriority() {
-            return priority;
-        }
-
-        public String getResolutionStrategy() {
-            return resolutionStrategy;
-        }
-
-        public String getMediator() {
-            return mediator;
-        }
-
-        public ConflictResolution getResolution() {
-            return resolution;
-        }
-
-        public Instant getResolvedAt() {
-            return resolvedAt;
-        }
-
-        public ConflictEscalation getEscalation() {
-            return escalation;
-        }
-
-        // Setters
-        public void setStatus(ConflictStatus status) {
-            this.status = status;
-        }
-
-        public void setResolutionStrategy(String resolutionStrategy) {
-            this.resolutionStrategy = resolutionStrategy;
-        }
-
-        public void setMediator(String mediator) {
-            this.mediator = mediator;
-        }
-
-        public void setResolution(ConflictResolution resolution) {
-            this.resolution = resolution;
-        }
-
-        public void setResolvedAt(Instant resolvedAt) {
-            this.resolvedAt = resolvedAt;
-        }
-
-        public void setEscalation(ConflictEscalation escalation) {
-            this.escalation = escalation;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private String conflictId;
-            private ConflictData conflictData;
-            private String reportedBy;
-            private Instant detectedAt;
-            private ConflictAnalysis analysis;
-            private ConflictStatus status;
-            private ConflictPriority priority;
-
-            public Builder conflictId(String conflictId) {
-                this.conflictId = conflictId;
-                return this;
-            }
-
-            public Builder conflictData(ConflictData conflictData) {
-                this.conflictData = conflictData;
-                return this;
-            }
-
-            public Builder reportedBy(String reportedBy) {
-                this.reportedBy = reportedBy;
-                return this;
-            }
-
-            public Builder detectedAt(Instant detectedAt) {
-                this.detectedAt = detectedAt;
-                return this;
-            }
-
-            public Builder analysis(ConflictAnalysis analysis) {
-                this.analysis = analysis;
-                return this;
-            }
-
-            public Builder status(ConflictStatus status) {
-                this.status = status;
-                return this;
-            }
-
-            public Builder priority(ConflictPriority priority) {
-                this.priority = priority;
-                return this;
-            }
-
-            public Conflict build() {
-                return new Conflict(this);
-            }
-        }
-    }
-
-    /**
-     * Conflict resolution
-     */
-    public static class ConflictResolution {
-        private final String resolutionId;
-        private final String strategy;
-        private final String mediator;
-        private final ResolutionOutcome outcome;
-        private final String description;
-        private final Map<String, Object> details;
-        private final Instant resolvedAt;
-
-        public ConflictResolution(String resolutionId, String strategy, String mediator, ResolutionOutcome outcome,
-                String description, Map<String, Object> details, Instant resolvedAt) {
-            this.resolutionId = resolutionId;
-            this.strategy = strategy;
-            this.mediator = mediator;
-            this.outcome = outcome;
-            this.description = description;
-            this.details = details;
-            this.resolvedAt = resolvedAt;
-        }
-
-        // Getters
-        public String getResolutionId() {
-            return resolutionId;
-        }
-
-        public String getStrategy() {
-            return strategy;
-        }
-
-        public String getMediator() {
-            return mediator;
-        }
-
-        public ResolutionOutcome getOutcome() {
-            return outcome;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public Map<String, Object> getDetails() {
-            return details;
-        }
-
-        public Instant getResolvedAt() {
-            return resolvedAt;
-        }
-    }
-
-    /**
-     * Conflict escalation
-     */
-    public static class ConflictEscalation {
-        private final String conflictId;
-        private final String escalationReason;
-        private final EscalationLevel escalationLevel;
-        private final Instant escalatedAt;
-
-        private ConflictEscalation(Builder builder) {
-            this.conflictId = builder.conflictId;
-            this.escalationReason = builder.escalationReason;
-            this.escalationLevel = builder.escalationLevel;
-            this.escalatedAt = builder.escalatedAt;
-        }
-
-        // Getters
-        public String getConflictId() {
-            return conflictId;
-        }
-
-        public String getEscalationReason() {
-            return escalationReason;
-        }
-
-        public EscalationLevel getEscalationLevel() {
-            return escalationLevel;
-        }
-
-        public Instant getEscalatedAt() {
-            return escalatedAt;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private String conflictId;
-            private String escalationReason;
-            private EscalationLevel escalationLevel;
-            private Instant escalatedAt;
-
-            public Builder conflictId(String conflictId) {
-                this.conflictId = conflictId;
-                return this;
-            }
-
-            public Builder escalationReason(String escalationReason) {
-                this.escalationReason = escalationReason;
-                return this;
-            }
-
-            public Builder escalationLevel(EscalationLevel escalationLevel) {
-                this.escalationLevel = escalationLevel;
-                return this;
-            }
-
-            public Builder escalatedAt(Instant escalatedAt) {
-                this.escalatedAt = escalatedAt;
-                return this;
-            }
-
-            public ConflictEscalation build() {
-                return new ConflictEscalation(this);
-            }
-        }
-    }
-
-    /**
-     * Conflict history
-     */
-    public static class ConflictHistory {
-        private final String agentId;
-        private final List<Conflict> conflicts;
-
-        public ConflictHistory(String agentId) {
-            this.agentId = agentId;
-            this.conflicts = new java.util.ArrayList<>();
-        }
-
-        // Getters
-        public String getAgentId() {
-            return agentId;
-        }
-
-        public List<Conflict> getConflicts() {
-            return conflicts;
-        }
-
-        public void addConflict(Conflict conflict) {
-            conflicts.add(conflict);
-        }
-    }
-
-    /**
-     * Conflict pattern analysis
-     */
-    public static class ConflictPatternAnalysis {
-        private final int totalConflicts;
-        private final Map<String, Integer> agentConflictCounts;
-        private final Map<ConflictType, Integer> typeConflictCounts;
-        private final Map<ConflictPriority, Integer> priorityConflictCounts;
-        private final Duration timeRange;
-
-        public ConflictPatternAnalysis(int totalConflicts, Map<String, Integer> agentConflictCounts,
-                Map<ConflictType, Integer> typeConflictCounts, Map<ConflictPriority, Integer> priorityConflictCounts,
-                Duration timeRange) {
-            this.totalConflicts = totalConflicts;
-            this.agentConflictCounts = agentConflictCounts;
-            this.typeConflictCounts = typeConflictCounts;
-            this.priorityConflictCounts = priorityConflictCounts;
-            this.timeRange = timeRange;
-        }
-
-        // Getters
-        public int getTotalConflicts() {
-            return totalConflicts;
-        }
-
-        public Map<String, Integer> getAgentConflictCounts() {
-            return agentConflictCounts;
-        }
-
-        public Map<ConflictType, Integer> getTypeConflictCounts() {
-            return typeConflictCounts;
-        }
-
-        public Map<ConflictPriority, Integer> getPriorityConflictCounts() {
-            return priorityConflictCounts;
-        }
-
-        public Duration getTimeRange() {
-            return timeRange;
-        }
-    }
-
-    /**
-     * Conflict resolution statistics
-     */
-    public static class ConflictResolutionStatistics {
-        private final long totalConflictsDetected;
-        private final long totalConflictsResolved;
-        private final long totalConflictsEscalated;
-        private final long totalConflictsPrevented;
-        private final long totalResolutionTime;
-        private final int activeConflicts;
-        private final int conflictHistorySize;
-        private final int resolutionStrategies;
-        private final int mediators;
-
-        public ConflictResolutionStatistics(long totalConflictsDetected, long totalConflictsResolved,
-                long totalConflictsEscalated, long totalConflictsPrevented, long totalResolutionTime,
-                int activeConflicts, int conflictHistorySize, int resolutionStrategies, int mediators) {
-            this.totalConflictsDetected = totalConflictsDetected;
-            this.totalConflictsResolved = totalConflictsResolved;
-            this.totalConflictsEscalated = totalConflictsEscalated;
-            this.totalConflictsPrevented = totalConflictsPrevented;
-            this.totalResolutionTime = totalResolutionTime;
-            this.activeConflicts = activeConflicts;
-            this.conflictHistorySize = conflictHistorySize;
-            this.resolutionStrategies = resolutionStrategies;
-            this.mediators = mediators;
-        }
-
-        // Getters
-        public long getTotalConflictsDetected() {
-            return totalConflictsDetected;
-        }
-
-        public long getTotalConflictsResolved() {
-            return totalConflictsResolved;
-        }
-
-        public long getTotalConflictsEscalated() {
-            return totalConflictsEscalated;
-        }
-
-        public long getTotalConflictsPrevented() {
-            return totalConflictsPrevented;
-        }
-
-        public long getTotalResolutionTime() {
-            return totalResolutionTime;
-        }
-
-        public int getActiveConflicts() {
-            return activeConflicts;
-        }
-
-        public int getConflictHistorySize() {
-            return conflictHistorySize;
-        }
-
-        public int getResolutionStrategies() {
-            return resolutionStrategies;
-        }
-
-        public int getMediators() {
-            return mediators;
-        }
-    }
-
-    /**
-     * Conflict resolution configuration
-     */
-    public static class ConflictResolutionConfiguration {
-        private Duration maxResolutionTime = Duration.ofMinutes(30);
-        private int maxActiveConflicts = 100;
-        private boolean enableAutoEscalation = true;
-        private Duration autoEscalationDelay = Duration.ofMinutes(10);
-        private boolean enableLearning = true;
-        private boolean enablePrevention = true;
-
-        // Getters and setters
-        public Duration getMaxResolutionTime() {
-            return maxResolutionTime;
-        }
-
-        public void setMaxResolutionTime(Duration maxResolutionTime) {
-            this.maxResolutionTime = maxResolutionTime;
-        }
-
-        public int getMaxActiveConflicts() {
-            return maxActiveConflicts;
-        }
-
-        public void setMaxActiveConflicts(int maxActiveConflicts) {
-            this.maxActiveConflicts = maxActiveConflicts;
-        }
-
-        public boolean isEnableAutoEscalation() {
-            return enableAutoEscalation;
-        }
-
-        public void setEnableAutoEscalation(boolean enableAutoEscalation) {
-            this.enableAutoEscalation = enableAutoEscalation;
-        }
-
-        public Duration getAutoEscalationDelay() {
-            return autoEscalationDelay;
-        }
-
-        public void setAutoEscalationDelay(Duration autoEscalationDelay) {
-            this.autoEscalationDelay = autoEscalationDelay;
-        }
-
-        public boolean isEnableLearning() {
-            return enableLearning;
-        }
-
-        public void setEnableLearning(boolean enableLearning) {
-            this.enableLearning = enableLearning;
-        }
-
-        public boolean isEnablePrevention() {
-            return enablePrevention;
-        }
-
-        public void setEnablePrevention(boolean enablePrevention) {
-            this.enablePrevention = enablePrevention;
-        }
-    }
-
-    // Enums
-    public enum ConflictType {
-        NONE,
-        RESOURCE_CONFLICT,
-        POLICY_CONFLICT,
-        COORDINATION_CONFLICT,
-        COMMUNICATION_CONFLICT
-    }
-
-    public enum ConflictPriority {
-        LOW,
-        MEDIUM,
-        HIGH,
-        CRITICAL
-    }
-
-    public enum ConflictStatus {
-        DETECTED,
-        RESOLVING,
-        RESOLVED,
-        ESCALATED,
-        FAILED
-    }
-
-    public enum ResolutionOutcome {
-        SUCCESS,
-        PARTIAL_SUCCESS,
-        FAILURE,
-        COMPROMISE
-    }
-
-    public enum EscalationLevel {
-        SUPERVISOR,
-        ADMINISTRATOR,
-        SYSTEM
-    }
-
-    // Interfaces
-    public interface ConflictResolutionStrategy {
-        ConflictResolution resolve(Conflict conflict, @Nullable ConflictMediator mediator);
-    }
-
-    public interface ConflictMediator {
-        String getMediatorId();
-
-        ConflictResolution mediate(Conflict conflict, List<String> participants);
-    }
-
-    public interface PreventionRule {
-        String getRuleId();
-
-        boolean shouldPrevent(Conflict conflict);
-    }
-
-    public interface ConflictPattern {
-        String getPatternId();
-
-        boolean matches(Conflict conflict);
-    }
-
-    public interface ConflictLearningModel {
-        String getModelId();
-
-        void train(List<Conflict> trainingData);
-
-        ConflictResolution predict(Conflict conflict);
-    }
-
-    /**
-     * Default implementation of ConflictLearningModel
-     */
-    public static class DefaultConflictLearningModel implements ConflictLearningModel {
-        private final String modelId;
-        private boolean isTrained = false;
-
-        public DefaultConflictLearningModel(String modelId) {
-            this.modelId = modelId;
-        }
-
-        @Override
-        public String getModelId() {
-            return modelId;
-        }
-
-        @Override
-        public void train(List<Conflict> trainingData) {
-            // Simple training implementation
-            // In a real implementation, this would use machine learning algorithms
-            isTrained = true;
-        }
-
-        @Override
-        public ConflictResolution predict(Conflict conflict) {
-            if (!isTrained) {
-                throw new IllegalStateException("Model must be trained before making predictions");
-            }
-
-            // Simple prediction implementation
-            // In a real implementation, this would use the trained model
-            return new ConflictResolution("prediction_" + System.currentTimeMillis(), "default", "default",
-                    ResolutionOutcome.SUCCESS, "Predicted resolution", Map.of(), Instant.now());
-        }
-    }
-
-    public interface ConflictDetectionResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        @Nullable
-        Conflict getConflict();
-
-        @Nullable
-        ConflictAnalysis getAnalysis();
-
-        static ConflictDetectionResult conflictDetected(Conflict conflict, ConflictAnalysis analysis) {
-            return new ConflictDetectionResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Conflict detected successfully";
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return conflict;
-                }
-
-                @Override
-                public ConflictAnalysis getAnalysis() {
-                    return analysis;
-                }
-            };
-        }
-
-        static ConflictDetectionResult noConflict(String message) {
-            return new ConflictDetectionResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return null;
-                }
-
-                @Override
-                public ConflictAnalysis getAnalysis() {
-                    return null;
-                }
-            };
-        }
-
-        static ConflictDetectionResult prevented(String message) {
-            return new ConflictDetectionResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return null;
-                }
-
-                @Override
-                public ConflictAnalysis getAnalysis() {
-                    return null;
-                }
-            };
-        }
-
-        static ConflictDetectionResult failure(String message) {
-            return new ConflictDetectionResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return null;
-                }
-
-                @Override
-                public ConflictAnalysis getAnalysis() {
-                    return null;
-                }
-            };
-        }
-    }
-
-    public interface ConflictResolutionResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        @Nullable
-        Conflict getConflict();
-
-        @Nullable
-        ConflictResolution getResolution();
-
-        static ConflictResolutionResult success(Conflict conflict, ConflictResolution resolution) {
-            return new ConflictResolutionResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Conflict resolved successfully";
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return conflict;
-                }
-
-                @Override
-                public ConflictResolution getResolution() {
-                    return resolution;
-                }
-            };
-        }
-
-        static ConflictResolutionResult failure(String message) {
-            return new ConflictResolutionResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return null;
-                }
-
-                @Override
-                public ConflictResolution getResolution() {
-                    return null;
-                }
-            };
-        }
-
-        static ConflictResolutionResult notFound(String message) {
-            return new ConflictResolutionResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return null;
-                }
-
-                @Override
-                public ConflictResolution getResolution() {
-                    return null;
-                }
-            };
-        }
-    }
-
-    public interface ConflictEscalationResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        @Nullable
-        Conflict getConflict();
-
-        @Nullable
-        ConflictEscalation getEscalation();
-
-        static ConflictEscalationResult success(Conflict conflict, ConflictEscalation escalation) {
-            return new ConflictEscalationResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Conflict escalated successfully";
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return conflict;
-                }
-
-                @Override
-                public ConflictEscalation getEscalation() {
-                    return escalation;
-                }
-            };
-        }
-
-        static ConflictEscalationResult failure(String message) {
-            return new ConflictEscalationResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return null;
-                }
-
-                @Override
-                public ConflictEscalation getEscalation() {
-                    return null;
-                }
-            };
-        }
-
-        static ConflictEscalationResult notFound(String message) {
-            return new ConflictEscalationResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public Conflict getConflict() {
-                    return null;
-                }
-
-                @Override
-                public ConflictEscalation getEscalation() {
-                    return null;
-                }
-            };
-        }
-    }
-
-    public interface ModelTrainingResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        static ModelTrainingResult success(String message) {
-            return new ModelTrainingResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static ModelTrainingResult failure(String message) {
-            return new ModelTrainingResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-    }
+    // Inner classes and interfaces extracted to top-level types in
+    // org.openhab.core.ai.agent.collaboration.conflict
 }

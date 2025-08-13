@@ -25,7 +25,7 @@ public class ReasoningStep {
     private final Instant endTime;
     private final @Nullable String error;
 
-    private ReasoningStep(Builder builder) {
+    ReasoningStep(ReasoningStepBuilder builder) {
         this.sessionId = builder.sessionId;
         this.stepNumber = builder.stepNumber;
         this.reasoning = builder.reasoning;
@@ -73,68 +73,7 @@ public class ReasoningStep {
         return error;
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private String sessionId = "";
-        private int stepNumber = 0;
-        private String reasoning = "";
-        private List<ActionContext> toolCalls = List.of();
-        private double confidence = 0.0;
-        private boolean isComplete = false;
-        private Instant startTime = Instant.now();
-        private Instant endTime = Instant.now();
-        private @Nullable String error;
-
-        public Builder sessionId(String sessionId) {
-            this.sessionId = sessionId;
-            return this;
-        }
-
-        public Builder stepNumber(int stepNumber) {
-            this.stepNumber = stepNumber;
-            return this;
-        }
-
-        public Builder reasoning(String reasoning) {
-            this.reasoning = reasoning;
-            return this;
-        }
-
-        public Builder toolCalls(List<ActionContext> toolCalls) {
-            this.toolCalls = toolCalls;
-            return this;
-        }
-
-        public Builder confidence(double confidence) {
-            this.confidence = confidence;
-            return this;
-        }
-
-        public Builder isComplete(boolean isComplete) {
-            this.isComplete = isComplete;
-            return this;
-        }
-
-        public Builder startTime(Instant startTime) {
-            this.startTime = startTime;
-            return this;
-        }
-
-        public Builder endTime(Instant endTime) {
-            this.endTime = endTime;
-            return this;
-        }
-
-        public Builder error(@Nullable String error) {
-            this.error = error;
-            return this;
-        }
-
-        public ReasoningStep build() {
-            return new ReasoningStep(this);
-        }
+    public static ReasoningStepBuilder builder() {
+        return new ReasoningStepBuilder();
     }
 }

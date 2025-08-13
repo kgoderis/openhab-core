@@ -339,10 +339,7 @@ public class MoveFileAction implements Action {
         return result;
     }
 
-    private static class MoveResult {
-        int itemsMoved = 0;
-        long bytesMoved = 0;
-    }
+    // Extracted: org.openhab.core.ai.action.library.filesystem.MoveResult
 
     @Override
     public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {

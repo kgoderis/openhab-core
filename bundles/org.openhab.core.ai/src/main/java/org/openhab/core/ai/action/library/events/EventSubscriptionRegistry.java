@@ -180,86 +180,6 @@ public class EventSubscriptionRegistry {
     }
 
     /**
-     * Filtering event subscriber that forwards events to SSE endpoints.
-     */
-    private static class FilteringEventSubscriber implements EventSubscriber {
-
-        private final String clientId;
-        private final String subscriptionId;
-        private final Set<String> eventTypes;
-        private final @Nullable Map<String, String> filters;
-
-        public FilteringEventSubscriber(String clientId, String subscriptionId, Set<String> eventTypes,
-                @Nullable Map<String, String> filters) {
-            this.clientId = clientId;
-            this.subscriptionId = subscriptionId;
-            this.eventTypes = eventTypes;
-            this.filters = filters;
-        }
-
-        @Override
-        public void receive(Event event) {
-            // Check if event type matches subscription
-            if (!eventTypes.contains(event.getType())) {
-                return;
-            }
-
-            // Apply filters if specified
-            if (filters != null && !passesFilters(event, filters)) {
-                return;
-            }
-
-            // Forward event to SSE endpoint
-            EventSSEManager.getInstance().forwardEvent(subscriptionId, event);
-        }
-
-        @Override
-        public Set<String> getSubscribedEventTypes() {
-            return eventTypes;
-        }
-
-        private boolean passesFilters(Event event, @Nullable Map<String, String> filters) {
-            // Simple filter implementation - can be enhanced
-            if (filters == null) {
-                return true;
-            }
-            for (Map.Entry<String, String> filter : filters.entrySet()) {
-                String key = filter.getKey();
-                String value = filter.getValue();
-
-                switch (key) {
-                    case "topic":
-                        if (!event.getTopic().contains(value)) {
-                            return false;
-                        }
-                        break;
-                    case "source":
-                        if (!event.getSource().contains(value)) {
-                            return false;
-                        }
-                        break;
-                    case "itemName":
-                        if (event instanceof org.openhab.core.items.events.ItemEvent itemEvent) {
-                            if (!itemEvent.getItemName().contains(value)) {
-                                return false;
-                            }
-                        } else {
-                            return false;
-                        }
-                        break;
-                    case "thingUID":
-                        // Check if event topic contains thing UID
-                        if (!event.getTopic().contains(value)) {
-                            return false;
-                        }
-                        break;
-                }
-            }
-            return true;
-        }
-    }
-
-    /**
      * Information about an event subscription.
      */
     public static class SubscriptionInfo {
@@ -302,4 +222,9 @@ public class EventSubscriptionRegistry {
             return "/mcp/events/" + subscriptionId;
         }
     }
+
+    /**
+     * Filtering event subscriber that forwards events to SSE endpoints.
+     */
+    
 }

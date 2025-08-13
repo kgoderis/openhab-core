@@ -14,6 +14,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.collaboration.negotiation.api.LearningNegotiationStrategy;
+import org.openhab.core.ai.agent.collaboration.negotiation.api.NegotiationStrategy;
 import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -308,123 +310,10 @@ public class AgentNegotiationService {
     }
 
     // Data classes
-    public record NegotiationStatistics(long totalNegotiations, long successfulNegotiations, long failedNegotiations,
-            long timeoutNegotiations, long abortedNegotiations, int activeSessions, int templates, int strategies) {
-    }
+    // extracted to top-level class
 
-    public record NegotiationResult(String sessionId, NegotiationStatus status, String message,
-            @Nullable Map<String, Object> agreement, @Nullable NegotiationProposal proposal) {
-
-        static NegotiationResult agreement(NegotiationSession session, Map<String, Object> agreement) {
-            return new NegotiationResult(session.getSessionId(), NegotiationStatus.AGREED, "Agreement reached",
-                    agreement, null);
-        }
-
-        static NegotiationResult proposalAccepted(NegotiationSession session, NegotiationProposal proposal) {
-            return new NegotiationResult(session.getSessionId(), NegotiationStatus.ACTIVE, "Proposal accepted", null,
-                    proposal);
-        }
-
-        static NegotiationResult aborted(NegotiationSession session, String reason) {
-            return new NegotiationResult(session.getSessionId(), NegotiationStatus.ABORTED, "Aborted: " + reason, null,
-                    null);
-        }
-
-        static NegotiationResult notFound(String message) {
-            return new NegotiationResult("", NegotiationStatus.NOT_FOUND, message, null, null);
-        }
-
-        static NegotiationResult failure(String message) {
-            return new NegotiationResult("", NegotiationStatus.FAILED, message, null, null);
-        }
-    }
-
-    public record NegotiationOutcome(boolean agreementReached, @Nullable Map<String, Object> agreement, String reason) {
-
-        static NegotiationOutcome agreement(Map<String, Object> agreement) {
-            return new NegotiationOutcome(true, agreement, "Agreement reached");
-        }
-
-        static NegotiationOutcome noAgreement(String reason) {
-            return new NegotiationOutcome(false, null, reason);
-        }
-    }
-
-    // Interfaces
-    public interface NegotiationStrategy {
-        String getStrategyId();
-
-        NegotiationOutcome evaluateProposal(NegotiationSession session, NegotiationProposal proposal);
-    }
-
-    public interface LearningNegotiationStrategy extends NegotiationStrategy {
-        void learn(NegotiationSession session);
-    }
+    // extracted to top-level class
 
     // Default strategy implementations
-    public static class DefaultNegotiationStrategy implements NegotiationStrategy {
-        private final String strategyId;
-
-        public DefaultNegotiationStrategy(String strategyId) {
-            this.strategyId = strategyId;
-        }
-
-        @Override
-        public String getStrategyId() {
-            return strategyId;
-        }
-
-        @Override
-        public NegotiationOutcome evaluateProposal(NegotiationSession session, NegotiationProposal proposal) {
-            // Simple agreement if all participants have submitted proposals
-            if (session.getProposals().size() >= session.getParticipantIds().size()) {
-                return NegotiationOutcome.agreement(Map.of("agreement", "default"));
-            }
-            return NegotiationOutcome.noAgreement("Waiting for more proposals");
-        }
-    }
-
-    public static class CompromiseNegotiationStrategy implements NegotiationStrategy {
-        private final String strategyId;
-
-        public CompromiseNegotiationStrategy(String strategyId) {
-            this.strategyId = strategyId;
-        }
-
-        @Override
-        public String getStrategyId() {
-            return strategyId;
-        }
-
-        @Override
-        public NegotiationOutcome evaluateProposal(NegotiationSession session, NegotiationProposal proposal) {
-            // Compromise-based agreement
-            if (session.getProposals().size() >= 2) {
-                return NegotiationOutcome.agreement(Map.of("agreement", "compromise"));
-            }
-            return NegotiationOutcome.noAgreement("Need at least 2 proposals for compromise");
-        }
-    }
-
-    public static class CompetitiveNegotiationStrategy implements NegotiationStrategy {
-        private final String strategyId;
-
-        public CompetitiveNegotiationStrategy(String strategyId) {
-            this.strategyId = strategyId;
-        }
-
-        @Override
-        public String getStrategyId() {
-            return strategyId;
-        }
-
-        @Override
-        public NegotiationOutcome evaluateProposal(NegotiationSession session, NegotiationProposal proposal) {
-            // Competitive agreement based on proposal strength
-            if (session.getProposals().size() >= session.getParticipantIds().size()) {
-                return NegotiationOutcome.agreement(Map.of("agreement", "competitive"));
-            }
-            return NegotiationOutcome.noAgreement("Waiting for all competitive proposals");
-        }
-    }
+    // Default strategy implementations moved to top-level classes
 }

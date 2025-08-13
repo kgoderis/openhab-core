@@ -12,7 +12,6 @@
  */
 package org.openhab.core.ai.reasoning;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,11 +25,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.model.api.IntelligentToolClient;
-import org.openhab.core.ai.model.api.ModelParameters;
-import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.api.ReasoningPlanStep;
+import org.openhab.core.ai.reasoning.api.ReasoningStrategy;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -126,7 +126,7 @@ public class ReasoningOrchestrationService {
         }
 
         String sessionId = "session-" + sessionCounter.incrementAndGet();
-        ReasoningSession session = new ReasoningSession(sessionId, client, context, params);
+        ReasoningSession session = new ReasoningSession(sessionId, client, context, params, executorService);
         activeSessions.put(sessionId, session);
 
         return session.execute().whenComplete((result, throwable) -> {
@@ -264,9 +264,9 @@ public class ReasoningOrchestrationService {
     }
 
     private void initializeDefaultStrategies() {
-        registerStrategy("sequential", new SequentialReasoningStrategy());
-        registerStrategy("parallel", new ParallelReasoningStrategy());
-        registerStrategy("adaptive", new AdaptiveReasoningStrategy());
+        registerStrategy("sequential", new SequentialReasoningStrategy(this));
+        registerStrategy("parallel", new ParallelReasoningStrategy(this));
+        registerStrategy("adaptive", new AdaptiveReasoningStrategy(this));
     }
 
     private boolean hasCircularDependencies(List<ReasoningPlanStep> steps) {
@@ -318,164 +318,15 @@ public class ReasoningOrchestrationService {
         return false;
     }
 
-    /**
-     * Represents a reasoning session.
-     */
-    private class ReasoningSession {
-        private final String sessionId;
-        private final IntelligentToolClient client;
-        private final ReasoningContext context;
-        private final ModelParameters params;
-        private final Instant startTime;
-        private volatile boolean cancelled = false;
+    // Inner class extracted to top-level: org.openhab.core.ai.reasoning.ReasoningSession
 
-        public ReasoningSession(String sessionId, IntelligentToolClient client, ReasoningContext context,
-                ModelParameters params) {
-            this.sessionId = sessionId;
-            this.client = client;
-            this.context = context;
-            this.params = params;
-            this.startTime = Instant.now();
-        }
+    // Inner class extracted to top-level: org.openhab.core.ai.reasoning.ValidationResult
 
-        public CompletableFuture<MultiStepReasoningResult> execute() {
-            if (cancelled) {
-                return CompletableFuture.failedFuture(new IllegalStateException("Session cancelled"));
-            }
+    // Inner class extracted to top-level: org.openhab.core.ai.reasoning.OrchestrationMetrics
 
-            return CompletableFuture.supplyAsync(() -> {
-                try {
-                    return client.reasonWithContext(context, params).get();
-                } catch (Exception e) {
-                    throw new RuntimeException("Reasoning execution failed", e);
-                }
-            }, executorService);
-        }
+    // Inner class extracted to top-level: org.openhab.core.ai.reasoning.SequentialReasoningStrategy
 
-        public void cancel() {
-            cancelled = true;
-        }
-    }
+    // Inner class extracted to top-level: org.openhab.core.ai.reasoning.ParallelReasoningStrategy
 
-    /**
-     * Validation result for reasoning steps.
-     */
-    public static class ValidationResult {
-        private final List<String> errors = new ArrayList<>();
-        private final List<String> warnings = new ArrayList<>();
-
-        public void addError(String error) {
-            errors.add(error);
-        }
-
-        public void addWarning(String warning) {
-            warnings.add(warning);
-        }
-
-        public boolean isValid() {
-            return errors.isEmpty();
-        }
-
-        public List<String> getErrors() {
-            return new ArrayList<>(errors);
-        }
-
-        public List<String> getWarnings() {
-            return new ArrayList<>(warnings);
-        }
-    }
-
-    /**
-     * Performance metrics for the orchestration service.
-     */
-    public static class OrchestrationMetrics {
-        private final int activeSessions;
-        private final long totalSessions;
-
-        public OrchestrationMetrics(int activeSessions, long totalSessions) {
-            this.activeSessions = activeSessions;
-            this.totalSessions = totalSessions;
-        }
-
-        public int getActiveSessions() {
-            return activeSessions;
-        }
-
-        public long getTotalSessions() {
-            return totalSessions;
-        }
-    }
-
-    /**
-     * Interface for reasoning strategies.
-     */
-    public interface ReasoningStrategy {
-        /**
-         * Executes reasoning steps according to the strategy.
-         * 
-         * @param client The intelligent tool client
-         * @param steps The reasoning steps
-         * @param context The reasoning context
-         * @param params Configuration parameters
-         * @return A CompletableFuture containing the results
-         */
-        CompletableFuture<List<ModelResponse>> execute(IntelligentToolClient client, List<ReasoningPlanStep> steps,
-                ReasoningContext context, ModelParameters params);
-    }
-
-    /**
-     * Sequential reasoning strategy.
-     */
-    private class SequentialReasoningStrategy implements ReasoningStrategy {
-        @Override
-        public CompletableFuture<List<ModelResponse>> execute(IntelligentToolClient client,
-                List<ReasoningPlanStep> steps, ReasoningContext context, ModelParameters params) {
-            return executeStepsSequential(client, steps, context, params);
-        }
-    }
-
-    /**
-     * Parallel reasoning strategy.
-     */
-    private class ParallelReasoningStrategy implements ReasoningStrategy {
-        @Override
-        public CompletableFuture<List<ModelResponse>> execute(IntelligentToolClient client,
-                List<ReasoningPlanStep> steps, ReasoningContext context, ModelParameters params) {
-            return executeStepsParallel(client, steps, context, params);
-        }
-    }
-
-    /**
-     * Adaptive reasoning strategy.
-     */
-    private class AdaptiveReasoningStrategy implements ReasoningStrategy {
-        @Override
-        public CompletableFuture<List<ModelResponse>> execute(IntelligentToolClient client,
-                List<ReasoningPlanStep> steps, ReasoningContext context, ModelParameters params) {
-            // Adaptive strategy: use parallel for independent steps, sequential for dependent ones
-            List<ReasoningPlanStep> independentSteps = new ArrayList<>();
-            List<ReasoningPlanStep> dependentSteps = new ArrayList<>();
-
-            for (ReasoningPlanStep step : steps) {
-                if (step.getDependencies().isEmpty()) {
-                    independentSteps.add(step);
-                } else {
-                    dependentSteps.add(step);
-                }
-            }
-
-            CompletableFuture<List<ModelResponse>> independentResults = executeStepsParallel(client, independentSteps,
-                    context, params);
-
-            return independentResults.thenCompose(results -> {
-                if (dependentSteps.isEmpty()) {
-                    return CompletableFuture.completedFuture(results);
-                }
-                return executeStepsSequential(client, dependentSteps, context, params).thenApply(dependentResults -> {
-                    results.addAll(dependentResults);
-                    return results;
-                });
-            });
-        }
-    }
+    // Inner class extracted to top-level: org.openhab.core.ai.reasoning.AdaptiveReasoningStrategy
 }

@@ -190,8 +190,153 @@ public class ComplianceTestResult {
         return errorMessage;
     }
 
-    // TODO: Implement compliance test result caching
-    // TODO: Add support for compliance test result serialization
-    // TODO: Implement compliance test result comparison
-    // TODO: Add support for compliance test result metrics
+    // ===== CACHING SUPPORT =====
+
+    private static final java.util.concurrent.ConcurrentHashMap<String, ComplianceTestResult> cache = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+    private final long cacheTimestamp = System.currentTimeMillis();
+
+    /**
+     * Cache this compliance test result with the given key.
+     * 
+     * @param cacheKey the cache key
+     */
+    public void cache(String cacheKey) {
+        cache.put(cacheKey, this);
+    }
+
+    /**
+     * Get a cached compliance test result.
+     * 
+     * @param cacheKey the cache key
+     * @return cached result or null if not found or expired
+     */
+    public static ComplianceTestResult getCached(String cacheKey) {
+        ComplianceTestResult result = cache.get(cacheKey);
+        if (result != null && System.currentTimeMillis() - result.cacheTimestamp < CACHE_TTL_MS) {
+            return result;
+        }
+        if (result != null) {
+            cache.remove(cacheKey); // Remove expired entry
+        }
+        return null;
+    }
+
+    /**
+     * Clear the compliance test result cache.
+     */
+    public static void clearCache() {
+        cache.clear();
+    }
+
+    /**
+     * Get cache statistics.
+     * 
+     * @return cache statistics
+     */
+    public static Map<String, Object> getCacheStats() {
+        Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("size", cache.size());
+        stats.put("ttlMs", CACHE_TTL_MS);
+        return stats;
+    }
+
+    // ===== SERIALIZATION SUPPORT =====
+
+    /**
+     * Convert this compliance test result to a JSON-serializable map.
+     * 
+     * @return serializable map representation
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new java.util.HashMap<>();
+        map.put("testId", testId);
+        map.put("category", category);
+        map.put("description", description);
+        map.put("passed", passed);
+        map.put("status", status);
+        map.put("message", message);
+        map.put("failures", failures);
+        map.put("warnings", warnings);
+        map.put("details", details);
+        map.put("timestamp", timestamp);
+        map.put("durationMs", durationMs);
+        map.put("errorMessage", errorMessage);
+        return map;
+    }
+
+    /**
+     * Create a compliance test result from a map representation.
+     * 
+     * @param map the map representation
+     * @return compliance test result
+     */
+    @SuppressWarnings("unchecked")
+    public static ComplianceTestResult fromMap(Map<String, Object> map) {
+        String testId = (String) map.get("testId");
+        String category = (String) map.get("category");
+        String description = (String) map.get("description");
+        boolean passed = (Boolean) map.get("passed");
+        long timestamp = (Long) map.get("timestamp");
+        long durationMs = (Long) map.get("durationMs");
+        String errorMessage = (String) map.get("errorMessage");
+
+        ComplianceTestResult result = new ComplianceTestResult(testId, category, description, passed, durationMs,
+                timestamp);
+        result.setErrorMessage(errorMessage);
+        return result;
+    }
+
+    // ===== COMPARISON METHODS =====
+
+    /**
+     * Compare this compliance test result with another.
+     * 
+     * @param other the other compliance test result
+     * @return comparison result
+     */
+    public ComplianceTestComparisonResult compare(ComplianceTestResult other) {
+        boolean sameTestId = this.testId.equals(other.testId);
+        boolean sameCategory = this.category.equals(other.category);
+        boolean samePassed = this.passed == other.passed;
+        boolean sameStatus = this.status.equals(other.status);
+        boolean sameDuration = this.durationMs == other.durationMs;
+
+        return new ComplianceTestComparisonResult(sameTestId, sameCategory, samePassed, sameStatus, sameDuration);
+    }
+
+    /**
+     * Check if this compliance test result is equivalent to another.
+     * 
+     * @param other the other compliance test result
+     * @return true if equivalent
+     */
+    public boolean isEquivalent(ComplianceTestResult other) {
+        return this.testId.equals(other.testId) && this.category.equals(other.category) && this.passed == other.passed
+                && this.status.equals(other.status);
+    }
+
+    // ===== METRICS SUPPORT =====
+
+    /**
+     * Get compliance test metrics for this result.
+     * 
+     * @return compliance test metrics
+     */
+    public ComplianceTestMetrics getMetrics() {
+        return new ComplianceTestMetrics(testId, category, passed, durationMs, failures.size(), warnings.size(),
+                details.size(), timestamp);
+    }
+
+    // ===== INNER CLASSES =====
+
+    /**
+     * Result of compliance test comparison.
+     */
+    // ComplianceTestComparisonResult extracted to org.openhab.core.ai.tool.compliance.ComplianceTestComparisonResult
+
+    /**
+     * Compliance test metrics.
+     */
+    // ComplianceTestMetrics extracted to org.openhab.core.ai.tool.compliance.ComplianceTestMetrics
 }

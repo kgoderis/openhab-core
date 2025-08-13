@@ -390,10 +390,63 @@ public class AgentSharedContextManager {
                     .completedFuture(RestoreResult.permissionDenied("No admin permission for context: " + contextId));
         }
 
-        // Perform restore logic here
-        // This is a placeholder for actual restore implementation
+        try {
+            // Find the backup
+            ContextBackup backup = contextBackups.get(backupId);
+            if (backup == null) {
+                return CompletableFuture.completedFuture(RestoreResult.failure("Backup not found: " + backupId));
+            }
 
-        return CompletableFuture.completedFuture(RestoreResult.success("Context restored successfully"));
+            // Verify the backup is for the correct context
+            if (!backup.getContextId().equals(contextId)) {
+                return CompletableFuture.completedFuture(RestoreResult.failure(
+                        "Backup " + backupId + " is for context " + backup.getContextId() + ", not " + contextId));
+            }
+
+            // Perform the restore
+            SharedContext restoredContext = backup.getContext();
+            if (restoredContext == null) {
+                return CompletableFuture
+                        .completedFuture(RestoreResult.failure("Backup data is corrupted: no context found"));
+            }
+
+            // Restore the context
+            contextStore.put(contextId, restoredContext);
+
+            // Restore versions
+            List<ContextVersion> versions = backup.getVersions();
+            if (versions != null) {
+                for (ContextVersion version : versions) {
+                    contextVersions.put(version.getVersionId(), version);
+                }
+            }
+
+            // Restore permissions
+            Map<String, ContextPermission> permissions = backup.getPermissions();
+            if (permissions != null) {
+                for (Map.Entry<String, ContextPermission> entry : permissions.entrySet()) {
+                    String targetAgentId = entry.getKey();
+                    ContextPermission permission = entry.getValue();
+                    contextPermissions.put(contextId + ":" + targetAgentId, permission);
+                }
+            }
+
+            // Update cache
+            updateContextCache(contextId, restoredContext);
+
+            // Notify change listeners
+            notifyContextChange(contextId, ContextChangeType.UPDATED, agentId,
+                    restoredContext.getCurrentVersion().getData());
+
+            logger.info("Context {} restored from backup {} by agent {}", contextId, backupId, agentId);
+
+            return CompletableFuture
+                    .completedFuture(RestoreResult.success("Context restored successfully from backup " + backupId));
+
+        } catch (Exception e) {
+            logger.error("Error restoring context {} from backup {}: {}", contextId, backupId, e.getMessage(), e);
+            return CompletableFuture.completedFuture(RestoreResult.failure("Restore failed: " + e.getMessage()));
+        }
     }
 
     // Private helper methods
@@ -477,11 +530,91 @@ public class AgentSharedContextManager {
         contextVersions.entrySet().removeIf(entry -> entry.getValue().getTimestamp().isBefore(cutoffTime));
     }
 
-    private void performBackup() {
-        logger.debug("Performing context backup");
+    private final Map<String, ContextBackup> contextBackups = new ConcurrentHashMap<>();
 
-        // Perform backup of all contexts
-        // This is a placeholder for actual backup implementation
+    private void performBackup() {
+        try {
+            logger.debug("Performing context backup");
+
+            // Perform backup of all contexts
+            for (Map.Entry<String, SharedContext> entry : contextStore.entrySet()) {
+                String contextId = entry.getKey();
+                SharedContext context = entry.getValue();
+
+                try {
+                    // Create backup
+                    ContextBackup backup = createContextBackup(contextId, context);
+                    contextBackups.put(backup.getBackupId(), backup);
+
+                    logger.debug("Backed up context: {} with backup ID: {}", contextId, backup.getBackupId());
+
+                } catch (Exception e) {
+                    logger.error("Error backing up context {}: {}", contextId, e.getMessage());
+                }
+            }
+
+            // Clean up old backups based on retention policy
+            cleanupOldBackups();
+
+        } catch (Exception e) {
+            logger.error("Error in context backup process: {}", e.getMessage(), e);
+        }
+    }
+
+    private ContextBackup createContextBackup(String contextId, SharedContext context) {
+        try {
+            String backupId = "backup_" + contextId + "_" + System.currentTimeMillis();
+            Instant backupTime = Instant.now();
+
+            // Create backup data including context and all versions
+            Map<String, Object> backupData = new ConcurrentHashMap<>();
+            backupData.put("context", context);
+            backupData.put("versions", getContextHistory(contextId, context.getCreatedBy(), 100));
+            backupData.put("permissions", getContextPermissionsForBackup(contextId));
+
+            return new ContextBackup(backupId, contextId, backupTime, backupData);
+
+        } catch (Exception e) {
+            logger.error("Error creating backup for context {}: {}", contextId, e.getMessage());
+            throw new RuntimeException("Backup creation failed", e);
+        }
+    }
+
+    private Map<String, ContextPermission> getContextPermissionsForBackup(String contextId) {
+        Map<String, ContextPermission> permissions = new ConcurrentHashMap<>();
+
+        for (Map.Entry<String, ContextPermission> entry : contextPermissions.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith(contextId + ":")) {
+                String agentId = key.substring(contextId.length() + 1);
+                permissions.put(agentId, entry.getValue());
+            }
+        }
+
+        return permissions;
+    }
+
+    private void cleanupOldBackups() {
+        try {
+            ContextManagerConfiguration config = configuration.get();
+            Duration backupRetention = config.getBackupInterval().multipliedBy(24); // Keep 24 backup cycles
+
+            Instant cutoffTime = Instant.now().minus(backupRetention);
+
+            contextBackups.entrySet().removeIf(entry -> {
+                ContextBackup backup = entry.getValue();
+                boolean shouldRemove = backup.getBackupTime().isBefore(cutoffTime);
+
+                if (shouldRemove) {
+                    logger.debug("Removing old backup: {} from {}", backup.getBackupId(), backup.getBackupTime());
+                }
+
+                return shouldRemove;
+            });
+
+        } catch (Exception e) {
+            logger.error("Error cleaning up old backups: {}", e.getMessage());
+        }
     }
 
     private void updateAnalytics() {
@@ -500,819 +633,6 @@ public class AgentSharedContextManager {
         } catch (InterruptedException e) {
             executor.shutdownNow();
             Thread.currentThread().interrupt();
-        }
-    }
-
-    // Inner classes and interfaces
-
-    /**
-     * Shared context data
-     */
-    public static class SharedContext {
-        private final String contextId;
-        private final ContextVersion currentVersion;
-        private final String createdBy;
-        private final Instant createdAt;
-        private final String lastModifiedBy;
-        private final Instant lastModifiedAt;
-        private final ContextOptions options;
-
-        private SharedContext(Builder builder) {
-            this.contextId = builder.contextId;
-            this.currentVersion = builder.currentVersion;
-            this.createdBy = builder.createdBy;
-            this.createdAt = builder.createdAt;
-            this.lastModifiedBy = builder.lastModifiedBy;
-            this.lastModifiedAt = builder.lastModifiedAt;
-            this.options = builder.options;
-        }
-
-        // Getters
-        public String getContextId() {
-            return contextId;
-        }
-
-        public ContextVersion getCurrentVersion() {
-            return currentVersion;
-        }
-
-        public String getCreatedBy() {
-            return createdBy;
-        }
-
-        public Instant getCreatedAt() {
-            return createdAt;
-        }
-
-        public String getLastModifiedBy() {
-            return lastModifiedBy;
-        }
-
-        public Instant getLastModifiedAt() {
-            return lastModifiedAt;
-        }
-
-        public ContextOptions getOptions() {
-            return options;
-        }
-
-        public long getVersion() {
-            return currentVersion.getVersionId().hashCode();
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private String contextId;
-            private ContextVersion currentVersion;
-            private String createdBy;
-            private Instant createdAt;
-            private String lastModifiedBy;
-            private Instant lastModifiedAt;
-            private ContextOptions options;
-
-            public Builder contextId(String contextId) {
-                this.contextId = contextId;
-                return this;
-            }
-
-            public Builder currentVersion(ContextVersion currentVersion) {
-                this.currentVersion = currentVersion;
-                return this;
-            }
-
-            public Builder createdBy(String createdBy) {
-                this.createdBy = createdBy;
-                return this;
-            }
-
-            public Builder createdAt(Instant createdAt) {
-                this.createdAt = createdAt;
-                return this;
-            }
-
-            public Builder lastModifiedBy(String lastModifiedBy) {
-                this.lastModifiedBy = lastModifiedBy;
-                return this;
-            }
-
-            public Builder lastModifiedAt(Instant lastModifiedAt) {
-                this.lastModifiedAt = lastModifiedAt;
-                return this;
-            }
-
-            public Builder options(ContextOptions options) {
-                this.options = options;
-                return this;
-            }
-
-            public SharedContext build() {
-                return new SharedContext(this);
-            }
-        }
-    }
-
-    /**
-     * Context version
-     */
-    public static class ContextVersion {
-        private final String versionId;
-        private final String contextId;
-        private final String agentId;
-        private final Instant timestamp;
-        private final Map<String, Object> data;
-        private final ContextOptions options;
-
-        private ContextVersion(Builder builder) {
-            this.versionId = builder.versionId;
-            this.contextId = builder.contextId;
-            this.agentId = builder.agentId;
-            this.timestamp = builder.timestamp;
-            this.data = builder.data;
-            this.options = builder.options;
-        }
-
-        // Getters
-        public String getVersionId() {
-            return versionId;
-        }
-
-        public String getContextId() {
-            return contextId;
-        }
-
-        public String getAgentId() {
-            return agentId;
-        }
-
-        public Instant getTimestamp() {
-            return timestamp;
-        }
-
-        public Map<String, Object> getData() {
-            return data;
-        }
-
-        public ContextOptions getOptions() {
-            return options;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private String versionId;
-            private String contextId;
-            private String agentId;
-            private Instant timestamp;
-            private Map<String, Object> data;
-            private ContextOptions options;
-
-            public Builder versionId(String versionId) {
-                this.versionId = versionId;
-                return this;
-            }
-
-            public Builder contextId(String contextId) {
-                this.contextId = contextId;
-                return this;
-            }
-
-            public Builder agentId(String agentId) {
-                this.agentId = agentId;
-                return this;
-            }
-
-            public Builder timestamp(Instant timestamp) {
-                this.timestamp = timestamp;
-                return this;
-            }
-
-            public Builder data(Map<String, Object> data) {
-                this.data = data;
-                return this;
-            }
-
-            public Builder options(ContextOptions options) {
-                this.options = options;
-                return this;
-            }
-
-            public ContextVersion build() {
-                return new ContextVersion(this);
-            }
-        }
-    }
-
-    /**
-     * Context options
-     */
-    public static class ContextOptions {
-        private final long expectedVersion;
-        private final boolean persistent;
-        private final Duration ttl;
-        private final Map<String, Object> metadata;
-
-        private ContextOptions(Builder builder) {
-            this.expectedVersion = builder.expectedVersion;
-            this.persistent = builder.persistent;
-            this.ttl = builder.ttl;
-            this.metadata = builder.metadata;
-        }
-
-        // Getters
-        public long getExpectedVersion() {
-            return expectedVersion;
-        }
-
-        public boolean isPersistent() {
-            return persistent;
-        }
-
-        public Duration getTtl() {
-            return ttl;
-        }
-
-        public Map<String, Object> getMetadata() {
-            return metadata;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private long expectedVersion = -1;
-            private boolean persistent = false;
-            private Duration ttl = Duration.ofHours(24);
-            private Map<String, Object> metadata = Map.of();
-
-            public Builder expectedVersion(long expectedVersion) {
-                this.expectedVersion = expectedVersion;
-                return this;
-            }
-
-            public Builder persistent(boolean persistent) {
-                this.persistent = persistent;
-                return this;
-            }
-
-            public Builder ttl(Duration ttl) {
-                this.ttl = ttl;
-                return this;
-            }
-
-            public Builder metadata(Map<String, Object> metadata) {
-                this.metadata = metadata;
-                return this;
-            }
-
-            public ContextOptions build() {
-                return new ContextOptions(this);
-            }
-        }
-    }
-
-    /**
-     * Context permission
-     */
-    public static class ContextPermission {
-        private final boolean canRead;
-        private final boolean canWrite;
-        private final boolean canDelete;
-        private final boolean isAdmin;
-
-        public ContextPermission(boolean canRead, boolean canWrite, boolean canDelete, boolean isAdmin) {
-            this.canRead = canRead;
-            this.canWrite = canWrite;
-            this.canDelete = canDelete;
-            this.isAdmin = isAdmin;
-        }
-
-        // Getters
-        public boolean canRead() {
-            return canRead;
-        }
-
-        public boolean canWrite() {
-            return canWrite;
-        }
-
-        public boolean canDelete() {
-            return canDelete;
-        }
-
-        public boolean isAdmin() {
-            return isAdmin;
-        }
-    }
-
-    /**
-     * Cached context
-     */
-    public static class CachedContext {
-        private final SharedContext context;
-        private final ContextVersion version;
-        private final Instant expiryTime;
-
-        public CachedContext(SharedContext context, ContextVersion version, Instant expiryTime) {
-            this.context = context;
-            this.version = version;
-            this.expiryTime = expiryTime;
-        }
-
-        // Getters
-        public SharedContext getContext() {
-            return context;
-        }
-
-        public ContextVersion getVersion() {
-            return version;
-        }
-
-        public Instant getExpiryTime() {
-            return expiryTime;
-        }
-
-        public boolean isExpired() {
-            return Instant.now().isAfter(expiryTime);
-        }
-    }
-
-    /**
-     * Context schema
-     */
-    public static class ContextSchema {
-        private final String contextId;
-        private final Map<String, String> requiredFields;
-        private final Map<String, String> optionalFields;
-        private final String version;
-
-        public ContextSchema(String contextId, Map<String, String> requiredFields, Map<String, String> optionalFields,
-                String version) {
-            this.contextId = contextId;
-            this.requiredFields = requiredFields;
-            this.optionalFields = optionalFields;
-            this.version = version;
-        }
-
-        // Getters
-        public String getContextId() {
-            return contextId;
-        }
-
-        public Map<String, String> getRequiredFields() {
-            return requiredFields;
-        }
-
-        public Map<String, String> getOptionalFields() {
-            return optionalFields;
-        }
-
-        public String getVersion() {
-            return version;
-        }
-
-        public boolean validate(Map<String, Object> data) {
-            // Placeholder for schema validation implementation
-            return true;
-        }
-    }
-
-    /**
-     * Context manager statistics
-     */
-    public static class ContextManagerStatistics {
-        private final long totalContextReads;
-        private final long totalContextWrites;
-        private final long totalContextConflicts;
-        private final long totalContextCacheHits;
-        private final long totalContextCacheMisses;
-        private final int storedContexts;
-        private final int storedVersions;
-        private final int cachedContexts;
-        private final int activeListeners;
-
-        public ContextManagerStatistics(long totalContextReads, long totalContextWrites, long totalContextConflicts,
-                long totalContextCacheHits, long totalContextCacheMisses, int storedContexts, int storedVersions,
-                int cachedContexts, int activeListeners) {
-            this.totalContextReads = totalContextReads;
-            this.totalContextWrites = totalContextWrites;
-            this.totalContextConflicts = totalContextConflicts;
-            this.totalContextCacheHits = totalContextCacheHits;
-            this.totalContextCacheMisses = totalContextCacheMisses;
-            this.storedContexts = storedContexts;
-            this.storedVersions = storedVersions;
-            this.cachedContexts = cachedContexts;
-            this.activeListeners = activeListeners;
-        }
-
-        // Getters
-        public long getTotalContextReads() {
-            return totalContextReads;
-        }
-
-        public long getTotalContextWrites() {
-            return totalContextWrites;
-        }
-
-        public long getTotalContextConflicts() {
-            return totalContextConflicts;
-        }
-
-        public long getTotalContextCacheHits() {
-            return totalContextCacheHits;
-        }
-
-        public long getTotalContextCacheMisses() {
-            return totalContextCacheMisses;
-        }
-
-        public int getStoredContexts() {
-            return storedContexts;
-        }
-
-        public int getStoredVersions() {
-            return storedVersions;
-        }
-
-        public int getCachedContexts() {
-            return cachedContexts;
-        }
-
-        public int getActiveListeners() {
-            return activeListeners;
-        }
-    }
-
-    /**
-     * Context manager configuration
-     */
-    public static class ContextManagerConfiguration {
-        private Duration cacheExpiry = Duration.ofMinutes(30);
-        private Duration versionRetentionPeriod = Duration.ofDays(7);
-        private int maxCacheSize = 1000;
-        private int maxVersionsPerContext = 100;
-        private boolean enableBackup = true;
-        private Duration backupInterval = Duration.ofHours(1);
-
-        // Getters and setters
-        public Duration getCacheExpiry() {
-            return cacheExpiry;
-        }
-
-        public void setCacheExpiry(Duration cacheExpiry) {
-            this.cacheExpiry = cacheExpiry;
-        }
-
-        public Duration getVersionRetentionPeriod() {
-            return versionRetentionPeriod;
-        }
-
-        public void setVersionRetentionPeriod(Duration versionRetentionPeriod) {
-            this.versionRetentionPeriod = versionRetentionPeriod;
-        }
-
-        public int getMaxCacheSize() {
-            return maxCacheSize;
-        }
-
-        public void setMaxCacheSize(int maxCacheSize) {
-            this.maxCacheSize = maxCacheSize;
-        }
-
-        public int getMaxVersionsPerContext() {
-            return maxVersionsPerContext;
-        }
-
-        public void setMaxVersionsPerContext(int maxVersionsPerContext) {
-            this.maxVersionsPerContext = maxVersionsPerContext;
-        }
-
-        public boolean isEnableBackup() {
-            return enableBackup;
-        }
-
-        public void setEnableBackup(boolean enableBackup) {
-            this.enableBackup = enableBackup;
-        }
-
-        public Duration getBackupInterval() {
-            return backupInterval;
-        }
-
-        public void setBackupInterval(Duration backupInterval) {
-            this.backupInterval = backupInterval;
-        }
-    }
-
-    // Enums
-    public enum ContextChangeType {
-        CREATED,
-        UPDATED,
-        DELETED
-    }
-
-    // Interfaces
-    public interface ContextChangeListener {
-        void onContextChange(String contextId, ContextChangeType changeType, String agentId,
-                @Nullable Map<String, Object> data);
-    }
-
-    public interface ContextOperationResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        static ContextOperationResult success(String message) {
-            return new ContextOperationResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static ContextOperationResult failure(String message) {
-            return new ContextOperationResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static ContextOperationResult permissionDenied(String message) {
-            return new ContextOperationResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Permission denied: " + message;
-                }
-            };
-        }
-
-        static ContextOperationResult validationFailed(String message) {
-            return new ContextOperationResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Validation failed: " + message;
-                }
-            };
-        }
-
-        static ContextOperationResult conflict(String message) {
-            return new ContextOperationResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Conflict: " + message;
-                }
-            };
-        }
-
-        static ContextOperationResult notFound(String message) {
-            return new ContextOperationResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Not found: " + message;
-                }
-            };
-        }
-    }
-
-    public interface ContextRetrievalResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        @Nullable
-        SharedContext getContext();
-
-        @Nullable
-        ContextVersion getVersion();
-
-        static ContextRetrievalResult success(SharedContext context, ContextVersion version) {
-            return new ContextRetrievalResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Context retrieved successfully";
-                }
-
-                @Override
-                public SharedContext getContext() {
-                    return context;
-                }
-
-                @Override
-                public ContextVersion getVersion() {
-                    return version;
-                }
-            };
-        }
-
-        static ContextRetrievalResult failure(String message) {
-            return new ContextRetrievalResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public SharedContext getContext() {
-                    return null;
-                }
-
-                @Override
-                public ContextVersion getVersion() {
-                    return null;
-                }
-            };
-        }
-
-        static ContextRetrievalResult permissionDenied(String message) {
-            return new ContextRetrievalResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Permission denied: " + message;
-                }
-
-                @Override
-                public SharedContext getContext() {
-                    return null;
-                }
-
-                @Override
-                public ContextVersion getVersion() {
-                    return null;
-                }
-            };
-        }
-
-        static ContextRetrievalResult notFound(String message) {
-            return new ContextRetrievalResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Not found: " + message;
-                }
-
-                @Override
-                public SharedContext getContext() {
-                    return null;
-                }
-
-                @Override
-                public ContextVersion getVersion() {
-                    return null;
-                }
-            };
-        }
-    }
-
-    public interface BackupResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        static BackupResult success(String message) {
-            return new BackupResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static BackupResult failure(String message) {
-            return new BackupResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static BackupResult notFound(String message) {
-            return new BackupResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Not found: " + message;
-                }
-            };
-        }
-    }
-
-    public interface RestoreResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        static RestoreResult success(String message) {
-            return new RestoreResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static RestoreResult failure(String message) {
-            return new RestoreResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static RestoreResult permissionDenied(String message) {
-            return new RestoreResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Permission denied: " + message;
-                }
-            };
         }
     }
 }

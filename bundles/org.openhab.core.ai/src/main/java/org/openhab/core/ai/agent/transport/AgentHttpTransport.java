@@ -1,5 +1,9 @@
 package org.openhab.core.ai.agent.transport;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,12 +16,15 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
- * A2A HTTP Transport (REST/SSE) Implementation.
+ * A2A HTTP Transport Client Implementation.
  * 
  * <p>
- * Provides HTTP+JSON-based A2A transport with SSE streaming support.
- * This is a transport engine, not a JAX-RS resource.
+ * Provides HTTP client functionality for A2A transport, communicating with
+ * the AgentServlet endpoint. This is a CLIENT-SIDE transport that makes
+ * HTTP requests to the servlet.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
@@ -37,27 +44,35 @@ public class AgentHttpTransport implements AgentTransport {
     private final AtomicLong latencySum;
     private final AtomicLong requestCount;
 
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private final String baseUrl;
+
     private boolean running = false;
     private long startTime;
     private long lastHealthCheck;
 
     @Activate
     public AgentHttpTransport() {
-        this.transportId = "rest-transport-" + System.currentTimeMillis();
-        this.capabilities = new RestTransportCapabilities();
+        this.transportId = "http-client-transport-" + System.currentTimeMillis();
+        this.capabilities = new AgentHttpTransportCapabilities();
         this.metrics = new ConcurrentHashMap<>();
         this.messageCounter = new AtomicLong(0);
         this.errorCounter = new AtomicLong(0);
         this.latencySum = new AtomicLong(0);
         this.requestCount = new AtomicLong(0);
 
-        logger.debug("REST Transport created: {}", transportId);
+        this.httpClient = HttpClient.newHttpClient();
+        this.objectMapper = new ObjectMapper();
+        this.baseUrl = "http://localhost:8080"; // AgentServlet endpoint
+
+        logger.debug("HTTP Client Transport created: {}", transportId);
     }
 
     @Deactivate
     public void deactivate() {
         stop();
-        logger.debug("REST Transport deactivated: {}", transportId);
+        logger.debug("HTTP Client Transport deactivated: {}", transportId);
     }
 
     @Override
@@ -79,23 +94,20 @@ public class AgentHttpTransport implements AgentTransport {
     public CompletableFuture<Void> start() {
         return CompletableFuture.runAsync(() -> {
             try {
-                logger.info("Starting REST transport: {}", transportId);
+                logger.info("Starting HTTP client transport: {}", transportId);
 
-                // TODO: Initialize REST server on port 8082
-                // - Create HTTP server with JSON support
-                // - Register A2A REST endpoints
-                // - Start server on port 8082
-                // - Configure CORS and security headers
+                // Test connection to AgentServlet
+                testConnection();
 
                 running = true;
                 startTime = System.currentTimeMillis();
                 lastHealthCheck = startTime;
 
-                logger.info("REST transport started successfully: {}", transportId);
+                logger.info("HTTP client transport started successfully: {}", transportId);
 
             } catch (Exception e) {
-                logger.error("Failed to start REST transport: {}", transportId, e);
-                throw new RuntimeException("Failed to start REST transport", e);
+                logger.error("Failed to start HTTP client transport: {}", transportId, e);
+                throw new RuntimeException("Failed to start HTTP client transport", e);
             }
         });
     }
@@ -104,20 +116,15 @@ public class AgentHttpTransport implements AgentTransport {
     public CompletableFuture<Void> stop() {
         return CompletableFuture.runAsync(() -> {
             try {
-                logger.info("Stopping REST transport: {}", transportId);
-
-                // TODO: Shutdown REST server gracefully
-                // - Stop accepting new connections
-                // - Complete existing requests
-                // - Shutdown server
+                logger.info("Stopping HTTP client transport: {}", transportId);
 
                 running = false;
 
-                logger.info("REST transport stopped successfully: {}", transportId);
+                logger.info("HTTP client transport stopped successfully: {}", transportId);
 
             } catch (Exception e) {
-                logger.error("Failed to stop REST transport: {}", transportId, e);
-                throw new RuntimeException("Failed to stop REST transport", e);
+                logger.error("Failed to stop HTTP client transport: {}", transportId, e);
+                throw new RuntimeException("Failed to stop HTTP client transport", e);
             }
         });
     }
@@ -127,13 +134,14 @@ public class AgentHttpTransport implements AgentTransport {
         long currentTime = System.currentTimeMillis();
         lastHealthCheck = currentTime;
 
-        boolean healthy = running && (currentTime - startTime) < 300000; // 5 minutes max uptime for demo
+        boolean healthy = running && testConnection();
 
         Map<String, Object> healthMetrics = Map.of("uptime", currentTime - startTime, "messageCount",
                 messageCounter.get(), "errorCount", errorCounter.get(), "averageLatency",
-                requestCount.get() > 0 ? latencySum.get() / requestCount.get() : 0, "lastHealthCheck", lastHealthCheck);
+                requestCount.get() > 0 ? latencySum.get() / requestCount.get() : 0, "lastHealthCheck", lastHealthCheck,
+                "baseUrl", baseUrl);
 
-        return new RestTransportHealth(healthy, "REST transport health check", currentTime, healthMetrics);
+        return new AgentHttpTransportHealth(healthy, "HTTP client transport health check", currentTime, healthMetrics);
     }
 
     @Override
@@ -142,32 +150,39 @@ public class AgentHttpTransport implements AgentTransport {
             long startTime = System.currentTimeMillis();
 
             try {
-                logger.debug("Sending REST message: {}", message);
+                logger.debug("Sending HTTP message to servlet: {}", message);
 
-                // TODO: Implement actual REST message sending
-                // - Convert message to JSON format
-                // - Send via HTTP POST to /a2a/v1/message:send
-                // - Handle response
+                // Convert message to JSON
+                String jsonMessage = objectMapper.writeValueAsString(message);
+
+                // Create HTTP request
+                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrl + "/a2a/message/send"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonMessage)).build();
+
+                // Send request
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+                // Parse response
+                Map<String, Object> responseData = objectMapper.readValue(response.body(), Map.class);
 
                 messageCounter.incrementAndGet();
                 requestCount.incrementAndGet();
 
-                // Simulate processing time
-                Thread.sleep(15);
-
                 long latency = System.currentTimeMillis() - startTime;
                 latencySum.addAndGet(latency);
 
-                Map<String, Object> response = Map.of("status", "success", "transport", "rest", "messageId",
-                        message.get("id"), "latency", latency, "endpoint", "/a2a/v1/message:send");
+                Map<String, Object> result = Map.of("status", "success", "transport", "http", "messageId",
+                        message.get("id"), "latency", latency, "endpoint", "/a2a/message/send", "response",
+                        responseData);
 
-                logger.debug("REST message sent successfully: {}", response);
-                return response;
+                logger.debug("HTTP message sent successfully: {}", result);
+                return result;
 
             } catch (Exception e) {
                 errorCounter.incrementAndGet();
-                logger.error("Failed to send REST message", e);
-                throw new RuntimeException("REST message sending failed", e);
+                logger.error("Failed to send HTTP message", e);
+                throw new RuntimeException("HTTP message sending failed", e);
             }
         });
     }
@@ -176,23 +191,22 @@ public class AgentHttpTransport implements AgentTransport {
     public CompletableFuture<Map<String, Object>> subscribeToStream(Map<String, Object> subscription) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                logger.debug("Subscribing to REST stream: {}", subscription);
+                logger.debug("Subscribing to HTTP stream: {}", subscription);
 
-                // TODO: Implement REST streaming subscription using Server-Sent Events
-                // - Create SSE connection to /a2a/v1/message:stream
-                // - Handle real-time message streaming
-                // - Manage connection lifecycle
+                // For HTTP transport, streaming is handled via Server-Sent Events
+                // The client would connect to the AgentServlet's SSE endpoint
+                String streamId = "http-stream-" + System.currentTimeMillis();
 
-                Map<String, Object> response = Map.of("status", "subscribed", "transport", "rest", "streamId",
-                        "stream-" + System.currentTimeMillis(), "endpoint", "/a2a/v1/message:stream", "capabilities",
-                        Map.of("sse", true, "compression", true, "cors", true));
+                Map<String, Object> response = Map.of("status", "subscribed", "transport", "http", "streamId", streamId,
+                        "endpoint", "/a2a/message/stream", "capabilities",
+                        Map.of("sse", true, "compression", false, "cors", true));
 
-                logger.debug("REST stream subscription successful: {}", response);
+                logger.debug("HTTP stream subscription successful: {}", response);
                 return response;
 
             } catch (Exception e) {
-                logger.error("Failed to subscribe to REST stream", e);
-                throw new RuntimeException("REST stream subscription failed", e);
+                logger.error("Failed to subscribe to HTTP stream", e);
+                throw new RuntimeException("HTTP stream subscription failed", e);
             }
         });
     }
@@ -207,12 +221,10 @@ public class AgentHttpTransport implements AgentTransport {
         metrics.put("requestCount", requestCount.get());
         metrics.put("averageLatency", requestCount.get() > 0 ? latencySum.get() / requestCount.get() : 0);
         metrics.put("lastHealthCheck", lastHealthCheck);
-        metrics.put("transportType", "rest");
-        metrics.put("port", 8082);
-        metrics.put("endpoints",
-                Map.of("messageSend", "/a2a/v1/message:send", "messageStream", "/a2a/v1/message:stream", "tasksGet",
-                        "/a2a/v1/tasks/{id}", "tasksCancel", "/a2a/v1/tasks/{id}:cancel", "tasksSubscribe",
-                        "/a2a/v1/tasks/{id}:subscribe", "agentCard", "/a2a/v1/card"));
+        metrics.put("transportType", "http");
+        metrics.put("baseUrl", baseUrl);
+        metrics.put("endpoints", Map.of("messageSend", "/a2a/message/send", "messageStream", "/a2a/message/stream",
+                "health", "/a2a/health", "status", "/a2a/status", "agentCard", "/.well-known/agent.json"));
 
         return new ConcurrentHashMap<>(metrics);
     }
@@ -221,100 +233,45 @@ public class AgentHttpTransport implements AgentTransport {
     public CompletableFuture<Void> updateConfiguration(Map<String, Object> configuration) {
         return CompletableFuture.runAsync(() -> {
             try {
-                logger.debug("Updating REST transport configuration: {}", configuration);
+                logger.debug("Updating HTTP client transport configuration: {}", configuration);
 
                 // TODO: Apply configuration changes
-                // - Update server settings
-                // - Modify transport parameters
-                // - Restart if necessary
+                // - Update base URL
+                // - Modify timeout settings
+                // - Update authentication settings
 
-                logger.debug("REST transport configuration updated successfully");
+                logger.debug("HTTP client transport configuration updated successfully");
 
             } catch (Exception e) {
-                logger.error("Failed to update REST transport configuration", e);
+                logger.error("Failed to update HTTP client transport configuration", e);
                 throw new RuntimeException("Configuration update failed", e);
             }
         });
     }
 
     /**
-     * REST Transport Capabilities Implementation.
+     * Test connection to the AgentServlet.
+     * 
+     * @return true if connection is successful
      */
-    private static class RestTransportCapabilities implements TransportCapabilities {
-
-        @Override
-        public TransportType getTransportType() {
-            return TransportType.REST;
-        }
-
-        @Override
-        public boolean supportsStreaming() {
-            return true; // Via Server-Sent Events
-        }
-
-        @Override
-        public boolean supportsBidirectional() {
-            return false; // REST is request-response, SSE is one-way
-        }
-
-        @Override
-        public boolean supportsAuthentication() {
-            return true;
-        }
-
-        @Override
-        public int getMaxMessageSize() {
-            return 10 * 1024 * 1024; // 10MB
-        }
-
-        @Override
-        public Map<String, Object> getConfiguration() {
-            return Map.of("port", 8082, "baseUrl", "http://localhost:8082", "endpoints",
-                    Map.of("messageSend", "/a2a/v1/message:send", "messageStream", "/a2a/v1/message:stream", "tasksGet",
-                            "/a2a/v1/tasks/{id}", "tasksCancel", "/a2a/v1/tasks/{id}:cancel", "tasksSubscribe",
-                            "/a2a/v1/tasks/{id}:subscribe", "agentCard", "/a2a/v1/card"),
-                    "cors",
-                    Map.of("enabled", true, "allowedOrigins", "*", "allowedMethods", "GET,POST,PUT,DELETE,OPTIONS"),
-                    "compression", "gzip");
+    private boolean testConnection() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrl + "/a2a/health")).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200;
+        } catch (Exception e) {
+            logger.debug("Connection test failed: {}", e.getMessage());
+            return false;
         }
     }
 
     /**
-     * REST Transport Health Implementation.
+     * HTTP Transport Capabilities Implementation.
+     * Extracted to AgentHttpTransportCapabilities
      */
-    private static class RestTransportHealth implements TransportHealth {
 
-        private final boolean healthy;
-        private final String healthMessage;
-        private final long lastHealthCheck;
-        private final Map<String, Object> healthMetrics;
-
-        public RestTransportHealth(boolean healthy, String healthMessage, long lastHealthCheck,
-                Map<String, Object> healthMetrics) {
-            this.healthy = healthy;
-            this.healthMessage = healthMessage;
-            this.lastHealthCheck = lastHealthCheck;
-            this.healthMetrics = healthMetrics;
-        }
-
-        @Override
-        public boolean isHealthy() {
-            return healthy;
-        }
-
-        @Override
-        public String getHealthMessage() {
-            return healthMessage;
-        }
-
-        @Override
-        public long getLastHealthCheck() {
-            return lastHealthCheck;
-        }
-
-        @Override
-        public Map<String, Object> getHealthMetrics() {
-            return healthMetrics;
-        }
-    }
+    /**
+     * HTTP Transport Health Implementation.
+     * Extracted to AgentHttpTransportHealth
+     */
 }

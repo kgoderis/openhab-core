@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 package org.openhab.core.ai.reasoning;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,8 +26,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.model.api.ModelParameters;
-import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningConfiguration;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
@@ -24,6 +36,7 @@ import org.openhab.core.ai.reasoning.api.ReasoningContext;
  * Unit tests for MultiStepReasoningEngine
  * 
  * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
  */
 @ExtendWith(MockitoExtension.class)
 public class MultiStepReasoningEngineTest {
@@ -304,10 +317,10 @@ public class MultiStepReasoningEngineTest {
 
     @Test
     void testNullContextHandling() {
-        // When & Then
-        ReasoningContext nullContext = null;
+        // When & Then - The method should throw NullPointerException when context is null
+        // because it tries to access context.getInitialContext()
         assertThrows(NullPointerException.class, () -> {
-            reasoningEngine.reasonAsync(nullContext);
+            reasoningEngine.reasonAsync(null);
         });
     }
 

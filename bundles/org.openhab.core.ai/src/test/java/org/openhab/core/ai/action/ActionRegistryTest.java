@@ -13,6 +13,7 @@
 package org.openhab.core.ai.action;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.lenient;
 
 import java.time.Duration;
 import java.util.List;
@@ -49,6 +50,17 @@ class ActionRegistryTest {
     void setUp() {
         actionRegistry = new ActionRegistry();
         actionRegistry.activate(bundleContext);
+
+        // Configure mock action behavior with all required methods using lenient stubbing
+        lenient().when(mockAction.getActionId()).thenReturn("test-action");
+        lenient().when(mockAction.getActionName()).thenReturn("Test Action");
+        lenient().when(mockAction.getDescription()).thenReturn("A test action for unit testing");
+        lenient().when(mockAction.getCategory()).thenReturn("test");
+        lenient().when(mockAction.getVersion()).thenReturn("1.0.0");
+        lenient().when(mockAction.getParameterSchema()).thenReturn(Map.of());
+        lenient().when(mockAction.getReturnSchema()).thenReturn(Map.of());
+        lenient().when(mockAction.getCapabilities()).thenReturn(Map.of());
+        lenient().when(mockAction.isReady()).thenReturn(true);
     }
 
     @Test

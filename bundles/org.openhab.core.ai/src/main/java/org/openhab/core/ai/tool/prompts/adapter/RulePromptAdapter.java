@@ -10,6 +10,7 @@ import org.openhab.core.ai.tool.api.Adapter;
 import org.openhab.core.ai.tool.api.PromptContext;
 import org.openhab.core.ai.tool.api.PromptResult;
 import org.openhab.core.ai.tool.prompts.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
 import org.openhab.core.automation.Rule;
 import org.openhab.core.automation.RuleRegistry;
 import org.slf4j.Logger;
@@ -54,10 +55,10 @@ public class RulePromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         final String promptType = typeFromContext == null ? "status" : typeFromContext;
         String name = "Rule " + promptType + ": " + identifier;
         String description = "Prompt for rule " + identifier + " (" + promptType + ")";
-        Prompt.PromptArgument[] args = new Prompt.PromptArgument[] {
-                new Prompt.PromptArgument("ruleUID", "UID of the rule", true),
-                new Prompt.PromptArgument("promptType", "Type of prompt", false),
-                new Prompt.PromptArgument("includeTriggers", "Include trigger information", false) };
+        PromptArgument[] args = new PromptArgument[] {
+                new PromptArgument("ruleUID", "UID of the rule", true),
+                new PromptArgument("promptType", "Type of prompt", false),
+                new PromptArgument("includeTriggers", "Include trigger information", false) };
         return new Prompt(name, description, java.util.List.of(args));
     }
 

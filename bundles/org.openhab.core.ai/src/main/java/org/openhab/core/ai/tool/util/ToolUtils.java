@@ -254,65 +254,7 @@ public class ToolUtils {
     /**
      * Enhanced validation result with additional context.
      */
-    public static class EnhancedValidationResult {
-        private final boolean valid;
-        private final List<String> errors;
-        private final List<String> warnings;
-        private final String toolId;
-        private final Map<String, Object> parameters;
-        private final long validationTime;
-
-        public EnhancedValidationResult(boolean valid, List<String> errors, List<String> warnings, String toolId,
-                Map<String, Object> parameters) {
-            this.valid = valid;
-            this.errors = errors;
-            this.warnings = warnings;
-            this.toolId = toolId;
-            this.parameters = parameters;
-            this.validationTime = System.currentTimeMillis();
-        }
-
-        public boolean isValid() {
-            return valid;
-        }
-
-        public List<String> getErrors() {
-            return errors;
-        }
-
-        public List<String> getWarnings() {
-            return warnings;
-        }
-
-        public String getToolId() {
-            return toolId;
-        }
-
-        public Map<String, Object> getParameters() {
-            return parameters;
-        }
-
-        public long getValidationTime() {
-            return validationTime;
-        }
-
-        public boolean hasErrors() {
-            return !errors.isEmpty();
-        }
-
-        public boolean hasWarnings() {
-            return !warnings.isEmpty();
-        }
-
-        public String getValidationSummary() {
-            if (valid) {
-                return String.format("Validation passed for tool %s with %d warnings", toolId, warnings.size());
-            } else {
-                return String.format("Validation failed for tool %s with %d errors, %d warnings", toolId, errors.size(),
-                        warnings.size());
-            }
-        }
-    }
+    /* Extracted to top-level: org.openhab.core.ai.tool.util.EnhancedValidationResult */
 
     /**
      * Convert schema map to MCP JSON schema.
@@ -430,41 +372,5 @@ public class ToolUtils {
     /**
      * Tool performance metrics.
      */
-    public static class ToolPerformanceMetrics {
-        private final String toolId;
-        private final long executionTimeMs;
-        private final long timestamp;
-        private final String version;
-
-        public ToolPerformanceMetrics(String toolId, long executionTimeMs, long timestamp, String version) {
-            this.toolId = toolId;
-            this.executionTimeMs = executionTimeMs;
-            this.timestamp = timestamp;
-            this.version = version;
-        }
-
-        public String getToolId() {
-            return toolId;
-        }
-
-        public long getExecutionTimeMs() {
-            return executionTimeMs;
-        }
-
-        public long getTimestamp() {
-            return timestamp;
-        }
-
-        public String getVersion() {
-            return version;
-        }
-
-        public boolean isSlowExecution(long thresholdMs) {
-            return executionTimeMs > thresholdMs;
-        }
-
-        public String getPerformanceSummary() {
-            return String.format("Tool %s executed in %dms (version: %s)", toolId, executionTimeMs, version);
-        }
-    }
+    /* Extracted to top-level: org.openhab.core.ai.tool.util.ToolPerformanceMetrics */
 }

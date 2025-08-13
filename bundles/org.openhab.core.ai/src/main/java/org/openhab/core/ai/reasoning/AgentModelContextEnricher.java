@@ -1,6 +1,8 @@
 package org.openhab.core.ai.reasoning;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -346,9 +348,46 @@ public class AgentModelContextEnricher {
      * @return True if consistent, false otherwise
      */
     private boolean isConsistent(String agentType, String domain) {
-        // TODO: Implement proper agent type and domain consistency validation
-        // Simple consistency check - can be enhanced
-        return true; // Placeholder implementation
+        // Implement proper agent type and domain consistency validation
+        if (agentType == null || domain == null) {
+            return false;
+        }
+
+        // Define valid agent type and domain combinations
+        Map<String, Set<String>> validCombinations = new HashMap<>();
+
+        // Energy domain agents
+        validCombinations.put("energy",
+                Set.of("energy_optimizer", "power_monitor", "solar_controller", "battery_manager"));
+
+        // Security domain agents
+        validCombinations.put("security",
+                Set.of("security_monitor", "access_controller", "alarm_manager", "surveillance_agent"));
+
+        // Comfort domain agents
+        validCombinations.put("comfort",
+                Set.of("climate_controller", "lighting_manager", "entertainment_controller", "comfort_optimizer"));
+
+        // Automation domain agents
+        validCombinations.put("automation",
+                Set.of("scheduler", "rule_engine", "workflow_manager", "automation_coordinator"));
+
+        // Health domain agents
+        validCombinations.put("health",
+                Set.of("health_monitor", "medication_reminder", "wellness_tracker", "emergency_responder"));
+
+        // General purpose agents
+        validCombinations.put("general", Set.of("assistant", "coordinator", "orchestrator", "supervisor"));
+
+        // Check if the combination is valid
+        Set<String> validAgentTypes = validCombinations.get(domain.toLowerCase());
+        if (validAgentTypes != null) {
+            return validAgentTypes.contains(agentType.toLowerCase());
+        }
+
+        // If domain not found, check if it's a custom domain (allow with warning)
+        logger.debug("Unknown domain '{}' for agent type '{}', allowing as custom domain", domain, agentType);
+        return true;
     }
 
     /**

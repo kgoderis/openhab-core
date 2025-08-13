@@ -93,8 +93,137 @@ public class FilterValidationResult {
         return details;
     }
 
-    // TODO: Implement filter validation result caching
-    // TODO: Add support for filter validation result serialization
-    // TODO: Implement filter validation result comparison
-    // TODO: Add support for filter validation result metrics
+    // ===== CACHING SUPPORT =====
+
+    private static final java.util.concurrent.ConcurrentHashMap<String, FilterValidationResult> cache = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+    private final long cacheTimestamp = System.currentTimeMillis();
+
+    /**
+     * Cache this filter validation result with the given key.
+     * 
+     * @param cacheKey the cache key
+     */
+    public void cache(String cacheKey) {
+        cache.put(cacheKey, this);
+    }
+
+    /**
+     * Get a cached filter validation result.
+     * 
+     * @param cacheKey the cache key
+     * @return cached result or null if not found or expired
+     */
+    public static FilterValidationResult getCached(String cacheKey) {
+        FilterValidationResult result = cache.get(cacheKey);
+        if (result != null && System.currentTimeMillis() - result.cacheTimestamp < CACHE_TTL_MS) {
+            return result;
+        }
+        if (result != null) {
+            cache.remove(cacheKey); // Remove expired entry
+        }
+        return null;
+    }
+
+    /**
+     * Clear the filter validation result cache.
+     */
+    public static void clearCache() {
+        cache.clear();
+    }
+
+    /**
+     * Get cache statistics.
+     * 
+     * @return cache statistics
+     */
+    public static Map<String, Object> getCacheStats() {
+        Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("size", cache.size());
+        stats.put("ttlMs", CACHE_TTL_MS);
+        return stats;
+    }
+
+    // ===== SERIALIZATION SUPPORT =====
+
+    /**
+     * Convert this filter validation result to a JSON-serializable map.
+     * 
+     * @return serializable map representation
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new java.util.HashMap<>();
+        map.put("valid", valid);
+        map.put("errors", errors);
+        map.put("warnings", warnings);
+        map.put("details", details);
+        map.put("timestamp", System.currentTimeMillis());
+        return map;
+    }
+
+    /**
+     * Create a filter validation result from a map representation.
+     * 
+     * @param map the map representation
+     * @return filter validation result
+     */
+    @SuppressWarnings("unchecked")
+    public static FilterValidationResult fromMap(Map<String, Object> map) {
+        boolean valid = (Boolean) map.get("valid");
+        List<String> errors = (List<String>) map.get("errors");
+        List<String> warnings = (List<String>) map.get("warnings");
+        Map<String, Object> details = (Map<String, Object>) map.get("details");
+
+        return new FilterValidationResult(valid, errors, warnings, details);
+    }
+
+    // ===== COMPARISON METHODS =====
+
+    /**
+     * Compare this filter validation result with another.
+     * 
+     * @param other the other filter validation result
+     * @return comparison result
+     */
+    public FilterValidationComparisonResult compare(FilterValidationResult other) {
+        boolean sameValidity = this.valid == other.valid;
+        boolean sameErrors = this.errors.equals(other.errors);
+        boolean sameWarnings = this.warnings.equals(other.warnings);
+
+        return new FilterValidationComparisonResult(sameValidity, sameErrors, sameWarnings);
+    }
+
+    /**
+     * Check if this filter validation result is equivalent to another.
+     * 
+     * @param other the other filter validation result
+     * @return true if equivalent
+     */
+    public boolean isEquivalent(FilterValidationResult other) {
+        return this.valid == other.valid && this.errors.equals(other.errors) && this.warnings.equals(other.warnings);
+    }
+
+    // ===== METRICS SUPPORT =====
+
+    /**
+     * Get filter validation metrics for this result.
+     * 
+     * @return filter validation metrics
+     */
+    public FilterValidationMetrics getMetrics() {
+        return new FilterValidationMetrics(valid, errors.size(), warnings.size(), details.size(),
+                System.currentTimeMillis());
+    }
+
+    // ===== INNER CLASSES =====
+
+    /**
+     * Result of filter validation comparison.
+     */
+    // FilterValidationComparisonResult extracted to org.openhab.core.ai.tool.filter.validators.FilterValidationComparisonResult
+
+    /**
+     * Filter validation metrics.
+     */
+    // FilterValidationMetrics extracted to org.openhab.core.ai.tool.filter.validators.FilterValidationMetrics
 }

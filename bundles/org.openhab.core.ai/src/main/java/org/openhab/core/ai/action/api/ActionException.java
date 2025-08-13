@@ -14,6 +14,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class ActionException extends Exception {
 
+    private static final long serialVersionUID = 1L;
     private final String actionId;
     private final String errorCode;
 

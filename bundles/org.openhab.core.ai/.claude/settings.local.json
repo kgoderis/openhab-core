@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(python3:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(javac:*)",
+      "Bash(for:*)",
+      "Bash(do cp \"src/main/java/org/openhab/core/ai/agent/execution/$file\" \"test_agent_execution/$file\")",
+      "Bash(echo \"Copied $file\")",
+      "Bash(done)"
+    ],
+    "deny": []
+  }
+}

@@ -136,7 +136,7 @@ public final class RestSecurityFramework {
     }
 
     // Rate limiting
-    private static final Map<String, RateLimitInfo> rateLimitCache = new ConcurrentHashMap<>();
+    private static final Map<String, RestRateLimitInfo> rateLimitCache = new ConcurrentHashMap<>();
     private static final int DEFAULT_MAX_REQUESTS = 100;
     private static final long DEFAULT_WINDOW_MS = 60000; // 1 minute
 
@@ -156,13 +156,13 @@ public final class RestSecurityFramework {
         long currentTime = System.currentTimeMillis();
 
         // Get or create rate limit info
-        RateLimitInfo info = rateLimitCache.computeIfAbsent(cacheKey,
-                k -> new RateLimitInfo(DEFAULT_MAX_REQUESTS, 0, currentTime + DEFAULT_WINDOW_MS));
+        RestRateLimitInfo info = rateLimitCache.computeIfAbsent(cacheKey,
+                k -> new RestRateLimitInfo(DEFAULT_MAX_REQUESTS, 0, currentTime + DEFAULT_WINDOW_MS));
 
         // Check if window has expired
         if (currentTime > info.resetTime) {
             // Reset the window
-            info = new RateLimitInfo(DEFAULT_MAX_REQUESTS, 1, currentTime + DEFAULT_WINDOW_MS);
+            info = new RestRateLimitInfo(DEFAULT_MAX_REQUESTS, 1, currentTime + DEFAULT_WINDOW_MS);
             rateLimitCache.put(cacheKey, info);
             return false;
         }
@@ -174,7 +174,7 @@ public final class RestSecurityFramework {
         }
 
         // Increment request count
-        info = new RateLimitInfo(info.maxRequests, info.currentRequests + 1, info.resetTime);
+        info = new RestRateLimitInfo(info.maxRequests, info.currentRequests + 1, info.resetTime);
         rateLimitCache.put(cacheKey, info);
 
         return false;
@@ -183,17 +183,7 @@ public final class RestSecurityFramework {
     /**
      * Rate limit information
      */
-    private static class RateLimitInfo {
-        final int maxRequests;
-        final int currentRequests;
-        final long resetTime;
-
-        RateLimitInfo(int maxRequests, int currentRequests, long resetTime) {
-            this.maxRequests = maxRequests;
-            this.currentRequests = currentRequests;
-            this.resetTime = resetTime;
-        }
-    }
+    // Extracted: org.openhab.core.ai.rest.RestRateLimitInfo
 
     public static Response rateLimitExceeded(String endpoint) {
         LOGGER.warn("Rate limit exceeded for endpoint: {}", endpoint);

@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "timestamp": "2025-08-13T12:24:05.248054",
+  "backup_location": "backup_20250813_122405",
+  "files_processed": 1,
+  "successful_files": 1,
+  "failed_files": 0,
+  "total_constructs_extracted": 4,
+  "total_new_files_created": 4,
+  "created_files": [
+    "test_extraction/FilterRule.java",
+    "test_extraction/FilterType.java",
+    "test_extraction/FilterPerformanceStatistics.java",
+    "test_extraction/FilterRulePerformanceStatistics.java"
+  ],
+  "modified_files": [
+    "test_extraction/EventFilter.java"
+  ],
+  "detailed_results": [
+    {
+      "file": "test_extraction/EventFilter.java",
+      "success": true,
+      "constructs_found": 4,
+      "constructs_extracted": 4,
+      "new_files": [
+        "test_extraction/FilterRule.java",
+        "test_extraction/FilterType.java",
+        "test_extraction/FilterPerformanceStatistics.java",
+        "test_extraction/FilterRulePerformanceStatistics.java"
+      ],
+      "errors": []
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.api.PromptRegistry;
 import org.openhab.core.ai.tool.prompts.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -55,11 +56,11 @@ public class PromptTemplateService {
         try {
             // Basic templates; extend as needed
             templates.put("system_status", new Prompt("System Status", "Report overall system status",
-                    java.util.List.of(new Prompt.PromptArgument("format", "Output format", false))));
+                    java.util.List.of(new PromptArgument("format", "Output format", false))));
             templates.put("item_control",
                     new Prompt("Item Control", "Control an item",
-                            java.util.List.of(new Prompt.PromptArgument("itemName", "Name of the item", true),
-                                    new Prompt.PromptArgument("command", "Command to send", true))));
+                            java.util.List.of(new PromptArgument("itemName", "Name of the item", true),
+                                    new PromptArgument("command", "Command to send", true))));
             logger.info("Initialized {} prompt templates", templates.size());
         } catch (Exception e) {
             logger.error("Failed to initialize prompt templates", e);

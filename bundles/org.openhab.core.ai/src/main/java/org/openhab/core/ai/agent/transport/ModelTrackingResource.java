@@ -17,6 +17,11 @@ import javax.ws.rs.core.Response;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.model.ModelTrackingService;
+import org.openhab.core.ai.model.AgentClientSession;
+import org.openhab.core.ai.model.ClientPerformanceMetrics;
+import org.openhab.core.ai.model.ClientUsageInfo;
+import org.openhab.core.ai.model.ProviderUsageStats;
+import org.openhab.core.ai.model.SystemUsageStats;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.rest.SharedRestInfrastructure;
 import org.openhab.core.io.rest.RESTConstants;
@@ -81,11 +86,11 @@ public class ModelTrackingResource implements RESTResource {
         }
 
         try {
-            Map<String, ModelTrackingService.ClientUsageInfo> clientUsage = service.getClientUsage();
+            Map<String, ClientUsageInfo> clientUsage = service.getClientUsage();
             List<Map<String, Object>> clients = new ArrayList<>();
 
-            for (Map.Entry<String, ModelTrackingService.ClientUsageInfo> entry : clientUsage.entrySet()) {
-                ModelTrackingService.ClientUsageInfo usage = entry.getValue();
+            for (Map.Entry<String, ClientUsageInfo> entry : clientUsage.entrySet()) {
+                ClientUsageInfo usage = entry.getValue();
                 Map<String, Object> client = new HashMap<>();
                 client.put("client_key", entry.getKey());
                 client.put("provider_type", usage.getProviderType().name());
@@ -124,7 +129,7 @@ public class ModelTrackingResource implements RESTResource {
 
         try {
             ModelProviderType providerType = ModelProviderType.valueOf(providerTypeStr.toUpperCase());
-            ModelTrackingService.ClientUsageInfo usage = service.getClientUsage(providerType, modelName);
+            ClientUsageInfo usage = service.getClientUsage(providerType, modelName);
 
             if (usage == null) {
                 return SharedRestInfrastructure.error(404, "Client not found: " + providerType + "/" + modelName);
@@ -145,7 +150,7 @@ public class ModelTrackingResource implements RESTResource {
             client.put("agent_ids", new ArrayList<>(usage.getActiveAgents().keySet()));
 
             // Add performance metrics if available
-            ModelTrackingService.ClientPerformanceMetrics performance = service.getClientPerformance(providerType,
+            ClientPerformanceMetrics performance = service.getClientPerformance(providerType,
                     modelName);
             if (performance != null) {
                 Map<String, Object> metrics = new HashMap<>();
@@ -205,10 +210,10 @@ public class ModelTrackingResource implements RESTResource {
         }
 
         try {
-            List<ModelTrackingService.AgentClientSession> activeSessions = service.getActiveSessions();
+            List<AgentClientSession> activeSessions = service.getActiveSessions();
             Map<String, List<Map<String, Object>>> agentSessions = new HashMap<>();
 
-            for (ModelTrackingService.AgentClientSession session : activeSessions) {
+            for (AgentClientSession session : activeSessions) {
                 String agentId = session.getAgentId();
                 agentSessions.computeIfAbsent(agentId, k -> new ArrayList<>()).add(createSessionMap(session));
             }
@@ -243,8 +248,8 @@ public class ModelTrackingResource implements RESTResource {
         }
 
         try {
-            List<ModelTrackingService.AgentClientSession> sessions = service.getAgentSessions(agentId);
-            List<ModelTrackingService.ClientUsageInfo> clients = service.getAgentClients(agentId);
+            List<AgentClientSession> sessions = service.getAgentSessions(agentId);
+            List<ClientUsageInfo> clients = service.getAgentClients(agentId);
 
             Map<String, Object> agent = new HashMap<>();
             agent.put("agent_id", agentId);
@@ -276,12 +281,12 @@ public class ModelTrackingResource implements RESTResource {
         }
 
         try {
-            Map<ModelProviderType, ModelTrackingService.ProviderUsageStats> providerStats = service.getProviderStats();
+            Map<ModelProviderType, ProviderUsageStats> providerStats = service.getProviderStats();
             List<Map<String, Object>> providers = new ArrayList<>();
 
-            for (Map.Entry<ModelProviderType, ModelTrackingService.ProviderUsageStats> entry : providerStats
+            for (Map.Entry<ModelProviderType, ProviderUsageStats> entry : providerStats
                     .entrySet()) {
-                ModelTrackingService.ProviderUsageStats stats = entry.getValue();
+                ProviderUsageStats stats = entry.getValue();
                 Map<String, Object> provider = new HashMap<>();
                 provider.put("provider_type", entry.getKey().name());
                 provider.put("display_name", entry.getKey().getDisplayName());
@@ -317,8 +322,8 @@ public class ModelTrackingResource implements RESTResource {
 
         try {
             ModelProviderType providerType = ModelProviderType.valueOf(providerTypeStr.toUpperCase());
-            Map<ModelProviderType, ModelTrackingService.ProviderUsageStats> providerStats = service.getProviderStats();
-            ModelTrackingService.ProviderUsageStats stats = providerStats.get(providerType);
+            Map<ModelProviderType, ProviderUsageStats> providerStats = service.getProviderStats();
+            ProviderUsageStats stats = providerStats.get(providerType);
 
             if (stats == null) {
                 return SharedRestInfrastructure.error(404, "Provider not found: " + providerType);
@@ -357,7 +362,7 @@ public class ModelTrackingResource implements RESTResource {
         }
 
         try {
-            ModelTrackingService.SystemUsageStats stats = service.getSystemStats();
+            SystemUsageStats stats = service.getSystemStats();
 
             Map<String, Object> systemStats = new HashMap<>();
             systemStats.put("total_requests", stats.getTotalRequests());
@@ -384,9 +389,9 @@ public class ModelTrackingResource implements RESTResource {
         }
 
         try {
-            ModelTrackingService.SystemUsageStats stats = service.getSystemStats();
-            Map<String, ModelTrackingService.ClientUsageInfo> clientUsage = service.getClientUsage();
-            List<ModelTrackingService.AgentClientSession> activeSessions = service.getActiveSessions();
+            SystemUsageStats stats = service.getSystemStats();
+            Map<String, ClientUsageInfo> clientUsage = service.getClientUsage();
+            List<AgentClientSession> activeSessions = service.getActiveSessions();
 
             Map<String, Object> health = new HashMap<>();
             health.put("status", "healthy");
@@ -420,7 +425,7 @@ public class ModelTrackingResource implements RESTResource {
 
     // Helper methods
 
-    private Map<String, Object> createSessionMap(ModelTrackingService.AgentClientSession session) {
+    private Map<String, Object> createSessionMap(AgentClientSession session) {
         Map<String, Object> sessionMap = new HashMap<>();
         sessionMap.put("agent_id", session.getAgentId());
         sessionMap.put("provider_type", session.getProviderType().name());
@@ -432,7 +437,7 @@ public class ModelTrackingResource implements RESTResource {
         return sessionMap;
     }
 
-    private Map<String, Object> createClientUsageMap(ModelTrackingService.ClientUsageInfo usage) {
+    private Map<String, Object> createClientUsageMap(ClientUsageInfo usage) {
         Map<String, Object> clientMap = new HashMap<>();
         clientMap.put("provider_type", usage.getProviderType().name());
         clientMap.put("model_name", usage.getModelName());

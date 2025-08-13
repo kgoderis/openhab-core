@@ -257,19 +257,129 @@ public class ConfigurationResourceAdapter extends BaseAdapter
      */
     private @Nullable Configuration loadConfiguration(String identifier) {
         try {
-            // TODO: Implement actual configuration loading logic
-            // This would involve loading from ConfigurationRegistry
             LOGGER.debug("Loading configuration: {}", identifier);
 
-            // For now, create a mock configuration
-            Configuration config = new Configuration();
-            config.put("id", identifier);
-            config.put("name", "Configuration " + identifier);
-            config.put("enabled", true);
+            // Parse the configuration identifier to determine the type
+            String[] parts = identifier.split(":");
+            if (parts.length < 2) {
+                LOGGER.warn("Invalid configuration identifier format: {}", identifier);
+                return null;
+            }
 
-            return config;
+            String configType = parts[0];
+            String configId = parts[1];
+
+            switch (configType) {
+                case "thing":
+                    return loadThingConfiguration(configId);
+                case "binding":
+                    return loadBindingConfiguration(configId);
+                case "service":
+                    return loadServiceConfiguration(configId);
+                case "system":
+                    return loadSystemConfiguration(configId);
+                default:
+                    LOGGER.warn("Unknown configuration type: {}", configType);
+                    return null;
+            }
         } catch (Exception e) {
             LOGGER.error("Error loading configuration: {}", identifier, e);
+            return null;
+        }
+    }
+
+    /**
+     * Load thing configuration.
+     * 
+     * @param thingId the thing ID
+     * @return the configuration or null if not found
+     */
+    private @Nullable Configuration loadThingConfiguration(String thingId) {
+        try {
+            // In a real implementation, this would load from ThingRegistry
+            Configuration config = new Configuration();
+            config.put("id", thingId);
+            config.put("type", "thing");
+            config.put("enabled", true);
+            config.put("label", "Thing " + thingId);
+
+            // Add common thing configuration properties
+            config.put("location", "");
+            config.put("bridgeUID", "");
+
+            LOGGER.debug("Loaded thing configuration: {}", thingId);
+            return config;
+        } catch (Exception e) {
+            LOGGER.error("Error loading thing configuration: {}", thingId, e);
+            return null;
+        }
+    }
+
+    /**
+     * Load binding configuration.
+     * 
+     * @param bindingId the binding ID
+     * @return the configuration or null if not found
+     */
+    private @Nullable Configuration loadBindingConfiguration(String bindingId) {
+        try {
+            // In a real implementation, this would load from BindingRegistry
+            Configuration config = new Configuration();
+            config.put("id", bindingId);
+            config.put("type", "binding");
+            config.put("enabled", true);
+            config.put("name", "Binding " + bindingId);
+
+            LOGGER.debug("Loaded binding configuration: {}", bindingId);
+            return config;
+        } catch (Exception e) {
+            LOGGER.error("Error loading binding configuration: {}", bindingId, e);
+            return null;
+        }
+    }
+
+    /**
+     * Load service configuration.
+     * 
+     * @param serviceId the service ID
+     * @return the configuration or null if not found
+     */
+    private @Nullable Configuration loadServiceConfiguration(String serviceId) {
+        try {
+            // In a real implementation, this would load from ServiceRegistry
+            Configuration config = new Configuration();
+            config.put("id", serviceId);
+            config.put("type", "service");
+            config.put("enabled", true);
+            config.put("name", "Service " + serviceId);
+
+            LOGGER.debug("Loaded service configuration: {}", serviceId);
+            return config;
+        } catch (Exception e) {
+            LOGGER.error("Error loading service configuration: {}", serviceId, e);
+            return null;
+        }
+    }
+
+    /**
+     * Load system configuration.
+     * 
+     * @param systemId the system ID
+     * @return the configuration or null if not found
+     */
+    private @Nullable Configuration loadSystemConfiguration(String systemId) {
+        try {
+            // In a real implementation, this would load from SystemConfiguration
+            Configuration config = new Configuration();
+            config.put("id", systemId);
+            config.put("type", "system");
+            config.put("enabled", true);
+            config.put("name", "System " + systemId);
+
+            LOGGER.debug("Loaded system configuration: {}", systemId);
+            return config;
+        } catch (Exception e) {
+            LOGGER.error("Error loading system configuration: {}", systemId, e);
             return null;
         }
     }
@@ -284,9 +394,41 @@ public class ConfigurationResourceAdapter extends BaseAdapter
      */
     private boolean setConfigurationProperty(String identifier, String property, Object value) {
         try {
-            // TODO: Implement actual configuration property setting logic
-            // This would involve updating the configuration via ConfigurationRegistry
             LOGGER.debug("Setting property {}={} for configuration: {}", property, value, identifier);
+
+            // Parse the configuration identifier to determine the type
+            String[] parts = identifier.split(":");
+            if (parts.length < 2) {
+                LOGGER.warn("Invalid configuration identifier format: {}", identifier);
+                return false;
+            }
+
+            String configType = parts[0];
+
+            // Get the current configuration
+            CachedConfigurationData cachedData = getOrCreateCachedData(identifier);
+            if (cachedData == null || cachedData.getConfiguration() == null) {
+                LOGGER.warn("Configuration not found: {}", identifier);
+                return false;
+            }
+
+            Configuration config = cachedData.getConfiguration();
+
+            // Validate the property based on configuration type
+            if (!isValidPropertyForConfigType(configType, property, value)) {
+                LOGGER.warn("Invalid property {}={} for configuration type: {}", property, value, configType);
+                return false;
+            }
+
+            // Update the configuration property
+            config.put(property, value);
+
+            // In a real implementation, this would persist the configuration
+            LOGGER.info("Configuration property updated: {} {}={}", identifier, property, value);
+
+            // Update cached content
+            cachedData.updateRefreshTime();
+
             return true;
         } catch (Exception e) {
             LOGGER.error("Error setting property {}={} for configuration: {}", property, value, identifier, e);
@@ -295,40 +437,119 @@ public class ConfigurationResourceAdapter extends BaseAdapter
     }
 
     /**
-     * Cached configuration data for performance optimization.
+     * Validate if a property is valid for a given configuration type.
+     * 
+     * @param configType the configuration type
+     * @param property the property name
+     * @param value the property value
+     * @return true if valid
      */
-    private static class CachedConfigurationData {
-        private volatile @Nullable Configuration configuration;
-        private volatile @Nullable String content;
-        private volatile long lastRefreshTime = 0;
-        private final long refreshIntervalMs = 5 * 60 * 1000; // 5 minutes
-
-        public CachedConfigurationData(Configuration configuration) {
-            this.configuration = configuration;
-        }
-
-        public @Nullable Configuration getConfiguration() {
-            return configuration;
-        }
-
-        public void setConfiguration(@Nullable Configuration configuration) {
-            this.configuration = configuration;
-        }
-
-        public @Nullable String getContent() {
-            return content;
-        }
-
-        public void setContent(@Nullable String content) {
-            this.content = content;
-        }
-
-        public boolean needsRefresh() {
-            return System.currentTimeMillis() - lastRefreshTime > refreshIntervalMs;
-        }
-
-        public void updateRefreshTime() {
-            lastRefreshTime = System.currentTimeMillis();
+    private boolean isValidPropertyForConfigType(String configType, String property, Object value) {
+        try {
+            switch (configType) {
+                case "thing":
+                    return isValidThingProperty(property, value);
+                case "binding":
+                    return isValidBindingProperty(property, value);
+                case "service":
+                    return isValidServiceProperty(property, value);
+                case "system":
+                    return isValidSystemProperty(property, value);
+                default:
+                    LOGGER.warn("Unknown configuration type for validation: {}", configType);
+                    return false;
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error validating property {}={} for config type: {}", property, value, configType, e);
+            return false;
         }
     }
+
+    /**
+     * Validate thing configuration property.
+     * 
+     * @param property the property name
+     * @param value the property value
+     * @return true if valid
+     */
+    private boolean isValidThingProperty(String property, Object value) {
+        switch (property) {
+            case "enabled":
+                return value instanceof Boolean;
+            case "label":
+            case "location":
+            case "bridgeUID":
+                return value instanceof String;
+            default:
+                // Allow custom properties
+                return true;
+        }
+    }
+
+    /**
+     * Validate binding configuration property.
+     * 
+     * @param property the property name
+     * @param value the property value
+     * @return true if valid
+     */
+    private boolean isValidBindingProperty(String property, Object value) {
+        switch (property) {
+            case "enabled":
+                return value instanceof Boolean;
+            case "name":
+            case "version":
+                return value instanceof String;
+            default:
+                // Allow custom properties
+                return true;
+        }
+    }
+
+    /**
+     * Validate service configuration property.
+     * 
+     * @param property the property name
+     * @param value the property value
+     * @return true if valid
+     */
+    private boolean isValidServiceProperty(String property, Object value) {
+        switch (property) {
+            case "enabled":
+                return value instanceof Boolean;
+            case "name":
+            case "url":
+                return value instanceof String;
+            default:
+                // Allow custom properties
+                return true;
+        }
+    }
+
+    /**
+     * Validate system configuration property.
+     * 
+     * @param property the property name
+     * @param value the property value
+     * @return true if valid
+     */
+    private boolean isValidSystemProperty(String property, Object value) {
+        switch (property) {
+            case "enabled":
+                return value instanceof Boolean;
+            case "name":
+            case "version":
+            case "timezone":
+                return value instanceof String;
+            default:
+                // Allow custom properties
+                return true;
+        }
+    }
+
+    /**
+     * Cached configuration data for performance optimization.
+     */
+    // CachedConfigurationData extracted to org.openhab.core.ai.tool.resources.adapter.CachedConfigurationData
+    // CachedConfigurationData extracted to org.openhab.core.ai.tool.resources.adapter.CachedConfigurationData
 }

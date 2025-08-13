@@ -426,8 +426,9 @@ public class ActionRegistry {
         // Record execution event
         if (enableAnalytics) {
             ActionExecutionEvent event = ActionExecutionEvent.builder().eventId("exec-" + System.currentTimeMillis())
-                    .actionId(actionId).agentId(agentId).status(success ? ActionExecutionEvent.ExecutionStatus.SUCCESS
-                            : ActionExecutionEvent.ExecutionStatus.FAILED)
+                    .actionId(actionId).agentId(agentId).status(success
+                            ? org.openhab.core.ai.model.ActionExecutionEventStatus.SUCCESS
+                            : org.openhab.core.ai.model.ActionExecutionEventStatus.FAILED)
                     .error(error).build();
 
             synchronized (executionHistory) {

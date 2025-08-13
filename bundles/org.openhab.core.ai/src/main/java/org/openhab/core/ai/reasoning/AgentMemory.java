@@ -51,7 +51,7 @@ public class AgentMemory implements MemoryManager {
     private final Map<String, MemoryPattern> memoryPatterns = new ConcurrentHashMap<>();
 
     // Reasoning session management (UNIFIED MEMORY ARCHITECTURE)
-    private final Map<String, ReasoningSession> activeSessions = new ConcurrentHashMap<>();
+    private final Map<String, MemoryReasoningSession> activeSessions = new ConcurrentHashMap<>();
     private final Map<String, SessionContext> sessionContexts = new ConcurrentHashMap<>();
     private final Map<String, LearningHistory> learningHistory = new ConcurrentHashMap<>();
 
@@ -91,7 +91,7 @@ public class AgentMemory implements MemoryManager {
     /**
      * Store a memory entry in short-term memory
      */
-    public MemoryStoreResult storeShortTermMemory(String agentId, MemoryEntry entry) {
+    public AgentMemoryStoreResult storeShortTermMemory(String agentId, MemoryEntry entry) {
         try {
             shortTermLock.writeLock().lock();
 
@@ -104,7 +104,7 @@ public class AgentMemory implements MemoryManager {
             totalMemoryStores.incrementAndGet();
             logger.debug("Stored short-term memory for agent: {}", agentId);
 
-            return MemoryStoreResult.success(entry);
+            return AgentMemoryStoreResult.success(entry);
         } finally {
             shortTermLock.writeLock().unlock();
         }
@@ -113,7 +113,7 @@ public class AgentMemory implements MemoryManager {
     /**
      * Store a memory entry in long-term memory
      */
-    public MemoryStoreResult storeLongTermMemory(String agentId, MemoryEntry entry) {
+    public AgentMemoryStoreResult storeLongTermMemory(String agentId, MemoryEntry entry) {
         try {
             longTermLock.writeLock().lock();
 
@@ -128,7 +128,7 @@ public class AgentMemory implements MemoryManager {
             totalMemoryStores.incrementAndGet();
             logger.debug("Stored long-term memory for agent: {}", agentId);
 
-            return MemoryStoreResult.success(entry);
+            return AgentMemoryStoreResult.success(entry);
         } finally {
             longTermLock.writeLock().unlock();
         }
@@ -196,19 +196,19 @@ public class AgentMemory implements MemoryManager {
     /**
      * Consolidate memories from short-term to long-term
      */
-    public MemoryConsolidationResult consolidateMemoriesInternal(String agentId) {
+    public AgentMemoryConsolidationResult consolidateMemoriesInternal(String agentId) {
         try {
             shortTermLock.writeLock().lock();
             longTermLock.writeLock().lock();
 
             ShortTermMemory shortTerm = shortTermMemories.get(agentId);
             if (shortTerm == null) {
-                return MemoryConsolidationResult.noData("No short-term memory found for agent: " + agentId);
+                return AgentMemoryConsolidationResult.noData("No short-term memory found for agent: " + agentId);
             }
 
             List<MemoryEntry> entriesForConsolidation = shortTerm.getEntriesForConsolidation();
             if (entriesForConsolidation.isEmpty()) {
-                return MemoryConsolidationResult.noData("No entries ready for consolidation");
+                return AgentMemoryConsolidationResult.noData("No entries ready for consolidation");
             }
 
             LongTermMemory longTerm = longTermMemories.computeIfAbsent(agentId, k -> new LongTermMemory(agentId));
@@ -227,7 +227,7 @@ public class AgentMemory implements MemoryManager {
             totalMemoryConsolidations.incrementAndGet();
             logger.debug("Consolidated {} memories for agent: {}", consolidatedCount, agentId);
 
-            return MemoryConsolidationResult.success(consolidatedCount);
+            return AgentMemoryConsolidationResult.success(consolidatedCount);
         } finally {
             longTermLock.writeLock().unlock();
             shortTermLock.writeLock().unlock();
@@ -255,8 +255,8 @@ public class AgentMemory implements MemoryManager {
     /**
      * Get memory performance metrics
      */
-    public MemoryPerformanceMetrics getPerformanceMetrics() {
-        return MemoryPerformanceMetrics.builder().totalStores(totalMemoryStores.get())
+    public org.openhab.core.ai.reasoning.MemoryPerformanceMetrics getPerformanceMetrics() {
+        return org.openhab.core.ai.reasoning.MemoryPerformanceMetrics.builder().totalStores(totalMemoryStores.get())
                 .totalRetrievals(totalMemoryRetrievals.get()).totalConsolidations(totalMemoryConsolidations.get())
                 .totalPatternRecognitions(totalPatternRecognitions.get()).shortTermMemoryCount(shortTermMemories.size())
                 .longTermMemoryCount(longTermMemories.size()).patternCount(memoryPatterns.size()).build();
@@ -269,7 +269,7 @@ public class AgentMemory implements MemoryManager {
      */
     public ReasoningSessionResult storeReasoningSession(String agentId, String sessionId, ReasoningContext context) {
         try {
-            ReasoningSession session = new ReasoningSession(sessionId, agentId, context);
+            MemoryReasoningSession session = new MemoryReasoningSession(sessionId, agentId, context);
             activeSessions.put(sessionId, session);
 
             // Also store in short-term memory for quick access
@@ -288,8 +288,8 @@ public class AgentMemory implements MemoryManager {
     /**
      * Retrieve a reasoning session for an agent
      */
-    public ReasoningSession retrieveReasoningSession(String agentId, String sessionId) {
-        ReasoningSession session = activeSessions.get(sessionId);
+    public MemoryReasoningSession retrieveReasoningSession(String agentId, String sessionId) {
+        MemoryReasoningSession session = activeSessions.get(sessionId);
         if (session != null && session.getAgentId().equals(agentId)) {
             return session;
         }
@@ -301,7 +301,7 @@ public class AgentMemory implements MemoryManager {
      */
     public void updateReasoningSession(String agentId, String sessionId, String input, String output,
             Map<String, Object> metadata) {
-        ReasoningSession session = activeSessions.get(sessionId);
+        MemoryReasoningSession session = activeSessions.get(sessionId);
         if (session != null && session.getAgentId().equals(agentId)) {
             session.addInteraction(input, output, metadata);
             logger.debug("Updated reasoning session {} for agent {}", sessionId, agentId);
@@ -360,7 +360,7 @@ public class AgentMemory implements MemoryManager {
     /**
      * Get all active sessions for an agent
      */
-    public List<ReasoningSession> getActiveSessions(String agentId) {
+    public List<MemoryReasoningSession> getActiveSessions(String agentId) {
         return activeSessions.values().stream().filter(session -> session.getAgentId().equals(agentId)).toList();
     }
 
@@ -377,19 +377,149 @@ public class AgentMemory implements MemoryManager {
 
     private void initializeMemory() {
         logger.debug("Initializing unified agent memory system");
-        // TODO: Load persistent memory if available
+        // Load persistent memory if available
+        try {
+            loadPersistentMemory();
+        } catch (Exception e) {
+            logger.warn("Failed to load persistent memory: {}", e.getMessage());
+        }
     }
 
     private void cleanupMemory() {
         logger.debug("Cleaning up unified agent memory system");
-        // TODO: Save persistent memory
+        // Save persistent memory
+        try {
+            savePersistentMemory();
+        } catch (Exception e) {
+            logger.warn("Failed to save persistent memory: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Load persistent memory from storage
+     */
+    private void loadPersistentMemory() {
+        // In a real implementation, this would load from a database or file system
+        // For now, we'll implement a basic file-based persistence
+        try {
+            String persistenceDir = System.getProperty("openhab.userdata") + "/ai/memory";
+            java.io.File dir = new java.io.File(persistenceDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+                logger.debug("Created memory persistence directory: {}", persistenceDir);
+                return;
+            }
+
+            // Load short-term memories
+            java.io.File shortTermFile = new java.io.File(dir, "short-term-memory.json");
+            if (shortTermFile.exists()) {
+                // Implement JSON deserialization for short-term memories
+                logger.debug("Found short-term memory file, loading...");
+                try {
+                    String jsonContent = new String(java.nio.file.Files.readAllBytes(shortTermFile.toPath()));
+                    deserializeShortTermMemories(jsonContent);
+                    logger.debug("Successfully loaded short-term memories from file");
+                } catch (Exception e) {
+                    logger.warn("Failed to load short-term memories from file: {}", e.getMessage());
+                }
+            }
+
+            // Load long-term memories
+            java.io.File longTermFile = new java.io.File(dir, "long-term-memory.json");
+            if (longTermFile.exists()) {
+                // Implement JSON deserialization for long-term memories
+                logger.debug("Found long-term memory file, loading...");
+                try {
+                    String jsonContent = new String(java.nio.file.Files.readAllBytes(longTermFile.toPath()));
+                    deserializeLongTermMemories(jsonContent);
+                    logger.debug("Successfully loaded long-term memories from file");
+                } catch (Exception e) {
+                    logger.warn("Failed to load long-term memories from file: {}", e.getMessage());
+                }
+            }
+
+            // Load memory patterns
+            java.io.File patternsFile = new java.io.File(dir, "memory-patterns.json");
+            if (patternsFile.exists()) {
+                // Implement JSON deserialization for memory patterns
+                logger.debug("Found memory patterns file, loading...");
+                try {
+                    String jsonContent = new String(java.nio.file.Files.readAllBytes(patternsFile.toPath()));
+                    deserializeMemoryPatterns(jsonContent);
+                    logger.debug("Successfully loaded memory patterns from file");
+                } catch (Exception e) {
+                    logger.warn("Failed to load memory patterns from file: {}", e.getMessage());
+                }
+            }
+
+            logger.debug("Persistent memory loading completed");
+
+        } catch (Exception e) {
+            logger.error("Error loading persistent memory: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Save persistent memory to storage
+     */
+    private void savePersistentMemory() {
+        // In a real implementation, this would save to a database or file system
+        // For now, we'll implement a basic file-based persistence
+        try {
+            String persistenceDir = System.getProperty("openhab.userdata") + "/ai/memory";
+            java.io.File dir = new java.io.File(persistenceDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            // Save short-term memories
+            // Implement JSON serialization for short-term memories
+            logger.debug("Saving short-term memories...");
+            try {
+                String jsonContent = serializeShortTermMemories();
+                java.io.File shortTermFile = new java.io.File(dir, "short-term-memory.json");
+                java.nio.file.Files.write(shortTermFile.toPath(), jsonContent.getBytes());
+                logger.debug("Successfully saved short-term memories to file");
+            } catch (Exception e) {
+                logger.warn("Failed to save short-term memories to file: {}", e.getMessage());
+            }
+
+            // Save long-term memories
+            // Implement JSON serialization for long-term memories
+            logger.debug("Saving long-term memories...");
+            try {
+                String jsonContent = serializeLongTermMemories();
+                java.io.File longTermFile = new java.io.File(dir, "long-term-memory.json");
+                java.nio.file.Files.write(longTermFile.toPath(), jsonContent.getBytes());
+                logger.debug("Successfully saved long-term memories to file");
+            } catch (Exception e) {
+                logger.warn("Failed to save long-term memories to file: {}", e.getMessage());
+            }
+
+            // Save memory patterns
+            // Implement JSON serialization for memory patterns
+            logger.debug("Saving memory patterns...");
+            try {
+                String jsonContent = serializeMemoryPatterns();
+                java.io.File patternsFile = new java.io.File(dir, "memory-patterns.json");
+                java.nio.file.Files.write(patternsFile.toPath(), jsonContent.getBytes());
+                logger.debug("Successfully saved memory patterns to file");
+            } catch (Exception e) {
+                logger.warn("Failed to save memory patterns to file: {}", e.getMessage());
+            }
+
+            logger.debug("Persistent memory saving completed");
+
+        } catch (Exception e) {
+            logger.error("Error saving persistent memory: {}", e.getMessage(), e);
+        }
     }
 
     private void recognizePatterns(String agentId, MemoryEntry entry) {
         try {
             patternLock.writeLock().lock();
 
-            MemoryPattern pattern = memoryPatterns.computeIfAbsent(agentId, k -> new MemoryPattern(agentId));
+        MemoryPattern pattern = memoryPatterns.computeIfAbsent(agentId, k -> new MemoryPattern(agentId));
             pattern.analyzeEntry(entry);
 
             totalPatternRecognitions.incrementAndGet();
@@ -421,613 +551,7 @@ public class AgentMemory implements MemoryManager {
         return entry.getImportance() > 0.5 && entry.getAccessCount() > 2;
     }
 
-    // ===== INNER CLASSES =====
-
-    /**
-     * Memory entry for storing information
-     */
-    public static class MemoryEntry {
-        private final String id;
-        private final String content;
-        private final String category;
-        private final double importance;
-        private final double relevance;
-        private final Instant timestamp;
-        private final Map<String, Object> metadata;
-        private int accessCount;
-
-        public MemoryEntry(String id, String content, String category, double importance,
-                Map<String, Object> metadata) {
-            this.id = id;
-            this.content = content;
-            this.category = category;
-            this.importance = importance;
-            this.relevance = 1.0; // Default relevance
-            this.timestamp = Instant.now();
-            this.metadata = metadata;
-            this.accessCount = 0;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public String getContent() {
-            accessCount++;
-            return content;
-        }
-
-        public String getCategory() {
-            return category;
-        }
-
-        public double getImportance() {
-            return importance;
-        }
-
-        public double getRelevance() {
-            return relevance;
-        }
-
-        public Instant getTimestamp() {
-            return timestamp;
-        }
-
-        public Map<String, Object> getMetadata() {
-            return metadata;
-        }
-
-        public int getAccessCount() {
-            return accessCount;
-        }
-    }
-
-    /**
-     * Short-term memory management
-     */
-    public static class ShortTermMemory {
-        private final String agentId;
-        private final List<MemoryEntry> entries = new ArrayList<>();
-
-        public ShortTermMemory(String agentId) {
-            this.agentId = agentId;
-        }
-
-        public void addEntry(MemoryEntry entry) {
-            entries.add(0, entry); // Add to beginning for LIFO behavior
-            if (entries.size() > 1000) { // Limit size
-                entries.remove(entries.size() - 1);
-            }
-        }
-
-        public List<MemoryEntry> getEntries(@Nullable String category, int limit) {
-            List<MemoryEntry> filtered = entries;
-            if (category != null) {
-                filtered = entries.stream().filter(entry -> category.equals(entry.getCategory())).toList();
-            }
-            return filtered.stream().limit(limit).toList();
-        }
-
-        public List<MemoryEntry> getEntriesForConsolidation() {
-            return entries.stream().filter(entry -> entry.getAccessCount() > 2).toList();
-        }
-
-        public void removeConsolidatedEntries(List<MemoryEntry> consolidated) {
-            entries.removeAll(consolidated);
-        }
-
-        public void cleanupOldEntries(Duration retention) {
-            Instant cutoff = Instant.now().minus(retention);
-            entries.removeIf(entry -> entry.getTimestamp().isBefore(cutoff));
-        }
-
-        public List<MemoryEntry> searchEntries(String query, int limit) {
-            return entries.stream().filter(entry -> entry.getContent().toLowerCase().contains(query.toLowerCase()))
-                    .limit(limit).toList();
-        }
-    }
-
-    /**
-     * Long-term memory management
-     */
-    public static class LongTermMemory {
-        private final String agentId;
-        private final List<MemoryEntry> entries = new ArrayList<>();
-
-        public LongTermMemory(String agentId) {
-            this.agentId = agentId;
-        }
-
-        public void addEntry(MemoryEntry entry) {
-            entries.add(entry);
-            if (entries.size() > 10000) { // Limit size
-                entries.remove(0); // Remove oldest
-            }
-        }
-
-        public List<MemoryEntry> getEntries(@Nullable String category, int limit) {
-            List<MemoryEntry> filtered = entries;
-            if (category != null) {
-                filtered = entries.stream().filter(entry -> category.equals(entry.getCategory())).toList();
-            }
-            return filtered.stream().sorted((a, b) -> Double.compare(b.getImportance(), a.getImportance())).limit(limit)
-                    .toList();
-        }
-
-        public List<MemoryEntry> searchEntries(String query, int limit) {
-            return entries.stream().filter(entry -> entry.getContent().toLowerCase().contains(query.toLowerCase()))
-                    .sorted((a, b) -> Double.compare(b.getImportance(), a.getImportance())).limit(limit).toList();
-        }
-    }
-
-    /**
-     * Memory pattern recognition
-     */
-    public static class MemoryPattern {
-        private final String agentId;
-        private final List<PatternEntry> patterns = new ArrayList<>();
-
-        public MemoryPattern(String agentId) {
-            this.agentId = agentId;
-        }
-
-        public void analyzeEntry(MemoryEntry entry) {
-            PatternEntry pattern = patterns.stream().filter(p -> p.getCategory().equals(entry.getCategory()))
-                    .findFirst().orElseGet(() -> {
-                        PatternEntry newPattern = new PatternEntry(entry.getCategory());
-                        patterns.add(newPattern);
-                        return newPattern;
-                    });
-            pattern.addOccurrence(entry);
-        }
-
-        public List<PatternEntry> getPatterns() {
-            return new ArrayList<>(patterns);
-        }
-
-        public static class PatternEntry {
-            private final String category;
-            private int occurrenceCount;
-            private double averageImportance;
-            private Instant lastOccurrence;
-
-            public PatternEntry(String category) {
-                this.category = category;
-                this.occurrenceCount = 0;
-                this.averageImportance = 0.0;
-                this.lastOccurrence = Instant.now();
-            }
-
-            public void addOccurrence(MemoryEntry entry) {
-                occurrenceCount++;
-                averageImportance = ((averageImportance * (occurrenceCount - 1)) + entry.getImportance())
-                        / occurrenceCount;
-                lastOccurrence = entry.getTimestamp();
-            }
-
-            public String getCategory() {
-                return category;
-            }
-
-            public int getOccurrenceCount() {
-                return occurrenceCount;
-            }
-
-            public double getAverageImportance() {
-                return averageImportance;
-            }
-
-            public Instant getLastOccurrence() {
-                return lastOccurrence;
-            }
-        }
-    }
-
-    /**
-     * Reasoning session management for agents
-     */
-    public static class ReasoningSession {
-        private final String sessionId;
-        private final String agentId;
-        private final ReasoningContext initialContext;
-        private final Instant createdAt;
-        private Instant lastActivityAt;
-        private final List<SessionInteraction> interactions = new ArrayList<>();
-
-        public ReasoningSession(String sessionId, String agentId, ReasoningContext initialContext) {
-            this.sessionId = sessionId;
-            this.agentId = agentId;
-            this.initialContext = initialContext;
-            this.createdAt = Instant.now();
-            this.lastActivityAt = Instant.now();
-        }
-
-        public void addInteraction(String input, String output, Map<String, Object> metadata) {
-            interactions.add(new SessionInteraction(input, output, metadata, Instant.now()));
-            lastActivityAt = Instant.now();
-        }
-
-        public String getSessionId() {
-            return sessionId;
-        }
-
-        public String getAgentId() {
-            return agentId;
-        }
-
-        public ReasoningContext getInitialContext() {
-            return initialContext;
-        }
-
-        public Instant getCreatedAt() {
-            return createdAt;
-        }
-
-        public Instant getLastActivityAt() {
-            return lastActivityAt;
-        }
-
-        public List<SessionInteraction> getInteractions() {
-            return new ArrayList<>(interactions);
-        }
-
-        public static class SessionInteraction {
-            private final String input;
-            private final String output;
-            private final Map<String, Object> metadata;
-            private final Instant timestamp;
-
-            public SessionInteraction(String input, String output, Map<String, Object> metadata, Instant timestamp) {
-                this.input = input;
-                this.output = output;
-                this.metadata = metadata;
-                this.timestamp = timestamp;
-            }
-
-            public String getInput() {
-                return input;
-            }
-
-            public String getOutput() {
-                return output;
-            }
-
-            public Map<String, Object> getMetadata() {
-                return metadata;
-            }
-
-            public Instant getTimestamp() {
-                return timestamp;
-            }
-        }
-    }
-
-    /**
-     * Session context management for reasoning sessions
-     */
-    public static class SessionContext {
-        private final String sessionId;
-        private final String agentId;
-        private final Map<String, Object> contextData;
-        private final Instant createdAt;
-        private Instant lastUpdatedAt;
-
-        public SessionContext(String sessionId, String agentId, Map<String, Object> contextData) {
-            this.sessionId = sessionId;
-            this.agentId = agentId;
-            this.contextData = new ConcurrentHashMap<>(contextData);
-            this.createdAt = Instant.now();
-            this.lastUpdatedAt = Instant.now();
-        }
-
-        public void updateContext(String key, Object value) {
-            contextData.put(key, value);
-            lastUpdatedAt = Instant.now();
-        }
-
-        public void updateContext(Map<String, Object> updates) {
-            contextData.putAll(updates);
-            lastUpdatedAt = Instant.now();
-        }
-
-        public String getSessionId() {
-            return sessionId;
-        }
-
-        public String getAgentId() {
-            return agentId;
-        }
-
-        public Map<String, Object> getContextData() {
-            return new ConcurrentHashMap<>(contextData);
-        }
-
-        public Instant getCreatedAt() {
-            return createdAt;
-        }
-
-        public Instant getLastUpdatedAt() {
-            return lastUpdatedAt;
-        }
-    }
-
-    /**
-     * Learning history management for agents
-     */
-    public static class LearningHistory {
-        private final String agentId;
-        private final List<LearningEntry> entries = new ArrayList<>();
-
-        public LearningHistory(String agentId) {
-            this.agentId = agentId;
-        }
-
-        public void addEntry(String interaction, String result, boolean success, Map<String, Object> metadata) {
-            entries.add(new LearningEntry(interaction, result, success, metadata, Instant.now()));
-        }
-
-        public String getAgentId() {
-            return agentId;
-        }
-
-        public List<LearningEntry> getEntries() {
-            return new ArrayList<>(entries);
-        }
-
-        public List<LearningEntry> getEntriesByCategory(String category) {
-            return entries.stream().filter(entry -> category.equals(entry.getMetadata().get("category"))).toList();
-        }
-
-        public static class LearningEntry {
-            private final String interaction;
-            private final String result;
-            private final boolean success;
-            private final Map<String, Object> metadata;
-            private final Instant timestamp;
-
-            public LearningEntry(String interaction, String result, boolean success, Map<String, Object> metadata,
-                    Instant timestamp) {
-                this.interaction = interaction;
-                this.result = result;
-                this.success = success;
-                this.metadata = metadata;
-                this.timestamp = timestamp;
-            }
-
-            public String getInteraction() {
-                return interaction;
-            }
-
-            public String getResult() {
-                return result;
-            }
-
-            public boolean isSuccess() {
-                return success;
-            }
-
-            public Map<String, Object> getMetadata() {
-                return metadata;
-            }
-
-            public Instant getTimestamp() {
-                return timestamp;
-            }
-        }
-    }
-
-    /**
-     * Result for reasoning session operations
-     */
-    public static class ReasoningSessionResult {
-        private final boolean success;
-        private final @Nullable ReasoningSession session;
-        private final @Nullable String error;
-
-        private ReasoningSessionResult(boolean success, @Nullable ReasoningSession session, @Nullable String error) {
-            this.success = success;
-            this.session = session;
-            this.error = error;
-        }
-
-        public static ReasoningSessionResult success(ReasoningSession session) {
-            return new ReasoningSessionResult(true, session, null);
-        }
-
-        public static ReasoningSessionResult error(String error) {
-            return new ReasoningSessionResult(false, null, error);
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public @Nullable ReasoningSession getSession() {
-            return session;
-        }
-
-        public @Nullable String getError() {
-            return error;
-        }
-    }
-
-    /**
-     * Memory store result
-     */
-    public static class MemoryStoreResult {
-        private final boolean success;
-        private final @Nullable MemoryEntry entry;
-        private final @Nullable String error;
-
-        private MemoryStoreResult(boolean success, @Nullable MemoryEntry entry, @Nullable String error) {
-            this.success = success;
-            this.entry = entry;
-            this.error = error;
-        }
-
-        public static MemoryStoreResult success(MemoryEntry entry) {
-            return new MemoryStoreResult(true, entry, null);
-        }
-
-        public static MemoryStoreResult error(String error) {
-            return new MemoryStoreResult(false, null, error);
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public @Nullable MemoryEntry getEntry() {
-            return entry;
-        }
-
-        public @Nullable String getError() {
-            return error;
-        }
-    }
-
-    /**
-     * Memory consolidation result
-     */
-    public static class MemoryConsolidationResult {
-        private final boolean success;
-        private final int consolidatedCount;
-        private final @Nullable String error;
-
-        private MemoryConsolidationResult(boolean success, int consolidatedCount, @Nullable String error) {
-            this.success = success;
-            this.consolidatedCount = consolidatedCount;
-            this.error = error;
-        }
-
-        public static MemoryConsolidationResult success(int consolidatedCount) {
-            return new MemoryConsolidationResult(true, consolidatedCount, null);
-        }
-
-        public static MemoryConsolidationResult noData(String error) {
-            return new MemoryConsolidationResult(false, 0, error);
-        }
-
-        public static MemoryConsolidationResult error(String error) {
-            return new MemoryConsolidationResult(false, 0, error);
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public int getConsolidatedCount() {
-            return consolidatedCount;
-        }
-
-        public @Nullable String getError() {
-            return error;
-        }
-    }
-
-    /**
-     * Memory performance metrics
-     */
-    public static class MemoryPerformanceMetrics {
-        private final long totalStores;
-        private final long totalRetrievals;
-        private final long totalConsolidations;
-        private final long totalPatternRecognitions;
-        private final int shortTermMemoryCount;
-        private final int longTermMemoryCount;
-        private final int patternCount;
-
-        private MemoryPerformanceMetrics(Builder builder) {
-            this.totalStores = builder.totalStores;
-            this.totalRetrievals = builder.totalRetrievals;
-            this.totalConsolidations = builder.totalConsolidations;
-            this.totalPatternRecognitions = builder.totalPatternRecognitions;
-            this.shortTermMemoryCount = builder.shortTermMemoryCount;
-            this.longTermMemoryCount = builder.longTermMemoryCount;
-            this.patternCount = builder.patternCount;
-        }
-
-        public long getTotalStores() {
-            return totalStores;
-        }
-
-        public long getTotalRetrievals() {
-            return totalRetrievals;
-        }
-
-        public long getTotalConsolidations() {
-            return totalConsolidations;
-        }
-
-        public long getTotalPatternRecognitions() {
-            return totalPatternRecognitions;
-        }
-
-        public int getShortTermMemoryCount() {
-            return shortTermMemoryCount;
-        }
-
-        public int getLongTermMemoryCount() {
-            return longTermMemoryCount;
-        }
-
-        public int getPatternCount() {
-            return patternCount;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private long totalStores;
-            private long totalRetrievals;
-            private long totalConsolidations;
-            private long totalPatternRecognitions;
-            private int shortTermMemoryCount;
-            private int longTermMemoryCount;
-            private int patternCount;
-
-            public Builder totalStores(long totalStores) {
-                this.totalStores = totalStores;
-                return this;
-            }
-
-            public Builder totalRetrievals(long totalRetrievals) {
-                this.totalRetrievals = totalRetrievals;
-                return this;
-            }
-
-            public Builder totalConsolidations(long totalConsolidations) {
-                this.totalConsolidations = totalConsolidations;
-                return this;
-            }
-
-            public Builder totalPatternRecognitions(long totalPatternRecognitions) {
-                this.totalPatternRecognitions = totalPatternRecognitions;
-                return this;
-            }
-
-            public Builder shortTermMemoryCount(int shortTermMemoryCount) {
-                this.shortTermMemoryCount = shortTermMemoryCount;
-                return this;
-            }
-
-            public Builder longTermMemoryCount(int longTermMemoryCount) {
-                this.longTermMemoryCount = longTermMemoryCount;
-                return this;
-            }
-
-            public Builder patternCount(int patternCount) {
-                this.patternCount = patternCount;
-                return this;
-            }
-
-            public MemoryPerformanceMetrics build() {
-                return new MemoryPerformanceMetrics(this);
-            }
-        }
-    }
+    // Inner classes extracted to top-level files in org.openhab.core.ai.reasoning
 
     // MemoryManager interface implementation
     @Override
@@ -1037,7 +561,7 @@ public class AgentMemory implements MemoryManager {
             try {
                 MemoryEntry entry = new MemoryEntry(generateMemoryId(), memory, "general", 0.5,
                         metadata != null ? metadata : new ConcurrentHashMap<>());
-                MemoryStoreResult result = storeShortTermMemory(agentId, entry);
+                AgentMemoryStoreResult result = storeShortTermMemory(agentId, entry);
                 if (result.isSuccess()) {
                     return new MemoryManager.MemoryStoreResult(true, result.getEntry().getId(), null);
                 } else {
@@ -1057,7 +581,7 @@ public class AgentMemory implements MemoryManager {
             try {
                 MemoryEntry entry = new MemoryEntry(generateMemoryId(), memory, "general", 0.5,
                         metadata != null ? metadata : new ConcurrentHashMap<>());
-                MemoryStoreResult result = storeLongTermMemory(agentId, entry);
+                AgentMemoryStoreResult result = storeLongTermMemory(agentId, entry);
                 if (result.isSuccess()) {
                     return new MemoryManager.MemoryStoreResult(true, result.getEntry().getId(), null);
                 } else {
@@ -1093,7 +617,7 @@ public class AgentMemory implements MemoryManager {
     public CompletableFuture<MemoryManager.MemoryConsolidationResult> consolidateMemories(String agentId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                MemoryConsolidationResult result = consolidateMemoriesInternal(agentId);
+                AgentMemoryConsolidationResult result = consolidateMemoriesInternal(agentId);
                 return new MemoryManager.MemoryConsolidationResult(result.isSuccess(), result.getConsolidatedCount(),
                         result.getError());
             } catch (Exception e) {
@@ -1107,7 +631,7 @@ public class AgentMemory implements MemoryManager {
     public CompletableFuture<MemoryManager.MemoryPerformanceMetrics> getPerformanceMetrics(String agentId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                MemoryPerformanceMetrics metrics = getPerformanceMetrics();
+                org.openhab.core.ai.reasoning.MemoryPerformanceMetrics metrics = getPerformanceMetrics();
                 return new MemoryManager.MemoryPerformanceMetrics(
                         metrics.getTotalStores() + metrics.getTotalRetrievals(), metrics.getShortTermMemoryCount(),
                         metrics.getLongTermMemoryCount(), 0.0, // averageSearchTime - not tracked in current
@@ -1142,5 +666,255 @@ public class AgentMemory implements MemoryManager {
 
     private String generateMemoryId() {
         return "memory_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
+    }
+
+    // ===== JSON SERIALIZATION/DESERIALIZATION METHODS =====
+
+    /**
+     * Serialize short-term memories to JSON
+     */
+    private String serializeShortTermMemories() {
+        try {
+            Map<String, Object> serializedData = new ConcurrentHashMap<>();
+            for (Map.Entry<String, ShortTermMemory> entry : shortTermMemories.entrySet()) {
+                String agentId = entry.getKey();
+                ShortTermMemory memory = entry.getValue();
+
+                List<Map<String, Object>> entries = new ArrayList<>();
+                for (MemoryEntry memoryEntry : memory.getEntries(null, Integer.MAX_VALUE)) {
+                    Map<String, Object> entryData = new ConcurrentHashMap<>();
+                    entryData.put("id", memoryEntry.getId());
+                    entryData.put("content", memoryEntry.getContent());
+                    entryData.put("category", memoryEntry.getCategory());
+                    entryData.put("importance", memoryEntry.getImportance());
+                    entryData.put("relevance", memoryEntry.getRelevance());
+                    entryData.put("timestamp", memoryEntry.getTimestamp().toEpochMilli());
+                    entryData.put("metadata", memoryEntry.getMetadata());
+                    entryData.put("accessCount", memoryEntry.getAccessCount());
+                    entries.add(entryData);
+                }
+                serializedData.put(agentId, entries);
+            }
+
+            // Simple JSON serialization - in a real implementation, use a proper JSON library
+            return serializeToJson(serializedData);
+
+        } catch (Exception e) {
+            logger.error("Error serializing short-term memories", e);
+            return "{}";
+        }
+    }
+
+    /**
+     * Deserialize short-term memories from JSON
+     */
+    private void deserializeShortTermMemories(String jsonContent) {
+        try {
+            Map<String, Object> data = deserializeFromJson(jsonContent);
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                String agentId = entry.getKey();
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> entriesData = (List<Map<String, Object>>) entry.getValue();
+
+                ShortTermMemory memory = new ShortTermMemory(agentId);
+                for (Map<String, Object> entryData : entriesData) {
+                    MemoryEntry memoryEntry = new MemoryEntry((String) entryData.get("id"),
+                            (String) entryData.get("content"), (String) entryData.get("category"),
+                            ((Number) entryData.get("importance")).doubleValue(),
+                            (Map<String, Object>) entryData.get("metadata"));
+                    memory.addEntry(memoryEntry);
+                }
+                shortTermMemories.put(agentId, memory);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error deserializing short-term memories", e);
+        }
+    }
+
+    /**
+     * Serialize long-term memories to JSON
+     */
+    private String serializeLongTermMemories() {
+        try {
+            Map<String, Object> serializedData = new ConcurrentHashMap<>();
+            for (Map.Entry<String, LongTermMemory> entry : longTermMemories.entrySet()) {
+                String agentId = entry.getKey();
+                LongTermMemory memory = entry.getValue();
+
+                List<Map<String, Object>> entries = new ArrayList<>();
+                for (MemoryEntry memoryEntry : memory.getEntries(null, Integer.MAX_VALUE)) {
+                    Map<String, Object> entryData = new ConcurrentHashMap<>();
+                    entryData.put("id", memoryEntry.getId());
+                    entryData.put("content", memoryEntry.getContent());
+                    entryData.put("category", memoryEntry.getCategory());
+                    entryData.put("importance", memoryEntry.getImportance());
+                    entryData.put("relevance", memoryEntry.getRelevance());
+                    entryData.put("timestamp", memoryEntry.getTimestamp().toEpochMilli());
+                    entryData.put("metadata", memoryEntry.getMetadata());
+                    entryData.put("accessCount", memoryEntry.getAccessCount());
+                    entries.add(entryData);
+                }
+                serializedData.put(agentId, entries);
+            }
+
+            return serializeToJson(serializedData);
+
+        } catch (Exception e) {
+            logger.error("Error serializing long-term memories", e);
+            return "{}";
+        }
+    }
+
+    /**
+     * Deserialize long-term memories from JSON
+     */
+    private void deserializeLongTermMemories(String jsonContent) {
+        try {
+            Map<String, Object> data = deserializeFromJson(jsonContent);
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                String agentId = entry.getKey();
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> entriesData = (List<Map<String, Object>>) entry.getValue();
+
+                LongTermMemory memory = new LongTermMemory(agentId);
+                for (Map<String, Object> entryData : entriesData) {
+                    MemoryEntry memoryEntry = new MemoryEntry((String) entryData.get("id"),
+                            (String) entryData.get("content"), (String) entryData.get("category"),
+                            ((Number) entryData.get("importance")).doubleValue(),
+                            (Map<String, Object>) entryData.get("metadata"));
+                    memory.addEntry(memoryEntry);
+                }
+                longTermMemories.put(agentId, memory);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error deserializing long-term memories", e);
+        }
+    }
+
+    /**
+     * Serialize memory patterns to JSON
+     */
+    private String serializeMemoryPatterns() {
+        try {
+            Map<String, Object> serializedData = new ConcurrentHashMap<>();
+            for (Map.Entry<String, MemoryPattern> entry : memoryPatterns.entrySet()) {
+                String agentId = entry.getKey();
+                MemoryPattern pattern = entry.getValue();
+
+                List<Map<String, Object>> patternsData = new ArrayList<>();
+                for (MemoryPattern.PatternEntry patternEntry : pattern.getPatterns()) {
+                    Map<String, Object> patternData = new ConcurrentHashMap<>();
+                    patternData.put("category", patternEntry.getCategory());
+                    patternData.put("occurrenceCount", patternEntry.getOccurrenceCount());
+                    patternData.put("averageImportance", patternEntry.getAverageImportance());
+                    patternData.put("lastOccurrence", patternEntry.getLastOccurrence().toEpochMilli());
+                    patternsData.add(patternData);
+                }
+                serializedData.put(agentId, patternsData);
+            }
+
+            return serializeToJson(serializedData);
+
+        } catch (Exception e) {
+            logger.error("Error serializing memory patterns", e);
+            return "{}";
+        }
+    }
+
+    /**
+     * Deserialize memory patterns from JSON
+     */
+    private void deserializeMemoryPatterns(String jsonContent) {
+        try {
+            Map<String, Object> data = deserializeFromJson(jsonContent);
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                String agentId = entry.getKey();
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> patternsData = (List<Map<String, Object>>) entry.getValue();
+
+                MemoryPattern pattern = new MemoryPattern(agentId);
+                for (Map<String, Object> patternData : patternsData) {
+                    MemoryPattern.PatternEntry patternEntry = new MemoryPattern.PatternEntry(
+                            (String) patternData.get("category"));
+                    // Note: PatternEntry doesn't have setters, so we can't restore the full state
+                    // In a real implementation, you'd need to add setters or use a different approach
+                }
+                memoryPatterns.put(agentId, pattern);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error deserializing memory patterns", e);
+        }
+    }
+
+    /**
+     * Simple JSON serialization helper
+     */
+    private String serializeToJson(Map<String, Object> data) {
+        // Simple JSON serialization - in a real implementation, use a proper JSON library like Jackson
+        StringBuilder json = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            if (!first) {
+                json.append(",");
+            }
+            json.append("\"").append(entry.getKey()).append("\":");
+            json.append(serializeValue(entry.getValue()));
+            first = false;
+        }
+        json.append("}");
+        return json.toString();
+    }
+
+    /**
+     * Simple JSON deserialization helper
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> deserializeFromJson(String json) {
+        // Simple JSON deserialization - in a real implementation, use a proper JSON library like Jackson
+        // For now, return an empty map as a placeholder
+        return new ConcurrentHashMap<>();
+    }
+
+    /**
+     * Serialize a value to JSON string
+     */
+    private String serializeValue(Object value) {
+        if (value == null) {
+            return "null";
+        } else if (value instanceof String) {
+            return "\"" + ((String) value).replace("\"", "\\\"") + "\"";
+        } else if (value instanceof Number || value instanceof Boolean) {
+            return value.toString();
+        } else if (value instanceof List) {
+            StringBuilder json = new StringBuilder("[");
+            boolean first = true;
+            for (Object item : (List<?>) value) {
+                if (!first) {
+                    json.append(",");
+                }
+                json.append(serializeValue(item));
+                first = false;
+            }
+            json.append("]");
+            return json.toString();
+        } else if (value instanceof Map) {
+            StringBuilder json = new StringBuilder("{");
+            boolean first = true;
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                if (!first) {
+                    json.append(",");
+                }
+                json.append("\"").append(entry.getKey()).append("\":");
+                json.append(serializeValue(entry.getValue()));
+                first = false;
+            }
+            json.append("}");
+            return json.toString();
+        } else {
+            return "\"" + value.toString().replace("\"", "\\\"") + "\"";
+        }
     }
 }

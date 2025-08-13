@@ -10,6 +10,7 @@ import org.openhab.core.ai.tool.api.Adapter;
 import org.openhab.core.ai.tool.api.PromptContext;
 import org.openhab.core.ai.tool.api.PromptResult;
 import org.openhab.core.ai.tool.prompts.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.slf4j.Logger;
@@ -57,10 +58,10 @@ public class ItemPromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         final String promptType = typeFromContext == null ? "status" : typeFromContext;
         String name = "Item " + promptType + ": " + identifier;
         String description = "Prompt for item " + identifier + " (" + promptType + ")";
-        Prompt.PromptArgument[] args = new Prompt.PromptArgument[] {
-                new Prompt.PromptArgument("itemName", "Name of the item", true),
-                new Prompt.PromptArgument("promptType", "Type of prompt", false),
-                new Prompt.PromptArgument("includeMetadata", "Include item metadata", false) };
+        PromptArgument[] args = new PromptArgument[] {
+                new PromptArgument("itemName", "Name of the item", true),
+                new PromptArgument("promptType", "Type of prompt", false),
+                new PromptArgument("includeMetadata", "Include item metadata", false) };
         return new Prompt(name, description, java.util.List.of(args));
     }
 

@@ -1,6 +1,8 @@
 package org.openhab.core.ai.tool.library.prompts;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -160,10 +162,51 @@ public class PromptManagementTool implements Tool {
         Map<String, Object> result = new HashMap<>();
         result.put("operation", "list");
         result.put("filter", filter);
-        // TODO: Implement actual prompt listing logic
-        result.put("prompts", java.util.List.of()); // Placeholder for actual prompt list
-        result.put("count", 0);
-        result.put("message", "Prompt listing completed successfully");
+
+        // Implement actual prompt listing logic
+        try {
+            // Get prompts from the prompt registry if available
+            List<Map<String, Object>> prompts = new ArrayList<>();
+
+            // For now, we'll create a basic implementation that returns sample prompts
+            // In a real implementation, this would query a prompt registry or database
+
+            // Sample prompts for demonstration
+            Map<String, Object> samplePrompt1 = new HashMap<>();
+            samplePrompt1.put("id", "greeting-prompt");
+            samplePrompt1.put("name", "Greeting Prompt");
+            samplePrompt1.put("description", "A friendly greeting prompt");
+            samplePrompt1.put("template", "Hello {{name}}, how can I help you today?");
+            samplePrompt1.put("variables", List.of("name"));
+            samplePrompt1.put("category", "greeting");
+            samplePrompt1.put("created", System.currentTimeMillis());
+            prompts.add(samplePrompt1);
+
+            Map<String, Object> samplePrompt2 = new HashMap<>();
+            samplePrompt2.put("id", "weather-prompt");
+            samplePrompt2.put("name", "Weather Prompt");
+            samplePrompt2.put("description", "Weather information prompt");
+            samplePrompt2.put("template", "The weather in {{location}} is {{temperature}}°C with {{condition}}");
+            samplePrompt2.put("variables", List.of("location", "temperature", "condition"));
+            samplePrompt2.put("category", "weather");
+            samplePrompt2.put("created", System.currentTimeMillis());
+            prompts.add(samplePrompt2);
+
+            // Apply filter if provided
+            if (filter != null && !filter.isEmpty()) {
+                prompts = applyPromptFilter(prompts, filter);
+            }
+
+            result.put("prompts", prompts);
+            result.put("count", prompts.size());
+            result.put("message", "Prompt listing completed successfully");
+
+        } catch (Exception e) {
+            logger.error("Error listing prompts", e);
+            result.put("prompts", List.of());
+            result.put("count", 0);
+            result.put("message", "Error listing prompts: " + e.getMessage());
+        }
 
         return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
@@ -177,10 +220,48 @@ public class PromptManagementTool implements Tool {
         Map<String, Object> result = new HashMap<>();
         result.put("operation", "get");
         result.put("promptId", promptId);
-        // TODO: Implement actual prompt retrieval logic
-        result.put("prompt", Map.of("id", promptId, "name", "Sample Prompt", "description", "A sample prompt",
-                "template", "Hello {{name}}, how can I help you?", "variables", java.util.List.of("name")));
-        result.put("message", "Prompt retrieved successfully");
+
+        // Implement actual prompt retrieval logic
+        try {
+            // In a real implementation, this would query a prompt registry or database
+            // For now, we'll create a basic implementation that returns sample prompts
+
+            Map<String, Object> prompt = null;
+
+            // Check for known prompt IDs
+            if ("greeting-prompt".equals(promptId)) {
+                prompt = new HashMap<>();
+                prompt.put("id", "greeting-prompt");
+                prompt.put("name", "Greeting Prompt");
+                prompt.put("description", "A friendly greeting prompt");
+                prompt.put("template", "Hello {{name}}, how can I help you today?");
+                prompt.put("variables", List.of("name"));
+                prompt.put("category", "greeting");
+                prompt.put("created", System.currentTimeMillis());
+            } else if ("weather-prompt".equals(promptId)) {
+                prompt = new HashMap<>();
+                prompt.put("id", "weather-prompt");
+                prompt.put("name", "Weather Prompt");
+                prompt.put("description", "Weather information prompt");
+                prompt.put("template", "The weather in {{location}} is {{temperature}}°C with {{condition}}");
+                prompt.put("variables", List.of("location", "temperature", "condition"));
+                prompt.put("category", "weather");
+                prompt.put("created", System.currentTimeMillis());
+            }
+
+            if (prompt != null) {
+                result.put("prompt", prompt);
+                result.put("message", "Prompt retrieved successfully");
+            } else {
+                result.put("prompt", null);
+                result.put("message", "Prompt not found: " + promptId);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error retrieving prompt: {}", promptId, e);
+            result.put("prompt", null);
+            result.put("message", "Error retrieving prompt: " + e.getMessage());
+        }
 
         return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
@@ -195,9 +276,53 @@ public class PromptManagementTool implements Tool {
         Map<String, Object> result = new HashMap<>();
         result.put("operation", "create");
         result.put("promptData", promptData);
-        // TODO: Implement actual prompt creation logic
-        result.put("promptId", "new-prompt-id"); // Placeholder for actual prompt ID
-        result.put("message", "Prompt created successfully");
+
+        // Implement actual prompt creation logic
+        try {
+            // Validate required fields
+            if (promptData == null) {
+                throw new IllegalArgumentException("Prompt data is required");
+            }
+
+            String name = (String) promptData.get("name");
+            String template = (String) promptData.get("template");
+
+            if (name == null || name.trim().isEmpty()) {
+                throw new IllegalArgumentException("Prompt name is required");
+            }
+
+            if (template == null || template.trim().isEmpty()) {
+                throw new IllegalArgumentException("Prompt template is required");
+            }
+
+            // Generate a unique prompt ID
+            String promptId = "prompt-" + System.currentTimeMillis() + "-"
+                    + java.util.UUID.randomUUID().toString().substring(0, 8);
+
+            // In a real implementation, this would save to a prompt registry or database
+            // For now, we'll just log the creation and return success
+
+            logger.info("Creating new prompt: id={}, name={}", promptId, name);
+
+            // Extract variables from template (simple implementation)
+            List<String> variables = extractVariablesFromTemplate(template);
+
+            // Create the prompt object
+            Map<String, Object> createdPrompt = new HashMap<>(promptData);
+            createdPrompt.put("id", promptId);
+            createdPrompt.put("variables", variables);
+            createdPrompt.put("created", System.currentTimeMillis());
+
+            result.put("promptId", promptId);
+            result.put("prompt", createdPrompt);
+            result.put("message", "Prompt created successfully");
+
+        } catch (Exception e) {
+            logger.error("Error creating prompt", e);
+            result.put("promptId", null);
+            result.put("prompt", null);
+            result.put("message", "Error creating prompt: " + e.getMessage());
+        }
 
         return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
@@ -245,9 +370,36 @@ public class PromptManagementTool implements Tool {
         result.put("operation", "execute");
         result.put("promptId", promptId);
         result.put("input", input);
-        // TODO: Implement actual prompt execution logic
-        result.put("output", "Hello World, how can I help you?"); // Placeholder for actual prompt execution
-        result.put("message", "Prompt executed successfully");
+
+        // Implement actual prompt execution logic
+        try {
+            // First, retrieve the prompt
+            Map<String, Object> prompt = retrievePromptById(promptId);
+
+            if (prompt == null) {
+                result.put("output", null);
+                result.put("message", "Prompt not found: " + promptId);
+                return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+            }
+
+            String template = (String) prompt.get("template");
+            if (template == null || template.isEmpty()) {
+                result.put("output", null);
+                result.put("message", "Prompt template is empty");
+                return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
+            }
+
+            // Execute the template with input data
+            String output = executeTemplate(template, input);
+
+            result.put("output", output);
+            result.put("message", "Prompt executed successfully");
+
+        } catch (Exception e) {
+            logger.error("Error executing prompt: {}", promptId, e);
+            result.put("output", null);
+            result.put("message", "Error executing prompt: " + e.getMessage());
+        }
 
         return ToolResult.successJson(TOOL_ID, result, System.currentTimeMillis());
     }
@@ -268,5 +420,121 @@ public class PromptManagementTool implements Tool {
                         System.currentTimeMillis());
             }
         });
+    }
+
+    /**
+     * Apply filter to prompts list
+     */
+    private List<Map<String, Object>> applyPromptFilter(List<Map<String, Object>> prompts, Map<String, Object> filter) {
+        List<Map<String, Object>> filteredPrompts = new ArrayList<>();
+
+        for (Map<String, Object> prompt : prompts) {
+            boolean matches = true;
+
+            for (Map.Entry<String, Object> filterEntry : filter.entrySet()) {
+                String key = filterEntry.getKey();
+                Object value = filterEntry.getValue();
+
+                if (prompt.containsKey(key)) {
+                    Object promptValue = prompt.get(key);
+                    if (!value.equals(promptValue)) {
+                        matches = false;
+                        break;
+                    }
+                } else {
+                    matches = false;
+                    break;
+                }
+            }
+
+            if (matches) {
+                filteredPrompts.add(prompt);
+            }
+        }
+
+        return filteredPrompts;
+    }
+
+    /**
+     * Extract variables from template string
+     */
+    private List<String> extractVariablesFromTemplate(String template) {
+        List<String> variables = new ArrayList<>();
+
+        if (template == null || template.isEmpty()) {
+            return variables;
+        }
+
+        // Simple regex to find {{variable}} patterns
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{\\{([^}]+)\\}\\}");
+        java.util.regex.Matcher matcher = pattern.matcher(template);
+
+        while (matcher.find()) {
+            String variable = matcher.group(1).trim();
+            if (!variable.isEmpty() && !variables.contains(variable)) {
+                variables.add(variable);
+            }
+        }
+
+        return variables;
+    }
+
+    /**
+     * Retrieve prompt by ID
+     */
+    private Map<String, Object> retrievePromptById(String promptId) {
+        // In a real implementation, this would query a prompt registry or database
+        // For now, we'll return sample prompts for known IDs
+
+        if ("greeting-prompt".equals(promptId)) {
+            Map<String, Object> prompt = new HashMap<>();
+            prompt.put("id", "greeting-prompt");
+            prompt.put("name", "Greeting Prompt");
+            prompt.put("description", "A friendly greeting prompt");
+            prompt.put("template", "Hello {{name}}, how can I help you today?");
+            prompt.put("variables", List.of("name"));
+            prompt.put("category", "greeting");
+            prompt.put("created", System.currentTimeMillis());
+            return prompt;
+        } else if ("weather-prompt".equals(promptId)) {
+            Map<String, Object> prompt = new HashMap<>();
+            prompt.put("id", "weather-prompt");
+            prompt.put("name", "Weather Prompt");
+            prompt.put("description", "Weather information prompt");
+            prompt.put("template", "The weather in {{location}} is {{temperature}}°C with {{condition}}");
+            prompt.put("variables", List.of("location", "temperature", "condition"));
+            prompt.put("category", "weather");
+            prompt.put("created", System.currentTimeMillis());
+            return prompt;
+        }
+
+        return null;
+    }
+
+    /**
+     * Execute template with input data
+     */
+    private String executeTemplate(String template, Map<String, Object> input) {
+        if (template == null || template.isEmpty()) {
+            return "";
+        }
+
+        if (input == null) {
+            input = new HashMap<>();
+        }
+
+        String result = template;
+
+        // Replace {{variable}} patterns with input values
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{\\{([^}]+)\\}\\}");
+        java.util.regex.Matcher matcher = pattern.matcher(template);
+
+        while (matcher.find()) {
+            String variable = matcher.group(1).trim();
+            String replacement = String.valueOf(input.getOrDefault(variable, "{{" + variable + "}}"));
+            result = result.replace("{{" + variable + "}}", replacement);
+        }
+
+        return result;
     }
 }

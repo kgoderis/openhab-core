@@ -1,4 +1,4 @@
-package org.openhab.core.ai.common.stub.unit;
+package org.openhab.core.ai.stub.unit;
 
 import static org.junit.jupiter.api.Assertions.*;
 

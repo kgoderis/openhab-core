@@ -41,7 +41,7 @@ public class AutomationPrompt {
      * @param arguments the prompt arguments
      * @return the execution result
      */
-    public PromptExecutionResult execute(Map<String, Object> arguments) {
+    public org.openhab.core.ai.tool.registry.PromptExecutionResult execute(Map<String, Object> arguments) {
         totalExecutions.incrementAndGet();
         long startTime = System.currentTimeMillis();
 
@@ -59,7 +59,7 @@ public class AutomationPrompt {
                         + ". Valid actions are: ENABLE, DISABLE, EXECUTE, GET_STATUS";
                 logger.warn(errorMessage);
                 failedExecutions.incrementAndGet();
-                return new PromptExecutionResult(false, errorMessage, null);
+                return new org.openhab.core.ai.tool.registry.PromptExecutionResult(false, errorMessage, null);
             }
 
             // Execute the automation action
@@ -68,13 +68,13 @@ public class AutomationPrompt {
             successfulExecutions.incrementAndGet();
             logger.debug("Automation control prompt executed successfully: {} {} {}", ruleUID, action, parameters);
 
-            return new PromptExecutionResult(true, null, result);
+            return new org.openhab.core.ai.tool.registry.PromptExecutionResult(true, null, result);
 
         } catch (Exception e) {
             String errorMessage = "Error executing automation control prompt: " + e.getMessage();
             logger.error(errorMessage, e);
             failedExecutions.incrementAndGet();
-            return new PromptExecutionResult(false, errorMessage, null);
+            return new org.openhab.core.ai.tool.registry.PromptExecutionResult(false, errorMessage, null);
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
             totalExecutionTimeMs.addAndGet(executionTime);
@@ -190,30 +190,5 @@ public class AutomationPrompt {
         return schema;
     }
 
-    /**
-     * Result of prompt execution.
-     */
-    public static class PromptExecutionResult {
-        private final boolean success;
-        private final @Nullable String errorMessage;
-        private final @Nullable String content;
-
-        public PromptExecutionResult(boolean success, @Nullable String errorMessage, @Nullable String content) {
-            this.success = success;
-            this.errorMessage = errorMessage;
-            this.content = content;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public @Nullable String getErrorMessage() {
-            return errorMessage;
-        }
-
-        public @Nullable String getContent() {
-            return content;
-        }
-    }
+    // PromptExecutionResult unified to org.openhab.core.ai.tool.registry.PromptExecutionResult
 }

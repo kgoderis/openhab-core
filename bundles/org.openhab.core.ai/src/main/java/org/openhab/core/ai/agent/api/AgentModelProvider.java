@@ -5,8 +5,9 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.model.api.ModelParameters;
-import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.ModelResponse;
+
 
 /**
  * Agent-specific model provider interface

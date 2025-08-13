@@ -16,8 +16,8 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.ActionResult;
 import org.openhab.core.ai.model.ModelResponseActionParser;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.model.api.ModelParameters;
-import org.openhab.core.ai.model.api.ModelResponse;
+import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningConfiguration;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
@@ -506,92 +506,5 @@ public class MultiStepReasoningEngine {
     /**
      * Performance metrics data class
      */
-    public static class PerformanceMetrics {
-        private final long totalSessions;
-        private final long successfulSessions;
-        private final long failedSessions;
-        private final long totalSteps;
-        private final long totalActions;
-        private final double averageSessionDuration;
-
-        private PerformanceMetrics(Builder builder) {
-            this.totalSessions = builder.totalSessions;
-            this.successfulSessions = builder.successfulSessions;
-            this.failedSessions = builder.failedSessions;
-            this.totalSteps = builder.totalSteps;
-            this.totalActions = builder.totalActions;
-            this.averageSessionDuration = builder.averageSessionDuration;
-        }
-
-        public long getTotalSessions() {
-            return totalSessions;
-        }
-
-        public long getSuccessfulSessions() {
-            return successfulSessions;
-        }
-
-        public long getFailedSessions() {
-            return failedSessions;
-        }
-
-        public long getTotalSteps() {
-            return totalSteps;
-        }
-
-        public long getTotalActions() {
-            return totalActions;
-        }
-
-        public double getAverageSessionDuration() {
-            return averageSessionDuration;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private long totalSessions;
-            private long successfulSessions;
-            private long failedSessions;
-            private long totalSteps;
-            private long totalActions;
-            private double averageSessionDuration;
-
-            public Builder totalSessions(long totalSessions) {
-                this.totalSessions = totalSessions;
-                return this;
-            }
-
-            public Builder successfulSessions(long successfulSessions) {
-                this.successfulSessions = successfulSessions;
-                return this;
-            }
-
-            public Builder failedSessions(long failedSessions) {
-                this.failedSessions = failedSessions;
-                return this;
-            }
-
-            public Builder totalSteps(long totalSteps) {
-                this.totalSteps = totalSteps;
-                return this;
-            }
-
-            public Builder totalActions(long totalActions) {
-                this.totalActions = totalActions;
-                return this;
-            }
-
-            public Builder averageSessionDuration(double averageSessionDuration) {
-                this.averageSessionDuration = averageSessionDuration;
-                return this;
-            }
-
-            public PerformanceMetrics build() {
-                return new PerformanceMetrics(this);
-            }
-        }
-    }
+    // Inner class extracted to top-level: org.openhab.core.ai.reasoning.PerformanceMetrics
 }

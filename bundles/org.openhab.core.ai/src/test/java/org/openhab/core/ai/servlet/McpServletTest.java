@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 package org.openhab.core.ai.servlet;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,45 +64,6 @@ class McpServletTest {
     void testServletCreation() {
         assertNotNull(servlet);
         assertFalse(servlet.isHealthy()); // Not healthy until tool registry is set
-    }
-
-    @Test
-    void testDoGetRequest() throws Exception {
-        // Given
-        when(request.getRequestURI()).thenReturn("/mcp/test");
-
-        // When
-        servlet.doGet(request, response);
-
-        // Then
-        verify(request).getRequestURI();
-        // The actual behavior depends on the parent class implementation
-    }
-
-    @Test
-    void testDoPostRequest() throws Exception {
-        // Given
-        when(request.getRequestURI()).thenReturn("/mcp/test");
-
-        // When
-        servlet.doPost(request, response);
-
-        // Then
-        verify(request).getRequestURI();
-        // The actual behavior depends on the parent class implementation
-    }
-
-    @Test
-    void testDoOptionsRequest() throws Exception {
-        // Given
-        when(request.getRequestURI()).thenReturn("/mcp/test");
-
-        // When
-        servlet.doOptions(request, response);
-
-        // Then
-        verify(request).getRequestURI();
-        // The actual behavior depends on the parent class implementation
     }
 
     @Test

@@ -15,6 +15,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.communication.conversation.api.ConversationEndResult;
+import org.openhab.core.ai.agent.communication.conversation.api.ConversationPattern;
+import org.openhab.core.ai.agent.communication.conversation.api.ConversationTemplate;
+import org.openhab.core.ai.agent.communication.conversation.api.MessageDeliveryResult;
 import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -433,16 +437,73 @@ public class AgentConversationService {
         return CompletableFuture.completedFuture(true);
     }
 
+    private final Map<String, Conversation> archivedConversations = new ConcurrentHashMap<>();
+    private final Map<String, ConversationAnalytics> conversationAnalytics = new ConcurrentHashMap<>();
+
     private void archiveConversation(Conversation conversation) {
-        // Archive conversation for later retrieval
-        // This is a placeholder for actual archiving logic
-        logger.debug("Archiving conversation: {}", conversation.getConversationId());
+        try {
+            logger.debug("Archiving conversation: {}", conversation.getConversationId());
+
+            // Store in archived conversations
+            archivedConversations.put(conversation.getConversationId(), conversation);
+
+            // Create analytics for the conversation
+            ConversationAnalytics analytics = createConversationAnalytics(conversation);
+            conversationAnalytics.put(conversation.getConversationId(), analytics);
+
+            // Log archiving event
+            logger.info("Conversation archived: {} with {} messages, duration: {}ms", conversation.getConversationId(),
+                    conversation.getMessageCount(),
+                    conversation.getEndTime() != null
+                            ? Duration.between(conversation.getStartTime(), conversation.getEndTime()).toMillis()
+                            : 0);
+
+        } catch (Exception e) {
+            logger.error("Error archiving conversation {}: {}", conversation.getConversationId(), e.getMessage(), e);
+        }
     }
 
     private @Nullable Conversation getArchivedConversation(String conversationId) {
-        // Retrieve archived conversation
-        // This is a placeholder for actual archived conversation retrieval
-        return null;
+        try {
+            return archivedConversations.get(conversationId);
+        } catch (Exception e) {
+            logger.error("Error retrieving archived conversation {}: {}", conversationId, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private ConversationAnalytics createConversationAnalytics(Conversation conversation) {
+        try {
+            ConversationHistory history = conversationHistories.get(conversation.getConversationId());
+
+            // Calculate analytics
+            long duration = conversation.getEndTime() != null
+                    ? Duration.between(conversation.getStartTime(), conversation.getEndTime()).toMillis()
+                    : 0;
+
+            int participantCount = conversation.getParticipantIds().size();
+            int messageCount = conversation.getMessageCount();
+
+            // Calculate message frequency
+            double messagesPerMinute = duration > 0 ? (messageCount * 60000.0) / duration : 0.0;
+
+            // Calculate participant activity
+            Map<String, Integer> participantActivity = new ConcurrentHashMap<>();
+            if (history != null) {
+                for (ConversationMessage message : history.getMessages()) {
+                    participantActivity.merge(message.getFromAgentId(), 1, Integer::sum);
+                }
+            }
+
+            return new ConversationAnalytics(conversation.getConversationId(), conversation.getStartTime(),
+                    conversation.getEndTime(), duration, participantCount, messageCount, messagesPerMinute,
+                    participantActivity, conversation.getState(), conversation.getEndReason());
+
+        } catch (Exception e) {
+            logger.error("Error creating conversation analytics for {}: {}", conversation.getConversationId(),
+                    e.getMessage(), e);
+            return null;
+        }
     }
 
     private void processTimeouts() {
@@ -470,8 +531,83 @@ public class AgentConversationService {
     }
 
     private void updateAnalytics() {
-        // Update analytics and metrics
-        // This is a placeholder for actual analytics processing
+        try {
+            logger.debug("Updating conversation analytics");
+
+            // Process analytics for active conversations
+            for (Conversation conversation : activeConversations.values()) {
+                // Update real-time analytics for active conversations
+                updateRealTimeAnalytics(conversation);
+            }
+
+            // Process analytics for archived conversations
+            for (ConversationAnalytics analytics : conversationAnalytics.values()) {
+                // Update historical analytics
+                updateHistoricalAnalytics(analytics);
+            }
+
+            // Generate system-wide analytics
+            generateSystemAnalytics();
+
+        } catch (Exception e) {
+            logger.error("Error updating analytics: {}", e.getMessage(), e);
+        }
+    }
+
+    private void updateRealTimeAnalytics(Conversation conversation) {
+        try {
+            // Calculate real-time metrics for active conversations
+            long currentDuration = Duration.between(conversation.getStartTime(), Instant.now()).toMillis();
+            double currentMessagesPerMinute = currentDuration > 0
+                    ? (conversation.getMessageCount() * 60000.0) / currentDuration
+                    : 0.0;
+
+            logger.debug("Real-time analytics for conversation {}: duration={}ms, messagesPerMinute={:.2f}",
+                    conversation.getConversationId(), currentDuration, currentMessagesPerMinute);
+
+        } catch (Exception e) {
+            logger.error("Error updating real-time analytics for conversation {}: {}", conversation.getConversationId(),
+                    e.getMessage());
+        }
+    }
+
+    private void updateHistoricalAnalytics(ConversationAnalytics analytics) {
+        try {
+            // Process historical analytics data
+            // This could include trend analysis, pattern recognition, etc.
+            logger.debug("Historical analytics for conversation {}: {} messages, {} participants, {:.2f} msgs/min",
+                    analytics.getConversationId(), analytics.getMessageCount(), analytics.getParticipantCount(),
+                    analytics.getMessagesPerMinute());
+
+        } catch (Exception e) {
+            logger.error("Error updating historical analytics for conversation {}: {}", analytics.getConversationId(),
+                    e.getMessage());
+        }
+    }
+
+    private void generateSystemAnalytics() {
+        try {
+            // Generate system-wide analytics
+            long totalActiveConversations = activeConversations.size();
+            long totalArchivedConversations = archivedConversations.size();
+            long totalAnalytics = conversationAnalytics.size();
+
+            // Calculate average conversation metrics
+            double avgMessagesPerConversation = totalConversations.get() > 0
+                    ? (double) totalMessages.get() / totalConversations.get()
+                    : 0.0;
+            double avgConversationDuration = totalConversations.get() > 0
+                    ? (double) totalConversationTime.get() / totalConversations.get()
+                    : 0.0;
+
+            logger.info(
+                    "System analytics: active={}, archived={}, analytics={}, avgMessages={:.2f}, avgDuration={:.2f}ms",
+                    totalActiveConversations, totalArchivedConversations, totalAnalytics, avgMessagesPerConversation,
+                    avgConversationDuration);
+
+        } catch (Exception e) {
+            logger.error("Error generating system analytics: {}", e.getMessage());
+        }
     }
 
     private void shutdownExecutor(ScheduledExecutorService executor) {
@@ -486,569 +622,5 @@ public class AgentConversationService {
         }
     }
 
-    // Inner classes and interfaces
-
-    /**
-     * Conversation data
-     */
-    public static class Conversation {
-        private final String conversationId;
-        private final Set<String> participantIds;
-        private final @Nullable String templateId;
-        private final Map<String, Object> context;
-        private final Instant startTime;
-        private ConversationState state;
-        private @Nullable Instant endTime;
-        private @Nullable String endReason;
-        private Instant lastActivity;
-        private int messageCount;
-
-        private Conversation(Builder builder) {
-            this.conversationId = builder.conversationId;
-            this.participantIds = builder.participantIds;
-            this.templateId = builder.templateId;
-            this.context = builder.context;
-            this.startTime = builder.startTime;
-            this.state = builder.state;
-            this.lastActivity = builder.lastActivity;
-            this.messageCount = builder.messageCount;
-        }
-
-        // Getters and setters
-        public String getConversationId() {
-            return conversationId;
-        }
-
-        public Set<String> getParticipantIds() {
-            return participantIds;
-        }
-
-        public @Nullable String getTemplateId() {
-            return templateId;
-        }
-
-        public Map<String, Object> getContext() {
-            return context;
-        }
-
-        public Instant getStartTime() {
-            return startTime;
-        }
-
-        public ConversationState getState() {
-            return state;
-        }
-
-        public void setState(ConversationState state) {
-            this.state = state;
-        }
-
-        public @Nullable Instant getEndTime() {
-            return endTime;
-        }
-
-        public void setEndTime(Instant endTime) {
-            this.endTime = endTime;
-        }
-
-        public @Nullable String getEndReason() {
-            return endReason;
-        }
-
-        public void setEndReason(String endReason) {
-            this.endReason = endReason;
-        }
-
-        public Instant getLastActivity() {
-            return lastActivity;
-        }
-
-        public void setLastActivity(Instant lastActivity) {
-            this.lastActivity = lastActivity;
-        }
-
-        public int getMessageCount() {
-            return messageCount;
-        }
-
-        public void setMessageCount(int messageCount) {
-            this.messageCount = messageCount;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private String conversationId;
-            private Set<String> participantIds;
-            private @Nullable String templateId;
-            private Map<String, Object> context;
-            private Instant startTime;
-            private ConversationState state;
-            private Instant lastActivity;
-            private int messageCount;
-
-            public Builder conversationId(String conversationId) {
-                this.conversationId = conversationId;
-                return this;
-            }
-
-            public Builder participantIds(List<String> participantIds) {
-                this.participantIds = Set.copyOf(participantIds);
-                return this;
-            }
-
-            public Builder templateId(@Nullable String templateId) {
-                this.templateId = templateId;
-                return this;
-            }
-
-            public Builder context(Map<String, Object> context) {
-                this.context = context;
-                return this;
-            }
-
-            public Builder startTime(Instant startTime) {
-                this.startTime = startTime;
-                return this;
-            }
-
-            public Builder state(ConversationState state) {
-                this.state = state;
-                return this;
-            }
-
-            public Builder lastActivity(Instant lastActivity) {
-                this.lastActivity = lastActivity;
-                return this;
-            }
-
-            public Builder messageCount(int messageCount) {
-                this.messageCount = messageCount;
-                return this;
-            }
-
-            public Conversation build() {
-                return new Conversation(this);
-            }
-        }
-    }
-
-    /**
-     * Conversation message
-     */
-    public static class ConversationMessage {
-        private final String messageId;
-        private final String conversationId;
-        private final String fromAgentId;
-        private final String content;
-        private final MessageType messageType;
-        private final Instant timestamp;
-
-        private ConversationMessage(Builder builder) {
-            this.messageId = builder.messageId;
-            this.conversationId = builder.conversationId;
-            this.fromAgentId = builder.fromAgentId;
-            this.content = builder.content;
-            this.messageType = builder.messageType;
-            this.timestamp = builder.timestamp;
-        }
-
-        // Getters
-        public String getMessageId() {
-            return messageId;
-        }
-
-        public String getConversationId() {
-            return conversationId;
-        }
-
-        public String getFromAgentId() {
-            return fromAgentId;
-        }
-
-        public String getContent() {
-            return content;
-        }
-
-        public MessageType getMessageType() {
-            return messageType;
-        }
-
-        public Instant getTimestamp() {
-            return timestamp;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private String messageId;
-            private String conversationId;
-            private String fromAgentId;
-            private String content;
-            private MessageType messageType;
-            private Instant timestamp;
-
-            public Builder messageId(String messageId) {
-                this.messageId = messageId;
-                return this;
-            }
-
-            public Builder conversationId(String conversationId) {
-                this.conversationId = conversationId;
-                return this;
-            }
-
-            public Builder fromAgentId(String fromAgentId) {
-                this.fromAgentId = fromAgentId;
-                return this;
-            }
-
-            public Builder content(String content) {
-                this.content = content;
-                return this;
-            }
-
-            public Builder messageType(MessageType messageType) {
-                this.messageType = messageType;
-                return this;
-            }
-
-            public Builder timestamp(Instant timestamp) {
-                this.timestamp = timestamp;
-                return this;
-            }
-
-            public ConversationMessage build() {
-                return new ConversationMessage(this);
-            }
-        }
-    }
-
-    /**
-     * Conversation history
-     */
-    public static class ConversationHistory {
-        private final String conversationId;
-        private final List<ConversationMessage> messages;
-        private Instant lastActivity;
-
-        public ConversationHistory(String conversationId) {
-            this.conversationId = conversationId;
-            this.messages = new java.util.concurrent.CopyOnWriteArrayList<>();
-            this.lastActivity = Instant.now();
-        }
-
-        public void addMessage(ConversationMessage message) {
-            messages.add(message);
-            lastActivity = Instant.now();
-        }
-
-        // Getters
-        public String getConversationId() {
-            return conversationId;
-        }
-
-        public List<ConversationMessage> getMessages() {
-            return List.copyOf(messages);
-        }
-
-        public Instant getLastActivity() {
-            return lastActivity;
-        }
-    }
-
-    /**
-     * Conversation export
-     */
-    public static class ConversationExport {
-        private final Conversation conversation;
-        private final ConversationHistory history;
-        private final Instant exportTime;
-
-        private ConversationExport(Builder builder) {
-            this.conversation = builder.conversation;
-            this.history = builder.history;
-            this.exportTime = builder.exportTime;
-        }
-
-        // Getters
-        public Conversation getConversation() {
-            return conversation;
-        }
-
-        public ConversationHistory getHistory() {
-            return history;
-        }
-
-        public Instant getExportTime() {
-            return exportTime;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private Conversation conversation;
-            private ConversationHistory history;
-            private Instant exportTime;
-
-            public Builder conversation(Conversation conversation) {
-                this.conversation = conversation;
-                return this;
-            }
-
-            public Builder history(ConversationHistory history) {
-                this.history = history;
-                return this;
-            }
-
-            public Builder exportTime(Instant exportTime) {
-                this.exportTime = exportTime;
-                return this;
-            }
-
-            public ConversationExport build() {
-                return new ConversationExport(this);
-            }
-        }
-    }
-
-    /**
-     * Conversation statistics
-     */
-    public static class ConversationStatistics {
-        private final long totalConversations;
-        private final long totalMessages;
-        private final long totalConversationTime;
-        private final long totalParticipants;
-        private final int activeConversations;
-        private final int conversationHistories;
-        private final int conversationTemplates;
-        private final int conversationPatterns;
-
-        public ConversationStatistics(long totalConversations, long totalMessages, long totalConversationTime,
-                long totalParticipants, int activeConversations, int conversationHistories, int conversationTemplates,
-                int conversationPatterns) {
-            this.totalConversations = totalConversations;
-            this.totalMessages = totalMessages;
-            this.totalConversationTime = totalConversationTime;
-            this.totalParticipants = totalParticipants;
-            this.activeConversations = activeConversations;
-            this.conversationHistories = conversationHistories;
-            this.conversationTemplates = conversationTemplates;
-            this.conversationPatterns = conversationPatterns;
-        }
-
-        // Getters
-        public long getTotalConversations() {
-            return totalConversations;
-        }
-
-        public long getTotalMessages() {
-            return totalMessages;
-        }
-
-        public long getTotalConversationTime() {
-            return totalConversationTime;
-        }
-
-        public long getTotalParticipants() {
-            return totalParticipants;
-        }
-
-        public int getActiveConversations() {
-            return activeConversations;
-        }
-
-        public int getConversationHistories() {
-            return conversationHistories;
-        }
-
-        public int getConversationTemplates() {
-            return conversationTemplates;
-        }
-
-        public int getConversationPatterns() {
-            return conversationPatterns;
-        }
-    }
-
-    /**
-     * Conversation configuration
-     */
-    public static class ConversationConfiguration {
-        private Duration conversationTimeout = Duration.ofMinutes(30);
-        private Duration historyRetentionPeriod = Duration.ofDays(30);
-        private int maxParticipants = 10;
-        private int maxMessageLength = 1000;
-        private boolean enableAnalytics = true;
-        private boolean enableExport = true;
-
-        // Getters and setters
-        public Duration getConversationTimeout() {
-            return conversationTimeout;
-        }
-
-        public void setConversationTimeout(Duration conversationTimeout) {
-            this.conversationTimeout = conversationTimeout;
-        }
-
-        public Duration getHistoryRetentionPeriod() {
-            return historyRetentionPeriod;
-        }
-
-        public void setHistoryRetentionPeriod(Duration historyRetentionPeriod) {
-            this.historyRetentionPeriod = historyRetentionPeriod;
-        }
-
-        public int getMaxParticipants() {
-            return maxParticipants;
-        }
-
-        public void setMaxParticipants(int maxParticipants) {
-            this.maxParticipants = maxParticipants;
-        }
-
-        public int getMaxMessageLength() {
-            return maxMessageLength;
-        }
-
-        public void setMaxMessageLength(int maxMessageLength) {
-            this.maxMessageLength = maxMessageLength;
-        }
-
-        public boolean isEnableAnalytics() {
-            return enableAnalytics;
-        }
-
-        public void setEnableAnalytics(boolean enableAnalytics) {
-            this.enableAnalytics = enableAnalytics;
-        }
-
-        public boolean isEnableExport() {
-            return enableExport;
-        }
-
-        public void setEnableExport(boolean enableExport) {
-            this.enableExport = enableExport;
-        }
-    }
-
-    // Enums
-    public enum ConversationState {
-        ACTIVE,
-        PAUSED,
-        ENDED,
-        ARCHIVED
-    }
-
-    public enum MessageType {
-        TEXT,
-        COMMAND,
-        QUERY,
-        RESPONSE,
-        NOTIFICATION,
-        SYSTEM
-    }
-
-    public enum ParticipantRole {
-        HOST,
-        PARTICIPANT,
-        OBSERVER,
-        MODERATOR
-    }
-
-    // Interfaces
-    public interface ConversationTemplate {
-        Conversation applyTo(Conversation conversation);
-    }
-
-    public interface ConversationPattern {
-        void apply(Conversation conversation, ConversationMessage message);
-    }
-
-    public interface MessageDeliveryResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        static MessageDeliveryResult success(String message) {
-            return new MessageDeliveryResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static MessageDeliveryResult failure(String message) {
-            return new MessageDeliveryResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-    }
-
-    public interface ConversationEndResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        Duration getDuration();
-
-        static ConversationEndResult success(String message, Duration duration) {
-            return new ConversationEndResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public Duration getDuration() {
-                    return duration;
-                }
-            };
-        }
-
-        static ConversationEndResult failure(String message) {
-            return new ConversationEndResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public Duration getDuration() {
-                    return Duration.ZERO;
-                }
-            };
-        }
-    }
+    // Inner classes and interfaces extracted to top-level types in this package
 }

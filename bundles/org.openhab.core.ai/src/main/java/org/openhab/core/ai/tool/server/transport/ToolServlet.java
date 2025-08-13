@@ -65,6 +65,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @HttpWhiteboardServletPattern("/mcp/*")
 public class ToolServlet extends HttpServletSseServerTransportProvider {
 
+    private static final long serialVersionUID = 1L;
     private static final Logger logger = LoggerFactory.getLogger(ToolServlet.class);
 
     private final AtomicReference<McpSyncServer> syncServer = new AtomicReference<>();
@@ -1763,40 +1764,19 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
         McpSyncServer sync = syncServer.get();
         McpAsyncServer async = asyncServer.get();
 
-        return new ServerStatistics(sync != null, async != null, registry != null);
+        // Map previous booleans to generic stats placeholder
+        long totalRequests = 0L;
+        long successfulRequests = 0L;
+        long failedRequests = 0L;
+        long totalResponseTime = 0L;
+        double averageResponseTime = 0.0;
+        int activeConnections = (sync != null ? 1 : 0) + (async != null ? 1 : 0) + (registry != null ? 1 : 0);
+        return new ServerStatistics(totalRequests, successfulRequests, failedRequests, totalResponseTime,
+                averageResponseTime, activeConnections);
     }
 
     /**
      * Server statistics.
      */
-    public static class ServerStatistics {
-        private final boolean syncServerActive;
-        private final boolean asyncServerActive;
-        private final boolean toolRegistryAvailable;
-
-        public ServerStatistics(boolean syncServerActive, boolean asyncServerActive, boolean toolRegistryAvailable) {
-            this.syncServerActive = syncServerActive;
-            this.asyncServerActive = asyncServerActive;
-            this.toolRegistryAvailable = toolRegistryAvailable;
-        }
-
-        public boolean isSyncServerActive() {
-            return syncServerActive;
-        }
-
-        public boolean isAsyncServerActive() {
-            return asyncServerActive;
-        }
-
-        public boolean isToolRegistryAvailable() {
-            return toolRegistryAvailable;
-        }
-
-        @Override
-        public String toString() {
-            return String.format(
-                    "ServerStatistics{syncServerActive=%s, asyncServerActive=%s, toolRegistryAvailable=%s}",
-                    syncServerActive, asyncServerActive, toolRegistryAvailable);
-        }
-    }
+    // Inner class extracted to top-level: org.openhab.core.ai.tool.server.transport.ServerStatistics
 }

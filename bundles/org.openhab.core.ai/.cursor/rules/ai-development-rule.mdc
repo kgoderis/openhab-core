@@ -1,13 +1,185 @@
 ---
+description: AI Development Rules for openHAB AI Bundle - Updated based on codebase analysis
+globs: src/main/java/org/openhab/core/ai/**/*.java, src/test/java/org/openhab/core/ai/**/*.java
 alwaysApply: true
 ---
-1. You must use @NonNullByDefault annotations on each class. If this creates a compatbility problem with an external SDK, you can ommit but then you have to use explicit @NonNull and @Nullable annotations
-2. Each class must have appropriate javadoc
-3. The author must be "Karel Goderis - Initial Contribution"
-4. You must implement real code, and thus, not simulated code or stubs. If something can not be implemented in a first go, you must add a TODO to the code, and add a task to the BRAIN_PLAN.md file
-5. You must maximise the use of SDK classes, especially in the case of MCP and A2A protocols
-6. You must verify that each method call you make does exist, so, invented or guesses calls are not allowed
-7. The solution will be used in OSGi container, so, make sure dependency injection is used correctly
-8. You must use as much as possible data structures from the A2A SDK 
-9. If you have to create classes, first verify that a class already exists in the solution or dependencies
-10. If you have to modify class, do refactor the class, and do not create a new class
+
+# OpenHAB AI Bundle Development Rules
+
+## Core Development Standards
+
+### 1. **Null Safety and Annotations**
+- **Use `@NonNullByDefault` on every class** - This is the openHAB standard
+- **Add explicit `@Nullable` annotations** for nullable parameters and return types
+- **Handle SDK compatibility issues** by adding explicit `@NonNull` annotations where needed for external SDKs
+- **Never omit nullability annotations** - always be explicit about null constraints
+
+### 2. **Documentation Standards**
+- **Every class must have comprehensive javadoc** with `@author Karel Goderis - Initial Contribution`
+- **Include `@since` tags** for version tracking
+- **Document all public methods** with parameter descriptions and return value explanations
+- **Add class-level documentation** explaining the purpose and responsibilities
+
+### 3. **Implementation Quality**
+- **Implement real, functional code** - no stubs or simulated implementations
+- **Add TODO comments** for incomplete implementations with clear descriptions
+- **Create tasks in BRAIN_PLAN.md** for any incomplete work
+- **Verify all method calls exist** before using them - no invented or guessed calls
+
+### 4. **SDK Integration**
+- **Maximize use of official SDK classes** for MCP and A2A protocols
+- **Use A2A SDK data structures** wherever possible instead of custom implementations
+- **Follow SDK patterns** for service registration, lifecycle management, and error handling
+- **Verify SDK compatibility** before implementing custom solutions
+
+### 5. **OSGi Container Integration**
+- **Use proper OSGi dependency injection** with `@Reference` annotations
+- **Implement `@Component` annotations** for service registration
+- **Add lifecycle methods** (`@Activate`, `@Deactivate`) for proper bundle management
+- **Use `@NonNullByDefault`** with explicit `@Nullable` for OSGi service references
+
+## Architecture and Design Patterns
+
+### 6. **Naming Conventions**
+- **Domain-driven naming with clear hierarchy**:
+  - `Tool*` prefix for Tool brain core components
+  - `AI*` prefix for AI action framework components  
+  - `Agent*` prefix for autonomous agent components
+  - `Context*` prefix for context and memory systems
+  - `Reasoning*` prefix for reasoning and planning components
+  - `Event*` prefix for event processing components
+  - `Learning*` prefix for learning and feedback systems
+  - `Monitor*` prefix for monitoring and optimization
+  - No prefix for utility classes and general support
+
+### 7. **Package Structure**
+- **Use granular, focused packages** with clear scope separation
+- **Avoid broad levels** like "core", "implementation", "infrastructure"
+- **Organize by domain** rather than technical layers
+- **Follow established package patterns** from the existing codebase
+
+### 8. **Class Organization**
+- **Prefer refactoring existing classes** over creating new ones
+- **Verify class existence** before creating new classes
+- **Use established patterns** from similar existing classes
+- **Maintain consistency** with existing naming and structure
+
+## Testing and Quality Assurance
+
+### 9. **Testing Strategy**
+- **Create comprehensive unit tests** for all new functionality
+- **Use Mockito for dependency mocking** in unit tests
+- **Implement integration tests** for service interactions
+- **Follow AAA pattern** (Arrange-Act-Assert) for test structure
+- **Test both success and failure scenarios**
+- **Aim for 80%+ code coverage**
+
+### 10. **Test Organization**
+- **Unit tests**: Fast, isolated component tests with mocked dependencies
+- **Integration tests**: Component interaction tests with real services
+- **Workflow tests**: End-to-end workflow testing
+- **Performance tests**: Load testing and performance validation
+
+### 11. **Test Implementation**
+- **Use `@ExtendWith(MockitoExtension.class)`** for unit tests
+- **Mock openHAB services** (ItemRegistry, ThingRegistry, etc.)
+- **Test parameter validation** for all actions
+- **Test error handling** and exception scenarios
+- **Test async execution** patterns where applicable
+
+## Protocol-Specific Guidelines
+
+### 12. **MCP Protocol Implementation**
+- **Use MCP Java SDK** for all MCP-related functionality
+- **Follow MCP specification** for tool definitions and responses
+- **Implement proper error handling** for MCP protocol errors
+- **Use established MCP patterns** from existing code
+
+### 13. **A2A Protocol Implementation**
+- **Use A2A Java SDK** for all A2A-related functionality
+- **Follow A2A specification** for skill definitions and execution
+- **Implement proper task lifecycle** management
+- **Use established A2A patterns** from existing code
+
+### 14. **Agent-Skill Architecture**
+- **Agents should be agnostic to actions** and only deal with skills
+- **Skills encapsulate common actions** shared with MCP implementation
+- **Maintain clear separation** between agent logic and action execution
+- **Use skill composition** for complex behaviors
+
+## Error Handling and Validation
+
+### 15. **Error Handling**
+- **Implement comprehensive error handling** for all public methods
+- **Use appropriate exception types** (ActionException, ToolException, etc.)
+- **Provide meaningful error messages** with context information
+- **Log errors appropriately** with proper log levels
+
+### 16. **Validation**
+- **Validate all input parameters** before processing
+- **Use ValidationUtils** for common validation patterns
+- **Implement parameter schemas** for all actions and tools
+- **Provide clear validation error messages**
+
+## Performance and Monitoring
+
+### 17. **Performance Considerations**
+- **Use concurrent collections** for thread-safe operations
+- **Implement proper resource cleanup** in lifecycle methods
+- **Add performance monitoring** with metrics collection
+- **Use caching** where appropriate for frequently accessed data
+
+### 18. **Monitoring and Metrics**
+- **Add performance metrics** for all major operations
+- **Implement health checks** for critical components
+- **Use atomic counters** for thread-safe metrics
+- **Add proper logging** for debugging and monitoring
+
+## Code Quality and Maintenance
+
+### 19. **Code Organization**
+- **Follow single responsibility principle** - each class has one clear purpose
+- **Use builder patterns** for complex object construction
+- **Implement proper equals/hashCode** for value objects
+- **Use immutable objects** where possible
+
+### 20. **Dependency Management**
+- **Minimize dependencies** between components
+- **Use interfaces** for loose coupling
+- **Follow dependency injection** patterns consistently
+- **Avoid circular dependencies**
+
+### 21. **Configuration Management**
+- **Use configuration services** for all configurable parameters
+- **Implement hot-reload** capabilities where appropriate
+- **Provide sensible defaults** for all configuration options
+- **Validate configuration** on startup
+
+## Security and Safety
+
+### 22. **Security Implementation**
+- **Implement proper authentication** for all external interfaces
+- **Validate all inputs** to prevent injection attacks
+- **Use secure communication** protocols (TLS/SSL)
+- **Implement access control** for sensitive operations
+
+### 23. **Safety Constraints**
+- **Implement safety checks** for critical operations
+- **Add constraint validation** for autonomous behaviors
+- **Provide emergency stop** mechanisms where appropriate
+- **Log security-relevant events** for audit purposes
+
+## Documentation and Examples
+
+### 24. **Code Documentation**
+- **Document complex algorithms** with clear explanations
+- **Add usage examples** in javadoc where helpful
+- **Document configuration options** with examples
+- **Provide troubleshooting information** for common issues
+- **openHAB copyright statement** must be added to each class
+
+### 25. **API Documentation**
+- **Document all public APIs** with clear examples
+- **Provide migration guides** for breaking changes
+- **Include performance considerations** in documentation
+- **Document error scenarios** and recovery procedures

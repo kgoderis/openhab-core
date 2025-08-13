@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 package org.openhab.core.ai.tool;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -6,7 +18,7 @@ import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.junit.jupiter.api.Test;
-import org.openhab.core.ai.tool.prompt.Prompt;
+import org.openhab.core.ai.tool.prompts.dto.Prompt;
 
 /**
  * Unit tests for the Prompt class.
@@ -22,8 +34,8 @@ public class PromptTest {
         // Given
         String name = "test_prompt";
         String description = "A test prompt";
-        List<Prompt.PromptArgument> arguments = List.of(new Prompt.PromptArgument("arg1", "First argument", true),
-                new Prompt.PromptArgument("arg2", "Second argument", false));
+        List<PromptArgument> arguments = List.of(new PromptArgument("arg1", "First argument", true),
+                new PromptArgument("arg2", "Second argument", false));
 
         // When
         Prompt prompt = new Prompt(name, description, arguments);
@@ -43,7 +55,7 @@ public class PromptTest {
         boolean required = true;
 
         // When
-        Prompt.PromptArgument argument = new Prompt.PromptArgument(name, description, required);
+        PromptArgument argument = new PromptArgument(name, description, required);
 
         // Then
         assertEquals(name, argument.getName());
@@ -56,7 +68,7 @@ public class PromptTest {
         // Given
         String name = "test_prompt";
         String description = "A test prompt";
-        List<Prompt.PromptArgument> arguments = List.of(new Prompt.PromptArgument("arg1", "First argument", true));
+        List<PromptArgument> arguments = List.of(new PromptArgument("arg1", "First argument", true));
 
         // When
         Prompt prompt = new Prompt(name, description, arguments);
@@ -76,7 +88,7 @@ public class PromptTest {
         boolean required = true;
 
         // When
-        Prompt.PromptArgument argument = new Prompt.PromptArgument(name, description, required);
+        PromptArgument argument = new PromptArgument(name, description, required);
         String result = argument.toString();
 
         // Then

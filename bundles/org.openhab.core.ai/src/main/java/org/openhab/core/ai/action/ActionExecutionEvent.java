@@ -18,6 +18,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.model.ActionExecutionEventStatus;
 
 /**
  * Event representing an action execution.
@@ -36,7 +37,7 @@ public class ActionExecutionEvent {
     private final Map<String, Object> parameters;
     private final @Nullable Object result;
     private final @Nullable String error;
-    private final ExecutionStatus status;
+    private final ActionExecutionEventStatus status;
     private final Instant startTime;
     private final Instant endTime;
     private final Duration executionTime;
@@ -83,7 +84,7 @@ public class ActionExecutionEvent {
         return error;
     }
 
-    public ExecutionStatus getStatus() {
+    public ActionExecutionEventStatus getStatus() {
         return status;
     }
 
@@ -113,7 +114,7 @@ public class ActionExecutionEvent {
      * @return true if successful, false otherwise
      */
     public boolean isSuccessful() {
-        return status == ExecutionStatus.SUCCESS;
+        return status == ActionExecutionEventStatus.SUCCESS;
     }
 
     /**
@@ -122,7 +123,7 @@ public class ActionExecutionEvent {
      * @return true if failed, false otherwise
      */
     public boolean isFailed() {
-        return status == ExecutionStatus.FAILED;
+        return status == ActionExecutionEventStatus.FAILED;
     }
 
     /**
@@ -131,19 +132,13 @@ public class ActionExecutionEvent {
      * @return true if timed out, false otherwise
      */
     public boolean isTimedOut() {
-        return status == ExecutionStatus.TIMEOUT;
+        return status == ActionExecutionEventStatus.TIMEOUT;
     }
 
     /**
      * Execution status for action events.
      */
-    public enum ExecutionStatus {
-        SUCCESS, // Execution completed successfully
-        FAILED, // Execution failed with an error
-        TIMEOUT, // Execution timed out
-        CANCELLED, // Execution was cancelled
-        PENDING // Execution is pending
-    }
+    // ExecutionStatus extracted to top-level: org.openhab.core.ai.model.ActionExecutionEventStatus
 
     /**
      * Builder for ActionExecutionEvent.
@@ -155,7 +150,7 @@ public class ActionExecutionEvent {
         private Map<String, Object> parameters = Map.of();
         private @Nullable Object result = null;
         private @Nullable String error = null;
-        private ExecutionStatus status = ExecutionStatus.PENDING;
+        private ActionExecutionEventStatus status = ActionExecutionEventStatus.PENDING;
         private Instant startTime = Instant.now();
         private Instant endTime = Instant.now();
         private String origin = "unknown";
@@ -191,7 +186,7 @@ public class ActionExecutionEvent {
             return this;
         }
 
-        public Builder status(ExecutionStatus status) {
+        public Builder status(ActionExecutionEventStatus status) {
             this.status = status;
             return this;
         }

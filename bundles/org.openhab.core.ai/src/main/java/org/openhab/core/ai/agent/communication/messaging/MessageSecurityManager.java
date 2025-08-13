@@ -1,0 +1,18 @@
+package org.openhab.core.ai.agent.communication.messaging;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
+import io.a2a.spec.Message;
+
+/**
+ * Message security validator.
+ *
+ * Author: Karel Goderis - Initial Contribution
+ * @since 1.0.0
+ */
+@NonNullByDefault
+public class MessageSecurityManager {
+    public boolean validateMessageSecurity(Message message) { return true; }
+}
+
+

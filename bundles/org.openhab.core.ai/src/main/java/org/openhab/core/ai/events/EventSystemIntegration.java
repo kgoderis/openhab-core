@@ -251,8 +251,94 @@ public class EventSystemIntegration implements EventSubscriber {
      * Execute actions from reasoning result
      */
     private void executeReasoningActions(MultiStepReasoningResult result) {
-        // TODO: Implement action execution based on reasoning result
         logger.debug("Executing reasoning actions with {} tool calls", result.getToolCalls().size());
+
+        try {
+            // Execute each tool call from the reasoning result
+            for (var toolCall : result.getToolCalls()) {
+                executeToolCall(toolCall);
+            }
+
+            // Execute any planned actions from the reasoning result
+            // Note: MultiStepReasoningResult doesn't have getPlannedActions() method
+            // Actions are executed through tool calls instead
+
+            // Notify subscribers about reasoning execution
+            notifyReasoningExecution(result);
+
+        } catch (Exception e) {
+            logger.error("Error executing reasoning actions", e);
+            handleReasoningExecutionError(result, e);
+        }
+    }
+
+    /**
+     * Execute a single tool call
+     */
+    private void executeToolCall(Object toolCall) {
+        try {
+            // TODO: Implement actual tool call execution
+            // This would integrate with the tool execution system
+            logger.debug("Executing tool call: {}", toolCall);
+        } catch (Exception e) {
+            logger.error("Error executing tool call: {}", toolCall, e);
+        }
+    }
+
+    /**
+     * Execute a planned action
+     */
+    private void executePlannedAction(Object action) {
+        try {
+            // TODO: Implement actual action execution
+            // This would integrate with the action execution system
+            logger.debug("Executing planned action: {}", action);
+        } catch (Exception e) {
+            logger.error("Error executing planned action: {}", action, e);
+        }
+    }
+
+    /**
+     * Notify subscribers about reasoning execution
+     */
+    private void notifyReasoningExecution(MultiStepReasoningResult result) {
+        EventSubscriptionRegistry registry = subscriptionRegistry;
+        if (registry != null) {
+            // Create notification event
+            Event notificationEvent = createReasoningExecutionEvent(result);
+            // Note: EventSubscriptionRegistry doesn't have notifySubscribers method
+            // Events are handled through the EventBus system
+            logger.debug("Reasoning execution notification created: {}", notificationEvent.getType());
+        }
+    }
+
+    /**
+     * Create reasoning execution notification event
+     */
+    private Event createReasoningExecutionEvent(MultiStepReasoningResult result) {
+        // TODO: Create proper event with reasoning result data
+        // This is a placeholder implementation
+        return new Event() {
+            @Override
+            public String getType() {
+                return "ai.reasoning.execution";
+            }
+
+            @Override
+            public String getTopic() {
+                return "ai/reasoning/execution";
+            }
+
+            @Override
+            public String getSource() {
+                return "EventSystemIntegration";
+            }
+
+            @Override
+            public String getPayload() {
+                return "Reasoning execution completed with confidence: " + result.getConfidence();
+            }
+        };
     }
 
     /**
@@ -260,7 +346,109 @@ public class EventSystemIntegration implements EventSubscriber {
      */
     private void handleEventProcessingError(Event event, Exception error) {
         logger.error("Event processing error for event type: {}", event.getType(), error);
-        // TODO: Implement error recovery and notification
+
+        try {
+            // Log error details
+            logger.error("Event processing failed - Event: type={}, source={}, topic={}", event.getType(),
+                    event.getSource(), event.getTopic());
+
+            // Create error notification event
+            Event errorEvent = createErrorNotificationEvent(event, error);
+
+            // Route error event for handling
+            routeEvent(errorEvent);
+
+            // Persist error for analysis
+            if (enableEventPersistence.get()) {
+                persistEvent(errorEvent);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error handling event processing error", e);
+        }
+    }
+
+    /**
+     * Handle reasoning execution errors
+     */
+    private void handleReasoningExecutionError(MultiStepReasoningResult result, Exception error) {
+        logger.error("Reasoning execution error for session: {}", result.getSessionId(), error);
+
+        try {
+            // Log error details
+            logger.error("Reasoning execution failed - Session: {}, Steps: {}, Confidence: {}", result.getSessionId(),
+                    result.getSteps().size(), result.getConfidence());
+
+            // Create error notification event
+            Event errorEvent = createReasoningErrorNotificationEvent(result, error);
+
+            // Route error event for handling
+            routeEvent(errorEvent);
+
+            // Persist error for analysis
+            if (enableEventPersistence.get()) {
+                persistEvent(errorEvent);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error handling reasoning execution error", e);
+        }
+    }
+
+    /**
+     * Create error notification event
+     */
+    private Event createErrorNotificationEvent(Event originalEvent, Exception error) {
+        return new Event() {
+            @Override
+            public String getType() {
+                return "ai.event.processing.error";
+            }
+
+            @Override
+            public String getTopic() {
+                return "ai/event/processing/error";
+            }
+
+            @Override
+            public String getSource() {
+                return "EventSystemIntegration";
+            }
+
+            @Override
+            public String getPayload() {
+                return String.format("Event processing error - Original: %s, Error: %s", originalEvent.getType(),
+                        error.getMessage());
+            }
+        };
+    }
+
+    /**
+     * Create reasoning error notification event
+     */
+    private Event createReasoningErrorNotificationEvent(MultiStepReasoningResult result, Exception error) {
+        return new Event() {
+            @Override
+            public String getType() {
+                return "ai.reasoning.execution.error";
+            }
+
+            @Override
+            public String getTopic() {
+                return "ai/reasoning/execution/error";
+            }
+
+            @Override
+            public String getSource() {
+                return "EventSystemIntegration";
+            }
+
+            @Override
+            public String getPayload() {
+                return String.format("Reasoning execution error - Session: %s, Error: %s", result.getSessionId(),
+                        error.getMessage());
+            }
+        };
     }
 
     // Event Replay Capabilities
@@ -377,93 +565,5 @@ public class EventSystemIntegration implements EventSubscriber {
         logger.info("Event processing statistics reset");
     }
 
-    /**
-     * Event processing statistics
-     */
-    public static class EventProcessingStatistics {
-        private final long totalEventsProcessed;
-        private final long filteredEvents;
-        private final long enrichedEvents;
-        private final long routedEvents;
-        private final long persistedEvents;
-        private final long reasoningTriggers;
-        private final boolean eventProcessingEnabled;
-        private final boolean eventPersistenceEnabled;
-        private final boolean reasoningIntegrationEnabled;
-        private final Duration eventRetentionPeriod;
-        private final boolean replayInProgress;
-
-        public EventProcessingStatistics(long totalEventsProcessed, long filteredEvents, long enrichedEvents,
-                long routedEvents, long persistedEvents, long reasoningTriggers, boolean eventProcessingEnabled,
-                boolean eventPersistenceEnabled, boolean reasoningIntegrationEnabled, Duration eventRetentionPeriod,
-                boolean replayInProgress) {
-            this.totalEventsProcessed = totalEventsProcessed;
-            this.filteredEvents = filteredEvents;
-            this.enrichedEvents = enrichedEvents;
-            this.routedEvents = routedEvents;
-            this.persistedEvents = persistedEvents;
-            this.reasoningTriggers = reasoningTriggers;
-            this.eventProcessingEnabled = eventProcessingEnabled;
-            this.eventPersistenceEnabled = eventPersistenceEnabled;
-            this.reasoningIntegrationEnabled = reasoningIntegrationEnabled;
-            this.eventRetentionPeriod = eventRetentionPeriod;
-            this.replayInProgress = replayInProgress;
-        }
-
-        public long getTotalEventsProcessed() {
-            return totalEventsProcessed;
-        }
-
-        public long getFilteredEvents() {
-            return filteredEvents;
-        }
-
-        public long getEnrichedEvents() {
-            return enrichedEvents;
-        }
-
-        public long getRoutedEvents() {
-            return routedEvents;
-        }
-
-        public long getPersistedEvents() {
-            return persistedEvents;
-        }
-
-        public long getReasoningTriggers() {
-            return reasoningTriggers;
-        }
-
-        public boolean isEventProcessingEnabled() {
-            return eventProcessingEnabled;
-        }
-
-        public boolean isEventPersistenceEnabled() {
-            return eventPersistenceEnabled;
-        }
-
-        public boolean isReasoningIntegrationEnabled() {
-            return reasoningIntegrationEnabled;
-        }
-
-        public Duration getEventRetentionPeriod() {
-            return eventRetentionPeriod;
-        }
-
-        public boolean isReplayInProgress() {
-            return replayInProgress;
-        }
-
-        public double getFilterRate() {
-            return totalEventsProcessed > 0 ? (double) filteredEvents / totalEventsProcessed : 0.0;
-        }
-
-        public double getEnrichmentRate() {
-            return totalEventsProcessed > 0 ? (double) enrichedEvents / totalEventsProcessed : 0.0;
-        }
-
-        public double getReasoningTriggerRate() {
-            return totalEventsProcessed > 0 ? (double) reasoningTriggers / totalEventsProcessed : 0.0;
-        }
-    }
+    // EventProcessingStatistics moved to top-level in this package
 }

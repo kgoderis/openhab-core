@@ -369,8 +369,8 @@ public class DefaultResourceRegistry implements ResourceRegistry {
      * @param resourceSpec The internal resource specification
      * @return The sync resource specification or null if creation fails
      */
-    private @Nullable McpServerFeatures.SyncResourceSpecification createSyncResourceSpecification(
-            McpSchema.Resource mcpResource, ResourceSpecification resourceSpec) {
+    private McpServerFeatures.SyncResourceSpecification createSyncResourceSpecification(McpSchema.Resource mcpResource,
+            ResourceSpecification resourceSpec) {
         try {
             // TODO: Replace with proper SyncResourceSpecification.Builder when available in MCP SDK
             // For now, we'll create a basic implementation that can be enhanced
@@ -402,7 +402,7 @@ public class DefaultResourceRegistry implements ResourceRegistry {
      * @param resourceSpec The internal resource specification
      * @return The async resource specification or null if creation fails
      */
-    private @Nullable McpServerFeatures.AsyncResourceSpecification createAsyncResourceSpecification(
+    private McpServerFeatures.AsyncResourceSpecification createAsyncResourceSpecification(
             McpSchema.Resource mcpResource, ResourceSpecification resourceSpec) {
         try {
             // TODO: Replace with proper AsyncResourceSpecification.Builder when available in MCP SDK

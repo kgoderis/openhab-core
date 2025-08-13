@@ -584,21 +584,5 @@ public class ConfigurationImportAction implements Action {
         return errors;
     }
 
-    private static class ImportFile {
-        String path = "";
-        String name = "";
-        String type = "";
-        String content = "";
-        Instant lastModified;
-    }
-
-    private static class ImportStats {
-        int processed = 0;
-        int created = 0;
-        int updated = 0;
-        int skipped = 0;
-        int errors = 0;
-        List<String> validationErrors = new ArrayList<>();
-        List<Map<String, Object>> details = new ArrayList<>();
-    }
+    
 }

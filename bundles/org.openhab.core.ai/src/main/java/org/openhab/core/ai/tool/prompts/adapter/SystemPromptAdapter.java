@@ -10,6 +10,7 @@ import org.openhab.core.ai.tool.api.Adapter;
 import org.openhab.core.ai.tool.api.PromptContext;
 import org.openhab.core.ai.tool.api.PromptResult;
 import org.openhab.core.ai.tool.prompts.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,11 +38,11 @@ public class SystemPromptAdapter extends BaseAdapter implements Adapter<Prompt, 
     public @Nullable Prompt createEntity(String identifier, PromptContext context) {
         String name = "System: " + identifier;
         String description = "System information prompt: " + identifier;
-        Prompt.PromptArgument[] args = new Prompt.PromptArgument[] {
-                new Prompt.PromptArgument("includeItems", "Include item status information", false),
-                new Prompt.PromptArgument("includeThings", "Include thing status information", false),
-                new Prompt.PromptArgument("includeRules", "Include rule status information", false),
-                new Prompt.PromptArgument("format", "Output format (json, xml, text)", false) };
+        PromptArgument[] args = new PromptArgument[] {
+                new PromptArgument("includeItems", "Include item status information", false),
+                new PromptArgument("includeThings", "Include thing status information", false),
+                new PromptArgument("includeRules", "Include rule status information", false),
+                new PromptArgument("format", "Output format (json, xml, text)", false) };
         return new Prompt(name, description, java.util.List.of(args));
     }
 

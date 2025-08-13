@@ -131,10 +131,32 @@ public final class SharedRestInfrastructure {
     }
 
     // Rate limiting utilities
+    private static final Map<String, SharedRestRateLimitInfo> rateLimitStore = new java.util.concurrent.ConcurrentHashMap<>();
+
     public static boolean isRateLimited(String clientId, int maxRequests, int windowSeconds) {
-        // TODO: Implement actual rate limiting logic
+        if (clientId == null || clientId.trim().isEmpty()) {
+            return false; // No client ID, no rate limiting
+        }
+
+        long currentTime = System.currentTimeMillis();
+        long windowStart = currentTime - (windowSeconds * 1000L);
+
+        SharedRestRateLimitInfo info = rateLimitStore.computeIfAbsent(clientId, k -> new SharedRestRateLimitInfo());
+
+        // Clean up old requests outside the current window
+        info.requests.removeIf(timestamp -> timestamp < windowStart);
+
+        // Check if rate limit exceeded
+        if (info.requests.size() >= maxRequests) {
+            return true;
+        }
+
+        // Add current request
+        info.requests.add(currentTime);
         return false;
     }
+
+    // Extracted: org.openhab.core.ai.rest.SharedRestRateLimitInfo
 
     public static Response rateLimitExceeded() {
         return Response.status(429).header("Retry-After", 60)

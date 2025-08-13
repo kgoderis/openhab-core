@@ -21,36 +21,7 @@ public class ToolErrorRecoveryManager {
     /**
      * Error recovery statistics class.
      */
-    public static class ErrorRecoveryStatistics {
-        private final int totalErrors;
-        private final int recoveredErrors;
-        private final int unrecoveredErrors;
-        private final int recoveryAttempts;
-
-        public ErrorRecoveryStatistics(int totalErrors, int recoveredErrors, int unrecoveredErrors,
-                int recoveryAttempts) {
-            this.totalErrors = totalErrors;
-            this.recoveredErrors = recoveredErrors;
-            this.unrecoveredErrors = unrecoveredErrors;
-            this.recoveryAttempts = recoveryAttempts;
-        }
-
-        public int getTotalErrors() {
-            return totalErrors;
-        }
-
-        public int getRecoveredErrors() {
-            return recoveredErrors;
-        }
-
-        public int getUnrecoveredErrors() {
-            return unrecoveredErrors;
-        }
-
-        public int getRecoveryAttempts() {
-            return recoveryAttempts;
-        }
-    }
+    // ErrorRecoveryStatistics extracted to org.openhab.core.ai.tool.manager.ErrorRecoveryStatistics
 
     /**
      * Attempt to recover from an error.

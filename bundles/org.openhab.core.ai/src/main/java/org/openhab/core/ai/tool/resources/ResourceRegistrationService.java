@@ -42,7 +42,7 @@ public class ResourceRegistrationService {
 
         if (bundleContext != null) {
             resourceTracker = new ServiceTracker<>(bundleContext, ResourceSpecification.class,
-                    new ResourceServiceCustomizer());
+                    new ResourceServiceCustomizer(this));
             resourceTracker.open();
         }
     }
@@ -74,48 +74,11 @@ public class ResourceRegistrationService {
     /**
      * Service tracker customizer for ResourceSpecification services
      */
-    private class ResourceServiceCustomizer
-            implements ServiceTrackerCustomizer<ResourceSpecification, ResourceSpecification> {
+    BundleContext getBundleContext() {
+        return bundleContext;
+    }
 
-        @Override
-        public ResourceSpecification addingService(ServiceReference<ResourceSpecification> reference) {
-            BundleContext context = bundleContext;
-            if (context == null) {
-                return null;
-            }
-
-            ResourceSpecification resource = context.getService(reference);
-            if (resource != null) {
-                ResourceRegistry registry = resourceRegistry;
-                if (registry != null) {
-                    registry.registerResource(resource);
-                    logger.debug("Registered resource: {}", resource.getId());
-                } else {
-                    logger.warn("ResourceRegistry not available, cannot register resource: {}", resource.getId());
-                }
-            }
-            return resource;
-        }
-
-        @Override
-        public void modifiedService(ServiceReference<ResourceSpecification> reference, ResourceSpecification resource) {
-            logger.debug("Resource service modified: {}", resource.getId());
-            // Re-register the resource
-            addingService(reference);
-        }
-
-        @Override
-        public void removedService(ServiceReference<ResourceSpecification> reference, ResourceSpecification resource) {
-            ResourceRegistry registry = resourceRegistry;
-            if (registry != null) {
-                registry.unregisterResource(resource.getId());
-                logger.debug("Unregistered resource: {}", resource.getId());
-            }
-
-            BundleContext context = bundleContext;
-            if (context != null) {
-                context.ungetService(reference);
-            }
-        }
+    ResourceRegistry getResourceRegistry() {
+        return resourceRegistry;
     }
 }

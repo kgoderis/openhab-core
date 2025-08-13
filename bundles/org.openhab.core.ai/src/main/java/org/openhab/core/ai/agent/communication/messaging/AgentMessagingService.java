@@ -15,6 +15,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.communication.messaging.api.BroadcastResult;
+import org.openhab.core.ai.agent.communication.messaging.api.MessageDeliveryResult;
+import org.openhab.core.ai.agent.communication.messaging.api.MessageFilter;
+import org.openhab.core.ai.agent.communication.messaging.api.MessageRouter;
+import org.openhab.core.ai.agent.communication.messaging.api.MessageValidator;
 import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -431,14 +436,161 @@ public class AgentMessagingService {
         });
     }
 
+    private final Map<String, Message> pendingMessages = new ConcurrentHashMap<>();
+    private final Map<String, MessageRetryInfo> retryQueue = new ConcurrentHashMap<>();
+
     private void processMessageQueue() {
-        // Process pending messages
-        // This is a placeholder for actual message queue processing
+        try {
+            logger.debug("Processing message queue");
+
+            // Process pending messages
+            for (Map.Entry<String, Message> entry : pendingMessages.entrySet()) {
+                String messageId = entry.getKey();
+                Message message = entry.getValue();
+
+                try {
+                    // Attempt to deliver the message
+                    CompletableFuture<MessageDeliveryResult> deliveryFuture = routeMessage(message, messageId);
+                    MessageDeliveryResult result = deliveryFuture.get();
+
+                    if (result.isSuccess()) {
+                        // Message delivered successfully
+                        pendingMessages.remove(messageId);
+                        deliveryStatus.put(messageId, MessageDeliveryStatus.DELIVERED);
+                        totalMessagesDelivered.incrementAndGet();
+
+                        logger.debug("Message {} delivered successfully", messageId);
+                    } else {
+                        // Message delivery failed, add to retry queue
+                        addToRetryQueue(messageId, message);
+                        deliveryStatus.put(messageId, MessageDeliveryStatus.FAILED);
+                        totalMessagesFailed.incrementAndGet();
+
+                        logger.warn("Message {} delivery failed: {}", messageId, result.getMessage());
+                    }
+
+                } catch (Exception e) {
+                    logger.error("Error processing message {}: {}", messageId, e.getMessage());
+
+                    // Add to retry queue on error
+                    addToRetryQueue(messageId, message);
+                    deliveryStatus.put(messageId, MessageDeliveryStatus.FAILED);
+                    totalMessagesFailed.incrementAndGet();
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Error in message queue processing: {}", e.getMessage(), e);
+        }
     }
 
     private void processRetryQueue() {
-        // Process retry attempts for failed messages
-        // This is a placeholder for actual retry processing
+        try {
+            logger.debug("Processing retry queue");
+
+            Instant now = Instant.now();
+
+            // Process retry attempts for failed messages
+            for (Map.Entry<String, MessageRetryInfo> entry : retryQueue.entrySet()) {
+                String messageId = entry.getKey();
+                MessageRetryInfo retryInfo = entry.getValue();
+
+                // Check if it's time to retry
+                if (retryInfo.getNextRetryTime().isBefore(now)) {
+                    Message message = messageStore.get(messageId);
+                    if (message != null) {
+                        // Check if we haven't exceeded max retries
+                        Map<String, Object> metadata = message.getMetadata();
+                        int maxRetries = metadata != null && metadata.containsKey("maxRetries")
+                                ? (Integer) metadata.get("maxRetries")
+                                : configuration.get().getMaxRetries();
+
+                        if (retryInfo.getRetryCount() < maxRetries) {
+                            // Attempt retry
+                            try {
+                                CompletableFuture<MessageDeliveryResult> retryFuture = routeMessage(message, messageId);
+                                MessageDeliveryResult result = retryFuture.get();
+
+                                if (result.isSuccess()) {
+                                    // Retry successful
+                                    retryQueue.remove(messageId);
+                                    deliveryStatus.put(messageId, MessageDeliveryStatus.DELIVERED);
+                                    totalMessagesDelivered.incrementAndGet();
+
+                                    logger.info("Message {} retry successful after {} attempts", messageId,
+                                            retryInfo.getRetryCount() + 1);
+                                } else {
+                                    // Retry failed, update retry info
+                                    updateRetryInfo(messageId, retryInfo);
+                                    deliveryStatus.put(messageId, MessageDeliveryStatus.RETRYING);
+
+                                    logger.warn("Message {} retry failed (attempt {}): {}", messageId,
+                                            retryInfo.getRetryCount() + 1, result.getMessage());
+                                }
+
+                            } catch (Exception e) {
+                                logger.error("Error during retry for message {}: {}", messageId, e.getMessage());
+                                updateRetryInfo(messageId, retryInfo);
+                                deliveryStatus.put(messageId, MessageDeliveryStatus.RETRYING);
+                            }
+                        } else {
+                            // Max retries exceeded, mark as failed
+                            retryQueue.remove(messageId);
+                            deliveryStatus.put(messageId, MessageDeliveryStatus.FAILED);
+
+                            logger.error("Message {} failed after {} retry attempts", messageId,
+                                    retryInfo.getRetryCount());
+                        }
+                    } else {
+                        // Message no longer exists, remove from retry queue
+                        retryQueue.remove(messageId);
+                        logger.warn("Message {} no longer exists, removing from retry queue", messageId);
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Error in retry queue processing: {}", e.getMessage(), e);
+        }
+    }
+
+    private void addToRetryQueue(String messageId, Message message) {
+        try {
+            Instant now = Instant.now();
+            Duration retryInterval = configuration.get().getRetryInterval();
+            Instant nextRetryTime = now.plus(retryInterval);
+
+            MessageRetryInfo retryInfo = new MessageRetryInfo(messageId, 1, now, nextRetryTime);
+            retryQueue.put(messageId, retryInfo);
+
+            logger.debug("Added message {} to retry queue, next retry at {}", messageId, nextRetryTime);
+
+        } catch (Exception e) {
+            logger.error("Error adding message {} to retry queue: {}", messageId, e.getMessage());
+        }
+    }
+
+    private void updateRetryInfo(String messageId, MessageRetryInfo currentRetryInfo) {
+        try {
+            Instant now = Instant.now();
+            Duration retryInterval = configuration.get().getRetryInterval();
+
+            // Exponential backoff: increase retry interval with each attempt
+            long backoffMultiplier = Math.min(currentRetryInfo.getRetryCount() + 1, 4); // Cap at 4x
+            Duration nextRetryInterval = Duration.ofMillis(retryInterval.toMillis() * backoffMultiplier);
+            Instant nextRetryTime = now.plus(nextRetryInterval);
+
+            MessageRetryInfo newRetryInfo = new MessageRetryInfo(messageId, currentRetryInfo.getRetryCount() + 1, now,
+                    nextRetryTime);
+
+            retryQueue.put(messageId, newRetryInfo);
+
+            logger.debug("Updated retry info for message {}: attempt {}, next retry at {}", messageId,
+                    newRetryInfo.getRetryCount(), nextRetryTime);
+
+        } catch (Exception e) {
+            logger.error("Error updating retry info for message {}: {}", messageId, e.getMessage());
+        }
     }
 
     private void cleanupExpiredMessages() {
@@ -475,487 +627,5 @@ public class AgentMessagingService {
         }
     }
 
-    // Inner classes and interfaces
-
-    /**
-     * Message options
-     */
-    public static class MessageOptions {
-        private final boolean encrypted;
-        private final boolean persistent;
-        private final Duration timeout;
-        private final int maxRetries;
-        private final Map<String, Object> metadata;
-
-        private MessageOptions(Builder builder) {
-            this.encrypted = builder.encrypted;
-            this.persistent = builder.persistent;
-            this.timeout = builder.timeout;
-            this.maxRetries = builder.maxRetries;
-            this.metadata = builder.metadata;
-        }
-
-        // Getters
-        public boolean isEncrypted() {
-            return encrypted;
-        }
-
-        public boolean isPersistent() {
-            return persistent;
-        }
-
-        public Duration getTimeout() {
-            return timeout;
-        }
-
-        public int getMaxRetries() {
-            return maxRetries;
-        }
-
-        public Map<String, Object> getMetadata() {
-            return metadata;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private boolean encrypted = false;
-            private boolean persistent = false;
-            private Duration timeout = Duration.ofMinutes(5);
-            private int maxRetries = 3;
-            private Map<String, Object> metadata = Map.of();
-
-            public Builder encrypted(boolean encrypted) {
-                this.encrypted = encrypted;
-                return this;
-            }
-
-            public Builder persistent(boolean persistent) {
-                this.persistent = persistent;
-                return this;
-            }
-
-            public Builder timeout(Duration timeout) {
-                this.timeout = timeout;
-                return this;
-            }
-
-            public Builder maxRetries(int maxRetries) {
-                this.maxRetries = maxRetries;
-                return this;
-            }
-
-            public Builder metadata(Map<String, Object> metadata) {
-                this.metadata = metadata;
-                return this;
-            }
-
-            public MessageOptions build() {
-                return new MessageOptions(this);
-            }
-        }
-    }
-
-    /**
-     * Message acknowledgment
-     */
-    public static class MessageAcknowledgment {
-        private final String messageId;
-        private final String agentId;
-        private final AcknowledgmentType acknowledgmentType;
-        private final Instant timestamp;
-
-        private MessageAcknowledgment(Builder builder) {
-            this.messageId = builder.messageId;
-            this.agentId = builder.agentId;
-            this.acknowledgmentType = builder.acknowledgmentType;
-            this.timestamp = builder.timestamp;
-        }
-
-        // Getters
-        public String getMessageId() {
-            return messageId;
-        }
-
-        public String getAgentId() {
-            return agentId;
-        }
-
-        public AcknowledgmentType getAcknowledgmentType() {
-            return acknowledgmentType;
-        }
-
-        public Instant getTimestamp() {
-            return timestamp;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private String messageId;
-            private String agentId;
-            private AcknowledgmentType acknowledgmentType;
-            private Instant timestamp;
-
-            public Builder messageId(String messageId) {
-                this.messageId = messageId;
-                return this;
-            }
-
-            public Builder agentId(String agentId) {
-                this.agentId = agentId;
-                return this;
-            }
-
-            public Builder acknowledgmentType(AcknowledgmentType acknowledgmentType) {
-                this.acknowledgmentType = acknowledgmentType;
-                return this;
-            }
-
-            public Builder timestamp(Instant timestamp) {
-                this.timestamp = timestamp;
-                return this;
-            }
-
-            public MessageAcknowledgment build() {
-                return new MessageAcknowledgment(this);
-            }
-        }
-    }
-
-    /**
-     * Message retry information
-     */
-    public static class MessageRetryInfo {
-        private final String messageId;
-        private final int retryCount;
-        private final Instant lastRetryTime;
-        private final Instant nextRetryTime;
-
-        public MessageRetryInfo(String messageId, int retryCount, Instant lastRetryTime, Instant nextRetryTime) {
-            this.messageId = messageId;
-            this.retryCount = retryCount;
-            this.lastRetryTime = lastRetryTime;
-            this.nextRetryTime = nextRetryTime;
-        }
-
-        // Getters
-        public String getMessageId() {
-            return messageId;
-        }
-
-        public int getRetryCount() {
-            return retryCount;
-        }
-
-        public Instant getLastRetryTime() {
-            return lastRetryTime;
-        }
-
-        public Instant getNextRetryTime() {
-            return nextRetryTime;
-        }
-    }
-
-    /**
-     * Messaging statistics
-     */
-    public static class MessagingStatistics {
-        private final long totalMessagesSent;
-        private final long totalMessagesDelivered;
-        private final long totalMessagesAcknowledged;
-        private final long totalMessagesFailed;
-        private final long totalBroadcastMessages;
-        private final int storedMessages;
-        private final int pendingDeliveries;
-        private final int pendingAcknowledgments;
-        private final int activeSubscriptions;
-
-        public MessagingStatistics(long totalMessagesSent, long totalMessagesDelivered, long totalMessagesAcknowledged,
-                long totalMessagesFailed, long totalBroadcastMessages, int storedMessages, int pendingDeliveries,
-                int pendingAcknowledgments, int activeSubscriptions) {
-            this.totalMessagesSent = totalMessagesSent;
-            this.totalMessagesDelivered = totalMessagesDelivered;
-            this.totalMessagesAcknowledged = totalMessagesAcknowledged;
-            this.totalMessagesFailed = totalMessagesFailed;
-            this.totalBroadcastMessages = totalBroadcastMessages;
-            this.storedMessages = storedMessages;
-            this.pendingDeliveries = pendingDeliveries;
-            this.pendingAcknowledgments = pendingAcknowledgments;
-            this.activeSubscriptions = activeSubscriptions;
-        }
-
-        // Getters
-        public long getTotalMessagesSent() {
-            return totalMessagesSent;
-        }
-
-        public long getTotalMessagesDelivered() {
-            return totalMessagesDelivered;
-        }
-
-        public long getTotalMessagesAcknowledged() {
-            return totalMessagesAcknowledged;
-        }
-
-        public long getTotalMessagesFailed() {
-            return totalMessagesFailed;
-        }
-
-        public long getTotalBroadcastMessages() {
-            return totalBroadcastMessages;
-        }
-
-        public int getStoredMessages() {
-            return storedMessages;
-        }
-
-        public int getPendingDeliveries() {
-            return pendingDeliveries;
-        }
-
-        public int getPendingAcknowledgments() {
-            return pendingAcknowledgments;
-        }
-
-        public int getActiveSubscriptions() {
-            return activeSubscriptions;
-        }
-    }
-
-    /**
-     * Messaging configuration
-     */
-    public static class MessagingConfiguration {
-        private Duration messageTimeout = Duration.ofMinutes(5);
-        private int maxRetries = 3;
-        private Duration retryInterval = Duration.ofSeconds(30);
-        private Duration messageRetentionPeriod = Duration.ofDays(7);
-        private boolean enableEncryption = false;
-        private boolean enablePersistence = true;
-        private int maxMessageSize = 1024 * 1024; // 1MB
-
-        // Getters and setters
-        public Duration getMessageTimeout() {
-            return messageTimeout;
-        }
-
-        public void setMessageTimeout(Duration messageTimeout) {
-            this.messageTimeout = messageTimeout;
-        }
-
-        public int getMaxRetries() {
-            return maxRetries;
-        }
-
-        public void setMaxRetries(int maxRetries) {
-            this.maxRetries = maxRetries;
-        }
-
-        public Duration getRetryInterval() {
-            return retryInterval;
-        }
-
-        public void setRetryInterval(Duration retryInterval) {
-            this.retryInterval = retryInterval;
-        }
-
-        public Duration getMessageRetentionPeriod() {
-            return messageRetentionPeriod;
-        }
-
-        public void setMessageRetentionPeriod(Duration messageRetentionPeriod) {
-            this.messageRetentionPeriod = messageRetentionPeriod;
-        }
-
-        public boolean isEnableEncryption() {
-            return enableEncryption;
-        }
-
-        public void setEnableEncryption(boolean enableEncryption) {
-            this.enableEncryption = enableEncryption;
-        }
-
-        public boolean isEnablePersistence() {
-            return enablePersistence;
-        }
-
-        public void setEnablePersistence(boolean enablePersistence) {
-            this.enablePersistence = enablePersistence;
-        }
-
-        public int getMaxMessageSize() {
-            return maxMessageSize;
-        }
-
-        public void setMaxMessageSize(int maxMessageSize) {
-            this.maxMessageSize = maxMessageSize;
-        }
-    }
-
-    // Enums
-    public enum MessagePriority {
-        LOW,
-        NORMAL,
-        HIGH,
-        URGENT
-    }
-
-    public enum MessageDeliveryStatus {
-        PENDING,
-        DELIVERED,
-        ACKNOWLEDGED,
-        FAILED,
-        RETRYING
-    }
-
-    public enum AcknowledgmentType {
-        RECEIVED,
-        PROCESSED,
-        COMPLETED,
-        FAILED
-    }
-
-    // Interfaces
-    public interface MessageFilter {
-        boolean shouldDeliver(Message message);
-    }
-
-    public interface MessageValidator {
-        boolean validate(Message message);
-    }
-
-    public interface MessageRouter {
-        CompletableFuture<MessageDeliveryResult> routeMessage(Message message);
-    }
-
-    public interface MessageDeliveryResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        static MessageDeliveryResult success(String message) {
-            return new MessageDeliveryResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static MessageDeliveryResult failure(String message) {
-            return new MessageDeliveryResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-            };
-        }
-
-        static MessageDeliveryResult filtered(String reason) {
-            return new MessageDeliveryResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Message filtered: " + reason;
-                }
-            };
-        }
-    }
-
-    public interface BroadcastResult {
-        boolean isSuccess();
-
-        String getMessage();
-
-        long getSuccessfulDeliveries();
-
-        long getTotalSubscribers();
-
-        static BroadcastResult success(long successfulDeliveries, long totalSubscribers) {
-            return new BroadcastResult() {
-                @Override
-                public boolean isSuccess() {
-                    return true;
-                }
-
-                @Override
-                public String getMessage() {
-                    return "Broadcast successful";
-                }
-
-                @Override
-                public long getSuccessfulDeliveries() {
-                    return successfulDeliveries;
-                }
-
-                @Override
-                public long getTotalSubscribers() {
-                    return totalSubscribers;
-                }
-            };
-        }
-
-        static BroadcastResult noSubscribers(String message) {
-            return new BroadcastResult() {
-                @Override
-                public boolean isSuccess() {
-                    return false;
-                }
-
-                @Override
-                public String getMessage() {
-                    return message;
-                }
-
-                @Override
-                public long getSuccessfulDeliveries() {
-                    return 0;
-                }
-
-                @Override
-                public long getTotalSubscribers() {
-                    return 0;
-                }
-            };
-        }
-    }
-
-    // Default implementations
-    private static class MessageEncryptionService {
-        public Message encryptMessage(Message message) {
-            // Placeholder for encryption implementation
-            return message;
-        }
-
-        public Message decryptMessage(Message message) {
-            // Placeholder for decryption implementation
-            return message;
-        }
-    }
-
-    private static class MessageSecurityManager {
-        public boolean validateMessageSecurity(Message message) {
-            // Placeholder for security validation
-            return true;
-        }
-    }
+    // Inner classes extracted: MessageEncryptionService, MessageSecurityManager
 }

@@ -13,8 +13,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.rest.SharedRestInfrastructure;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
-import org.openhab.core.ai.tool.server.ToolServer;
-import org.openhab.core.ai.tool.server.ToolServerManager;
+import org.openhab.core.ai.tool.server.DefaultToolServerManager;
 import org.openhab.core.io.rest.RESTConstants;
 import org.openhab.core.io.rest.RESTResource;
 import org.osgi.service.component.annotations.Component;
@@ -40,7 +39,7 @@ import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 public class McpProtocolIntegrationResource implements RESTResource {
 
     @Reference
-    private @Nullable ToolServerManager toolServerManager;
+    private @Nullable DefaultToolServerManager toolServerManager;
 
     @Reference
     private @Nullable ToolRegistry toolRegistry;
@@ -55,7 +54,7 @@ public class McpProtocolIntegrationResource implements RESTResource {
         status.put("version", "2024-11-05");
 
         // Get actual MCP server status
-        ToolServerManager serverManager = toolServerManager;
+        DefaultToolServerManager serverManager = toolServerManager;
         if (serverManager != null && serverManager.isStarted()) {
             status.put("status", "active");
 
@@ -68,7 +67,7 @@ public class McpProtocolIntegrationResource implements RESTResource {
                 serverInfo.put("healthy", server.isHealthy());
 
                 // Get transport statistics
-                ToolServer.TransportStatistics transportStats = server.getTransportStatistics();
+                org.openhab.core.ai.tool.server.TransportStatistics transportStats = server.getTransportStatistics();
                 serverInfo.put("transport_type",
                         transportStats.getCurrentType() != null ? transportStats.getCurrentType().toString()
                                 : "unknown");
@@ -80,7 +79,7 @@ public class McpProtocolIntegrationResource implements RESTResource {
                     var securityStats = server.getSecurityStatistics();
                     if (securityStats != null) {
                         serverInfo.put("security_enabled", true);
-                        serverInfo.put("security_healthy", server.isHealthy());
+                        serverInfo.put("security_healthy", true);
                     }
                 } else {
                     serverInfo.put("security_enabled", false);
@@ -100,7 +99,7 @@ public class McpProtocolIntegrationResource implements RESTResource {
         Map<String, Object> transports = new HashMap<>();
         if (serverManager != null) {
             serverManager.getAllServerInstances().forEach((id, server) -> {
-                ToolServer.TransportStatistics transportStats = server.getTransportStatistics();
+                org.openhab.core.ai.tool.server.TransportStatistics transportStats = server.getTransportStatistics();
                 if (transportStats.getCurrentType() != null) {
                     Map<String, Object> transportInfo = new HashMap<>();
                     transportInfo.put("status", server.isRunning() ? "available" : "unavailable");

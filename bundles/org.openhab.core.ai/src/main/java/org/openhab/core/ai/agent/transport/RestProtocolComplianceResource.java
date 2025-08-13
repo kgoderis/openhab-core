@@ -15,7 +15,7 @@ import org.openhab.core.ai.agent.communication.protocol.AgentProtocolHandler;
 import org.openhab.core.ai.agent.execution.AgentTaskManager;
 import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
 import org.openhab.core.ai.rest.SharedRestInfrastructure;
-import org.openhab.core.ai.tool.server.ToolServer;
+import org.openhab.core.ai.tool.server.api.ToolServer;
 import org.openhab.core.io.rest.RESTConstants;
 import org.openhab.core.io.rest.RESTResource;
 import org.osgi.service.component.annotations.Component;

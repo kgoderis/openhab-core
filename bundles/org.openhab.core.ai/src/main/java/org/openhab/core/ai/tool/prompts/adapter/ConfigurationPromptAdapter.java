@@ -10,6 +10,7 @@ import org.openhab.core.ai.tool.api.Adapter;
 import org.openhab.core.ai.tool.api.PromptContext;
 import org.openhab.core.ai.tool.api.PromptResult;
 import org.openhab.core.ai.tool.prompts.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,11 +38,11 @@ public class ConfigurationPromptAdapter extends BaseAdapter implements Adapter<P
     public @Nullable Prompt createEntity(String identifier, PromptContext context) {
         String name = "Configuration: " + identifier;
         String description = "Configuration prompt for: " + identifier;
-        Prompt.PromptArgument[] args = new Prompt.PromptArgument[] {
-                new Prompt.PromptArgument("operation", "Operation (get, set, update)", true),
-                new Prompt.PromptArgument("property", "Property to configure", false),
-                new Prompt.PromptArgument("value", "Value to set", false),
-                new Prompt.PromptArgument("confirm", "Confirm the change", false) };
+        PromptArgument[] args = new PromptArgument[] {
+                new PromptArgument("operation", "Operation (get, set, update)", true),
+                new PromptArgument("property", "Property to configure", false),
+                new PromptArgument("value", "Value to set", false),
+                new PromptArgument("confirm", "Confirm the change", false) };
         return new Prompt(name, description, java.util.List.of(args));
     }
 

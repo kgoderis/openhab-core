@@ -13,7 +13,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionContext;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.model.api.ModelResponse;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -392,80 +391,5 @@ public class ModelResponseActionParser {
     /**
      * Performance metrics data class
      */
-    public static class PerformanceMetrics {
-        private final long totalParsingAttempts;
-        private final long successfulJsonParses;
-        private final long successfulRegexParses;
-        private final long failedParses;
-        private final long totalActionCalls;
-
-        private PerformanceMetrics(Builder builder) {
-            this.totalParsingAttempts = builder.totalParsingAttempts;
-            this.successfulJsonParses = builder.successfulJsonParses;
-            this.successfulRegexParses = builder.successfulRegexParses;
-            this.failedParses = builder.failedParses;
-            this.totalActionCalls = builder.totalActionCalls;
-        }
-
-        public long getTotalParsingAttempts() {
-            return totalParsingAttempts;
-        }
-
-        public long getSuccessfulJsonParses() {
-            return successfulJsonParses;
-        }
-
-        public long getSuccessfulRegexParses() {
-            return successfulRegexParses;
-        }
-
-        public long getFailedParses() {
-            return failedParses;
-        }
-
-        public long getTotalActionCalls() {
-            return totalActionCalls;
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private long totalParsingAttempts;
-            private long successfulJsonParses;
-            private long successfulRegexParses;
-            private long failedParses;
-            private long totalActionCalls;
-
-            public Builder totalParsingAttempts(long totalParsingAttempts) {
-                this.totalParsingAttempts = totalParsingAttempts;
-                return this;
-            }
-
-            public Builder successfulJsonParses(long successfulJsonParses) {
-                this.successfulJsonParses = successfulJsonParses;
-                return this;
-            }
-
-            public Builder successfulRegexParses(long successfulRegexParses) {
-                this.successfulRegexParses = successfulRegexParses;
-                return this;
-            }
-
-            public Builder failedParses(long failedParses) {
-                this.failedParses = failedParses;
-                return this;
-            }
-
-            public Builder totalActionCalls(long totalActionCalls) {
-                this.totalActionCalls = totalActionCalls;
-                return this;
-            }
-
-            public PerformanceMetrics build() {
-                return new PerformanceMetrics(this);
-            }
-        }
-    }
+    // Inner class extracted to top-level: org.openhab.core.ai.model.PerformanceMetrics
 }

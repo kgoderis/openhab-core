@@ -10,6 +10,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.api.PromptRegistry;
 import org.openhab.core.ai.tool.prompts.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
 import org.openhab.core.ai.tool.prompts.library.AutomationPrompt;
 import org.openhab.core.ai.tool.prompts.library.ItemControlPrompt;
 import org.openhab.core.ai.tool.prompts.library.SystemDiagnosticsPrompt;
@@ -125,24 +126,24 @@ public class OpenHABPromptRegistry implements PromptRegistry {
     private void createItemControlPrompts() {
         // Item Control Prompt
         Prompt itemControlPrompt = new Prompt("item_control", "Control openHAB items with parameterized commands",
-                Arrays.asList(new Prompt.PromptArgument("itemName", "Name of the openHAB item to control", true),
-                        new Prompt.PromptArgument("action", "Action to perform (ON, OFF, TOGGLE, INCREASE, DECREASE)",
+                Arrays.asList(new PromptArgument("itemName", "Name of the openHAB item to control", true),
+                        new PromptArgument("action", "Action to perform (ON, OFF, TOGGLE, INCREASE, DECREASE)",
                                 true),
-                        new Prompt.PromptArgument("value", "Optional value for the action", false)));
+                        new PromptArgument("value", "Optional value for the action", false)));
         prompts.put("item_control", itemControlPrompt);
 
         // Item Status Prompt
         Prompt itemStatusPrompt = new Prompt("item_status", "Get status and information about openHAB items",
-                Arrays.asList(new Prompt.PromptArgument("itemName", "Name of the openHAB item to check", true),
-                        new Prompt.PromptArgument("includeHistory", "Include item history in response", false)));
+                Arrays.asList(new PromptArgument("itemName", "Name of the openHAB item to check", true),
+                        new PromptArgument("includeHistory", "Include item history in response", false)));
         prompts.put("item_status", itemStatusPrompt);
 
         // Item Configuration Prompt
         Prompt itemConfigPrompt = new Prompt("item_configuration", "Configure and manage openHAB item settings",
-                Arrays.asList(new Prompt.PromptArgument("itemName", "Name of the openHAB item to configure", true),
-                        new Prompt.PromptArgument("operation",
+                Arrays.asList(new PromptArgument("itemName", "Name of the openHAB item to configure", true),
+                        new PromptArgument("operation",
                                 "Configuration operation to perform (GET, SET, UPDATE, DELETE)", true),
-                        new Prompt.PromptArgument("config", "Configuration parameters", false)));
+                        new PromptArgument("config", "Configuration parameters", false)));
         prompts.put("item_configuration", itemConfigPrompt);
     }
 
@@ -150,26 +151,26 @@ public class OpenHABPromptRegistry implements PromptRegistry {
         // Automation Control Prompt
         Prompt automationControlPrompt = new Prompt("automation_control",
                 "Control openHAB automation rules and workflows",
-                Arrays.asList(new Prompt.PromptArgument("ruleUID", "UID of the automation rule", true),
-                        new Prompt.PromptArgument("action",
+                Arrays.asList(new PromptArgument("ruleUID", "UID of the automation rule", true),
+                        new PromptArgument("action",
                                 "Action to perform on the rule (ENABLE, DISABLE, EXECUTE, GET_STATUS)", true),
-                        new Prompt.PromptArgument("parameters", "Optional parameters for the action", false)));
+                        new PromptArgument("parameters", "Optional parameters for the action", false)));
         prompts.put("automation_control", automationControlPrompt);
 
         // Rule Management Prompt
         Prompt ruleManagementPrompt = new Prompt("rule_management", "Manage and configure openHAB rules", Arrays.asList(
-                new Prompt.PromptArgument("operation",
+                new PromptArgument("operation",
                         "Rule management operation (LIST, CREATE, UPDATE, DELETE, VALIDATE)", true),
-                new Prompt.PromptArgument("ruleUID", "UID of the rule (for specific operations)", false),
-                new Prompt.PromptArgument("ruleDefinition", "Rule definition for create/update operations", false)));
+                new PromptArgument("ruleUID", "UID of the rule (for specific operations)", false),
+                new PromptArgument("ruleDefinition", "Rule definition for create/update operations", false)));
         prompts.put("rule_management", ruleManagementPrompt);
 
         // Workflow Prompt
         Prompt workflowPrompt = new Prompt("workflow_control", "Control complex automation workflows",
-                Arrays.asList(new Prompt.PromptArgument("workflowName", "Name of the workflow to control", true),
-                        new Prompt.PromptArgument("action",
+                Arrays.asList(new PromptArgument("workflowName", "Name of the workflow to control", true),
+                        new PromptArgument("action",
                                 "Workflow action to perform (START, STOP, PAUSE, RESUME, GET_STATUS)", true),
-                        new Prompt.PromptArgument("parameters", "Workflow parameters", false)));
+                        new PromptArgument("parameters", "Workflow parameters", false)));
         prompts.put("workflow_control", workflowPrompt);
     }
 
@@ -177,28 +178,28 @@ public class OpenHABPromptRegistry implements PromptRegistry {
         // System Diagnostics Prompt
         Prompt systemDiagnosticsPrompt = new Prompt("system_diagnostics",
                 "Perform system diagnostics and health checks",
-                Arrays.asList(new Prompt.PromptArgument("diagnosticType",
+                Arrays.asList(new PromptArgument("diagnosticType",
                         "Type of diagnostic to perform (SYSTEM_HEALTH, PERFORMANCE, MEMORY, NETWORK, STORAGE, SECURITY)",
                         true),
-                        new Prompt.PromptArgument("scope", "Scope of the diagnostic (FULL, QUICK, TARGETED)", false),
-                        new Prompt.PromptArgument("includeDetails", "Include detailed diagnostic information", false)));
+                        new PromptArgument("scope", "Scope of the diagnostic (FULL, QUICK, TARGETED)", false),
+                        new PromptArgument("includeDetails", "Include detailed diagnostic information", false)));
         prompts.put("system_diagnostics", systemDiagnosticsPrompt);
 
         // Performance Monitoring Prompt
         Prompt performancePrompt = new Prompt("performance_monitoring", "Monitor system performance and resource usage",
-                Arrays.asList(new Prompt.PromptArgument("metricType",
+                Arrays.asList(new PromptArgument("metricType",
                         "Type of performance metric to monitor (CPU, MEMORY, DISK, NETWORK, JVM, BUNDLE)", true),
-                        new Prompt.PromptArgument("duration", "Monitoring duration in seconds", false),
-                        new Prompt.PromptArgument("interval", "Sampling interval in seconds", false)));
+                        new PromptArgument("duration", "Monitoring duration in seconds", false),
+                        new PromptArgument("interval", "Sampling interval in seconds", false)));
         prompts.put("performance_monitoring", performancePrompt);
 
         // Security Audit Prompt
         Prompt securityPrompt = new Prompt("security_audit", "Perform security audits and vulnerability checks",
-                Arrays.asList(new Prompt.PromptArgument("auditType",
+                Arrays.asList(new PromptArgument("auditType",
                         "Type of security audit to perform (AUTHENTICATION, AUTHORIZATION, CONFIGURATION, NETWORK, COMPREHENSIVE)",
                         true),
-                        new Prompt.PromptArgument("includeRemediation", "Include remediation suggestions", false),
-                        new Prompt.PromptArgument("severity",
+                        new PromptArgument("includeRemediation", "Include remediation suggestions", false),
+                        new PromptArgument("severity",
                                 "Minimum severity level to report (LOW, MEDIUM, HIGH, CRITICAL)", false)));
         prompts.put("security_audit", securityPrompt);
     }
@@ -435,7 +436,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
             switch (promptName) {
                 case ItemControlPrompt.PROMPT_NAME:
                     if (itemControlPrompt != null) {
-                        ItemControlPrompt.PromptExecutionResult result = itemControlPrompt.execute(arguments);
+                        PromptExecutionResult result = itemControlPrompt.execute(arguments);
                         return new PromptExecutionResult(result.isSuccess(), result.getErrorMessage(),
                                 result.getContent());
                     } else {
@@ -444,7 +445,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
                     }
                 case AutomationPrompt.PROMPT_NAME:
                     if (automationPrompt != null) {
-                        AutomationPrompt.PromptExecutionResult result = automationPrompt.execute(arguments);
+                        PromptExecutionResult result = automationPrompt.execute(arguments);
                         return new PromptExecutionResult(result.isSuccess(), result.getErrorMessage(),
                                 result.getContent());
                     } else {
@@ -453,7 +454,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
                     }
                 case SystemDiagnosticsPrompt.PROMPT_NAME:
                     if (systemDiagnosticsPrompt != null) {
-                        SystemDiagnosticsPrompt.PromptExecutionResult result = systemDiagnosticsPrompt
+                        PromptExecutionResult result = systemDiagnosticsPrompt
                                 .execute(arguments);
                         return new PromptExecutionResult(result.isSuccess(), result.getErrorMessage(),
                                 result.getContent());
@@ -541,30 +542,5 @@ public class OpenHABPromptRegistry implements PromptRegistry {
         }
     }
 
-    /**
-     * Result of prompt execution.
-     */
-    public static class PromptExecutionResult {
-        private final boolean success;
-        private final @Nullable String errorMessage;
-        private final @Nullable String content;
 
-        public PromptExecutionResult(boolean success, @Nullable String errorMessage, @Nullable String content) {
-            this.success = success;
-            this.errorMessage = errorMessage;
-            this.content = content;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public @Nullable String getErrorMessage() {
-            return errorMessage;
-        }
-
-        public @Nullable String getContent() {
-            return content;
-        }
-    }
 }

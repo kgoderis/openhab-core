@@ -12,6 +12,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.lifecycle.api.ConfigurationChangeListener;
+import org.openhab.core.ai.agent.lifecycle.api.ConfigurationValidator;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.annotations.Activate;
@@ -678,27 +680,6 @@ public class AgentConfigurationManager {
     // ============================================================================
     // Inner Classes and Interfaces
     // ============================================================================
-
-    /**
-     * Configuration validator interface.
-     */
-    public interface ConfigurationValidator {
-        boolean validate(Object value);
-    }
-
-    /**
-     * Configuration change listener interface.
-     */
-    public interface ConfigurationChangeListener {
-        default void onConfigurationChanged() {
-            // Default implementation does nothing
-        }
-
-        default void onConfigurationChanged(String key, @Nullable Object oldValue, Object newValue) {
-            // Default implementation calls the no-parameter version
-            onConfigurationChanged();
-        }
-    }
 
     /**
      * Configuration validation result.

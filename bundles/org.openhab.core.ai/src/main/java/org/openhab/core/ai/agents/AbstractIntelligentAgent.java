@@ -11,6 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionContext;
+import org.openhab.core.ai.action.ActionError;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.ActionResult;
 import org.openhab.core.ai.agent.api.IntelligentAgent;
@@ -166,17 +167,17 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
     }
 
     @Override
-    public MultiStepReasoningEngine getReasoningEngine() {
+    public @Nullable MultiStepReasoningEngine getReasoningEngine() {
         return reasoningEngine;
     }
 
     @Override
-    public ActionRegistry getActionRegistry() {
+    public @Nullable ActionRegistry getActionRegistry() {
         return actionRegistry;
     }
 
     @Override
-    public ModelClient getModelClient() {
+    public @Nullable ModelClient getModelClient() {
         return modelClient;
     }
 
@@ -218,6 +219,13 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                 .sessionId("session-" + System.currentTimeMillis()).metadata(metadata).build();
         return context;
     }
+
+    /**
+     * Get agent specialization
+     * 
+     * @return the agent specialization (e.g., "energy", "security", "comfort")
+     */
+    public abstract String getSpecialization();
 
     private List<ActionContext> parseReasoningToActions(MultiStepReasoningResult reasoningResult, String originalAction,
             Map<String, Object> originalParams) {
@@ -271,14 +279,17 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                         results.add(ActionResult.success(result,
                                 Duration.between(Instant.now(), Instant.now()).toMillis()));
                     } else {
-                        results.add(ActionResult.error("Action not found: " + actionId, null, 0));
+                        results.add(ActionResult.error("Action not found: " + actionId,
+                                new ActionError("ACTION_NOT_FOUND", "Action not found: " + actionId), 0));
                     }
                 } else {
-                    results.add(ActionResult.error("Action registry not available", null, 0));
+                    results.add(ActionResult.error("Action registry not available",
+                            new ActionError("REGISTRY_UNAVAILABLE", "Action registry not available"), 0));
                 }
             } catch (Exception e) {
                 logger.error("Failed to execute action", e);
-                results.add(ActionResult.error("Action execution failed: " + e.getMessage(), null, 0));
+                results.add(ActionResult.error("Action execution failed: " + e.getMessage(),
+                        new ActionError("EXECUTION_ERROR", "Action execution failed: " + e.getMessage()), 0));
             }
         }
 
@@ -295,7 +306,7 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
         } else {
             String error = actionResults.stream().filter(result -> !result.isSuccess()).map(ActionResult::getMessage)
                     .findFirst().orElse("Unknown error");
-            return ActionResult.error(error, null, 0);
+            return ActionResult.error(error, new ActionError("AGGREGATION_ERROR", error), 0);
         }
     }
 
@@ -305,47 +316,5 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
         agentKnowledge.put(key, example);
     }
 
-    // Data classes
-    public static class LearningExample {
-        private final String actionName;
-        private final Map<String, Object> parameters;
-        private final ActionResult result;
-        private final boolean success;
-        private final Map<String, Object> context;
-        private final Instant timestamp;
-
-        public LearningExample(String actionName, Map<String, Object> parameters, ActionResult result, boolean success,
-                Map<String, Object> context, Instant timestamp) {
-            this.actionName = actionName;
-            this.parameters = new HashMap<>(parameters);
-            this.result = result;
-            this.success = success;
-            this.context = new HashMap<>(context);
-            this.timestamp = timestamp;
-        }
-
-        public String getActionName() {
-            return actionName;
-        }
-
-        public Map<String, Object> getParameters() {
-            return parameters;
-        }
-
-        public ActionResult getResult() {
-            return result;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public Map<String, Object> getContext() {
-            return context;
-        }
-
-        public Instant getTimestamp() {
-            return timestamp;
-        }
-    }
+    // LearningExample extracted to org.openhab.core.ai.agents.LearningExample
 }

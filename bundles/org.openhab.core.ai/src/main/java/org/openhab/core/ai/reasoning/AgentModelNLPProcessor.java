@@ -5,6 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.model.ModelResponse;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -127,8 +128,7 @@ public class AgentModelNLPProcessor {
                 .withExpectedOutput("Provide sentiment analysis with emotion detection")
                 .withType(AgentModelPromptBuilder.PromptType.ANALYSIS).build();
 
-        // TODO: Integrate with SharedModelReasoningEngine for actual sentiment analysis
-        // Execute reasoning (placeholder implementation)
+        // Integrate with SharedModelReasoningEngine for actual sentiment analysis
         String reasoningResult = executeSentimentAnalysis(prompt);
 
         return parseSentiment(reasoningResult);
@@ -157,8 +157,7 @@ public class AgentModelNLPProcessor {
                 .withExpectedOutput("Provide a natural, helpful response")
                 .withType(AgentModelPromptBuilder.PromptType.GENERAL).build();
 
-        // TODO: Integrate with SharedModelReasoningEngine for actual response generation
-        // Execute reasoning (placeholder implementation)
+        // Integrate with SharedModelReasoningEngine for actual response generation
         return executeResponseGeneration(prompt);
     }
 
@@ -171,10 +170,10 @@ public class AgentModelNLPProcessor {
     private String executeIntentRecognition(AgentModelPromptBuilder.AgentModelPrompt prompt) {
         try {
             // Integrate with SharedModelReasoningEngine for actual intent recognition
-            CompletableFuture<org.openhab.core.ai.model.api.ModelResponse> future = reasoningEngine
+            CompletableFuture<ModelResponse> future = reasoningEngine
                     .reasonAsync("nlp-processor", prompt.getPromptText(), new ConcurrentHashMap<>(), null);
 
-            org.openhab.core.ai.model.api.ModelResponse response = future.get();
+            ModelResponse response = future.get();
             return response.getContent();
         } catch (Exception e) {
             logger.error("Error executing intent recognition: {}", e.getMessage(), e);
@@ -191,10 +190,10 @@ public class AgentModelNLPProcessor {
     private String executeEntityExtraction(AgentModelPromptBuilder.AgentModelPrompt prompt) {
         try {
             // Integrate with SharedModelReasoningEngine for actual entity extraction
-            CompletableFuture<org.openhab.core.ai.model.api.ModelResponse> future = reasoningEngine
+            CompletableFuture<ModelResponse> future = reasoningEngine
                     .reasonAsync("nlp-processor", prompt.getPromptText(), new ConcurrentHashMap<>(), null);
 
-            org.openhab.core.ai.model.api.ModelResponse response = future.get();
+            ModelResponse response = future.get();
             return response.getContent();
         } catch (Exception e) {
             logger.error("Error executing entity extraction: {}", e.getMessage(), e);
@@ -211,10 +210,10 @@ public class AgentModelNLPProcessor {
     private String executeSentimentAnalysis(AgentModelPromptBuilder.AgentModelPrompt prompt) {
         try {
             // Integrate with SharedModelReasoningEngine for actual sentiment analysis
-            CompletableFuture<org.openhab.core.ai.model.api.ModelResponse> future = reasoningEngine
+            CompletableFuture<ModelResponse> future = reasoningEngine
                     .reasonAsync("nlp-processor", prompt.getPromptText(), new ConcurrentHashMap<>(), null);
 
-            org.openhab.core.ai.model.api.ModelResponse response = future.get();
+            ModelResponse response = future.get();
             return response.getContent();
         } catch (Exception e) {
             logger.error("Error executing sentiment analysis: {}", e.getMessage(), e);
@@ -231,10 +230,10 @@ public class AgentModelNLPProcessor {
     private String executeResponseGeneration(AgentModelPromptBuilder.AgentModelPrompt prompt) {
         try {
             // Integrate with SharedModelReasoningEngine for actual response generation
-            CompletableFuture<org.openhab.core.ai.model.api.ModelResponse> future = reasoningEngine
+            CompletableFuture<ModelResponse> future = reasoningEngine
                     .reasonAsync("nlp-processor", prompt.getPromptText(), new ConcurrentHashMap<>(), null);
 
-            org.openhab.core.ai.model.api.ModelResponse response = future.get();
+            ModelResponse response = future.get();
             return response.getContent();
         } catch (Exception e) {
             logger.error("Error executing response generation: {}", e.getMessage(), e);
@@ -392,141 +391,5 @@ public class AgentModelNLPProcessor {
     /**
      * Intent class.
      */
-    public static class Intent {
-        private final IntentType type;
-        private final double confidence;
-        private final Map<String, Object> parameters;
-
-        public Intent(IntentType type, double confidence, Map<String, Object> parameters) {
-            this.type = type;
-            this.confidence = confidence;
-            this.parameters = new ConcurrentHashMap<>(parameters);
-        }
-
-        public IntentType getType() {
-            return type;
-        }
-
-        public double getConfidence() {
-            return confidence;
-        }
-
-        public Map<String, Object> getParameters() {
-            return new ConcurrentHashMap<>(parameters);
-        }
-    }
-
-    /**
-     * Intent types.
-     */
-    public enum IntentType {
-        CONTROL_DEVICE,
-        QUERY_STATUS,
-        SET_PREFERENCE,
-        REQUEST_HELP,
-        ACKNOWLEDGE,
-        UNKNOWN,
-        ERROR
-    }
-
-    /**
-     * Sentiment Analysis class.
-     */
-    public static class SentimentAnalysis {
-        private final SentimentType sentiment;
-        private final EmotionType emotion;
-        private final double confidence;
-
-        public SentimentAnalysis(SentimentType sentiment, EmotionType emotion, double confidence) {
-            this.sentiment = sentiment;
-            this.emotion = emotion;
-            this.confidence = confidence;
-        }
-
-        public SentimentType getSentiment() {
-            return sentiment;
-        }
-
-        public EmotionType getEmotion() {
-            return emotion;
-        }
-
-        public double getConfidence() {
-            return confidence;
-        }
-    }
-
-    /**
-     * Sentiment types.
-     */
-    public enum SentimentType {
-        POSITIVE,
-        NEGATIVE,
-        NEUTRAL
-    }
-
-    /**
-     * Emotion types.
-     */
-    public enum EmotionType {
-        HAPPY,
-        SAD,
-        ANGRY,
-        FRUSTRATED,
-        CALM,
-        EXCITED,
-        NEUTRAL
-    }
-
-    /**
-     * NLP Result class.
-     */
-    public static class NLPResult {
-        private final String nlpId;
-        private final String input;
-        private final Intent intent;
-        private final Map<String, Object> entities;
-        private final SentimentAnalysis sentiment;
-        private final String response;
-        private final long timestamp;
-
-        public NLPResult(String nlpId, String input, Intent intent, Map<String, Object> entities,
-                SentimentAnalysis sentiment, String response, long timestamp) {
-            this.nlpId = nlpId;
-            this.input = input;
-            this.intent = intent;
-            this.entities = new ConcurrentHashMap<>(entities);
-            this.sentiment = sentiment;
-            this.response = response;
-            this.timestamp = timestamp;
-        }
-
-        public String getNlpId() {
-            return nlpId;
-        }
-
-        public String getInput() {
-            return input;
-        }
-
-        public Intent getIntent() {
-            return intent;
-        }
-
-        public Map<String, Object> getEntities() {
-            return new ConcurrentHashMap<>(entities);
-        }
-
-        public SentimentAnalysis getSentiment() {
-            return sentiment;
-        }
-
-        public String getResponse() {
-            return response;
-        }
-
-        public long getTimestamp() {
-            return timestamp;
-        }
-    }
+    
 }
