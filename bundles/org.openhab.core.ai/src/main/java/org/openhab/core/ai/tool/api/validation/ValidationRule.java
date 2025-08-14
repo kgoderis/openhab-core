@@ -324,30 +324,5 @@ public interface ValidationRule {
     /**
      * Rule lifecycle states.
      */
-    enum RuleLifecycleState {
-        /**
-         * Rule is active and can be executed.
-         */
-        ACTIVE,
-
-        /**
-         * Rule is inactive and should not be executed.
-         */
-        INACTIVE,
-
-        /**
-         * Rule is deprecated and should be replaced.
-         */
-        DEPRECATED,
-
-        /**
-         * Rule is being tested and may not be stable.
-         */
-        TESTING,
-
-        /**
-         * Rule is disabled due to errors.
-         */
-        ERROR
-    }
+    // enum extracted to top-level: org.openhab.core.ai.tool.api.validation.RuleLifecycleState
 }

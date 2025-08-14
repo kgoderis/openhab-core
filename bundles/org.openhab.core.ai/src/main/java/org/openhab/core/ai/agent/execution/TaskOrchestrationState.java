@@ -11,22 +11,22 @@ import org.eclipse.jdt.annotation.Nullable;
  */
 @NonNullByDefault
 public class TaskOrchestrationState {
-    public enum State { PENDING, RUNNING, PAUSED, COMPLETED, ERROR, CANCELLED }
+    // enum extracted to top-level: org.openhab.core.ai.agent.execution.TaskOrchestrationStateState
 
     private final String taskId;
-    private State state;
+    private TaskOrchestrationStateState state;
     private long startTime;
     private long endTime;
     private @Nullable Exception lastError;
 
     public TaskOrchestrationState(String taskId) {
         this.taskId = taskId;
-        this.state = State.PENDING;
+        this.state = TaskOrchestrationStateState.PENDING;
     }
 
     public String getTaskId() { return taskId; }
-    public State getState() { return state; }
-    public void setState(State state) { this.state = state; }
+    public TaskOrchestrationStateState getState() { return state; }
+    public void setState(TaskOrchestrationStateState state) { this.state = state; }
     public long getStartTime() { return startTime; }
     public void setStartTime(long startTime) { this.startTime = startTime; }
     public long getEndTime() { return endTime; }

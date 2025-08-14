@@ -180,10 +180,7 @@ public final class RestSecurityFramework {
         return false;
     }
 
-    /**
-     * Rate limit information
-     */
-    // Extracted: org.openhab.core.ai.rest.RestRateLimitInfo
+    // Rate limit info extracted to top-level: org.openhab.core.ai.rest.RestRateLimitInfo
 
     public static Response rateLimitExceeded(String endpoint) {
         LOGGER.warn("Rate limit exceeded for endpoint: {}", endpoint);
@@ -317,24 +314,7 @@ public final class RestSecurityFramework {
         return java.util.UUID.randomUUID().toString().replace("-", "");
     }
 
-    /**
-     * Session information
-     */
-    private static class SessionInfo {
-        final String userId;
-        final String username;
-        final long expirationTime;
-        final boolean active;
-        final long lastAccessTime;
-
-        SessionInfo(String userId, String username, long expirationTime, boolean active, long lastAccessTime) {
-            this.userId = userId;
-            this.username = username;
-            this.expirationTime = expirationTime;
-            this.active = active;
-            this.lastAccessTime = lastAccessTime;
-        }
-    }
+    // SessionInfo extracted to top-level: org.openhab.core.ai.rest.SessionInfo
 
     public static Response invalidSession() {
         return unauthorized("Invalid or expired session");

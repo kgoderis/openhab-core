@@ -46,10 +46,10 @@ public class AgentModelDecisionEngine {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Build agent context
-                AgentModelContextBuilder.AgentModelContext agentContext = buildAgentContext(decisionContext);
+                AgentModelContext agentContext = buildAgentContext(decisionContext);
 
                 // Create decision prompt
-                AgentModelPromptBuilder.AgentModelPrompt prompt = createDecisionPrompt(agentContext, decisionContext);
+                AgentModelPrompt prompt = createDecisionPrompt(agentContext, decisionContext);
 
                 // Execute reasoning
                 String reasoningResult = executeReasoning(prompt);
@@ -76,7 +76,7 @@ public class AgentModelDecisionEngine {
      * @param decisionContext The decision context
      * @return The built agent context
      */
-    private AgentModelContextBuilder.AgentModelContext buildAgentContext(DecisionContext decisionContext) {
+    private AgentModelContext buildAgentContext(DecisionContext decisionContext) {
         Map<String, Object> currentState = new ConcurrentHashMap<>();
         currentState.put("scenario", decisionContext.getCurrentState());
 
@@ -84,7 +84,7 @@ public class AgentModelDecisionEngine {
                 .withAgentType(decisionContext.getAgentType()).withDomain(decisionContext.getDomain())
                 .withCurrentState(currentState).withUserPreferences(decisionContext.getUserPreferences())
                 .withContextData("constraints", decisionContext.getConstraints())
-                .withPriority(AgentModelContextBuilder.ContextPriority.HIGH).withSource("decision_engine").build();
+                .withPriority(ContextPriority.HIGH).withSource("decision_engine").build();
     }
 
     /**
@@ -94,8 +94,8 @@ public class AgentModelDecisionEngine {
      * @param decisionContext The decision context
      * @return The created prompt
      */
-    private AgentModelPromptBuilder.AgentModelPrompt createDecisionPrompt(
-            AgentModelContextBuilder.AgentModelContext agentContext, DecisionContext decisionContext) {
+    private AgentModelPrompt createDecisionPrompt(AgentModelContext agentContext,
+            DecisionContext decisionContext) {
 
         return promptBuilder.create().withSystemRole(
                 "You are an intelligent decision-making agent responsible for analyzing scenarios and making optimal decisions.")
@@ -106,8 +106,8 @@ public class AgentModelDecisionEngine {
                 .withReasoningSteps(
                         "1. Analyze the scenario\n2. Evaluate each option\n3. Consider constraints and preferences\n4. Recommend optimal action")
                 .withExpectedOutput("Provide decision recommendation with reasoning and expected outcomes")
-                .withType(AgentModelPromptBuilder.PromptType.DECISION_MAKING)
-                .withPriority(AgentModelPromptBuilder.PromptPriority.HIGH).build();
+                .withType(PromptType.DECISION_MAKING)
+                .withPriority(PromptPriority.HIGH).build();
     }
 
     /**
@@ -116,7 +116,7 @@ public class AgentModelDecisionEngine {
      * @param prompt The decision prompt
      * @return The reasoning result
      */
-    private String executeReasoning(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    private String executeReasoning(AgentModelPrompt prompt) {
         try {
             // Integrate with SharedModelReasoningEngine for actual reasoning execution
             CompletableFuture<ModelResponse> future = reasoningEngine

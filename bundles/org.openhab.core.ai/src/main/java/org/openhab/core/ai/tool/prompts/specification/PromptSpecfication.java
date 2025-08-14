@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.tool.api.Specification;
+import org.openhab.core.ai.tool.api.SpecificationType;
 import org.openhab.core.ai.tool.specification.AbstractBaseSpecification;
 
 /**
@@ -37,9 +38,7 @@ public class PromptSpecfication extends AbstractBaseSpecification {
     }
 
     @Override
-    public Specification.SpecificationType getType() {
-        return Specification.SpecificationType.PROMPT;
-    }
+    public SpecificationType getType() { return SpecificationType.PROMPT; }
 
     // TODO: Implement prompt specification validation
     // TODO: Add support for prompt specification versioning

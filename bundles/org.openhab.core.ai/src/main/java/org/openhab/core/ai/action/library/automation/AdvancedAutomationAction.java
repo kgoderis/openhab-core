@@ -745,80 +745,9 @@ public class AdvancedAutomationAction implements Action {
         templates.put("night-mode", nightMode);
     }
 
-    // Data classes for automation management
-
-    private static class WorkflowDefinition {
-        final String workflowId;
-        final String name;
-        final String description;
-        final List<?> steps;
-        final Map<?, ?> conditions;
-
-        WorkflowDefinition(String workflowId, String name, String description, List<?> steps, Map<?, ?> conditions) {
-            this.workflowId = workflowId;
-            this.name = name;
-            this.description = description;
-            this.steps = steps;
-            this.conditions = conditions;
-        }
-    }
-
-    private static class WorkflowExecution {
-        final String executionId;
-        final String workflowId;
-        final Map<?, ?> parameters;
-        final Instant startTime;
-        String status;
-        @Nullable
-        Instant endTime;
-        @Nullable
-        String error;
-
-        WorkflowExecution(String workflowId, Map<?, ?> parameters) {
-            this.executionId = UUID.randomUUID().toString();
-            this.workflowId = workflowId;
-            this.parameters = parameters;
-            this.startTime = Instant.now();
-            this.status = "pending";
-        }
-    }
-
-    private static class AutomationTemplate {
-        final String templateId;
-        final String name;
-        final String description;
-        final List<?> steps;
-        final Map<?, ?> defaultParameters;
-
-        AutomationTemplate(String templateId, String name, String description, List<?> steps,
-                Map<?, ?> defaultParameters) {
-            this.templateId = templateId;
-            this.name = name;
-            this.description = description;
-            this.steps = steps;
-            this.defaultParameters = defaultParameters;
-        }
-    }
-
-    private static class AutomationJob {
-        final String jobId;
-        final String name;
-        final String type;
-        final Map<?, ?> parameters;
-        final Instant createdTime;
-        String status;
-        @Nullable
-        Instant endTime;
-        @Nullable
-        String error;
-
-        AutomationJob(String taskId, String name, String type, Map<?, ?> parameters) {
-            this.jobId = UUID.randomUUID().toString();
-            this.name = name;
-            this.type = type;
-            this.parameters = parameters;
-            this.createdTime = Instant.now();
-            this.status = "pending";
-        }
-    }
+    // Data classes moved to top-level files in this package:
+    // - WorkflowDefinition
+    // - WorkflowExecution
+    // - AutomationTemplate
+    // - AutomationJob
 }

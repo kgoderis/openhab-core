@@ -97,15 +97,15 @@ public class AgentTransportFactory {
                 }
 
                 // Create the selected transport
-                AgentTransport.TransportType selectedType = negotiation.getSelectedTransport();
+                TransportType selectedType = negotiation.getSelectedTransport();
 
                 // For HTTP transport, we need to ensure AgentServlet is running
-                if (selectedType == AgentTransport.TransportType.REST) {
+                if (selectedType == TransportType.REST) {
                     validateHttpTransportAvailability();
                 }
 
                 // For gRPC transport, we need to reserve a port
-                if (selectedType == AgentTransport.TransportType.GRPC) {
+                if (selectedType == TransportType.GRPC) {
                     int port = portManager.findAvailablePort(selectedType);
                     portManager.reservePort(selectedType, port);
                     configuration.put("port", port);
@@ -134,7 +134,7 @@ public class AgentTransportFactory {
      * @param configuration the configuration
      * @return the transport instance
      */
-    private AgentTransport createTransportInstance(AgentTransport.TransportType transportType,
+    private AgentTransport createTransportInstance(TransportType transportType,
             Map<String, Object> configuration) {
         switch (transportType) {
             case REST:
@@ -171,13 +171,13 @@ public class AgentTransportFactory {
             Map<String, Object> clientPreferences) {
 
         // Get available transport types from all providers
-        Set<AgentTransport.TransportType> availableTypes = getAvailableTransportTypes();
+        Set<TransportType> availableTypes = getAvailableTransportTypes();
 
         if (availableTypes.isEmpty()) {
             return new TransportNegotiationResult(null, Map.of(), false, "No transport types available");
         }
 
-        AgentTransport.TransportType selectedType = null;
+        TransportType selectedType = null;
         Map<String, Object> negotiationData = new ConcurrentHashMap<>();
 
         switch (strategy) {
@@ -223,12 +223,12 @@ public class AgentTransportFactory {
      * @param clientPreferences the client preferences
      * @return the selected transport type
      */
-    private AgentTransport.TransportType selectByClientPreference(Set<AgentTransport.TransportType> availableTypes,
+    private TransportType selectByClientPreference(Set<TransportType> availableTypes,
             Map<String, Object> clientPreferences) {
 
         String preferredType = (String) clientPreferences.get("preferredTransport");
         if (preferredType != null) {
-            for (AgentTransport.TransportType type : availableTypes) {
+            for (TransportType type : availableTypes) {
                 if (type.getIdentifier().equals(preferredType)) {
                     return type;
                 }
@@ -245,16 +245,16 @@ public class AgentTransportFactory {
      * @param availableTypes the available transport types
      * @return the selected transport type
      */
-    private AgentTransport.TransportType selectByPerformance(Set<AgentTransport.TransportType> availableTypes) {
+    private TransportType selectByPerformance(Set<TransportType> availableTypes) {
         // Implement performance-based selection
         if (availableTypes.isEmpty()) {
             return null;
         }
 
-        AgentTransport.TransportType bestTransport = null;
+        TransportType bestTransport = null;
         double bestPerformance = -1.0;
 
-        for (AgentTransport.TransportType transportType : availableTypes) {
+        for (TransportType transportType : availableTypes) {
             double performance = calculateTransportPerformance(transportType);
             if (performance > bestPerformance) {
                 bestPerformance = performance;
@@ -271,7 +271,7 @@ public class AgentTransportFactory {
      * @param transportType the transport type to evaluate
      * @return the performance score (higher is better)
      */
-    private double calculateTransportPerformance(AgentTransport.TransportType transportType) {
+    private double calculateTransportPerformance(TransportType transportType) {
         double performance = 0.0;
 
         // Get performance metrics for this transport type
@@ -315,16 +315,16 @@ public class AgentTransportFactory {
      * @param availableTypes the available transport types
      * @return the selected transport type
      */
-    private AgentTransport.TransportType selectByLatency(Set<AgentTransport.TransportType> availableTypes) {
+    private TransportType selectByLatency(Set<TransportType> availableTypes) {
         // Implement latency-based selection
         if (availableTypes.isEmpty()) {
             return null;
         }
 
-        AgentTransport.TransportType bestTransport = null;
+        TransportType bestTransport = null;
         double lowestLatency = Double.MAX_VALUE;
 
-        for (AgentTransport.TransportType transportType : availableTypes) {
+        for (TransportType transportType : availableTypes) {
             double latency = measureTransportLatency(transportType);
             if (latency < lowestLatency) {
                 lowestLatency = latency;
@@ -341,7 +341,7 @@ public class AgentTransportFactory {
      * @param transportType the transport type to measure
      * @return the latency in milliseconds
      */
-    private double measureTransportLatency(AgentTransport.TransportType transportType) {
+    private double measureTransportLatency(TransportType transportType) {
         // Get latency metrics for this transport type
         Map<String, Object> monitoring = getTransportPerformanceMonitoring();
 
@@ -374,16 +374,16 @@ public class AgentTransportFactory {
      * @param availableTypes the available transport types
      * @return the selected transport type
      */
-    private AgentTransport.TransportType selectByReliability(Set<AgentTransport.TransportType> availableTypes) {
+    private TransportType selectByReliability(Set<TransportType> availableTypes) {
         // Implement reliability-based selection
         if (availableTypes.isEmpty()) {
             return null;
         }
 
-        AgentTransport.TransportType bestTransport = null;
+        TransportType bestTransport = null;
         double highestReliability = -1.0;
 
-        for (AgentTransport.TransportType transportType : availableTypes) {
+        for (TransportType transportType : availableTypes) {
             double reliability = calculateTransportReliability(transportType);
             if (reliability > highestReliability) {
                 highestReliability = reliability;
@@ -400,7 +400,7 @@ public class AgentTransportFactory {
      * @param transportType the transport type to evaluate
      * @return the reliability score (0.0 to 1.0, higher is better)
      */
-    private double calculateTransportReliability(AgentTransport.TransportType transportType) {
+    private double calculateTransportReliability(TransportType transportType) {
         double reliability = 0.0;
 
         // Get reliability metrics for this transport type
@@ -461,7 +461,7 @@ public class AgentTransportFactory {
      * 
      * @return the set of available transport types
      */
-    private Set<AgentTransport.TransportType> getAvailableTransportTypes() {
+    private Set<TransportType> getAvailableTransportTypes() {
         return transportProviders.values().stream().flatMap(provider -> provider.getSupportedTransportTypes().stream())
                 .collect(java.util.stream.Collectors.toSet());
     }
@@ -472,7 +472,7 @@ public class AgentTransportFactory {
      * @param transportType the transport type
      * @return the selected provider or null if none available
      */
-    private AgentTransportProvider selectProvider(AgentTransport.TransportType transportType) {
+    private AgentTransportProvider selectProvider(TransportType transportType) {
         return transportProviders.values().stream().filter(provider -> provider.supportsTransportType(transportType))
                 .findFirst().orElse(null);
     }

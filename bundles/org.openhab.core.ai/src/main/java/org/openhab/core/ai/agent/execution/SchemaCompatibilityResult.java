@@ -2,9 +2,6 @@ package org.openhab.core.ai.agent.execution;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
-/**
- * Schema compatibility result.
- */
 @NonNullByDefault
 public class SchemaCompatibilityResult {
     private final boolean compatible;
@@ -18,5 +15,3 @@ public class SchemaCompatibilityResult {
     public boolean isCompatible() { return compatible; }
     public String getMessage() { return message; }
 }
-
-

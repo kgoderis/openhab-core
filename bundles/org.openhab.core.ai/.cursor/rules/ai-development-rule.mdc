@@ -183,3 +183,237 @@ alwaysApply: true
 - **Provide migration guides** for breaking changes
 - **Include performance considerations** in documentation
 - **Document error scenarios** and recovery procedures
+
+### 26. **Builder Pattern Best Practices**
+
+- **Immutability-first**
+  - Make built types immutable: `private final` fields, `private` constructor, no setters
+  - Return defensive, unmodifiable copies for collections (`List.copyOf(...)`, `Set.copyOf(...)`)
+
+- **Null-safety**
+  - Annotate all classes with `@NonNullByDefault`
+  - Use `@Nullable` for optional fields and builder parameters only
+  - Validate non-null/required inputs in `build()` and fail fast with precise messages
+
+- **Structure and naming**
+  - Use a nested `public static final class Builder` inside the built type
+  - Provide factories: `public static Builder builder(RequiredA a, RequiredB b)` or `builder()` with `withRequiredX(...)`
+  - Use `withX(...)` fluent setters; each returns `this`
+
+- **Required vs optional**
+  - Capture required fields early (factory or builder constructor) and re-validate in `build()`
+  - Avoid encoding “required” as nullable; prefer types that enforce presence
+
+- **Validation**
+  - Validate ranges, formats, and cross-field constraints in `build()`
+  - Throw `IllegalArgumentException` with actionable messages; use `ValidationUtils` where applicable
+
+- **Collections**
+  - Accept collections in the builder; normalize and copy in `build()`
+  - Store as unmodifiable; never expose internal mutables
+
+- **Copy/modify ergonomics**
+  - Provide `toBuilder()` or `builder(existing)` to support small mutations without exposing mutability
+
+- **Thread-safety**
+  - Builders are not thread-safe (document as such); built objects are thread-safe by immutability
+
+- **Equality and debugging**
+  - Implement `equals`, `hashCode`, and `toString` on the built type (not on the builder)
+
+- **Usage discipline**
+  - Treat builders as single-use; keep `build()` side-effect free (construct, validate, copy)
+
+- **When to use**
+  - Prefer builders for objects with many parameters, optional fields, or cross-field validation
+  - For simple data types (≤2–3 params), use constructors or static factories
+
+- **Inheritance**
+  - Prefer composition for value objects; if inheritance is necessary, use self-referential generics for covariant builder returns
+
+- **Documentation**
+  - Add class-level Javadoc (purpose, constraints, usage) and method docs per standards (author/since)
+
+```java
+// Example (openHAB style): immutable value with nested builder
+package org.openhab.core.ai.example;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
+import java.util.List;
+import java.util.Objects;
+
+@NonNullByDefault
+public final class ModelConfig {
+    private final String modelId;
+    private final int maxTokens;
+    private final List<String> fallbackModels;
+    private final @Nullable String providerHint;
+
+    private ModelConfig(Builder b) {
+        this.modelId = b.modelId;
+        this.maxTokens = b.maxTokens;
+        this.fallbackModels = List.copyOf(b.fallbackModels);
+        this.providerHint = b.providerHint;
+    }
+
+    public static Builder builder(String modelId) {
+        return new Builder(modelId);
+    }
+
+    public Builder toBuilder() {
+        return new Builder(this);
+    }
+
+    public static final class Builder {
+        private String modelId;
+        private int maxTokens = 2048;
+        private List<String> fallbackModels = List.of();
+        private @Nullable String providerHint;
+
+        public Builder(String modelId) {
+            this.modelId = Objects.requireNonNull(modelId, "modelId");
+        }
+
+        public Builder(ModelConfig source) {
+            this.modelId = source.modelId;
+            this.maxTokens = source.maxTokens;
+            this.fallbackModels = source.fallbackModels;
+            this.providerHint = source.providerHint;
+        }
+
+        public Builder withMaxTokens(int maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public Builder withFallbackModels(List<String> fallbackModels) {
+            this.fallbackModels = Objects.requireNonNull(fallbackModels, "fallbackModels");
+            return this;
+        }
+
+        public Builder withProviderHint(@Nullable String providerHint) {
+            this.providerHint = providerHint;
+            return this;
+        }
+
+        public ModelConfig build() {
+            if (modelId.isBlank()) {
+                throw new IllegalArgumentException("modelId must not be blank");
+            }
+            if (maxTokens <= 0) {
+                throw new IllegalArgumentException("maxTokens must be > 0");
+            }
+            return new ModelConfig(this);
+        }
+    }
+}
+```
+
+### 27. **Result Classes Best Practices**
+
+- **Immutability and null-safety**
+  - Use immutable value objects: `private final` fields, no setters, defensive copies
+  - Annotate classes with `@NonNullByDefault`; use `@Nullable` only for truly optional fields
+  - Return empty collections instead of `null`; avoid `Optional` in getters in favor of `@Nullable` + docs
+
+- **Consistent shape**
+  - Include a status enum (e.g., `SUCCESS`, `FAILURE`, `PARTIAL`) and helpers like `isSuccess()`
+  - Prefer machine-readable fields (enums/typed codes) over free-form text
+  - Separate payload from metadata (status, errors, metrics)
+
+- **Errors and diagnostics**
+  - Provide `errorCode` (enum), human `message`, optional structured `details`/`hint`
+  - Add traceability: `correlationId`/`requestId`, optional `source`
+  - Store safe `causeMessage` strings; avoid retaining `Throwable` instances
+
+- **Timing and metrics**
+  - Include `timestamp` and optional `durationMs` when representing operations
+  - Keep metrics optional and non-intrusive
+
+- **Collections and serialization**
+  - Store unmodifiable copies (`List.copyOf(...)`, `Set.copyOf(...)`); never expose mutables
+  - Keep fields REST/JSON friendly (simple types, enums); avoid transient internals
+
+- **Equality and debugging**
+  - Implement `equals`, `hashCode`, and concise `toString` (omit sensitive/large fields)
+  - Define equality semantics (e.g., exclude metrics) and keep consistent
+
+- **Construction API**
+  - Provide static factories like `success(...)`, `failure(...)`, `partial(...)`
+  - Use a nested `Builder` only when parameters are many or cross-field validation is complex
+
+- **No side effects**
+  - Result types should not log or perform I/O; log at call sites
+
+- **Extensibility**
+  - For families of results, use an interface or sealed hierarchy for shared fields; prefer composition otherwise
+
+- **Testing**
+  - Test success/failure/partial cases, equality contract, and (if applicable) JSON round-trip
+
+```java
+package org.openhab.core.ai.result;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+
+@NonNullByDefault
+public final class OperationResult<T> {
+    public enum Status { SUCCESS, FAILURE, PARTIAL }
+    public enum ErrorCode { NONE, VALIDATION, AUTH, TIMEOUT, INTERNAL }
+
+    private final Status status;
+    private final @Nullable T payload;
+    private final ErrorCode errorCode;
+    private final String message;
+    private final List<String> warnings;
+    private final String correlationId;
+    private final Instant timestamp;
+    private final long durationMs;
+
+    private OperationResult(
+            Status status,
+            @Nullable T payload,
+            ErrorCode errorCode,
+            String message,
+            List<String> warnings,
+            String correlationId,
+            Instant timestamp,
+            long durationMs) {
+        this.status = Objects.requireNonNull(status);
+        this.payload = payload;
+        this.errorCode = Objects.requireNonNull(errorCode);
+        this.message = Objects.requireNonNull(message);
+        this.warnings = List.copyOf(warnings);
+        this.correlationId = Objects.requireNonNull(correlationId);
+        this.timestamp = Objects.requireNonNull(timestamp);
+        this.durationMs = durationMs;
+    }
+
+    public static <T> OperationResult<T> success(T payload, String correlationId, long durationMs) {
+        return new OperationResult<>(Status.SUCCESS, payload, ErrorCode.NONE, "", List.of(),
+                correlationId, Instant.now(), durationMs);
+    }
+
+    public static <T> OperationResult<T> failure(ErrorCode code, String message, String correlationId, long durationMs) {
+        return new OperationResult<>(Status.FAILURE, null, code, message, List.of(),
+                correlationId, Instant.now(), durationMs);
+    }
+
+    public static <T> OperationResult<T> partial(T payload, List<String> warnings, String correlationId, long durationMs) {
+        return new OperationResult<>(Status.PARTIAL, payload, ErrorCode.NONE, "", warnings,
+                correlationId, Instant.now(), durationMs);
+    }
+
+    public boolean isSuccess() { return status == Status.SUCCESS; }
+    public boolean isPartial() { return status == Status.PARTIAL; }
+
+    // getters ...
+}
+```

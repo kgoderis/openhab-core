@@ -30,34 +30,10 @@ public interface Agent {
     // AgentStatus extracted to top-level enum in this package
 
     /**
-     * Agent metrics interface
+     * Backward-compatible nested metrics interface expected by existing usages.
+     * Delegates to the top-level {@link org.openhab.core.ai.agent.api.AgentMetrics}.
      */
-    interface AgentMetrics {
-        /**
-         * Get execution times in milliseconds
-         */
-        long[] getExecutionTimes();
-
-        /**
-         * Get number of successful executions
-         */
-        long getSuccessCount();
-
-        /**
-         * Get number of failed executions
-         */
-        long getFailureCount();
-
-        /**
-         * Get average execution time in milliseconds
-         */
-        double getAverageExecutionTime();
-
-        /**
-         * Get total number of executions
-         */
-        long getTotalExecutions();
-    }
+    interface AgentMetrics extends org.openhab.core.ai.agent.api.AgentMetrics {}
 
     /**
      * Get the unique identifier for this agent

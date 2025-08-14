@@ -461,12 +461,5 @@ public class ConfigurationBackupAction implements Action {
         return filesByType;
     }
 
-    private static class BackupFile {
-        String path = "";
-        Path absolutePath;
-        String name = "";
-        String type = "";
-        long size = 0;
-        Instant lastModified;
-    }
+    // BackupFile moved to top-level class
 }

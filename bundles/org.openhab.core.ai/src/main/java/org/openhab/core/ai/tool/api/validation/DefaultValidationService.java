@@ -582,16 +582,8 @@ public class DefaultValidationService implements ValidationService {
         }
     }
 
-    /**
-     * Validation listener interface.
-     */
-    public interface ValidationListener {
-        void onValidationEvent(ValidationEvent event);
-    }
+    // Inner interface extracted to top-level: org.openhab.core.ai.tool.api.validation.ValidationListener
 
-    /**
-     * Validation event.
-     */
     // ValidationEvent extracted to org.openhab.core.ai.tool.api.validation.ValidationEvent
 
     /**

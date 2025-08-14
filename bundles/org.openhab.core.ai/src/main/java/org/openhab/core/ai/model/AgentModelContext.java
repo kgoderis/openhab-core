@@ -40,7 +40,9 @@ public class AgentModelContext {
     private final @Nullable String sessionId;
     private final int priority;
 
-    private AgentModelContext(Builder builder) {
+    // Constructor using inner Builder removed; use AgentModelContextBuilder instead
+
+    /* package */ AgentModelContext(AgentModelContextBuilder builder) {
         this.agentId = Objects.requireNonNull(builder.agentId, "Agent ID cannot be null");
         this.agentType = Objects.requireNonNull(builder.agentType, "Agent type cannot be null");
         this.contextData = new HashMap<>(builder.contextData);
@@ -142,9 +144,7 @@ public class AgentModelContext {
      * @return a new context with the additional data
      */
     public AgentModelContext withContextData(String key, Object value) {
-        Builder builder = new Builder(this);
-        builder.contextData.put(key, value);
-        return builder.build();
+        return new AgentModelContextBuilder(this).contextData(key, value).build();
     }
 
     /**
@@ -155,9 +155,7 @@ public class AgentModelContext {
      * @return a new context with the additional metadata
      */
     public AgentModelContext withMetadata(String key, String value) {
-        Builder builder = new Builder(this);
-        builder.metadata.put(key, value);
-        return builder.build();
+        return new AgentModelContextBuilder(this).metadata(key, value).build();
     }
 
     /**
@@ -167,9 +165,7 @@ public class AgentModelContext {
      * @return a new context with the session ID
      */
     public AgentModelContext withSessionId(String sessionId) {
-        Builder builder = new Builder(this);
-        builder.sessionId = sessionId;
-        return builder.build();
+        return new AgentModelContextBuilder(this).sessionId(sessionId).build();
     }
 
     /**
@@ -179,9 +175,7 @@ public class AgentModelContext {
      * @return a new context with the updated priority
      */
     public AgentModelContext withPriority(int priority) {
-        Builder builder = new Builder(this);
-        builder.priority = priority;
-        return builder.build();
+        return new AgentModelContextBuilder(this).priority(priority).build();
     }
 
     @Override
@@ -211,78 +205,5 @@ public class AgentModelContext {
                 + priority + "]";
     }
 
-    /**
-     * Builder for creating AgentModelContext instances.
-     */
-    public static class Builder {
-        private String agentId;
-        private String agentType;
-        private final Map<String, Object> contextData = new HashMap<>();
-        private final Map<String, String> metadata = new HashMap<>();
-        private @Nullable Instant timestamp;
-        private @Nullable String sessionId;
-        private int priority = 0;
-
-        public Builder() {
-        }
-
-        public Builder(AgentModelContext context) {
-            this.agentId = context.agentId;
-            this.agentType = context.agentType;
-            this.contextData.putAll(context.contextData);
-            this.metadata.putAll(context.metadata);
-            this.timestamp = context.timestamp;
-            this.sessionId = context.sessionId;
-            this.priority = context.priority;
-        }
-
-        public Builder agentId(String agentId) {
-            this.agentId = agentId;
-            return this;
-        }
-
-        public Builder agentType(String agentType) {
-            this.agentType = agentType;
-            return this;
-        }
-
-        public Builder contextData(String key, Object value) {
-            this.contextData.put(key, value);
-            return this;
-        }
-
-        public Builder contextData(Map<String, Object> contextData) {
-            this.contextData.putAll(contextData);
-            return this;
-        }
-
-        public Builder metadata(String key, String value) {
-            this.metadata.put(key, value);
-            return this;
-        }
-
-        public Builder metadata(Map<String, String> metadata) {
-            this.metadata.putAll(metadata);
-            return this;
-        }
-
-        public Builder timestamp(Instant timestamp) {
-            this.timestamp = timestamp;
-            return this;
-        }
-
-        public Builder sessionId(String sessionId) {
-            this.sessionId = sessionId;
-            return this;
-        }
-
-        public Builder priority(int priority) {
-            this.priority = priority;
-            return this;
-        }
-
-        public AgentModelContext build() {
-            return new AgentModelContext(this);
-        }
-    }
+    // Builder extracted to top-level: see AgentModelContextBuilder
 }

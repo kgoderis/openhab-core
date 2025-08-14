@@ -11,7 +11,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class GrpcTransportHealth implements AgentTransport.TransportHealth {
+public class GrpcTransportHealth implements TransportHealth {
 
     private final boolean healthy;
     private final String healthMessage;

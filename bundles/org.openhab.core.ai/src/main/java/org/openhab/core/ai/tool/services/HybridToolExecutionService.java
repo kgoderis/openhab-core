@@ -20,6 +20,7 @@ import org.openhab.core.ai.tool.monitoring.DefaultSystemHealthMonitor;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.resources.ResourceManager;
 import org.openhab.core.ai.tool.services.api.ToolExecutionService;
+import org.openhab.core.ai.tool.services.api.LoadBalancingStrategy;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -64,8 +65,8 @@ public class HybridToolExecutionService implements ToolExecutionService {
     private final AtomicLong totalCost = new AtomicLong(0);
 
     // Provider performance tracking
-    private final ConcurrentHashMap<ModelProviderType, ProviderMetrics> providerMetrics = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, ToolMetrics> toolMetrics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ModelProviderType, org.openhab.core.ai.tool.services.api.ProviderMetrics> providerMetrics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, org.openhab.core.ai.tool.services.api.ToolMetrics> toolMetrics = new ConcurrentHashMap<>();
 
     // Configuration
     private final AtomicReference<Boolean> enableFallback = new AtomicReference<>(true);
@@ -528,7 +529,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     }
 
     private boolean isProviderAcceptable(ModelProviderType provider, ActionContext actionContext) {
-        ProviderMetrics metrics = getProviderMetrics(provider);
+        org.openhab.core.ai.tool.services.api.ProviderMetrics metrics = getProviderMetrics(provider);
         return metrics.getSuccessRate() > 0.8 && metrics.getAverageResponseTime() < 5000; // 5 seconds
     }
 
@@ -677,13 +678,13 @@ public class HybridToolExecutionService implements ToolExecutionService {
         long executionTime = Duration.between(startTime, Instant.now()).toMillis();
 
         // Update provider metrics
-        ProviderMetrics providerMetrics = getProviderMetrics(provider);
+        org.openhab.core.ai.tool.services.api.ProviderMetrics providerMetrics = getProviderMetrics(provider);
         providerMetrics.recordExecution(result.isSuccess(), executionTime);
 
         // Update tool metrics
         String actionName = (String) actionContext.getProtocolContext().get("action");
         if (actionName != null) {
-            ToolMetrics toolMetrics = getToolMetrics(actionName);
+            org.openhab.core.ai.tool.services.api.ToolMetrics toolMetrics = getToolMetrics(actionName);
             toolMetrics.recordExecution(result.isSuccess(), executionTime);
         }
 
@@ -700,29 +701,29 @@ public class HybridToolExecutionService implements ToolExecutionService {
             Instant startTime) {
         long executionTime = Duration.between(startTime, Instant.now()).toMillis();
 
-        ProviderMetrics providerMetrics = getProviderMetrics(provider);
+        org.openhab.core.ai.tool.services.api.ProviderMetrics providerMetrics = getProviderMetrics(provider);
         providerMetrics.recordExecution(false, executionTime);
 
         String actionName = (String) actionContext.getProtocolContext().get("action");
         if (actionName != null) {
-            ToolMetrics toolMetrics = getToolMetrics(actionName);
+            org.openhab.core.ai.tool.services.api.ToolMetrics toolMetrics = getToolMetrics(actionName);
             toolMetrics.recordExecution(false, executionTime);
         }
     }
 
-    private ProviderMetrics getProviderMetrics(ModelProviderType provider) {
-        ProviderMetrics metrics = providerMetrics.computeIfAbsent(provider, p -> new ProviderMetrics());
+    private org.openhab.core.ai.tool.services.api.ProviderMetrics getProviderMetrics(ModelProviderType provider) {
+        org.openhab.core.ai.tool.services.api.ProviderMetrics metrics = providerMetrics.computeIfAbsent(provider, p -> new org.openhab.core.ai.tool.services.api.ProviderMetrics());
         if (metrics == null) {
-            metrics = new ProviderMetrics();
+            metrics = new org.openhab.core.ai.tool.services.api.ProviderMetrics();
             providerMetrics.put(provider, metrics);
         }
         return metrics;
     }
 
-    private ToolMetrics getToolMetrics(String toolName) {
-        ToolMetrics metrics = toolMetrics.computeIfAbsent(toolName, t -> new ToolMetrics());
+    private org.openhab.core.ai.tool.services.api.ToolMetrics getToolMetrics(String toolName) {
+        org.openhab.core.ai.tool.services.api.ToolMetrics metrics = toolMetrics.computeIfAbsent(toolName, t -> new org.openhab.core.ai.tool.services.api.ToolMetrics());
         if (metrics == null) {
-            metrics = new ToolMetrics();
+            metrics = new org.openhab.core.ai.tool.services.api.ToolMetrics();
             toolMetrics.put(toolName, metrics);
         }
         return metrics;
@@ -746,8 +747,8 @@ public class HybridToolExecutionService implements ToolExecutionService {
     }
 
     @Override
-    public void setLoadBalancingStrategy(ToolExecutionService.LoadBalancingStrategy strategy) {
-        loadBalancingStrategy.set(LoadBalancingStrategy.valueOf(strategy.name()));
+    public void setLoadBalancingStrategy(LoadBalancingStrategy strategy) {
+        loadBalancingStrategy.set(strategy);
     }
 
     public void setMaxFallbackAttempts(int maxAttempts) {
@@ -756,11 +757,10 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
     // Metrics retrieval
     @Override
-    public ToolExecutionService.HybridServiceMetrics getMetrics() {
-        // Convert provider metrics to interface format
-        Map<ModelProviderType, ToolExecutionService.ProviderMetrics> interfaceProviderMetrics = new ConcurrentHashMap<>();
+    public org.openhab.core.ai.tool.services.api.HybridServiceMetrics getMetrics() {
+        Map<ModelProviderType, org.openhab.core.ai.tool.services.api.ProviderMetrics> interfaceProviderMetrics = new ConcurrentHashMap<>();
         providerMetrics.forEach((provider, metrics) -> {
-            ToolExecutionService.ProviderMetrics interfaceMetrics = new ToolExecutionService.ProviderMetrics();
+            org.openhab.core.ai.tool.services.api.ProviderMetrics interfaceMetrics = new org.openhab.core.ai.tool.services.api.ProviderMetrics();
             // Copy the metrics data
             for (int i = 0; i < metrics.getTotalExecutions(); i++) {
                 interfaceMetrics.recordExecution(true, 0);
@@ -772,9 +772,9 @@ public class HybridToolExecutionService implements ToolExecutionService {
         });
 
         // Convert tool metrics to interface format
-        Map<String, ToolExecutionService.ToolMetrics> interfaceToolMetrics = new ConcurrentHashMap<>();
+        Map<String, org.openhab.core.ai.tool.services.api.ToolMetrics> interfaceToolMetrics = new ConcurrentHashMap<>();
         toolMetrics.forEach((tool, metrics) -> {
-            ToolExecutionService.ToolMetrics interfaceMetrics = new ToolExecutionService.ToolMetrics();
+            org.openhab.core.ai.tool.services.api.ToolMetrics interfaceMetrics = new org.openhab.core.ai.tool.services.api.ToolMetrics();
             // Copy the metrics data
             for (int i = 0; i < metrics.getTotalExecutions(); i++) {
                 interfaceMetrics.recordExecution(true, 0);
@@ -782,7 +782,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
             interfaceToolMetrics.put(tool, interfaceMetrics);
         });
 
-        return new ToolExecutionService.HybridServiceMetrics(totalToolExecutions.get(), successfulToolExecutions.get(),
+        return new org.openhab.core.ai.tool.services.api.HybridServiceMetrics(totalToolExecutions.get(), successfulToolExecutions.get(),
                 failedToolExecutions.get(), fallbackExecutions.get(), totalExecutionTime.get(), totalCost.get(),
                 interfaceProviderMetrics, interfaceToolMetrics);
     }
@@ -799,11 +799,5 @@ public class HybridToolExecutionService implements ToolExecutionService {
         providerLoadCounters.clear();
     }
 
-    // Enums
-    public enum LoadBalancingStrategy {
-        ROUND_ROBIN,
-        LEAST_CONNECTIONS,
-        WEIGHTED_RESPONSE_TIME,
-        HEALTH_BASED
-    }
+    // Use API enum org.openhab.core.ai.tool.services.api.LoadBalancingStrategy instead of inner enum
 }

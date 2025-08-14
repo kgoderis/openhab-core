@@ -40,7 +40,7 @@ public class ActionVersionInfo {
     private final String migrationGuide;
     private final Set<String> breakingChanges;
 
-    private ActionVersionInfo(Builder builder) {
+    /* package */ ActionVersionInfo(ActionVersionInfoBuilder builder) {
         this.actionId = builder.actionId;
         this.version = builder.version;
         this.minCompatibleVersion = builder.minCompatibleVersion;
@@ -118,84 +118,8 @@ public class ActionVersionInfo {
         return removalDate != null && Instant.now().isAfter(removalDate);
     }
 
-    /**
-     * Builder for ActionVersionInfo.
-     */
-    public static class Builder {
-        private String actionId = "";
-        private String version = "1.0.0";
-        private String minCompatibleVersion = "1.0.0";
-        private String maxCompatibleVersion = "2.0.0";
-        private Set<String> compatibleVersions = Set.of();
-        private boolean deprecated = false;
-        private String deprecationMessage = "";
-        private Instant deprecationDate = null;
-        private Instant removalDate = null;
-        private String migrationGuide = "";
-        private Set<String> breakingChanges = Set.of();
-
-        public Builder actionId(String actionId) {
-            this.actionId = actionId;
-            return this;
-        }
-
-        public Builder version(String version) {
-            this.version = version;
-            return this;
-        }
-
-        public Builder minCompatibleVersion(String minCompatibleVersion) {
-            this.minCompatibleVersion = minCompatibleVersion;
-            return this;
-        }
-
-        public Builder maxCompatibleVersion(String maxCompatibleVersion) {
-            this.maxCompatibleVersion = maxCompatibleVersion;
-            return this;
-        }
-
-        public Builder compatibleVersions(Set<String> compatibleVersions) {
-            this.compatibleVersions = compatibleVersions;
-            return this;
-        }
-
-        public Builder deprecated(boolean deprecated) {
-            this.deprecated = deprecated;
-            return this;
-        }
-
-        public Builder deprecationMessage(String deprecationMessage) {
-            this.deprecationMessage = deprecationMessage;
-            return this;
-        }
-
-        public Builder deprecationDate(Instant deprecationDate) {
-            this.deprecationDate = deprecationDate;
-            return this;
-        }
-
-        public Builder removalDate(Instant removalDate) {
-            this.removalDate = removalDate;
-            return this;
-        }
-
-        public Builder migrationGuide(String migrationGuide) {
-            this.migrationGuide = migrationGuide;
-            return this;
-        }
-
-        public Builder breakingChanges(Set<String> breakingChanges) {
-            this.breakingChanges = breakingChanges;
-            return this;
-        }
-
-        public ActionVersionInfo build() {
-            return new ActionVersionInfo(this);
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
+    public static ActionVersionInfoBuilder builder() {
+        return new ActionVersionInfoBuilder();
     }
 
     @Override

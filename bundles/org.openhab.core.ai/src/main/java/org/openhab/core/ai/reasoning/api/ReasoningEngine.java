@@ -61,21 +61,12 @@ public interface ReasoningEngine {
      * 
      * @return The engine status
      */
-    EngineStatus getStatus();
+    ReasoningEngineStatus getStatus();
 
     /**
      * Shutdown the reasoning engine gracefully.
      */
     void shutdown();
 
-    /**
-     * Engine status enumeration.
-     */
-    enum EngineStatus {
-        ACTIVE,
-        DEGRADED,
-        MAINTENANCE,
-        SHUTDOWN,
-        ERROR
-    }
+    // enum extracted to top-level: org.openhab.core.ai.reasoning.api.ReasoningEngineStatus
 }

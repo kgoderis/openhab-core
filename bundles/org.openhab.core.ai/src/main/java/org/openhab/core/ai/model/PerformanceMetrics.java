@@ -17,12 +17,16 @@ public class PerformanceMetrics {
     private final long failedParses;
     private final long totalActionCalls;
 
-    private PerformanceMetrics(Builder builder) {
-        this.totalParsingAttempts = builder.totalParsingAttempts;
-        this.successfulJsonParses = builder.successfulJsonParses;
-        this.successfulRegexParses = builder.successfulRegexParses;
-        this.failedParses = builder.failedParses;
-        this.totalActionCalls = builder.totalActionCalls;
+    public PerformanceMetrics(long totalParsingAttempts,
+            long successfulJsonParses,
+            long successfulRegexParses,
+            long failedParses,
+            long totalActionCalls) {
+        this.totalParsingAttempts = totalParsingAttempts;
+        this.successfulJsonParses = successfulJsonParses;
+        this.successfulRegexParses = successfulRegexParses;
+        this.failedParses = failedParses;
+        this.totalActionCalls = totalActionCalls;
     }
 
     public long getTotalParsingAttempts() { return totalParsingAttempts; }
@@ -31,22 +35,7 @@ public class PerformanceMetrics {
     public long getFailedParses() { return failedParses; }
     public long getTotalActionCalls() { return totalActionCalls; }
 
-    public static Builder builder() { return new Builder(); }
-
-    public static class Builder {
-        private long totalParsingAttempts;
-        private long successfulJsonParses;
-        private long successfulRegexParses;
-        private long failedParses;
-        private long totalActionCalls;
-
-        public Builder totalParsingAttempts(long v) { this.totalParsingAttempts = v; return this; }
-        public Builder successfulJsonParses(long v) { this.successfulJsonParses = v; return this; }
-        public Builder successfulRegexParses(long v) { this.successfulRegexParses = v; return this; }
-        public Builder failedParses(long v) { this.failedParses = v; return this; }
-        public Builder totalActionCalls(long v) { this.totalActionCalls = v; return this; }
-        public PerformanceMetrics build() { return new PerformanceMetrics(this); }
-    }
+    public static PerformanceMetricsBuilder builder() { return new PerformanceMetricsBuilder(); }
 }
 
 

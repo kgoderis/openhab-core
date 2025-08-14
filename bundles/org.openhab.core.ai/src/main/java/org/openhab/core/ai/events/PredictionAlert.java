@@ -18,5 +18,3 @@ public class PredictionAlert {
     public String getMessage() { return message; }
     public double getValue() { return value; }
 }
-
-

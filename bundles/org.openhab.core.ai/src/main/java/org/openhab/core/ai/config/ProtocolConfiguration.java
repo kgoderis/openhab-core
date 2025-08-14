@@ -155,8 +155,8 @@ public class ProtocolConfiguration {
      * @param protocolName The protocol name
      * @return A new builder instance
      */
-    public static Builder builder(String protocolName) {
-        return new Builder(protocolName);
+    public static ProtocolConfigurationBuilder builder(String protocolName) {
+        return new ProtocolConfigurationBuilder(protocolName);
     }
 
     @Override
@@ -187,55 +187,5 @@ public class ProtocolConfiguration {
                 + protocolSpecificConfig.size() + '}';
     }
 
-    /**
-     * Builder for AIProtocolConfiguration.
-     */
-    public static class Builder {
-        private final String protocolName;
-        private boolean enabled = true;
-        private @Nullable String endpoint;
-        private Map<String, String> authenticationConfig = Map.of();
-        private Map<String, Object> protocolSpecificConfig = Map.of();
-        private int timeoutSeconds = 30;
-        private int retryAttempts = 3;
-
-        private Builder(String protocolName) {
-            this.protocolName = protocolName;
-        }
-
-        public Builder enabled(boolean enabled) {
-            this.enabled = enabled;
-            return this;
-        }
-
-        public Builder endpoint(@Nullable String endpoint) {
-            this.endpoint = endpoint;
-            return this;
-        }
-
-        public Builder authenticationConfig(Map<String, String> authenticationConfig) {
-            this.authenticationConfig = authenticationConfig;
-            return this;
-        }
-
-        public Builder protocolSpecificConfig(Map<String, Object> protocolSpecificConfig) {
-            this.protocolSpecificConfig = protocolSpecificConfig;
-            return this;
-        }
-
-        public Builder timeoutSeconds(int timeoutSeconds) {
-            this.timeoutSeconds = timeoutSeconds;
-            return this;
-        }
-
-        public Builder retryAttempts(int retryAttempts) {
-            this.retryAttempts = retryAttempts;
-            return this;
-        }
-
-        public ProtocolConfiguration build() {
-            return new ProtocolConfiguration(protocolName, enabled, endpoint, authenticationConfig,
-                    protocolSpecificConfig, timeoutSeconds, retryAttempts);
-        }
-    }
+    // Inner Builder extracted to top-level: org.openhab.core.ai.config.ProtocolConfigurationBuilder
 }

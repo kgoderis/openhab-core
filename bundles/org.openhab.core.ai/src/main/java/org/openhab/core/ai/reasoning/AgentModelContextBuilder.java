@@ -5,7 +5,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -241,60 +240,10 @@ public class AgentModelContextBuilder {
     /**
      * Context priority levels.
      */
-    public enum ContextPriority {
-        HIGH,
-        MEDIUM,
-        LOW
-    }
+    // Extracted: org.openhab.core.ai.reasoning.ContextPriority
 
     /**
      * Agent Model Context class.
      */
-    public static class AgentModelContext {
-        private final String contextId;
-        private final Map<String, Object> contextData;
-        private final Map<String, Object> metadata;
-
-        public AgentModelContext(String contextId, Map<String, Object> contextData, Map<String, Object> metadata) {
-            this.contextId = contextId;
-            this.contextData = new ConcurrentHashMap<>(contextData);
-            this.metadata = new ConcurrentHashMap<>(metadata);
-        }
-
-        public String getContextId() {
-            return contextId;
-        }
-
-        public Map<String, Object> getContextData() {
-            return new ConcurrentHashMap<>(contextData);
-        }
-
-        public Map<String, Object> getMetadata() {
-            return new ConcurrentHashMap<>(metadata);
-        }
-
-        @Nullable
-        public Object getContextData(String key) {
-            return contextData.get(key);
-        }
-
-        @Nullable
-        public Object getMetadata(String key) {
-            return metadata.get(key);
-        }
-
-        public boolean hasContextData(String key) {
-            return contextData.containsKey(key);
-        }
-
-        public boolean hasMetadata(String key) {
-            return metadata.containsKey(key);
-        }
-
-        @Override
-        public String toString() {
-            return "AgentModelContext{contextId='" + contextId + "', dataSize=" + contextData.size() + ", metadataSize="
-                    + metadata.size() + "}";
-        }
-    }
+    // Extracted: org.openhab.core.ai.reasoning.AgentModelContext
 }

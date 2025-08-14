@@ -34,7 +34,7 @@ public class ActionContext {
     private final String correlationId;
     private final String priority; // For A2A protocol priority levels
 
-    private ActionContext(Builder builder) {
+    /* package */ ActionContext(ActionContextBuilder builder) {
         this.protocol = builder.protocol;
         this.clientId = builder.clientId;
         this.sessionId = builder.sessionId;
@@ -81,65 +81,7 @@ public class ActionContext {
         return Optional.ofNullable(priority);
     }
 
-    /**
-     * Builder for ActionContext.
-     */
-    public static class Builder {
-        private String protocol = "";
-        private String clientId = "";
-        private String sessionId = "";
-        private @Nullable AuthenticationContext authContext;
-        private Map<String, Object> protocolContext = Map.of();
-        private long executionStartTime = System.currentTimeMillis();
-        private String correlationId = "";
-        private String priority = "";
-
-        public Builder protocol(String protocol) {
-            this.protocol = protocol;
-            return this;
-        }
-
-        public Builder clientId(String clientId) {
-            this.clientId = clientId;
-            return this;
-        }
-
-        public Builder sessionId(String sessionId) {
-            this.sessionId = sessionId;
-            return this;
-        }
-
-        public Builder authContext(AuthenticationContext authContext) {
-            this.authContext = authContext;
-            return this;
-        }
-
-        public Builder protocolContext(Map<String, Object> protocolContext) {
-            this.protocolContext = protocolContext != null ? protocolContext : Map.of();
-            return this;
-        }
-
-        public Builder executionStartTime(long executionStartTime) {
-            this.executionStartTime = executionStartTime;
-            return this;
-        }
-
-        public Builder correlationId(String correlationId) {
-            this.correlationId = correlationId;
-            return this;
-        }
-
-        public Builder priority(String priority) {
-            this.priority = priority;
-            return this;
-        }
-
-        public ActionContext build() {
-            return new ActionContext(this);
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
+    public static ActionContextBuilder builder() {
+        return new ActionContextBuilder();
     }
 }

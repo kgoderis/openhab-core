@@ -9,8 +9,7 @@ public class QualityImprovementRecommendation {
     private final String recommendation;
     private final double priority;
 
-    public QualityImprovementRecommendation(String component, String operation, String recommendation,
-            double priority) {
+    public QualityImprovementRecommendation(String component, String operation, String recommendation, double priority) {
         this.component = component;
         this.operation = operation;
         this.recommendation = recommendation;
@@ -22,5 +21,3 @@ public class QualityImprovementRecommendation {
     public String getRecommendation() { return recommendation; }
     public double getPriority() { return priority; }
 }
-
-

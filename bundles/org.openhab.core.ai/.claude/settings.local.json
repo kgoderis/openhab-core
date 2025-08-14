@@ -11,7 +11,12 @@
       "Bash(for:*)",
       "Bash(do cp \"src/main/java/org/openhab/core/ai/agent/execution/$file\" \"test_agent_execution/$file\")",
       "Bash(echo \"Copied $file\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(chmod:*)",
+      "Bash(/tmp/analyze_inner_constructs.sh:*)",
+      "Bash(/tmp/detailed_inner_analysis.sh:*)",
+      "Bash(rm:*)",
+      "Bash(time python3:*)"
     ],
     "deny": []
   }

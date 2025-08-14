@@ -467,7 +467,7 @@ public class DefaultToolServerManager implements org.openhab.core.ai.tool.server
         }
 
         try {
-            ServerConfiguration.Builder builder = ServerConfiguration.builder();
+            ServerConfigurationBuilder builder = ServerConfiguration.builder();
 
             // Server Identity
             builder.serverId(configurationService.getConfigValue("mcp.server.id", "openhab-mcp-server"))

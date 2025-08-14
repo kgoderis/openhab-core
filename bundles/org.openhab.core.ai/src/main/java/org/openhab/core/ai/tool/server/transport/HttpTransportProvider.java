@@ -99,18 +99,7 @@ public class HttpTransportProvider implements TransportProvider {
      */
     // BackendServer extracted to org.openhab.core.ai.tool.server.transport.BackendServer
 
-    /**
-     * Load balancer interface.
-     */
-    public interface LoadBalancer {
-        URI selectBackend();
-
-        void addBackend(URI backend);
-
-        void removeBackend(URI backend);
-
-        Map<String, Object> getStatistics();
-    }
+    // LoadBalancer extracted to top-level: org.openhab.core.ai.tool.server.transport.LoadBalancer
 
     @Override
     public String getProviderId() {

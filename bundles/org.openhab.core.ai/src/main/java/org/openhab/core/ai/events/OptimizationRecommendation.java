@@ -10,8 +10,7 @@ public class OptimizationRecommendation {
     private final String recommendation;
     private final double priority;
 
-    public OptimizationRecommendation(String component, String operation, OptimizationType type, String recommendation,
-            double priority) {
+    public OptimizationRecommendation(String component, String operation, OptimizationType type, String recommendation, double priority) {
         this.component = component;
         this.operation = operation;
         this.type = type;
@@ -25,5 +24,3 @@ public class OptimizationRecommendation {
     public String getRecommendation() { return recommendation; }
     public double getPriority() { return priority; }
 }
-
-

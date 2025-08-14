@@ -2,9 +2,6 @@ package org.openhab.core.ai.agent.execution;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
-/**
- * Schema validation result.
- */
 @NonNullByDefault
 public class SchemaValidationResult {
     private final boolean valid;
@@ -18,5 +15,3 @@ public class SchemaValidationResult {
     public boolean isValid() { return valid; }
     public String getMessage() { return message; }
 }
-
-

@@ -12,33 +12,24 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 public class PolicyResult {
 	private final boolean success;
 	private final String message;
-	private final boolean added;
-	private final int policyCount;
+	private final AutonomousBehaviorConfig.BehaviorPolicy policy;
 
-	public static PolicyResult success(boolean added, int policyCount) {
-		return new PolicyResult(true, "Policy operation successful", added, policyCount);
-	}
-
-	public PolicyResult(boolean success, String message, boolean added, int policyCount) {
+	private PolicyResult(boolean success, String message, AutonomousBehaviorConfig.BehaviorPolicy policy) {
 		this.success = success;
 		this.message = message;
-		this.added = added;
-		this.policyCount = policyCount;
+		this.policy = policy;
 	}
 
-	public boolean isSuccess() {
-		return success;
+	public static PolicyResult success(AutonomousBehaviorConfig.BehaviorPolicy policy) {
+		return new PolicyResult(true, "Policy operation successful", policy);
 	}
 
-	public String getMessage() {
-		return message;
-	}
+    public static PolicyResult success(boolean ok, int count) {
+        return new PolicyResult(ok, ok ? "Policy operation successful, count=" + count
+                : "Policy operation failed, count=" + count, null);
+    }
 
-	public boolean isAdded() {
-		return added;
-	}
-
-	public int getPolicyCount() {
-		return policyCount;
-	}
+	public boolean isSuccess() { return success; }
+	public String getMessage() { return message; }
+	public AutonomousBehaviorConfig.BehaviorPolicy getPolicy() { return policy; }
 }

@@ -85,13 +85,4 @@ public interface Specification {
      * @return true if the specification is valid
      */
     boolean isValid();
-
-    /**
-     * Specification types.
-     */
-    enum SpecificationType {
-        RESOURCE,
-        PROMPT,
-        COMPLETION
-    }
 }

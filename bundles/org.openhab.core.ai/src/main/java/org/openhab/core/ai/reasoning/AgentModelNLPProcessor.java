@@ -41,7 +41,7 @@ public class AgentModelNLPProcessor {
      * @param context The agent context
      * @return A CompletableFuture containing the NLP processing result
      */
-    public CompletableFuture<NLPResult> processInput(String input, AgentModelContextBuilder.AgentModelContext context) {
+    public CompletableFuture<NLPResult> processInput(String input, AgentModelContext context) {
         logger.debug("Processing NLP input: {}", input);
 
         return CompletableFuture.supplyAsync(() -> {
@@ -75,14 +75,14 @@ public class AgentModelNLPProcessor {
      * @param context The agent context
      * @return The recognized intent
      */
-    private Intent recognizeIntent(String input, AgentModelContextBuilder.AgentModelContext context) {
+    private Intent recognizeIntent(String input, AgentModelContext context) {
         // Create intent recognition prompt
-        AgentModelPromptBuilder.AgentModelPrompt prompt = promptBuilder.create()
+        AgentModelPrompt prompt = promptBuilder.create()
                 .withSystemRole("You are an intelligent intent recognition system for home automation.")
                 .withAgentContext(context).withTask("Recognize the user's intent from the natural language input")
                 .withCurrentState("User Input: " + input)
                 .withExpectedOutput("Provide intent classification with confidence score")
-                .withType(AgentModelPromptBuilder.PromptType.ANALYSIS).build();
+                .withType(PromptType.ANALYSIS).build();
 
         // Integrate with SharedModelReasoningEngine for actual intent recognition
         String reasoningResult = executeIntentRecognition(prompt);
@@ -97,14 +97,14 @@ public class AgentModelNLPProcessor {
      * @param context The agent context
      * @return The extracted entities
      */
-    private Map<String, Object> extractEntities(String input, AgentModelContextBuilder.AgentModelContext context) {
+    private Map<String, Object> extractEntities(String input, AgentModelContext context) {
         // Create entity extraction prompt
-        AgentModelPromptBuilder.AgentModelPrompt prompt = promptBuilder.create()
+        AgentModelPrompt prompt = promptBuilder.create()
                 .withSystemRole("You are an intelligent entity extraction system for home automation.")
                 .withAgentContext(context).withTask("Extract relevant entities from the natural language input")
                 .withCurrentState("User Input: " + input)
                 .withExpectedOutput("Provide entity extraction with confidence scores")
-                .withType(AgentModelPromptBuilder.PromptType.ANALYSIS).build();
+                .withType(PromptType.ANALYSIS).build();
 
         // Integrate with SharedModelReasoningEngine for actual entity extraction
         String reasoningResult = executeEntityExtraction(prompt);
@@ -119,14 +119,14 @@ public class AgentModelNLPProcessor {
      * @param context The agent context
      * @return The sentiment analysis result
      */
-    private SentimentAnalysis analyzeSentiment(String input, AgentModelContextBuilder.AgentModelContext context) {
+    private SentimentAnalysis analyzeSentiment(String input, AgentModelContext context) {
         // Create sentiment analysis prompt
-        AgentModelPromptBuilder.AgentModelPrompt prompt = promptBuilder.create()
+        AgentModelPrompt prompt = promptBuilder.create()
                 .withSystemRole("You are an intelligent sentiment analysis system for home automation.")
                 .withAgentContext(context).withTask("Analyze the sentiment and emotion in the natural language input")
                 .withCurrentState("User Input: " + input)
                 .withExpectedOutput("Provide sentiment analysis with emotion detection")
-                .withType(AgentModelPromptBuilder.PromptType.ANALYSIS).build();
+                .withType(PromptType.ANALYSIS).build();
 
         // Integrate with SharedModelReasoningEngine for actual sentiment analysis
         String reasoningResult = executeSentimentAnalysis(prompt);
@@ -145,9 +145,9 @@ public class AgentModelNLPProcessor {
      * @return The generated response
      */
     private String generateResponse(String input, Intent intent, Map<String, Object> entities,
-            SentimentAnalysis sentiment, AgentModelContextBuilder.AgentModelContext context) {
+            SentimentAnalysis sentiment, AgentModelContext context) {
         // Create response generation prompt
-        AgentModelPromptBuilder.AgentModelPrompt prompt = promptBuilder.create()
+        AgentModelPrompt prompt = promptBuilder.create()
                 .withSystemRole("You are an intelligent response generation system for home automation.")
                 .withAgentContext(context)
                 .withTask("Generate an appropriate response based on the user input and analysis")
@@ -155,7 +155,7 @@ public class AgentModelNLPProcessor {
                 .withSection("Entities", entities.toString())
                 .withSection("Sentiment", sentiment.getSentiment().toString())
                 .withExpectedOutput("Provide a natural, helpful response")
-                .withType(AgentModelPromptBuilder.PromptType.GENERAL).build();
+                .withType(PromptType.GENERAL).build();
 
         // Integrate with SharedModelReasoningEngine for actual response generation
         return executeResponseGeneration(prompt);
@@ -167,7 +167,7 @@ public class AgentModelNLPProcessor {
      * @param prompt The intent recognition prompt
      * @return The reasoning result
      */
-    private String executeIntentRecognition(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    private String executeIntentRecognition(AgentModelPrompt prompt) {
         try {
             // Integrate with SharedModelReasoningEngine for actual intent recognition
             CompletableFuture<ModelResponse> future = reasoningEngine
@@ -187,7 +187,7 @@ public class AgentModelNLPProcessor {
      * @param prompt The entity extraction prompt
      * @return The reasoning result
      */
-    private String executeEntityExtraction(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    private String executeEntityExtraction(AgentModelPrompt prompt) {
         try {
             // Integrate with SharedModelReasoningEngine for actual entity extraction
             CompletableFuture<ModelResponse> future = reasoningEngine
@@ -207,7 +207,7 @@ public class AgentModelNLPProcessor {
      * @param prompt The sentiment analysis prompt
      * @return The reasoning result
      */
-    private String executeSentimentAnalysis(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    private String executeSentimentAnalysis(AgentModelPrompt prompt) {
         try {
             // Integrate with SharedModelReasoningEngine for actual sentiment analysis
             CompletableFuture<ModelResponse> future = reasoningEngine
@@ -227,7 +227,7 @@ public class AgentModelNLPProcessor {
      * @param prompt The response generation prompt
      * @return The generated response
      */
-    private String executeResponseGeneration(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    private String executeResponseGeneration(AgentModelPrompt prompt) {
         try {
             // Integrate with SharedModelReasoningEngine for actual response generation
             CompletableFuture<ModelResponse> future = reasoningEngine

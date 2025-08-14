@@ -79,9 +79,5 @@ public interface SamplingRequest {
     /**
      * Sampling status enumeration.
      */
-    enum SamplingStatus {
-        PENDING,
-        APPROVED,
-        REJECTED
-    }
+    // enum extracted to top-level: org.openhab.core.ai.tool.sampling.models.SamplingStatus
 }

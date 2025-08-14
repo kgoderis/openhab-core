@@ -12,7 +12,7 @@ import org.openhab.core.ai.action.ActionResult;
 import org.openhab.core.ai.action.ActionValidationResult;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionException;
-import org.openhab.core.ai.action.library.events.EventSubscriptionRegistry.SubscriptionInfo;
+import org.openhab.core.ai.action.library.events.SubscriptionInfo;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;

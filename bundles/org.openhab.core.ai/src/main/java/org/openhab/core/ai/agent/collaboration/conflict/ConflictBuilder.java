@@ -12,13 +12,13 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public class ConflictBuilder {
-    private String conflictId;
-    private ConflictData conflictData;
-    private String reportedBy;
-    private Instant detectedAt;
-    private ConflictAnalysis analysis;
-    private ConflictStatus status;
-    private ConflictPriority priority;
+    String conflictId;
+    ConflictData conflictData;
+    String reportedBy;
+    Instant detectedAt;
+    ConflictAnalysis analysis;
+    ConflictStatus status;
+    ConflictPriority priority;
 
     public ConflictBuilder conflictId(String conflictId) { this.conflictId = conflictId; return this; }
     public ConflictBuilder conflictData(ConflictData conflictData) { this.conflictData = conflictData; return this; }

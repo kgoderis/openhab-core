@@ -23,101 +23,17 @@ public interface AgentTransport {
     /**
      * Transport protocol types supported by the A2A implementation.
      */
-    enum TransportType {
-        JSON_RPC("json-rpc"),
-        GRPC("grpc"),
-        REST("rest");
-
-        private final String identifier;
-
-        TransportType(String identifier) {
-            this.identifier = identifier;
-        }
-
-        public String getIdentifier() {
-            return identifier;
-        }
-    }
+    // Extracted to top-level: org.openhab.core.ai.agent.transport.TransportType
 
     /**
      * Transport capabilities and features.
      */
-    interface TransportCapabilities {
-        /**
-         * Get the transport type.
-         * 
-         * @return the transport type
-         */
-        TransportType getTransportType();
-
-        /**
-         * Check if streaming is supported.
-         * 
-         * @return true if streaming is supported
-         */
-        boolean supportsStreaming();
-
-        /**
-         * Check if bidirectional communication is supported.
-         * 
-         * @return true if bidirectional communication is supported
-         */
-        boolean supportsBidirectional();
-
-        /**
-         * Check if authentication is supported.
-         * 
-         * @return true if authentication is supported
-         */
-        boolean supportsAuthentication();
-
-        /**
-         * Get the maximum message size in bytes.
-         * 
-         * @return the maximum message size
-         */
-        int getMaxMessageSize();
-
-        /**
-         * Get the transport-specific configuration.
-         * 
-         * @return the configuration map
-         */
-        Map<String, Object> getConfiguration();
-    }
+    // Extracted to top-level: org.openhab.core.ai.agent.transport.TransportCapabilities
 
     /**
      * Transport health status.
      */
-    interface TransportHealth {
-        /**
-         * Check if the transport is healthy.
-         * 
-         * @return true if healthy
-         */
-        boolean isHealthy();
-
-        /**
-         * Get the health status message.
-         * 
-         * @return the health message
-         */
-        String getHealthMessage();
-
-        /**
-         * Get the last health check timestamp.
-         * 
-         * @return the timestamp
-         */
-        long getLastHealthCheck();
-
-        /**
-         * Get transport-specific health metrics.
-         * 
-         * @return the health metrics
-         */
-        Map<String, Object> getHealthMetrics();
-    }
+    // Extracted to top-level: org.openhab.core.ai.agent.transport.TransportHealth
 
     /**
      * Get the transport identifier.

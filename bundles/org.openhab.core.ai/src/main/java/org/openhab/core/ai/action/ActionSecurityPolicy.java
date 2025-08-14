@@ -38,7 +38,7 @@ public class ActionSecurityPolicy {
     private final Set<String> restrictedParameters;
     private final Set<String> allowedOrigins;
 
-    private ActionSecurityPolicy(Builder builder) {
+    /* package */ ActionSecurityPolicy(ActionSecurityPolicyBuilder builder) {
         this.actionId = builder.actionId;
         this.requiredPermissions = builder.requiredPermissions;
         this.allowedAgents = builder.allowedAgents;
@@ -142,78 +142,8 @@ public class ActionSecurityPolicy {
         CRITICAL // Maximum security validation
     }
 
-    /**
-     * Builder for ActionSecurityPolicy.
-     */
-    public static class Builder {
-        private String actionId = "";
-        private Set<String> requiredPermissions = Set.of();
-        private Set<String> allowedAgents = Set.of();
-        private Set<String> allowedRoles = Set.of();
-        private boolean requiresAuthentication = true;
-        private boolean requiresAuthorization = true;
-        private boolean requiresAuditLogging = false;
-        private SecurityLevel securityLevel = SecurityLevel.MEDIUM;
-        private Set<String> restrictedParameters = Set.of();
-        private Set<String> allowedOrigins = Set.of();
-
-        public Builder actionId(String actionId) {
-            this.actionId = actionId;
-            return this;
-        }
-
-        public Builder requiredPermissions(Set<String> requiredPermissions) {
-            this.requiredPermissions = requiredPermissions;
-            return this;
-        }
-
-        public Builder allowedAgents(Set<String> allowedAgents) {
-            this.allowedAgents = allowedAgents;
-            return this;
-        }
-
-        public Builder allowedRoles(Set<String> allowedRoles) {
-            this.allowedRoles = allowedRoles;
-            return this;
-        }
-
-        public Builder requiresAuthentication(boolean requiresAuthentication) {
-            this.requiresAuthentication = requiresAuthentication;
-            return this;
-        }
-
-        public Builder requiresAuthorization(boolean requiresAuthorization) {
-            this.requiresAuthorization = requiresAuthorization;
-            return this;
-        }
-
-        public Builder requiresAuditLogging(boolean requiresAuditLogging) {
-            this.requiresAuditLogging = requiresAuditLogging;
-            return this;
-        }
-
-        public Builder securityLevel(SecurityLevel securityLevel) {
-            this.securityLevel = securityLevel;
-            return this;
-        }
-
-        public Builder restrictedParameters(Set<String> restrictedParameters) {
-            this.restrictedParameters = restrictedParameters;
-            return this;
-        }
-
-        public Builder allowedOrigins(Set<String> allowedOrigins) {
-            this.allowedOrigins = allowedOrigins;
-            return this;
-        }
-
-        public ActionSecurityPolicy build() {
-            return new ActionSecurityPolicy(this);
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
+    public static ActionSecurityPolicyBuilder builder() {
+        return new ActionSecurityPolicyBuilder();
     }
 
     @Override

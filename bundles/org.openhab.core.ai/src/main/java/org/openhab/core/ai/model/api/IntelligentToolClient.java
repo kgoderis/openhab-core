@@ -159,185 +159,35 @@ public interface IntelligentToolClient extends ModelClient {
     /**
      * Result of safety constraint validation.
      */
-    interface SafetyValidationResult {
-        /**
-         * Whether the context passes all safety constraints.
-         */
-        boolean isValid();
-
-        /**
-         * List of constraint violations, if any.
-         */
-        List<ConstraintViolation> getViolations();
-
-        /**
-         * Recommendations for addressing violations.
-         */
-        List<String> getRecommendations();
-    }
+    // Extracted to top-level: org.openhab.core.ai.model.api.SafetyValidationResult
 
     /**
      * Represents a safety constraint.
      */
-    interface SafetyConstraint {
-        /**
-         * The constraint identifier.
-         */
-        String getId();
-
-        /**
-         * The constraint type.
-         */
-        String getType();
-
-        /**
-         * The constraint parameters.
-         */
-        Map<String, Object> getParameters();
-
-        /**
-         * The severity level of the constraint.
-         */
-        Severity getSeverity();
-    }
+    // Extracted to top-level: org.openhab.core.ai.model.api.SafetyConstraint
 
     /**
      * Represents a constraint violation.
      */
-    interface ConstraintViolation {
-        /**
-         * The violated constraint ID.
-         */
-        String getConstraintId();
-
-        /**
-         * Description of the violation.
-         */
-        String getDescription();
-
-        /**
-         * The severity of the violation.
-         */
-        Severity getSeverity();
-
-        /**
-         * Suggested actions to resolve the violation.
-         */
-        List<String> getSuggestedActions();
-    }
+    // Extracted to top-level: org.openhab.core.ai.model.api.ConstraintViolation
 
     /**
      * Severity levels for constraints and violations.
      */
-    enum Severity {
-        LOW,
-        MEDIUM,
-        HIGH,
-        CRITICAL
-    }
+    // Severity extracted to top-level: org.openhab.core.ai.model.api.Severity
 
     /**
      * Intelligence capabilities information.
      */
-    interface IntelligenceCapabilities {
-        /**
-         * Whether multi-step reasoning is supported.
-         */
-        boolean supportsMultiStepReasoning();
-
-        /**
-         * Whether context memory is supported.
-         */
-        boolean supportsContextMemory();
-
-        /**
-         * Whether autonomous behavior is supported.
-         */
-        boolean supportsAutonomousBehavior();
-
-        /**
-         * Whether learning and adaptation is supported.
-         */
-        boolean supportsLearningAndAdaptation();
-
-        /**
-         * Whether safety constraints are supported.
-         */
-        boolean supportsSafetyConstraints();
-
-        /**
-         * Maximum number of reasoning steps supported.
-         */
-        int getMaxReasoningSteps();
-
-        /**
-         * Maximum context memory size.
-         */
-        long getMaxContextMemorySize();
-
-        /**
-         * Supported reasoning strategies.
-         */
-        List<String> getSupportedReasoningStrategies();
-    }
+    // Extracted to top-level: org.openhab.core.ai.model.api.IntelligenceCapabilities
 
     /**
      * Learning and adaptation status.
      */
-    interface LearningAdaptationStatus {
-        /**
-         * Whether learning is currently active.
-         */
-        boolean isLearningActive();
-
-        /**
-         * Current learning rate.
-         */
-        double getLearningRate();
-
-        /**
-         * Number of learning iterations completed.
-         */
-        long getLearningIterations();
-
-        /**
-         * Last learning update timestamp.
-         */
-        long getLastLearningUpdate();
-
-        /**
-         * Learning performance metrics.
-         */
-        Map<String, Double> getLearningMetrics();
-    }
+    // Extracted to top-level: org.openhab.core.ai.model.api.LearningAdaptationStatus
 
     /**
      * Reasoning performance metrics.
      */
-    interface ReasoningPerformanceMetrics {
-        /**
-         * Average reasoning time in milliseconds.
-         */
-        double getAverageReasoningTime();
-
-        /**
-         * Total number of reasoning operations.
-         */
-        long getTotalReasoningOperations();
-
-        /**
-         * Success rate of reasoning operations.
-         */
-        double getSuccessRate();
-
-        /**
-         * Average number of reasoning steps per operation.
-         */
-        double getAverageReasoningSteps();
-
-        /**
-         * Performance metrics by reasoning strategy.
-         */
-        Map<String, Double> getStrategyMetrics();
-    }
+    // Extracted to top-level: org.openhab.core.ai.model.api.ReasoningPerformanceMetrics
 }

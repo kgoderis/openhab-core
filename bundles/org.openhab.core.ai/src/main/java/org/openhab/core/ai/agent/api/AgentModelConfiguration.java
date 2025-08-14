@@ -43,7 +43,7 @@ public class AgentModelConfiguration {
     private final Map<String, Object> monitoringSettings;
     private final Map<String, String> promptTemplates;
 
-    private AgentModelConfiguration(Builder builder) {
+    AgentModelConfiguration(AgentModelConfigurationBuilder builder) {
         this.agentId = builder.agentId;
         this.preferredModel = builder.preferredModel;
         this.fallbackModel = builder.fallbackModel;
@@ -136,122 +136,7 @@ public class AgentModelConfiguration {
         return new HashMap<>(promptTemplates);
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private String agentId = "";
-        private String preferredModel = "gpt-4";
-        private String fallbackModel = "gpt-3.5-turbo";
-        private double temperature = 0.7;
-        private int maxTokens = 1000;
-        private Duration timeout = Duration.ofSeconds(30);
-        private int maxRetries = 3;
-        private Duration retryDelay = Duration.ofSeconds(5);
-        private boolean enableCaching = true;
-        private Duration cacheExpiration = Duration.ofMinutes(30);
-        private int maxCacheSize = 1000;
-        private boolean enableOptimization = true;
-        private Map<String, Object> optimizationSettings = new HashMap<>();
-        private boolean enableSecurity = true;
-        private Map<String, Object> securitySettings = new HashMap<>();
-        private boolean enableMonitoring = true;
-        private Map<String, Object> monitoringSettings = new HashMap<>();
-        private Map<String, String> promptTemplates = new HashMap<>();
-
-        public Builder agentId(String agentId) {
-            this.agentId = agentId;
-            return this;
-        }
-
-        public Builder preferredModel(String preferredModel) {
-            this.preferredModel = preferredModel;
-            return this;
-        }
-
-        public Builder fallbackModel(String fallbackModel) {
-            this.fallbackModel = fallbackModel;
-            return this;
-        }
-
-        public Builder temperature(double temperature) {
-            this.temperature = temperature;
-            return this;
-        }
-
-        public Builder maxTokens(int maxTokens) {
-            this.maxTokens = maxTokens;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
-            return this;
-        }
-
-        public Builder maxRetries(int maxRetries) {
-            this.maxRetries = maxRetries;
-            return this;
-        }
-
-        public Builder retryDelay(Duration retryDelay) {
-            this.retryDelay = retryDelay;
-            return this;
-        }
-
-        public Builder enableCaching(boolean enableCaching) {
-            this.enableCaching = enableCaching;
-            return this;
-        }
-
-        public Builder cacheExpiration(Duration cacheExpiration) {
-            this.cacheExpiration = cacheExpiration;
-            return this;
-        }
-
-        public Builder maxCacheSize(int maxCacheSize) {
-            this.maxCacheSize = maxCacheSize;
-            return this;
-        }
-
-        public Builder enableOptimization(boolean enableOptimization) {
-            this.enableOptimization = enableOptimization;
-            return this;
-        }
-
-        public Builder optimizationSettings(Map<String, Object> optimizationSettings) {
-            this.optimizationSettings = new HashMap<>(optimizationSettings);
-            return this;
-        }
-
-        public Builder enableSecurity(boolean enableSecurity) {
-            this.enableSecurity = enableSecurity;
-            return this;
-        }
-
-        public Builder securitySettings(Map<String, Object> securitySettings) {
-            this.securitySettings = new HashMap<>(securitySettings);
-            return this;
-        }
-
-        public Builder enableMonitoring(boolean enableMonitoring) {
-            this.enableMonitoring = enableMonitoring;
-            return this;
-        }
-
-        public Builder monitoringSettings(Map<String, Object> monitoringSettings) {
-            this.monitoringSettings = new HashMap<>(monitoringSettings);
-            return this;
-        }
-
-        public Builder promptTemplates(Map<String, String> promptTemplates) {
-            this.promptTemplates = new HashMap<>(promptTemplates);
-            return this;
-        }
-
-        public AgentModelConfiguration build() {
-            return new AgentModelConfiguration(this);
-        }
+    public static AgentModelConfigurationBuilder builder() {
+        return new AgentModelConfigurationBuilder();
     }
 }

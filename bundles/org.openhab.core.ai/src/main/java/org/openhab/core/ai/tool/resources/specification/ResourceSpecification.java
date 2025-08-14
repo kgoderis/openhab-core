@@ -7,6 +7,7 @@ import org.openhab.core.ai.tool.api.ResourceContext;
 import org.openhab.core.ai.tool.api.ResourceResult;
 import org.openhab.core.ai.tool.api.Specification;
 import org.openhab.core.ai.tool.api.validation.ResourceMetadata;
+import org.openhab.core.ai.tool.api.SpecificationType;
 import org.openhab.core.ai.tool.api.validation.ResourceValidationResult;
 import org.openhab.core.ai.tool.specification.AbstractBaseSpecification;
 
@@ -84,7 +85,5 @@ public abstract class ResourceSpecification extends AbstractBaseSpecification {
      * @return SpecificationType.RESOURCE
      */
     @Override
-    public Specification.SpecificationType getType() {
-        return Specification.SpecificationType.RESOURCE;
-    }
+    public SpecificationType getType() { return SpecificationType.RESOURCE; }
 }

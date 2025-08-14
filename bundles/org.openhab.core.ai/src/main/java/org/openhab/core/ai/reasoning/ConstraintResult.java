@@ -12,41 +12,32 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 public class ConstraintResult {
 	private final boolean success;
 	private final String message;
-	private final boolean added;
-	private final int constraintCount;
+	private final AutonomousBehaviorConfig.ConstraintDefinition constraint;
 
-	public static ConstraintResult success(boolean added, int constraintCount) {
-		return new ConstraintResult(true, "Constraint operation successful", added, constraintCount);
-	}
-
-	public static ConstraintResult notFound(String reason) {
-		return new ConstraintResult(false, reason, false, 0);
-	}
-
-	public static ConstraintResult disabled(String reason) {
-		return new ConstraintResult(false, "Constraint enforcement disabled: " + reason, false, 0);
-	}
-
-	public ConstraintResult(boolean success, String message, boolean added, int constraintCount) {
+	private ConstraintResult(boolean success, String message, AutonomousBehaviorConfig.ConstraintDefinition constraint) {
 		this.success = success;
 		this.message = message;
-		this.added = added;
-		this.constraintCount = constraintCount;
+		this.constraint = constraint;
 	}
 
-	public boolean isSuccess() {
-		return success;
+	public static ConstraintResult success(AutonomousBehaviorConfig.ConstraintDefinition constraint) {
+		return new ConstraintResult(true, "Constraint definition successful", constraint);
 	}
 
-	public String getMessage() {
-		return message;
-	}
+    public static ConstraintResult disabled(String reason) {
+        return new ConstraintResult(false, "Constraint operation disabled: " + reason, null);
+    }
 
-	public boolean isAdded() {
-		return added;
-	}
+    public static ConstraintResult success(boolean ok, int count) {
+        return new ConstraintResult(ok, ok ? "Constraint operation successful, count=" + count
+                : "Constraint operation failed, count=" + count, null);
+    }
 
-	public int getConstraintCount() {
-		return constraintCount;
-	}
+    public static ConstraintResult notFound(String reason) {
+        return new ConstraintResult(false, reason, null);
+    }
+
+	public boolean isSuccess() { return success; }
+	public String getMessage() { return message; }
+	public AutonomousBehaviorConfig.ConstraintDefinition getConstraint() { return constraint; }
 }

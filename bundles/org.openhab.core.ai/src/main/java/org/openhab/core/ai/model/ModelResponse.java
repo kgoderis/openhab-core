@@ -28,7 +28,9 @@ public class ModelResponse {
     private final @Nullable String finishReason;
     private final @Nullable String errorMessage;
 
-    private ModelResponse(Builder builder) {
+    // Constructor using inner Builder removed; use ModelResponseBuilder instead
+
+    /* package */ ModelResponse(ModelResponseBuilder builder) {
         this.content = builder.content;
         this.modelName = builder.modelName;
         this.providerType = builder.providerType;
@@ -160,86 +162,9 @@ public class ModelResponse {
         return errorMessage != null;
     }
 
-    public static class Builder {
-        private String content = "";
-        private String modelName = "";
-        private String providerType = "";
-        private Instant timestamp = Instant.now();
-        private int promptTokens = 0;
-        private int completionTokens = 0;
-        private int totalTokens = 0;
-        private double cost = 0.0;
-        private long responseTimeMs = 0;
-        private Map<String, Object> metadata = Map.of();
-        private @Nullable String finishReason;
-        private @Nullable String errorMessage;
+    // Builder extracted to top-level: see ModelResponseBuilder
 
-        public Builder content(String content) {
-            this.content = content;
-            return this;
-        }
-
-        public Builder modelName(String modelName) {
-            this.modelName = modelName;
-            return this;
-        }
-
-        public Builder providerType(String providerType) {
-            this.providerType = providerType;
-            return this;
-        }
-
-        public Builder timestamp(Instant timestamp) {
-            this.timestamp = timestamp;
-            return this;
-        }
-
-        public Builder promptTokens(int promptTokens) {
-            this.promptTokens = promptTokens;
-            return this;
-        }
-
-        public Builder completionTokens(int completionTokens) {
-            this.completionTokens = completionTokens;
-            return this;
-        }
-
-        public Builder totalTokens(int totalTokens) {
-            this.totalTokens = totalTokens;
-            return this;
-        }
-
-        public Builder cost(double cost) {
-            this.cost = cost;
-            return this;
-        }
-
-        public Builder responseTimeMs(long responseTimeMs) {
-            this.responseTimeMs = responseTimeMs;
-            return this;
-        }
-
-        public Builder metadata(Map<String, Object> metadata) {
-            this.metadata = metadata;
-            return this;
-        }
-
-        public Builder finishReason(@Nullable String finishReason) {
-            this.finishReason = finishReason;
-            return this;
-        }
-
-        public Builder errorMessage(@Nullable String errorMessage) {
-            this.errorMessage = errorMessage;
-            return this;
-        }
-
-        public ModelResponse build() {
-            return new ModelResponse(this);
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
+    public static ModelResponseBuilder builder() {
+        return new ModelResponseBuilder();
     }
 }

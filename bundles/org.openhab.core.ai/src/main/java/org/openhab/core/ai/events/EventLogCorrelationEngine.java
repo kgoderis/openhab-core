@@ -446,14 +446,14 @@ public class EventLogCorrelationEngine {
             String logMessage = logEntry.getMessage().toLowerCase();
 
             // Check for causal relationships
-            if (logEntry.getLevel() == LogIngestionPipeline.LogLevel.ERROR) {
+            if (logEntry.getLevel() == LogLevel.ERROR) {
                 // Error logs often indicate causal relationships
                 if (eventType.contains("error") || eventType.contains("exception") || eventType.contains("failure")) {
                     confidence += 0.5;
                 }
             }
 
-            if (logEntry.getLevel() == LogIngestionPipeline.LogLevel.WARN) {
+            if (logEntry.getLevel() == LogLevel.WARN) {
                 // Warning logs may indicate causal relationships
                 if (eventType.contains("warn") || eventType.contains("warning")) {
                     confidence += 0.3;
@@ -482,19 +482,19 @@ public class EventLogCorrelationEngine {
     /**
      * Determine correlation type
      */
-    private EventLogCorrelation.CorrelationType determineCorrelationType(EventInfo eventInfo,
+    private EventLogCorrelationType determineCorrelationType(EventInfo eventInfo,
             LogEntry logEntry) {
         // Determine correlation type based on event and log characteristics
-        if (logEntry.getLevel() == LogIngestionPipeline.LogLevel.ERROR) {
-            return EventLogCorrelation.CorrelationType.ERROR_CORRELATION;
-        } else if (logEntry.getLevel() == LogIngestionPipeline.LogLevel.WARN) {
-            return EventLogCorrelation.CorrelationType.WARNING_CORRELATION;
+        if (logEntry.getLevel() == LogLevel.ERROR) {
+            return EventLogCorrelationType.ERROR_CORRELATION;
+        } else if (logEntry.getLevel() == LogLevel.WARN) {
+            return EventLogCorrelationType.WARNING_CORRELATION;
         } else if (eventInfo.getType().toLowerCase().contains("security")) {
-            return EventLogCorrelation.CorrelationType.SECURITY_CORRELATION;
+            return EventLogCorrelationType.SECURITY_CORRELATION;
         } else if (eventInfo.getType().toLowerCase().contains("performance")) {
-            return EventLogCorrelation.CorrelationType.PERFORMANCE_CORRELATION;
+            return EventLogCorrelationType.PERFORMANCE_CORRELATION;
         } else {
-            return EventLogCorrelation.CorrelationType.GENERAL_CORRELATION;
+            return EventLogCorrelationType.GENERAL_CORRELATION;
         }
     }
 

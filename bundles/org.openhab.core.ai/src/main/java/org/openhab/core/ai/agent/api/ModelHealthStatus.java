@@ -41,7 +41,7 @@ public class ModelHealthStatus {
     private final Instant lastSuccessfulRequest;
     private final Instant lastFailedRequest;
 
-    private ModelHealthStatus(ModelHealthStatusBuilder builder) {
+    ModelHealthStatus(ModelHealthStatusBuilder builder) {
         this.overallHealth = builder.overallHealth;
         this.primaryModelAvailable = builder.primaryModelAvailable;
         this.fallbackModelAvailable = builder.fallbackModelAvailable;

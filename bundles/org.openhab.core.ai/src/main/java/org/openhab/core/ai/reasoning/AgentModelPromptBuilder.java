@@ -4,7 +4,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +52,7 @@ public class AgentModelPromptBuilder {
      * @param context The agent context
      * @return This builder instance for method chaining
      */
-    public AgentModelPromptBuilder withAgentContext(AgentModelContextBuilder.AgentModelContext context) {
+    public AgentModelPromptBuilder withAgentContext(AgentModelContext context) {
         promptBuilder.append("Agent Context:\n");
         promptBuilder.append("- Agent ID: ").append(context.getContextData("agentId")).append("\n");
         promptBuilder.append("- Agent Type: ").append(context.getContextData("agentType")).append("\n");
@@ -264,7 +263,7 @@ public class AgentModelPromptBuilder {
      * @param targetOptimization The target optimization goal
      * @return The built prompt
      */
-    public static AgentModelPrompt createEnergyOptimizationPrompt(AgentModelContextBuilder.AgentModelContext context,
+    public static AgentModelPrompt createEnergyOptimizationPrompt(AgentModelContext context,
             String currentEnergyUsage, String targetOptimization) {
 
         return create().withSystemRole(
@@ -287,7 +286,7 @@ public class AgentModelPromptBuilder {
      * @param threatLevel The threat level
      * @return The built prompt
      */
-    public static AgentModelPrompt createSecurityAnalysisPrompt(AgentModelContextBuilder.AgentModelContext context,
+    public static AgentModelPrompt createSecurityAnalysisPrompt(AgentModelContext context,
             String securityEvent, String threatLevel) {
 
         return create().withSystemRole(
@@ -308,7 +307,7 @@ public class AgentModelPromptBuilder {
      * @param userPreferences The user preferences
      * @return The built prompt
      */
-    public static AgentModelPrompt createComfortOptimizationPrompt(AgentModelContextBuilder.AgentModelContext context,
+    public static AgentModelPrompt createComfortOptimizationPrompt(AgentModelContext context,
             String currentConditions, String userPreferences) {
 
         return create().withSystemRole(
@@ -329,7 +328,7 @@ public class AgentModelPromptBuilder {
      * @param options The available options
      * @return The built prompt
      */
-    public static AgentModelPrompt createDecisionMakingPrompt(AgentModelContextBuilder.AgentModelContext context,
+    public static AgentModelPrompt createDecisionMakingPrompt(AgentModelContext context,
             String decisionScenario, String options) {
 
         return create().withSystemRole(
@@ -342,93 +341,9 @@ public class AgentModelPromptBuilder {
                 .withType(PromptType.DECISION_MAKING).withPriority(PromptPriority.HIGH).build();
     }
 
-    /**
-     * Prompt types.
-     */
-    public enum PromptType {
-        GENERAL,
-        ENERGY_OPTIMIZATION,
-        SECURITY_ANALYSIS,
-        COMFORT_OPTIMIZATION,
-        DECISION_MAKING,
-        TROUBLESHOOTING,
-        PLANNING,
-        ANALYSIS
-    }
+    // Extracted to top-level: org.openhab.core.ai.reasoning.PromptType
 
-    /**
-     * Prompt priority levels.
-     */
-    public enum PromptPriority {
-        HIGH,
-        MEDIUM,
-        LOW
-    }
+    // Extracted to top-level: org.openhab.core.ai.reasoning.PromptPriority
 
-    /**
-     * Agent Model Prompt class.
-     */
-    public static class AgentModelPrompt {
-        private final String promptText;
-        private final Map<String, Object> parameters;
-        private final Map<String, Object> metadata;
-
-        public AgentModelPrompt(String promptText, Map<String, Object> parameters, Map<String, Object> metadata) {
-            this.promptText = promptText;
-            this.parameters = new ConcurrentHashMap<>(parameters);
-            this.metadata = new ConcurrentHashMap<>(metadata);
-        }
-
-        public String getPromptText() {
-            return promptText;
-        }
-
-        public Map<String, Object> getParameters() {
-            return new ConcurrentHashMap<>(parameters);
-        }
-
-        public Map<String, Object> getMetadata() {
-            return new ConcurrentHashMap<>(metadata);
-        }
-
-        @Nullable
-        public Object getParameter(String key) {
-            return parameters.get(key);
-        }
-
-        @Nullable
-        public Object getMetadata(String key) {
-            return metadata.get(key);
-        }
-
-        public boolean hasParameter(String key) {
-            return parameters.containsKey(key);
-        }
-
-        public boolean hasMetadata(String key) {
-            return metadata.containsKey(key);
-        }
-
-        public PromptType getType() {
-            return (PromptType) metadata.getOrDefault("type", PromptType.GENERAL);
-        }
-
-        public PromptPriority getPriority() {
-            return (PromptPriority) metadata.getOrDefault("priority", PromptPriority.MEDIUM);
-        }
-
-        public String getVersion() {
-            return (String) metadata.getOrDefault("version", "1.0");
-        }
-
-        public long getTimestamp() {
-            return (Long) metadata.getOrDefault("timestamp", 0L);
-        }
-
-        @Override
-        public String toString() {
-            return "AgentModelPrompt{type=" + getType() + ", priority=" + getPriority() + ", length="
-                    + promptText.length() + ", parameters=" + parameters.size() + "}";
-        }
-    }
+    // Extracted to top-level: org.openhab.core.ai.reasoning.AgentModelPrompt
 }

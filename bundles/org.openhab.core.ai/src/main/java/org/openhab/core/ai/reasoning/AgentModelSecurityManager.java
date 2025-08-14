@@ -65,7 +65,7 @@ public class AgentModelSecurityManager {
      * @return A CompletableFuture containing the security validation result
      */
     public CompletableFuture<SecurityValidationResult> validateSecurity(ModelRequest request,
-            AgentModelContextBuilder.AgentModelContext context) {
+            AgentModelContext context) {
         logger.debug("Validating authentication and authorization for request: {}", request.getRequestId());
 
         return CompletableFuture.supplyAsync(() -> {
@@ -108,7 +108,7 @@ public class AgentModelSecurityManager {
      * @param context The agent context
      * @param result The validation result to update
      */
-    private void validateAuthentication(ModelRequest request, AgentModelContextBuilder.AgentModelContext context,
+    private void validateAuthentication(ModelRequest request, AgentModelContext context,
             SecurityValidationResult result) {
         String agentId = (String) context.getContextData("agentId");
         String authenticationToken = request.getAuthenticationToken();
@@ -159,7 +159,7 @@ public class AgentModelSecurityManager {
      * @param context The agent context
      * @param result The validation result to update
      */
-    private void validateAuthorization(ModelRequest request, AgentModelContextBuilder.AgentModelContext context,
+    private void validateAuthorization(ModelRequest request, AgentModelContext context,
             SecurityValidationResult result) {
         String agentId = (String) context.getContextData("agentId");
         String agentType = (String) context.getContextData("agentType");
@@ -216,7 +216,7 @@ public class AgentModelSecurityManager {
      * @param context The agent context
      * @param result The validation result to update
      */
-    private void validateModelAccessControl(ModelRequest request, AgentModelContextBuilder.AgentModelContext context,
+    private void validateModelAccessControl(ModelRequest request, AgentModelContext context,
             SecurityValidationResult result) {
         String agentId = (String) context.getContextData("agentId");
         String modelId = request.getModelId();
@@ -252,7 +252,7 @@ public class AgentModelSecurityManager {
      * @param context The agent context
      * @param result The validation result to update
      */
-    private void validateContentSafety(ModelRequest request, AgentModelContextBuilder.AgentModelContext context,
+    private void validateContentSafety(ModelRequest request, AgentModelContext context,
             SecurityValidationResult result) {
         String prompt = request.getPrompt();
         if (prompt != null && !prompt.trim().isEmpty()) {
@@ -304,7 +304,7 @@ public class AgentModelSecurityManager {
      * @param context The agent context
      * @param result The validation result to update
      */
-    private void validateAccessControl(ModelRequest request, AgentModelContextBuilder.AgentModelContext context,
+    private void validateAccessControl(ModelRequest request, AgentModelContext context,
             SecurityValidationResult result) {
         String agentId = (String) context.getContextData("agentId");
 
@@ -342,7 +342,7 @@ public class AgentModelSecurityManager {
      * @param context The agent context
      * @param result The validation result to update
      */
-    private void validateRateLimiting(ModelRequest request, AgentModelContextBuilder.AgentModelContext context,
+    private void validateRateLimiting(ModelRequest request, AgentModelContext context,
             SecurityValidationResult result) {
         String agentId = (String) context.getContextData("agentId");
 

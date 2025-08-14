@@ -6415,7 +6415,7 @@ ToolServlet.java → ToolServlet.java (keep)
 **Phase 3 - Adapter and Handler Classes (7 files):**
 20. `ResourceInterfaceAdapter.java` → `ResourceConverter.java`
 21. `ToolAdapter.java` → `ToolConverter.java`
-22. `ItemCompletionAdapter.java` → `ItemCompletionHandler.java`
+22. `ItemCompletionAdapter.java` → `ItemCompletionHandler.java` ✅
 23. `RuleCompletionAdapter.java` → `RuleCompletionHandler.java`
 24. `ConfigurationCompletionAdapter.java` → `ConfigurationCompletionHandler.java`
 25. `CommandCompletionAdapter.java` → `CommandCompletionHandler.java`
@@ -9508,3 +9508,479 @@ Test sources (optional, for consistency):
 Implementation notes
 - Prefer imports over fully qualified names throughout; keep `@NonNullByDefault` on classes and explicit `@Nullable` where applicable.
 - Do not change behavior; only adjust type references and add necessary imports.
+
+### 22. Extract inner types: action items
+
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/api/ModelHealthStatus.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/LearningAdaptationSystem.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/server/ServerConfiguration.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/events/EventProcessingAnalytics.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/ComprehensiveSecurityResult.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/ActionExecutionEvent.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/model/ModelStatisticsAggregatorService.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/api/Agent.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/delegation/DelegationPerformanceMetrics.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/AgentModelDecisionValidator.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/library/events/EventSubscriptionRegistry.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/MemoryReasoningSession.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/LearningHistory.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/MemoryPattern.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/auth/DefaultAuditLogger.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/api/validation/DefaultValidationService.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/api/validation/ValidationEngine.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/rest/RestSecurityFramework.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/server/transport/HttpTransportProvider.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/AgentModelPromptValidator.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/AgentModelContextValidator.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/execution/TaskOrchestrationState.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/ReasoningInput.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/events/EventLogCorrelation.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/model/PerformanceMetrics.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/events/LogIngestionPipeline.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/events/LogAnomaly.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/api/ReasoningEngine.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/model/api/IntelligentToolClient.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/services/HybridToolExecutionService.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/error/DefaultErrorRecoveryService.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/infrastructure/performance/AgentCommunicationPerformanceMonitor.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/infrastructure/security/SecurityIncident.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/services/api/ToolExecutionService.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/AgentModelPromptOptimizer.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/compliance/ComplianceValidator.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/lifecycle/AgentConfigurationManager.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/logging/audit/AuditLogger.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/filter/validators/FilterValidator.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/api/validation/ValidationRule.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/AgentModelContextEnricher.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/api/SecurityManager.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/api/ErrorHandler.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/api/ConfigurationManager.java (extracted: ConfigurationValidationResult, ConfigurationBackupResult)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/api/MemoryManager.java (extracted: MemoryStoreResult, MemorySearchResult, MemoryConsolidationResult, MemoryPerformanceMetrics)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/api/AgentSkillManager.java (extracted: SkillValidationResult, SkillTestResult, SkillPerformanceMetrics, SkillDocumentation, SkillExample)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/api/Specification.java (extracted: SpecificationType)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/sampling/models/SamplingRequest.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/elicitation/input/ElicitationResult.java (extracted: ElicitationStatus)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/tool/api/ToolException.java (extracted: ToolErrorCode)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/transport/HttpServerConfiguration.java (Builder extracted to top-level: HttpServerConfigurationBuilder)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/events/EventFilter.java (extracted: FilterRule, FilterType, FilterPerformanceStatistics, FilterRulePerformanceStatistics)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/stub/StubResponse.java (Builder extracted to top-level: StubResponseBuilder)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/model/ModelResponse.java (Builder extracted to top-level: ModelResponseBuilder)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/model/AgentModelContext.java (Builder extracted to top-level: AgentModelContextBuilder)
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/model/ModelParameters.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/DynamicContextBuilder.java (AgentContext, ContextPerformanceMetrics, ContextDebugLog, ContextValidationResult, SecurityLevel extracted)
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/ActionSecurityPolicy.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/ActionAnalytics.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/library/automation/AdvancedAutomationAction.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/library/config/ConfigurationBackupAction.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/ActionMetadata.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/ActionVersionInfo.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/ActionPerformanceMetrics.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/action/ActionContext.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/AutonomousBehaviorConfig.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/ModelReasoningSession.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/AgentModelSelector.java
+ - [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/AgentModelPromptBuilder.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/reasoning/AgentModelContextBuilder.java (extracted: ContextPriority, AgentModelContext)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/infrastructure/persistence/AgentPersistenceManager.java (uses top-level TaskExecutionState; no inner types remaining)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/api/AgentOwnershipResolver.java (already extracted earlier; no inner types remaining)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/api/AgentModelConfiguration.java (builder already top-level; no inner types)
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/execution/AgentSkillExecutor.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/execution/AgentTaskSchemaGenerator.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/execution/SkillCompositionStrategy.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/execution/SkillCompositionEngine.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/execution/ExecutionStrategy.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/lifecycle/AgentSecurityManager.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/core/ExecutionRequest.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/transport/AgentTransport.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationTemplate.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationProposal.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationSession.java
+- [x] /Users/kgoderis/Development/openhab/git/openhab-core/bundles/org.openhab.core.ai/src/main/java/org/openhab/core/ai/config/ProtocolConfiguration.java---
+
+## 23. Inner Structure Extraction Refactoring Plan
+
+### 23.1 Overview
+
+**Summary: 38 files require inner structure extraction with 54 total inner constructs**
+
+This comprehensive refactoring plan addresses the extraction of inner classes, interfaces, and enums from existing Java files to improve code organization, maintainability, and adherence to single responsibility principle.
+
+### 23.2 Priority-Based Refactoring Strategy
+
+#### 23.2.1 High Priority - Reasoning Package (5 files, 15 constructs)
+**Target: Complex files with multiple inner constructs**
+
+**Phase 1 - Critical Complexity Files:**
+- [x] **LearningAdaptationSystem.java**
+  - Extracted actual constructs present: `UserPreferenceModel`, `BehaviorPattern` (with `PatternEntry`), `FeedbackHistory` (with `FeedbackEntry`), `AdaptiveStrategy` (with `StrategyEntry`)
+  - Note: result types (`LearningResult`, `PatternRecognitionResult`, `FeedbackIntegrationResult`, `StrategyAdaptationResult`) already exist as top-level classes
+  
+- [x] **AutonomousBehaviorConfig.java**  
+  - Extracted actual constructs present: `AgentConfiguration` (with `Builder`), `BehaviorPolicy`, `UserPreferenceConfig`, `ConstraintDefinition`, `SafetyPolicyConfig`
+
+- [x] **AgentModelSelector.java** (extracted actual constructs present)
+  - Extract: `ModelCriteria`, `SelectionAlgorithm`, `ModelRanking`, `PerformanceWeights`, `SelectionHistory` (classes)
+  - Extract: `ModelType`, `SelectionStrategy`, `RankingMethod` (enums)
+
+**Phase 2 - Moderate Complexity Files:**
+- [x] **SecurityManager.java** (extracted: SecurityRequest, SecurityValidationResult, QuickSecurityResult, SecurityIssue, SecurityIssueType, SecurityLevel)
+  - Status: `SecurityPolicy`, `AccessController`, `ThreatDetector`, `SecurityAuditor` and `SecurityValidator` already exist as top-level (no extraction needed)
+
+- [x] **ErrorHandler.java** (extracted: ErrorContext, ErrorHandlingResult, ErrorRecoveryResult, ErrorAnalytics, TimeRange)
+  - Status: Extracted `ErrorRecovery`, `FaultTolerance`, `ErrorLogger`, `RecoveryStrategy` (classes); `ErrorProcessor` (interface); `ErrorSeverity` (enum) - ✅ COMPLETED
+
+- [x] **MemoryManager.java** (extracted: MemoryStoreResult, MemorySearchResult, MemoryConsolidationResult, MemoryPerformanceMetrics)
+  - Status: Extracted `MemoryCache`, `ContextStore`, `MemoryOptimizer`, `GarbageCollector` (classes); `MemoryProvider` (interface) - ✅ COMPLETED
+
+**Phase 3 - Simple Enum/Interface Files:**
+- [x] **ReasoningInputType.java** (1 enum) - Extract: `ReasoningInputType`
+- [x] **TaskType.java** (1 enum) - Extract: `TaskType`  
+- [x] **PromptType.java** (1 enum) - Extract: `PromptType`
+- [x] **DecisionStatus.java** (1 enum) - Extract: `DecisionStatus`
+- [x] **ReasoningInputStatus.java** (1 enum) - Extract: `ReasoningInputStatus`
+- [x] **PromptPriority.java** (1 enum) - Extract: `PromptPriority`
+- [x] **SentimentType.java** (1 enum) - Extract: `SentimentType`
+- [x] **ModelStatus.java** (1 enum) - Extract: `ModelStatus`
+- [x] **EmotionType.java** (1 enum) - Extract: `EmotionType`
+- [x] **IntentType.java** (1 enum) - Extract: `IntentType`
+- [x] **SecurityIssueType.java** (1 enum) - Extract: `SecurityIssueType`
+- [x] **ReasoningEngineStatus.java** (1 enum) - Extract: `ReasoningEngineStatus`
+- [x] **EngineStatus.java** (1 enum) - Extract: `EngineStatus`
+- [x] **RiskLevel.java** (1 enum) - Extract: `RiskLevel`
+- [x] **SecurityLevel.java** (1 enum) - Extract: `SecurityLevel`
+- [x] **Priority.java** (1 enum) - Extract: `Priority`
+
+**Phase 4 - Interface Files:**
+- [x] **AgentModelDecisionValidator.java** (1 interface) - Extract: `DecisionValidator`
+- [x] **ContextValidationRule.java** (1 interface) - Extract: `ValidationRule`
+- [x] **OptimizationRule.java** (1 interface) - Extract: `OptimizationRule`
+- [x] **PromptValidationRule.java** (1 interface) - Extract: `PromptValidationRule`
+- [x] **ReasoningPlanStep.java** (1 interface) - Extract: `PlanStep`
+- [x] **ReasoningEngine.java** (1 interface) - Extract: `ReasoningEngine`
+- [x] **ReasoningStrategy.java** (1 interface) - Extract: `ReasoningStrategy`
+- [x] **ContextOptimizationRule.java** (1 interface) - Extract: `ContextOptimizationRule`
+
+#### 23.2.2 High Priority - Agent Package (9 files, 10 constructs)
+**Target: Large volume of files with single inner constructs**
+
+**Phase 1 - Critical Multi-Construct Files:**
+- [x] **AgentSkillManager.java** (6 interfaces)
+  - Status: No additional inner interfaces present; nothing to extract
+
+- [x] **SkillCompositionStrategy.java** (3 interfaces)  
+  - Status: Inner interfaces already top-level (`SkillCompositionResult`, `SkillExecutionStep`); nothing to extract
+
+- [x] **Agent.java** (extracted: AgentMetrics)
+  - Extract: `AgentCapabilities`, `AgentCommunication`
+
+**Phase 2 - Single Inner Construct Files (Sample - 91 total):**
+- [x] **NegotiationSession.java** (1 class) - Extract: `SessionContext` (already top-level as `NegotiationSessionContext`)
+- [x] **NegotiationProposal.java** (1 class) - Extract: `ProposalDetails` (already top-level as `NegotiationProposalDetails`)
+- [x] **NegotiationTemplate.java** (1 class) - Extract: `TemplateConfig` (already top-level as `NegotiationTemplateConfig`)
+- [x] **ExecutionRequest.java** (1 class) - Extract: `RequestMetadata` (already top-level as `ExecutionRequestMetadata`)
+- [x] **AgentConfigurationManager.java** (1 class) - Extract: `ConfigurationCache` (already top-level as `AgentConfigurationCache`)
+- [x] **DelegationPerformanceMetrics.java** (1 class) - Extract: `PerformanceData` (already top-level as `PerformanceData`)
+- [x] **ModelHealthStatus.java** (1 enum) - Extract: `HealthStatus` (already top-level)
+- [ ] Plus 84 additional files with single inner constructs...
+
+#### 23.2.3 Medium Priority - Tool Package (9 files, 9 constructs)
+**Target: Moderate complexity with consistent patterns**
+
+**Phase 1 - Multi-Construct Files:**
+- [x] **ValidationEngine.java** (2 constructs: 1 class + 1 interface)
+  - Status: Already top-level interface with default implementation; nothing to extract
+
+- [x] **ValidationRule.java** (2 constructs: 1 interface + 1 enum)
+  - Status: Already top-level interface; `RuleLifecycleState` already top-level; nothing to extract
+
+- [x] **FilterValidator.java** (2 constructs: 1 class + 1 interface)
+  - Status: Already top-level interface with default implementation; nothing to extract
+
+- [x] **AuditLogger.java** (2 constructs: 1 class + 1 interface)
+  - Status: Already top-level interface with default implementation; nothing to extract
+
+- [x] **Specification.java** (2 constructs: 1 interface + 1 enum) (extracted: SpecificationType)
+  - Extract: `SpecificationProvider` (interface), `SpecificationType` (enum)
+
+- [x] **SamplingRequest.java** (2 constructs: 1 interface + 1 enum) (extracted: SamplingStatus)
+  - Extract: `SamplingProvider` (interface), `SamplingType` (enum)
+
+**Phase 2 - Single Construct Files (Sample - 58 total):**
+- [x] **ToolException.java** (1 enum) - Extract: `ErrorCode` (extracted to ToolErrorCode)
+- [x] **ComplianceValidator.java** (1 interface) - Extract: `ComplianceRule` (already top-level as `ComplianceRule`)
+ - [x] **ElicitationResult.java** (1 enum) - Extract: `ResultType` (already top-level as `ResultType`/`ElicitationStatus`)
+- [ ] Plus 55 additional single construct files...
+
+#### 23.2.4 Medium Priority - Action Package (8 files, 12 constructs)
+**Target: Context builder complexity and action types**
+
+**Phase 1 - High Complexity Files:**
+- [ ] **DynamicContextBuilder.java** (6 constructs: 5 interfaces + 1 enum)
+  - Extract: `ContextProvider`, `ContextValidator`, `ContextEnricher`, `ContextOptimizer`, `ContextCache` (interfaces)
+  - Extract: `ContextType` (enum)
+
+- [x] **AdvancedAutomationAction.java** (4 classes)
+  - Extracted: `WorkflowDefinition`, `WorkflowExecution`, `AutomationTemplate`, `AutomationJob` to top-level files
+
+**Phase 2 - Moderate Complexity Files:**
+- [x] **ActionSecurityPolicy.java** (2 constructs: 1 class + 1 enum)
+  - Status: `SecurityLevel` enum and inner Builder intentionally kept; no additional inner classes present
+
+**Phase 3 - Simple Files:**
+- [x] **ActionContext.java** (1 class) - Status: no inner types beyond Builder; nothing to extract
+- [x] **ActionPerformanceMetrics.java** (1 class) - Status: no inner types beyond Builder; nothing to extract
+- [x] **ActionVersionInfo.java** (1 class) - Status: no inner types beyond Builder; nothing to extract
+- [x] **ActionMetadata.java** (1 class) - Status: no inner types beyond Builder; nothing to extract
+ - [x] **ConfigurationBackupAction.java** (1 class) - Extracted helper `BackupFile` to top-level
+- [x] **ActionAnalytics.java** (1 class) - Status: no inner types beyond Builder; nothing to extract
+- [ ] Plus 4 additional single construct files...
+
+#### 23.2.5 Low Priority - Other Packages (7 files, 8 constructs)
+
+- [x] **DefaultAuditLogger.java** (auth, 2 constructs) - Status: implementation already top-level in tool logging; nothing to extract
+- [x] **EventFilter.java** (events, 4 constructs) - Status: all filter types already top-level; nothing to extract
+- [x] **ModelParameters.java** (model, 1 construct) - Status: no inner types beyond Builder; nothing to extract
+- [x] **AgentModelContext.java** (model, 1 construct) - Status: top-level builder already exists; nothing to extract
+- [x] **IntelligentToolClient.java** (model, 1 construct) - Status: nested types already extracted to top-level; nothing to extract  
+- [x] **ModelResponse.java** (model, 1 construct) - Status: top-level builder already exists; nothing to extract
+- [x] **StubResponse.java** (stub, 1 construct) - Status: top-level builder already exists; nothing to extract
+- [x] **HttpServerConfiguration.java** (transport, 1 construct) - Status: top-level builder already exists; nothing to extract
+
+### 23.3 Implementation Phases and Timeline
+
+#### Phase A: High-Complexity Multi-Construct Files (Week 1-2)
+**Focus: Files with 5+ inner constructs**
+- AutonomousBehaviorConfig.java (8 constructs)
+
+**Deliverables:**
+- Extract 8 inner constructs from 1 critical file
+- Update imports and references
+- Validate compilation
+
+#### Phase B: Enum Types Extraction (Week 2-3)
+**Focus: All enum inner types across packages**
+- Extract 4 enum types from reasoning, agent, tool, and action packages
+- Create consistent naming patterns
+- Update references and imports
+
+**Deliverables:**
+- All enum inner types extracted
+- Consistent enum naming applied
+- Full compilation validation
+
+#### Phase C: Interface Types Extraction (Week 3-4)  
+**Focus: All interface inner types**
+- Extract 5 interface types from all packages
+- Maintain API compatibility
+- Update implementation classes
+
+**Deliverables:**
+- All interface inner types extracted
+- API compatibility maintained
+- Implementation updates complete
+
+#### Phase D: Remaining Inner Classes (Week 4-5)
+**Focus: All remaining inner class constructs**
+- Extract remaining 37 inner classes
+- Apply consistent naming patterns
+- Update all references
+
+**Deliverables:**
+- Complete inner class extraction
+- All naming patterns applied
+- Full system compilation
+
+#### Phase E: Validation and Testing (Week 5-6)
+**Focus: System validation and testing**
+- Run comprehensive test suites
+- Validate all imports and references
+- Performance regression testing
+- Documentation updates
+
+**Deliverables:**
+- All tests passing
+- Performance baseline maintained
+- Documentation updated
+- Refactoring complete
+
+### 23.4 Refactoring Guidelines
+
+#### 23.4.1 File Creation Strategy
+1. **New File Location**: Place extracted types in same package as parent class
+2. **Naming Convention**: Use parent class name as prefix when logical (e.g., `AgentModelType` from `AgentModelSelector`)
+3. **Access Modifiers**: Maintain original access levels
+4. **Documentation**: Copy/adapt JavaDoc from inner type
+
+#### 23.4.2 Import Management  
+1. **Update Parent Classes**: Add imports for extracted types
+2. **Update Referencing Classes**: Add imports where inner types were used
+3. **Circular Dependencies**: Watch for and resolve circular import issues
+4. **Unused Imports**: Clean up unused imports
+
+#### 23.4.3 Dependency Management
+1. **Compilation Order**: Ensure extracted types compile before parent classes
+2. **OSGi Exports**: Update bundle exports if types become public APIs
+3. **Test Updates**: Update test classes that reference inner types
+4. **Build Scripts**: Verify build processes handle new files
+
+### 23.5 Quality Assurance
+
+#### 23.5.1 Pre-Extraction Checklist
+- [ ] Identify all references to inner type
+- [ ] Document original access modifiers
+- [ ] Note any special initialization logic
+- [ ] Check for circular dependencies
+
+#### 23.5.2 Post-Extraction Validation
+- [ ] Verify compilation succeeds
+- [ ] Run affected unit tests
+- [ ] Check runtime behavior unchanged
+- [ ] Validate proper imports added
+
+### 23.6 Success Metrics
+
+- **Files Refactored**: 38 files successfully processed
+- **Inner Constructs Extracted**: 54 constructs moved to separate files
+- **Compilation Success**: 100% successful compilation
+- **Test Coverage Maintained**: All existing tests continue to pass
+- **Performance Impact**: <5% performance regression acceptable
+- **Documentation Completeness**: All extracted types properly documented
+
+### 23.7 Risk Mitigation
+
+#### 23.7.1 Technical Risks
+- **Circular Dependencies**: Create dependency graphs before extraction
+- **Access Level Issues**: Carefully review access modifier requirements
+- **Runtime Failures**: Comprehensive testing of extracted components
+- **Performance Impact**: Monitor performance during refactoring
+
+#### 23.7.2 Process Risks
+- **Large Scope**: Break into manageable phases
+- **Merge Conflicts**: Coordinate with team on timing
+- **Rollback Strategy**: Maintain backup branches for each phase
+- **Time Overrun**: Allow buffer time for validation phase
+
+### 23.8 Estimated Effort
+
+**Total Effort: 6 weeks (120 hours)**
+- Phase A (High-Complexity): 2 weeks (40 hours)
+- Phase B (Enums): 1 week (20 hours) 
+- Phase C (Interfaces): 1 week (20 hours)
+- Phase D (Classes): 1 week (20 hours)
+- Phase E (Validation): 1 week (20 hours)
+
+**Resource Requirements:**
+- 1 Senior Developer (lead)
+- Access to full test suite
+- Dedicated development environment
+- Code review support
+
+### 23.9 Action Items: Newly Identified Files Requiring Extraction
+
+- [x] src/main/java/org/openhab/core/ai/reasoning/AgentConfiguration.java (2 classes)
+  - Extracted: `AgentConfiguration.Builder` → top-level `AgentConfigurationBuilder`; updated `AgentConfiguration#builder()` and constructor
+
+- [x] src/main/java/org/openhab/core/ai/reasoning/BehaviorPattern.java (2 classes)
+  - Extracted: inner `PatternEntry` → top-level `BehaviorPatternEntry`; updated usages
+
+- [x] src/main/java/org/openhab/core/ai/tool/compliance/ComplianceTest.java (1 class, 1 interface)
+  - Extracted: nested `AbstractComplianceTest` → top-level `AbstractComplianceTest`; interface updated
+
+- [x] src/main/java/org/openhab/core/ai/tool/progress/tracking/ProgressTracker.java (1 class, 1 interface)
+  - Extracted: nested `DefaultProgressTracker` → top-level `DefaultProgressTracker`; interface updated
+
+- [x] src/main/java/org/openhab/core/ai/tool/security/filters/SecurityFilter.java (1 class, 1 interface)
+  - Extracted: nested `AbstractSecurityFilter` → top-level `AbstractSecurityFilter`; interface updated
+
+- [x] src/test/java/org/openhab/core/ai/events/EventFilterTest.java (3 classes)
+  - Test sources; no inner extractions required
+
+- [x] src/test/java/org/openhab/core/ai/tool/adapter/ToolAdapterTest.java (2 classes)
+  - Test sources; no inner extractions required
+
+- [x] src/main/java/org/openhab/core/ai/action/ActionAnalytics.java (1 class)
+  - Extracted: inner `ActionAnalytics.Builder` → top-level `ActionAnalyticsBuilder`; updated `ActionAnalytics#builder()` and constructor
+  - Extracted types: `ActionAnalytics` (class), `ActionAnalytics.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/action/ActionContext.java (1 class)
+  - Extracted: inner `ActionContext.Builder` → top-level `ActionContextBuilder`; updated `ActionContext#builder()` and constructor
+  - Extracted types: `ActionContext` (class), `ActionContext.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/action/ActionMetadata.java (1 class)
+  - Extracted: inner `ActionMetadata.Builder` → top-level `ActionMetadataBuilder`; updated `ActionMetadata#builder()` and constructor
+  - Extracted types: `ActionMetadata` (class), `ActionMetadata.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/action/ActionPerformanceMetrics.java (1 class)
+  - Extracted: inner `ActionPerformanceMetrics.Builder` → top-level `ActionPerformanceMetricsBuilder`; updated `ActionPerformanceMetrics#builder()` and constructor
+  - Extracted types: `ActionPerformanceMetrics` (class), `ActionPerformanceMetrics.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/action/ActionSecurityPolicy.java (1 class, 1 enum)
+  - Extracted: inner `ActionSecurityPolicy.Builder` → top-level `ActionSecurityPolicyBuilder`; updated `ActionSecurityPolicy#builder()` and constructor
+  - Extracted types: `ActionSecurityPolicy` (class), `ActionSecurityPolicy.SecurityLevel` (enum), `ActionSecurityPolicy.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/action/ActionVersionInfo.java (1 class)
+  - Extracted: inner `ActionVersionInfo.Builder` → top-level `ActionVersionInfoBuilder`; updated `ActionVersionInfo#builder()` and constructor
+  - Extracted types: `ActionVersionInfo` (class), `ActionVersionInfo.Builder` (class)
+
+- [x] src/main/java/org/openhab/core/ai/agent/api/ModelHealthStatus.java (1 enum)
+  - Extracted types: `ModelHealthStatus` (class), `ModelHealthStatus.HealthState` (enum)
+
+- [x] src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationProposal.java (1 class)
+  - Extracted types: `NegotiationProposal` (class), `NegotiationProposal.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationSession.java (1 class)
+  - Extracted types: `NegotiationSession` (class), `NegotiationSession.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationTemplate.java (1 class)
+  - Extracted types: `NegotiationTemplate` (class), `NegotiationTemplate.Builder` (class)
+
+- [x] src/main/java/org/openhab/core/ai/agent/core/ExecutionRequest.java (1 class)
+- [x] src/main/java/org/openhab/core/ai/agent/core/ExecutionRequest.java (1 class)
+  - Extracted types: `ExecutionRequest` (class), `ExecutionRequest.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/agent/delegation/DelegationPerformanceMetrics.java (1 class)
+- [ ] src/main/java/org/openhab/core/ai/agent/delegation/DelegationPerformanceMetrics.java (1 class)
+  - Extracted types: `DelegationPerformanceMetrics` (class), `DelegationPerformanceMetrics.Builder` (class)
+
+- [x] src/main/java/org/openhab/core/ai/agent/execution/ListTasksParams.java (1 class)
+- [x] src/main/java/org/openhab/core/ai/agent/execution/ListTasksParams.java (1 class)
+  - Extracted types: `ListTasksParams` (class), `ListTasksParams.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/agent/execution/SkillCompositionStrategy.java (2 interfaces)
+  - Extracted types: `SkillCompositionStrategy` (interface), `SkillCompositionStrategy.SkillCompositionResult` (interface), `SkillCompositionStrategy.SkillExecutionStep` (interface)
+
+- [x] src/main/java/org/openhab/core/ai/agent/lifecycle/AgentConfigurationManager.java (1 class)
+ - [x] src/main/java/org/openhab/core/ai/agent/lifecycle/AgentConfigurationManager.java (1 class)
+  - Extracted types: `AgentConfigurationManager` (class), `AgentConfigurationManager.ConfigurationValidationResult` (class)
+
+- [x] src/main/java/org/openhab/core/ai/agent/transport/AgentRestExtensions.java (1 class)
+ - [x] src/main/java/org/openhab/core/ai/agent/transport/AgentRestExtensions.java (1 class)
+  - Extracted types: `AgentRestExtensions` (class), `AgentRestExtensions.Info` (class)
+
+- [x] src/main/java/org/openhab/core/ai/model/ModelParameters.java (1 class)
+- [x] src/main/java/org/openhab/core/ai/model/ModelParameters.java (1 class)
+  - Extracted: inner `ModelParameters.Builder` → top-level `ModelParametersBuilder`; updated `ModelParameters#builder()` and constructor
+  - Extracted types: `ModelParameters` (class), `ModelParameters.Builder` (class)
+- [x] src/main/java/org/openhab/core/ai/model/api/IntelligentToolClient.java (1 enum)
+  - Extracted: inner `IntelligentToolClient.Severity` → top-level `Severity`; updated references
+
+- [x] src/main/java/org/openhab/core/ai/reasoning/AgentModelDecisionValidator.java (1 interface)
+  - Extracted types: `AgentModelDecisionValidator` (class), `AgentModelDecisionValidator.ValidationRule` (interface)
+- [x] src/main/java/org/openhab/core/ai/reasoning/AutonomousBehaviorConfig.java (8 classes)
+- [x] src/main/java/org/openhab/core/ai/reasoning/AutonomousBehaviorConfig.java (8 classes)
+  - Extracted types: `AutonomousBehaviorConfig` (class), `AutonomousBehaviorConfig.ConfigurationValidationResult` (class), `AutonomousBehaviorConfig.AgentConfiguration` (class with nested `Builder`), `AutonomousBehaviorConfig.BehaviorPolicy` (class), `AutonomousBehaviorConfig.UserPreferenceConfig` (class), `AutonomousBehaviorConfig.ConstraintDefinition` (class), `AutonomousBehaviorConfig.SafetyPolicyConfig` (class), `AutonomousBehaviorConfig.AgentFullConfiguration` (class)
+- [x] src/main/java/org/openhab/core/ai/reasoning/LearningAdaptationSystem.java (4 classes)
+- [x] src/main/java/org/openhab/core/ai/reasoning/LearningAdaptationSystem.java (4 classes)
+  - Extracted types: `LearningAdaptationSystem` (class), `LearningAdaptationSystem.LearningResult` (class), `LearningAdaptationSystem.PatternRecognitionResult` (class), `LearningAdaptationSystem.FeedbackIntegrationResult` (class), `LearningAdaptationSystem.StrategyAdaptationResult` (class)
+- [x] src/main/java/org/openhab/core/ai/reasoning/MemoryCache.java (1 class)
+- [x] src/main/java/org/openhab/core/ai/reasoning/MemoryCache.java (1 class)
+  - Extracted types: `MemoryCache` (class), `MemoryCache.CacheValue` (class)
+
+- [x] src/main/java/org/openhab/core/ai/tool/api/validation/ValidationEngine.java (1 class)
+- [x] src/main/java/org/openhab/core/ai/tool/api/validation/ValidationEngine.java (1 class)
+  - Extracted types: `ValidationEngine` (interface), `ValidationEngine.DefaultValidationEngine` (class)
+- [x] src/main/java/org/openhab/core/ai/tool/api/validation/ValidationRule.java (1 class)
+  - Extracted types: `ValidationRule` (interface), `ValidationRule.AbstractValidationRule` (abstract class)
+- [x] src/main/java/org/openhab/core/ai/tool/compliance/ComplianceValidator.java (1 interface)
+  - Extracted types: `ComplianceValidator` (class), `ComplianceValidator.ComplianceTestFunction` (interface)
+- [x] src/main/java/org/openhab/core/ai/tool/elicitation/input/ElicitationResult.java (1 enum)
+  - Extracted types: `ElicitationResult` (class), `ElicitationResult.ElicitationStatus` (enum)
+- [x] src/main/java/org/openhab/core/ai/tool/filter/validators/FilterValidator.java (1 class)
+  - Extracted types: `FilterValidator` (interface), `FilterValidator.DefaultFilterValidator` (class)
+- [x] src/main/java/org/openhab/core/ai/tool/logging/audit/AuditLogger.java (1 class)
+  - Extracted types: `AuditLogger` (interface), `AuditLogger.DefaultAuditLogger` (class)
+- [ ] src/main/java/org/openhab/core/ai/tool/prompts/adapter/ItemPromptAdapter.java (1 class)
+  - Extracted types: `ItemPromptAdapter` (class), `ItemPromptAdapter.CachedPromptData` (class)
+- [ ] src/main/java/org/openhab/core/ai/tool/prompts/adapter/RulePromptAdapter.java (1 class)
+  - Extracted types: `RulePromptAdapter` (class), `RulePromptAdapter.CachedPromptData` (class)

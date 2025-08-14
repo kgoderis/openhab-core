@@ -32,7 +32,7 @@ public interface AgentTransportProvider {
      * 
      * @return the set of supported transport types
      */
-    Set<AgentTransport.TransportType> getSupportedTransportTypes();
+    Set<TransportType> getSupportedTransportTypes();
 
     /**
      * Check if the provider supports a specific transport type.
@@ -40,7 +40,7 @@ public interface AgentTransportProvider {
      * @param transportType the transport type to check
      * @return true if supported
      */
-    boolean supportsTransportType(AgentTransport.TransportType transportType);
+    boolean supportsTransportType(TransportType transportType);
 
     /**
      * Create a new transport instance.
@@ -50,7 +50,7 @@ public interface AgentTransportProvider {
      * @return the created transport instance
      * @throws IllegalArgumentException if the transport type is not supported
      */
-    AgentTransport createTransport(AgentTransport.TransportType transportType, Map<String, Object> configuration);
+    AgentTransport createTransport(TransportType transportType, Map<String, Object> configuration);
 
     /**
      * Get the default configuration for a transport type.
@@ -59,7 +59,7 @@ public interface AgentTransportProvider {
      * @return the default configuration
      * @throws IllegalArgumentException if the transport type is not supported
      */
-    Map<String, Object> getDefaultConfiguration(AgentTransport.TransportType transportType);
+    Map<String, Object> getDefaultConfiguration(TransportType transportType);
 
     /**
      * Validate configuration for a transport type.
@@ -68,7 +68,7 @@ public interface AgentTransportProvider {
      * @param configuration the configuration to validate
      * @return true if the configuration is valid
      */
-    boolean validateConfiguration(AgentTransport.TransportType transportType, Map<String, Object> configuration);
+    boolean validateConfiguration(TransportType transportType, Map<String, Object> configuration);
 
     /**
      * Get provider-specific capabilities and features.
@@ -82,7 +82,7 @@ public interface AgentTransportProvider {
      * 
      * @return the provider health status
      */
-    AgentTransport.TransportHealth getProviderHealth();
+    TransportHealth getProviderHealth();
 
     /**
      * Get provider metrics.

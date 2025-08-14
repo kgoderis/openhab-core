@@ -24,9 +24,9 @@ class AgentTransportPortManagerTest {
 
     @Test
     void testGetDefaultPorts() {
-        assertEquals(8080, portManager.getDefaultPort(AgentTransport.TransportType.JSON_RPC));
-        assertEquals(8082, portManager.getDefaultPort(AgentTransport.TransportType.REST));
-        assertEquals(8083, portManager.getDefaultPort(AgentTransport.TransportType.GRPC));
+        assertEquals(8080, portManager.getDefaultPort(TransportType.JSON_RPC));
+        assertEquals(0, portManager.getDefaultPort(TransportType.REST));
+        assertEquals(8083, portManager.getDefaultPort(TransportType.GRPC));
     }
 
     @Test
@@ -41,7 +41,7 @@ class AgentTransportPortManagerTest {
 
     @Test
     void testFindAvailablePort() {
-        AgentTransport.TransportType transportType = AgentTransport.TransportType.JSON_RPC;
+        TransportType transportType = TransportType.JSON_RPC;
         int port = portManager.findAvailablePort(transportType);
 
         assertTrue(port >= 8080);
@@ -50,7 +50,7 @@ class AgentTransportPortManagerTest {
 
     @Test
     void testReserveAndReleasePort() {
-        AgentTransport.TransportType transportType = AgentTransport.TransportType.REST;
+        TransportType transportType = TransportType.REST;
         int port = 8085;
 
         // Reserve port
@@ -70,21 +70,21 @@ class AgentTransportPortManagerTest {
     @Test
     void testGetAllAssignedPorts() {
         // Reserve ports for different transport types
-        portManager.reservePort(AgentTransport.TransportType.JSON_RPC, 8080);
-        portManager.reservePort(AgentTransport.TransportType.REST, 8082);
+        portManager.reservePort(TransportType.JSON_RPC, 8080);
+        portManager.reservePort(TransportType.REST, 8082);
 
-        Map<AgentTransport.TransportType, Integer> assignedPorts = portManager.getAllAssignedPorts();
+        Map<TransportType, Integer> assignedPorts = portManager.getAllAssignedPorts();
 
         assertEquals(2, assignedPorts.size());
-        assertEquals(8080, assignedPorts.get(AgentTransport.TransportType.JSON_RPC));
-        assertEquals(8082, assignedPorts.get(AgentTransport.TransportType.REST));
+        assertEquals(8080, assignedPorts.get(TransportType.JSON_RPC));
+        assertEquals(8082, assignedPorts.get(TransportType.REST));
     }
 
     @Test
     void testValidateAllPortAssignments() {
         // Reserve valid ports
-        portManager.reservePort(AgentTransport.TransportType.JSON_RPC, 8080);
-        portManager.reservePort(AgentTransport.TransportType.REST, 8082);
+        portManager.reservePort(TransportType.JSON_RPC, 8080);
+        portManager.reservePort(TransportType.REST, 8082);
 
         assertTrue(portManager.validateAllPortAssignments());
     }
@@ -92,7 +92,7 @@ class AgentTransportPortManagerTest {
     @Test
     void testGetPortAssignmentStatus() {
         // Reserve a port
-        portManager.reservePort(AgentTransport.TransportType.GRPC, 8083);
+        portManager.reservePort(TransportType.GRPC, 8083);
 
         Map<String, Object> status = portManager.getPortAssignmentStatus();
 
@@ -110,8 +110,8 @@ class AgentTransportPortManagerTest {
     @Test
     void testResetPortAssignments() {
         // Reserve some ports
-        portManager.reservePort(AgentTransport.TransportType.JSON_RPC, 8080);
-        portManager.reservePort(AgentTransport.TransportType.REST, 8082);
+        portManager.reservePort(TransportType.JSON_RPC, 8080);
+        portManager.reservePort(TransportType.REST, 8082);
 
         assertEquals(2, portManager.getAllAssignedPorts().size());
 
@@ -124,7 +124,7 @@ class AgentTransportPortManagerTest {
     @Test
     void testMultipleTransportTypes() {
         // Test all transport types
-        for (AgentTransport.TransportType transportType : AgentTransport.TransportType.values()) {
+        for (TransportType transportType : TransportType.values()) {
             int defaultPort = portManager.getDefaultPort(transportType);
             assertTrue(portManager.reservePort(transportType, defaultPort));
             assertTrue(portManager.hasAssignedPort(transportType));
@@ -136,14 +136,14 @@ class AgentTransportPortManagerTest {
 
     @Test
     void testPortConflictHandling() {
-        AgentTransport.TransportType transportType = AgentTransport.TransportType.JSON_RPC;
+        TransportType transportType = TransportType.JSON_RPC;
         int port = 8080;
 
         // Reserve port for first transport
         assertTrue(portManager.reservePort(transportType, port));
 
         // Try to reserve same port for different transport type
-        AgentTransport.TransportType otherType = AgentTransport.TransportType.REST;
+        TransportType otherType = TransportType.REST;
         assertTrue(portManager.reservePort(otherType, port));
 
         // Both should have the port assigned

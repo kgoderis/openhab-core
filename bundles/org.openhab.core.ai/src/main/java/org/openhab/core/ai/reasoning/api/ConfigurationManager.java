@@ -83,57 +83,5 @@ public interface ConfigurationManager {
      */
     CompletableFuture<String> getConfigurationVersion();
 
-    /**
-     * Configuration validation result.
-     */
-    class ConfigurationValidationResult {
-        private final boolean valid;
-        private final String[] errors;
-        private final String[] warnings;
-
-        public ConfigurationValidationResult(boolean valid, String[] errors, String[] warnings) {
-            this.valid = valid;
-            this.errors = errors;
-            this.warnings = warnings;
-        }
-
-        public boolean isValid() {
-            return valid;
-        }
-
-        public String[] getErrors() {
-            return errors;
-        }
-
-        public String[] getWarnings() {
-            return warnings;
-        }
-    }
-
-    /**
-     * Configuration backup result.
-     */
-    class ConfigurationBackupResult {
-        private final boolean success;
-        private final String backupId;
-        private final String error;
-
-        public ConfigurationBackupResult(boolean success, String backupId, String error) {
-            this.success = success;
-            this.backupId = backupId;
-            this.error = error;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public String getBackupId() {
-            return backupId;
-        }
-
-        public String getError() {
-            return error;
-        }
-    }
+    // Extracted: ConfigurationValidationResult, ConfigurationBackupResult
 }

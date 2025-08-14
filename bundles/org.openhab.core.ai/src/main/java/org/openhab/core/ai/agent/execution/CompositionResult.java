@@ -7,15 +7,19 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.api.AgentSkillResult;
 
 @NonNullByDefault
-public class CompositionResult {
+public final class CompositionResult {
     private final String compositionId;
     private final boolean success;
     private final @Nullable List<AgentSkillResult> results;
     private final @Nullable String message;
     private final long executionTime;
 
-    public CompositionResult(String compositionId, boolean success, @Nullable List<AgentSkillResult> results,
-            @Nullable String message, long executionTime) {
+    private CompositionResult(
+            String compositionId,
+            boolean success,
+            @Nullable List<AgentSkillResult> results,
+            @Nullable String message,
+            long executionTime) {
         this.compositionId = compositionId;
         this.success = success;
         this.results = results;

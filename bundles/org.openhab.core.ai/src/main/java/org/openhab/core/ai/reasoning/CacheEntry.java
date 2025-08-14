@@ -14,17 +14,17 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 final class CacheEntry {
-    private final AgentModelContextBuilder.AgentModelContext context;
+    private final AgentModelContext context;
     private final Instant expirationTime;
     private volatile Instant lastAccess;
 
-    CacheEntry(AgentModelContextBuilder.AgentModelContext context, Duration expiration) {
+    CacheEntry(AgentModelContext context, Duration expiration) {
         this.context = context;
         this.expirationTime = Instant.now().plus(expiration);
         this.lastAccess = Instant.now();
     }
 
-    AgentModelContextBuilder.AgentModelContext getContext() { return context; }
+    AgentModelContext getContext() { return context; }
     Instant getExpirationTime() { return expirationTime; }
     Instant getLastAccess() { return lastAccess; }
     void updateLastAccess() { this.lastAccess = Instant.now(); }

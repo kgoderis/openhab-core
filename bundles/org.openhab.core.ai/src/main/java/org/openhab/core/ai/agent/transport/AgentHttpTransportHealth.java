@@ -11,7 +11,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-class AgentHttpTransportHealth implements AgentTransport.TransportHealth {
+class AgentHttpTransportHealth implements TransportHealth {
     private final boolean healthy;
     private final String healthMessage;
     private final long lastHealthCheck;

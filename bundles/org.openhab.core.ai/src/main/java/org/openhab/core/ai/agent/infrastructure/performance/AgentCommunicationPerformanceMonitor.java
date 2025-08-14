@@ -370,29 +370,7 @@ public class AgentCommunicationPerformanceMonitor {
     }
 
     // Data classes
-    public record PerformanceStatistics(long totalMessagesProcessed, long totalLatencyViolations,
-            long totalThroughputViolations, long totalBandwidthViolations, int activeLatencyMetrics,
-            int activeThroughputMetrics, int activeBandwidthMetrics) {
-    }
+    // records extracted to top-level: PerformanceStatistics, PerformanceOptimizationSuggestion, PerformanceReport, PerformanceBenchmark
 
-    public record PerformanceOptimizationSuggestion(String type, String suggestion, PerformanceImpact impact) {
-    }
-
-    public record PerformanceReport(String agentId, Duration timeRange, Instant startTime, Instant endTime,
-            @Nullable Duration averageLatency, long averageThroughput, long averageBandwidth, long latencyViolations,
-            long throughputViolations, long bandwidthViolations) {
-    }
-
-    public record PerformanceBenchmark(String agentId, Instant startTime, Instant endTime, Duration duration,
-            @Nullable MessageLatencyMetrics baselineLatency, @Nullable MessageLatencyMetrics finalLatency,
-            @Nullable ThroughputMetrics baselineThroughput, @Nullable ThroughputMetrics finalThroughput,
-            @Nullable BandwidthMetrics baselineBandwidth, @Nullable BandwidthMetrics finalBandwidth) {
-    }
-
-    // Enums
-    public enum PerformanceImpact {
-        LOW,
-        MEDIUM,
-        HIGH
-    }
+    // enum extracted to top-level: org.openhab.core.ai.agent.infrastructure.performance.PerformanceImpact
 }

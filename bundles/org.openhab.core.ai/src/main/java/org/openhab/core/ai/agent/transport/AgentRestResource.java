@@ -193,7 +193,7 @@ public class AgentRestResource implements RESTResource {
             int total = active.size();
             int restCount = 0;
             for (AgentTransport t : active.values()) {
-                if (t.getCapabilities().getTransportType() == AgentTransport.TransportType.REST) {
+                if (t.getCapabilities().getTransportType() == TransportType.REST) {
                     restCount++;
                 }
             }

@@ -371,7 +371,7 @@ public class AutonomousReasoningInputManager {
             if (!recentLogs.isEmpty()) {
                 enrichedContext.put("recentLogs", recentLogs.size());
                 enrichedContext.put("hasRecentErrors",
-                        recentLogs.stream().anyMatch(log -> log.getLevel() == LogIngestionPipeline.LogLevel.ERROR));
+                        recentLogs.stream().anyMatch(log -> log.getLevel() == org.openhab.core.ai.events.LogLevel.ERROR));
             }
         }
 
@@ -511,7 +511,7 @@ public class AutonomousReasoningInputManager {
     /**
      * Check if input type is valid
      */
-    private boolean isValidInputType(ReasoningInput.InputType type) {
+    private boolean isValidInputType(ReasoningInputType type) {
         return type != null;
     }
 
@@ -587,21 +587,21 @@ public class AutonomousReasoningInputManager {
     private void processInput(ReasoningInput input) {
         try {
             // Update input status
-            input.setStatus(ReasoningInput.Status.PROCESSING);
+            input.setStatus(ReasoningInputStatus.PROCESSING);
 
             // Route to appropriate agent
             routeInput(input).thenAccept(result -> {
                 if (result.isSuccess()) {
-                    input.setStatus(ReasoningInput.Status.ROUTED);
+                    input.setStatus(ReasoningInputStatus.ROUTED);
                     logger.debug("Input {} routed to agent {}", input.getId(), result.getTargetAgent());
                 } else {
-                    input.setStatus(ReasoningInput.Status.FAILED);
+                    input.setStatus(ReasoningInputStatus.FAILED);
                     logger.warn("Failed to route input {}: {}", input.getId(), result.getError());
                 }
             });
 
         } catch (Exception e) {
-            input.setStatus(ReasoningInput.Status.FAILED);
+            input.setStatus(ReasoningInputStatus.FAILED);
             logger.error("Error processing input {}", input.getId(), e);
         }
     }

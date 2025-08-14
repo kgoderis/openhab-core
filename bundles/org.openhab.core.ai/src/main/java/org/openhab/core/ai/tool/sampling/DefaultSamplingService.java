@@ -79,7 +79,7 @@ public class DefaultSamplingService implements SamplingService {
 
             // Create sampling request
             SamplingRequest request = new DefaultSamplingRequest(generateRequestId(), modelName, message,
-                    includeContext, SamplingRequest.SamplingStatus.PENDING);
+                    includeContext, org.openhab.core.ai.tool.sampling.models.SamplingStatus.PENDING);
 
             // Store pending request
             pendingRequests.put(request.getId(), request);
@@ -141,7 +141,7 @@ public class DefaultSamplingService implements SamplingService {
             }
 
             // Update request status
-            request.setStatus(SamplingRequest.SamplingStatus.APPROVED);
+            request.setStatus(org.openhab.core.ai.tool.sampling.models.SamplingStatus.APPROVED);
             approvedRequests.put(requestId, request);
 
             // Update counters
@@ -169,7 +169,7 @@ public class DefaultSamplingService implements SamplingService {
             }
 
             // Update request status and reason
-            request.setStatus(SamplingRequest.SamplingStatus.REJECTED);
+            request.setStatus(org.openhab.core.ai.tool.sampling.models.SamplingStatus.REJECTED);
             request.setRejectionReason(reason);
             rejectedRequests.put(requestId, request);
 

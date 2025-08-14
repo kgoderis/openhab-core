@@ -198,8 +198,7 @@ public class UnsubscribeEventsAction implements Action {
 
             // Optional client validation
             if (clientId != null) {
-                EventSubscriptionRegistry.SubscriptionInfo info = eventSubscriptionRegistry
-                        .getSubscription(subscriptionId);
+                SubscriptionInfo info = eventSubscriptionRegistry.getSubscription(subscriptionId);
                 if (info != null && !clientId.equals(info.getClientId())) {
                     result.put("subscriptionId", subscriptionId);
                     result.put("status", "error");

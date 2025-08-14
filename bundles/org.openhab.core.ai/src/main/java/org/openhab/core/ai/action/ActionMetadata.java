@@ -30,7 +30,7 @@ public class ActionMetadata {
     private final List<String> examples;
     private final Map<String, Object> requirements;
 
-    private ActionMetadata(Builder builder) {
+    /* package */ ActionMetadata(ActionMetadataBuilder builder) {
         this.version = builder.version;
         this.author = builder.author;
         this.description = builder.description;
@@ -111,78 +111,8 @@ public class ActionMetadata {
         return tags.isEmpty() ? "general" : tags.get(0);
     }
 
-    /**
-     * Builder for ActionMetadata.
-     */
-    public static class Builder {
-        private String version = "1.0.0";
-        private String author = "openHAB AI Team";
-        private String description = "";
-        private List<String> tags = List.of();
-        private Map<String, Object> properties = Map.of();
-        private Instant created = Instant.now();
-        private Instant lastModified = Instant.now();
-        private String documentation = "";
-        private List<String> examples = List.of();
-        private Map<String, Object> requirements = Map.of();
-
-        public Builder version(String version) {
-            this.version = version;
-            return this;
-        }
-
-        public Builder author(String author) {
-            this.author = author;
-            return this;
-        }
-
-        public Builder description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public Builder tags(List<String> tags) {
-            this.tags = tags;
-            return this;
-        }
-
-        public Builder properties(Map<String, Object> properties) {
-            this.properties = properties;
-            return this;
-        }
-
-        public Builder created(Instant created) {
-            this.created = created;
-            return this;
-        }
-
-        public Builder lastModified(Instant lastModified) {
-            this.lastModified = lastModified;
-            return this;
-        }
-
-        public Builder documentation(String documentation) {
-            this.documentation = documentation;
-            return this;
-        }
-
-        public Builder examples(List<String> examples) {
-            this.examples = examples;
-            return this;
-        }
-
-        public Builder requirements(Map<String, Object> requirements) {
-            this.requirements = requirements;
-            return this;
-        }
-
-        public ActionMetadata build() {
-            return new ActionMetadata(this);
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
+    public static ActionMetadataBuilder builder() {
+        return new ActionMetadataBuilder();
     }
 
     @Override

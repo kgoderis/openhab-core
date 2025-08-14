@@ -11,13 +11,13 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public class SharedContextBuilder {
-    private String contextId;
-    private List<String> agentIds;
-    private Map<String, Object> contextData;
-    private ContextAccessLevel accessLevel;
-    private Instant createdTime;
-    private Instant lastModified;
-    private int version;
+    String contextId;
+    List<String> agentIds;
+    Map<String, Object> contextData;
+    ContextAccessLevel accessLevel;
+    Instant createdTime;
+    Instant lastModified;
+    int version;
 
     public SharedContextBuilder contextId(String contextId) { this.contextId = contextId; return this; }
     public SharedContextBuilder agentIds(List<String> agentIds) { this.agentIds = agentIds; return this; }

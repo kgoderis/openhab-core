@@ -478,7 +478,7 @@ public class MultiStepReasoningEngine {
      * Get performance metrics
      */
     public PerformanceMetrics getPerformanceMetrics() {
-        return PerformanceMetrics.builder().totalSessions(totalReasoningSessions.get())
+        return new PerformanceMetricsBuilder().totalSessions(totalReasoningSessions.get())
                 .successfulSessions(successfulReasoningSessions.get()).failedSessions(failedReasoningSessions.get())
                 .totalSteps(totalReasoningSteps.get()).totalActions(totalActions.get())
                 .averageSessionDuration(calculateAverageSessionDuration()).build();

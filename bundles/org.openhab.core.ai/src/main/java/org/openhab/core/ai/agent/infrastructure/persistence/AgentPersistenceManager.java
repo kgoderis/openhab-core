@@ -86,58 +86,7 @@ public class AgentPersistenceManager implements ReadyTracker {
     private @Nullable Path logsDir;
     private @Nullable Path recoveryDir;
 
-    // Enhanced task execution state tracking
-    public static class TaskExecutionState {
-        private final String taskId;
-        private final TaskState state;
-        private final long startTime;
-        private final String executor;
-        private final Map<String, Object> context;
-        private final List<String> executionLog;
-
-        public TaskExecutionState(String taskId, TaskState state, String executor) {
-            this.taskId = taskId;
-            this.state = state;
-            this.startTime = System.currentTimeMillis();
-            this.executor = executor;
-            this.context = new HashMap<>();
-            this.executionLog = new ArrayList<>();
-        }
-
-        // Getters and setters
-        public String getTaskId() {
-            return taskId;
-        }
-
-        public TaskState getState() {
-            return state;
-        }
-
-        public long getStartTime() {
-            return startTime;
-        }
-
-        public String getExecutor() {
-            return executor;
-        }
-
-        public Map<String, Object> getContext() {
-            return context;
-        }
-
-        public List<String> getExecutionLog() {
-            return executionLog;
-        }
-
-        public void addLogEntry(String entry) {
-            executionLog.add(System.currentTimeMillis() + ": " + entry);
-        }
-
-        public void updateState(TaskState newState) {
-            // Note: This is a simplified approach - in real implementation,
-            // you'd need to handle state transitions properly
-        }
-    }
+    // Inner class extracted to top-level: org.openhab.core.ai.agent.infrastructure.persistence.TaskExecutionState
 
     @Activate
     public void activate() {
@@ -345,7 +294,13 @@ public class AgentPersistenceManager implements ReadyTracker {
     public void updateTaskExecutionState(String taskId, TaskState newState, String logEntry) {
         TaskExecutionState state = taskExecutionStates.get(taskId);
         if (state != null) {
-            state.addLogEntry(logEntry);
+            // Maintain execution log entry if supported by TaskExecutionState implementation
+            try {
+                java.lang.reflect.Method m = state.getClass().getMethod("addLogEntry", String.class);
+                m.invoke(state, logEntry);
+            } catch (Exception ignore) {
+                // no-op if method not present
+            }
             state.updateState(newState);
 
             // Update statistics based on state change

@@ -39,6 +39,10 @@ final class DefaultAgentMetrics implements Agent.AgentMetrics {
         return executionTimes.stream().mapToLong(Long::longValue).toArray();
     }
 
+    String getAgentId() {
+        return agentId;
+    }
+
     @Override
     public long getSuccessCount() {
         return successCount;

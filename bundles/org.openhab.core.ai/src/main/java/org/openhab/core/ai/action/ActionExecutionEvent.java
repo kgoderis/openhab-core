@@ -44,19 +44,19 @@ public class ActionExecutionEvent {
     private final String origin;
     private final Map<String, Object> metadata;
 
-    private ActionExecutionEvent(Builder builder) {
-        this.eventId = builder.eventId;
-        this.actionId = builder.actionId;
-        this.agentId = builder.agentId;
-        this.parameters = builder.parameters;
-        this.result = builder.result;
-        this.error = builder.error;
-        this.status = builder.status;
-        this.startTime = builder.startTime;
-        this.endTime = builder.endTime;
-        this.executionTime = Duration.between(builder.startTime, builder.endTime);
-        this.origin = builder.origin;
-        this.metadata = builder.metadata;
+    public ActionExecutionEvent(ActionExecutionEventBuilder builder) {
+        this.eventId = builder.getEventId();
+        this.actionId = builder.getActionId();
+        this.agentId = builder.getAgentId();
+        this.parameters = builder.getParameters();
+        this.result = builder.getResult();
+        this.error = builder.getError();
+        this.status = builder.getStatus();
+        this.startTime = builder.getStartTime();
+        this.endTime = builder.getEndTime();
+        this.executionTime = Duration.between(this.startTime, this.endTime);
+        this.origin = builder.getOrigin();
+        this.metadata = builder.getMetadata();
     }
 
     // Getters
@@ -140,85 +140,7 @@ public class ActionExecutionEvent {
      */
     // ExecutionStatus extracted to top-level: org.openhab.core.ai.model.ActionExecutionEventStatus
 
-    /**
-     * Builder for ActionExecutionEvent.
-     */
-    public static class Builder {
-        private String eventId = "";
-        private String actionId = "";
-        private String agentId = "";
-        private Map<String, Object> parameters = Map.of();
-        private @Nullable Object result = null;
-        private @Nullable String error = null;
-        private ActionExecutionEventStatus status = ActionExecutionEventStatus.PENDING;
-        private Instant startTime = Instant.now();
-        private Instant endTime = Instant.now();
-        private String origin = "unknown";
-        private Map<String, Object> metadata = Map.of();
-
-        public Builder eventId(String eventId) {
-            this.eventId = eventId;
-            return this;
-        }
-
-        public Builder actionId(String actionId) {
-            this.actionId = actionId;
-            return this;
-        }
-
-        public Builder agentId(String agentId) {
-            this.agentId = agentId;
-            return this;
-        }
-
-        public Builder parameters(Map<String, Object> parameters) {
-            this.parameters = parameters;
-            return this;
-        }
-
-        public Builder result(@Nullable Object result) {
-            this.result = result;
-            return this;
-        }
-
-        public Builder error(@Nullable String error) {
-            this.error = error;
-            return this;
-        }
-
-        public Builder status(ActionExecutionEventStatus status) {
-            this.status = status;
-            return this;
-        }
-
-        public Builder startTime(Instant startTime) {
-            this.startTime = startTime;
-            return this;
-        }
-
-        public Builder endTime(Instant endTime) {
-            this.endTime = endTime;
-            return this;
-        }
-
-        public Builder origin(String origin) {
-            this.origin = origin;
-            return this;
-        }
-
-        public Builder metadata(Map<String, Object> metadata) {
-            this.metadata = metadata;
-            return this;
-        }
-
-        public ActionExecutionEvent build() {
-            return new ActionExecutionEvent(this);
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
+    // Inner Builder extracted; use top-level org.openhab.core.ai.action.ActionExecutionEventBuilder
 
     @Override
     public String toString() {

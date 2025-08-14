@@ -1,7 +1,6 @@
 package org.openhab.core.ai.agent.api;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -160,89 +159,15 @@ public interface AgentOwnershipResolver {
      */
     int getOwnershipCount();
 
-    /**
-     * Agent ownership information
-     */
-    interface AgentOwnership {
-        String getAgentId();
+    // Extracted to top-level: org.openhab.core.ai.agent.api.AgentOwnershipResolverAgentOwnership
 
-        Set<String> getOwners();
+    // Extracted to top-level: org.openhab.core.ai.agent.api.AgentOwnershipResolverOwnershipValidationResult
 
-        String getPrimaryOwner();
+    // Extracted to top-level: org.openhab.core.ai.agent.api.AgentOwnershipResolverOwnershipTestResult
 
-        long getCreatedAt();
+    // Extracted to top-level: org.openhab.core.ai.agent.api.AgentOwnershipResolverOwnershipSecurityResult
 
-        long getLastModified();
+    // Extracted to top-level: org.openhab.core.ai.agent.api.AgentOwnershipResolverOwnershipPerformanceMetrics
 
-        Map<String, Object> getMetadata();
-    }
-
-    /**
-     * Ownership validation result
-     */
-    interface OwnershipValidationResult {
-        boolean isValid();
-
-        String getMessage();
-
-        List<String> getErrors();
-
-        List<String> getWarnings();
-    }
-
-    /**
-     * Ownership test result
-     */
-    interface OwnershipTestResult {
-        boolean isSuccessful();
-
-        String getMessage();
-
-        long getResolutionTime();
-
-        Map<String, Object> getTestData();
-    }
-
-    /**
-     * Ownership security result
-     */
-    interface OwnershipSecurityResult {
-        boolean isAllowed();
-
-        String getMessage();
-
-        List<String> getRequiredPermissions();
-
-        Map<String, Object> getSecurityContext();
-    }
-
-    /**
-     * Ownership performance metrics
-     */
-    interface OwnershipPerformanceMetrics {
-        long getTotalResolutions();
-
-        long getCacheHits();
-
-        long getCacheMisses();
-
-        double getAverageResolutionTime();
-
-        double getCacheHitRate();
-    }
-
-    /**
-     * Ownership debug log
-     */
-    interface OwnershipDebugLog {
-        String getAgentId();
-
-        String getOperation();
-
-        long getTimestamp();
-
-        String getMessage();
-
-        Map<String, Object> getData();
-    }
+    // Extracted to top-level: org.openhab.core.ai.agent.api.AgentOwnershipResolverOwnershipDebugLog
 }

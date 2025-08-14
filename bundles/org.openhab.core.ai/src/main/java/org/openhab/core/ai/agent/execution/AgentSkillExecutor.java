@@ -244,36 +244,5 @@ public class AgentSkillExecutor {
         failedExecutions.set(0);
     }
 
-    /**
-     * Execution statistics.
-     * 
-     * @author Karel Goderis - Initial Contribution
-     */
-    public static class ExecutionStatistics {
-        private final long totalExecutions;
-        private final long successfulExecutions;
-        private final long failedExecutions;
-
-        public ExecutionStatistics(long totalExecutions, long successfulExecutions, long failedExecutions) {
-            this.totalExecutions = totalExecutions;
-            this.successfulExecutions = successfulExecutions;
-            this.failedExecutions = failedExecutions;
-        }
-
-        public long getTotalExecutions() {
-            return totalExecutions;
-        }
-
-        public long getSuccessfulExecutions() {
-            return successfulExecutions;
-        }
-
-        public long getFailedExecutions() {
-            return failedExecutions;
-        }
-
-        public double getSuccessRate() {
-            return totalExecutions > 0 ? (double) successfulExecutions / totalExecutions : 0.0;
-        }
-    }
+    // Inner class extracted to top-level: org.openhab.core.ai.agent.execution.ExecutionStatistics
 }

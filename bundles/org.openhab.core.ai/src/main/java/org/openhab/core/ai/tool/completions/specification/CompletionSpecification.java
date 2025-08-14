@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.tool.api.Specification;
+import org.openhab.core.ai.tool.api.SpecificationType;
 import org.openhab.core.ai.tool.specification.AbstractBaseSpecification;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -48,8 +49,8 @@ public class CompletionSpecification extends AbstractBaseSpecification {
     }
 
     @Override
-    public Specification.SpecificationType getType() {
-        return Specification.SpecificationType.COMPLETION;
+    public SpecificationType getType() {
+        return SpecificationType.COMPLETION;
     }
 
     /**

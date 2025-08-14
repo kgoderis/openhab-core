@@ -39,7 +39,7 @@ public class AgentModelStatistics {
     private final Instant lastFailureTime;
     private final String lastError;
 
-    private AgentModelStatistics(AgentModelStatisticsBuilder builder) {
+    AgentModelStatistics(AgentModelStatisticsBuilder builder) {
         this.agentId = builder.agentId;
         this.totalRequests = builder.totalRequests;
         this.successfulRequests = builder.successfulRequests;

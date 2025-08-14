@@ -14,12 +14,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public class ConflictResolutionSessionBuilder {
-    private String conflictId;
-    private List<String> conflictingAgents;
-    private ConflictType conflictType;
-    private Map<String, Object> conflictData;
-    private Instant startTime;
-    private ConflictResolutionState state;
+    String conflictId;
+    List<String> conflictingAgents;
+    ConflictType conflictType;
+    Map<String, Object> conflictData;
+    Instant startTime;
+    ConflictResolutionState state;
 
     public ConflictResolutionSessionBuilder conflictId(String conflictId) { this.conflictId = conflictId; return this; }
     public ConflictResolutionSessionBuilder conflictingAgents(List<String> conflictingAgents) { this.conflictingAgents = conflictingAgents; return this; }

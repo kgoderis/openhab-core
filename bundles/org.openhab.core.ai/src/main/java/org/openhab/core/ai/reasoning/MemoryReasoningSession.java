@@ -26,7 +26,7 @@ public class MemoryReasoningSession {
     }
 
     public void addInteraction(String input, String output, Map<String, Object> metadata) {
-        interactions.add(new SessionInteraction(input, output, metadata, Instant.now()));
+        interactions.add(new SessionInteraction(input, output, Instant.now()));
         lastActivityAt = Instant.now();
     }
 
@@ -36,25 +36,7 @@ public class MemoryReasoningSession {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getLastActivityAt() { return lastActivityAt; }
     public List<SessionInteraction> getInteractions() { return new ArrayList<>(interactions); }
-
-    public static class SessionInteraction {
-        private final String input;
-        private final String output;
-        private final Map<String, Object> metadata;
-        private final Instant timestamp;
-
-        public SessionInteraction(String input, String output, Map<String, Object> metadata, Instant timestamp) {
-            this.input = input;
-            this.output = output;
-            this.metadata = metadata;
-            this.timestamp = timestamp;
-        }
-
-        public String getInput() { return input; }
-        public String getOutput() { return output; }
-        public Map<String, Object> getMetadata() { return metadata; }
-        public Instant getTimestamp() { return timestamp; }
-    }
+    
 }
 
 

@@ -38,8 +38,8 @@ public class AgentTransportPortManager {
     private static final int MIN_FALLBACK_PORT = 8084;
     private static final int MAX_FALLBACK_PORT = 8099;
 
-    private final Map<AgentTransport.TransportType, Integer> assignedPorts = new ConcurrentHashMap<>();
-    private final Map<AgentTransport.TransportType, Boolean> portAvailability = new ConcurrentHashMap<>();
+    private final Map<TransportType, Integer> assignedPorts = new ConcurrentHashMap<>();
+    private final Map<TransportType, Boolean> portAvailability = new ConcurrentHashMap<>();
     private final AtomicInteger fallbackPortCounter = new AtomicInteger(MIN_FALLBACK_PORT);
 
     /**
@@ -48,7 +48,7 @@ public class AgentTransportPortManager {
      * @param transportType the transport type
      * @return the default port
      */
-    public int getDefaultPort(AgentTransport.TransportType transportType) {
+    public int getDefaultPort(TransportType transportType) {
         return switch (transportType) {
             case JSON_RPC -> DEFAULT_JSON_RPC_PORT;
             case REST -> 0; // HTTP transport is client-side, no server port
@@ -78,7 +78,7 @@ public class AgentTransportPortManager {
      * @return the available port
      * @throws IllegalStateException if no port is available
      */
-    public int findAvailablePort(AgentTransport.TransportType transportType) {
+    public int findAvailablePort(TransportType transportType) {
         // First try the default port
         int defaultPort = getDefaultPort(transportType);
         if (defaultPort != 0 && isPortAvailable(defaultPort)) {
@@ -103,7 +103,7 @@ public class AgentTransportPortManager {
      * @param port the port to reserve
      * @return true if the port was successfully reserved
      */
-    public boolean reservePort(AgentTransport.TransportType transportType, int port) {
+    public boolean reservePort(TransportType transportType, int port) {
         if (port == 0) { // HTTP transport is client-side, no server port to reserve
             return true;
         }
@@ -129,7 +129,7 @@ public class AgentTransportPortManager {
      * 
      * @param transportType the transport type
      */
-    public void releasePort(AgentTransport.TransportType transportType) {
+    public void releasePort(TransportType transportType) {
         Integer port = assignedPorts.remove(transportType);
         portAvailability.remove(transportType);
         if (port != null) {
@@ -143,7 +143,7 @@ public class AgentTransportPortManager {
      * @param transportType the transport type
      * @return the assigned port or null if not assigned
      */
-    public Integer getAssignedPort(AgentTransport.TransportType transportType) {
+    public Integer getAssignedPort(TransportType transportType) {
         return assignedPorts.get(transportType);
     }
 
@@ -153,7 +153,7 @@ public class AgentTransportPortManager {
      * @param transportType the transport type
      * @return true if a port is assigned
      */
-    public boolean hasAssignedPort(AgentTransport.TransportType transportType) {
+    public boolean hasAssignedPort(TransportType transportType) {
         return assignedPorts.containsKey(transportType);
     }
 
@@ -162,7 +162,7 @@ public class AgentTransportPortManager {
      * 
      * @return the map of transport types to assigned ports
      */
-    public Map<AgentTransport.TransportType, Integer> getAllAssignedPorts() {
+    public Map<TransportType, Integer> getAllAssignedPorts() {
         return new ConcurrentHashMap<>(assignedPorts);
     }
 
@@ -173,11 +173,11 @@ public class AgentTransportPortManager {
      */
     public boolean validateAllPortAssignments() {
         boolean allValid = true;
-        for (Map.Entry<AgentTransport.TransportType, Integer> entry : assignedPorts.entrySet()) {
-            AgentTransport.TransportType transportType = entry.getKey();
+        for (Map.Entry<TransportType, Integer> entry : assignedPorts.entrySet()) {
+            TransportType transportType = entry.getKey();
             Integer port = entry.getValue();
 
-            if (port == null || (port == 0 && transportType != AgentTransport.TransportType.REST)) { // HTTP transport
+            if (port == null || (port == 0 && transportType != TransportType.REST)) { // HTTP transport
                                                                                                      // is client-side
                 logger.error("Invalid port assignment for transport type {}: port {}", transportType, port);
                 allValid = false;
@@ -197,7 +197,7 @@ public class AgentTransportPortManager {
     public Map<String, Object> getPortAssignmentStatus() {
         Map<String, Object> status = new ConcurrentHashMap<>();
 
-        for (AgentTransport.TransportType transportType : AgentTransport.TransportType.values()) {
+        for (TransportType transportType : TransportType.values()) {
             Integer assignedPort = assignedPorts.get(transportType);
             int defaultPort = getDefaultPort(transportType);
             boolean isAvailable = portAvailability.getOrDefault(transportType, false);

@@ -30,7 +30,7 @@ public class AgentModelContextEnricher {
      * @param context The original context to enrich
      * @return The enriched context
      */
-    public AgentModelContextBuilder.AgentModelContext enrich(AgentModelContextBuilder.AgentModelContext context) {
+    public AgentModelContext enrich(AgentModelContext context) {
         logger.debug("Enriching context: {}", context.getContextId());
 
         Map<String, Object> enrichedData = new ConcurrentHashMap<>(context.getContextData());
@@ -55,7 +55,7 @@ public class AgentModelContextEnricher {
         enrichedMetadata.put("enriched", true);
         enrichedMetadata.put("enrichmentTimestamp", System.currentTimeMillis());
 
-        return new AgentModelContextBuilder.AgentModelContext(context.getContextId(), enrichedData, enrichedMetadata);
+        return new AgentModelContext(context.getContextId(), enrichedData, enrichedMetadata);
     }
 
     /**
@@ -65,7 +65,7 @@ public class AgentModelContextEnricher {
      * @param originalContext The original context
      */
     private void enrichDomainContext(Map<String, Object> enrichedData,
-            AgentModelContextBuilder.AgentModelContext originalContext) {
+            AgentModelContext originalContext) {
         String agentType = (String) originalContext.getContextData("agentType");
         if (agentType != null) {
             switch (agentType.toLowerCase()) {
@@ -91,7 +91,7 @@ public class AgentModelContextEnricher {
      * @param originalContext The original context
      */
     private void enrichEnergyContext(Map<String, Object> enrichedData,
-            AgentModelContextBuilder.AgentModelContext originalContext) {
+            AgentModelContext originalContext) {
         Map<String, Object> energyContext = new ConcurrentHashMap<>();
 
         // Add energy-specific capabilities
@@ -116,7 +116,7 @@ public class AgentModelContextEnricher {
      * @param originalContext The original context
      */
     private void enrichSecurityContext(Map<String, Object> enrichedData,
-            AgentModelContextBuilder.AgentModelContext originalContext) {
+            AgentModelContext originalContext) {
         Map<String, Object> securityContext = new ConcurrentHashMap<>();
 
         // Add security-specific capabilities
@@ -141,7 +141,7 @@ public class AgentModelContextEnricher {
      * @param originalContext The original context
      */
     private void enrichComfortContext(Map<String, Object> enrichedData,
-            AgentModelContextBuilder.AgentModelContext originalContext) {
+            AgentModelContext originalContext) {
         Map<String, Object> comfortContext = new ConcurrentHashMap<>();
 
         // Add comfort-specific capabilities
@@ -166,7 +166,7 @@ public class AgentModelContextEnricher {
      * @param originalContext The original context
      */
     private void enrichTemporalContext(Map<String, Object> enrichedData,
-            AgentModelContextBuilder.AgentModelContext originalContext) {
+            AgentModelContext originalContext) {
         Map<String, Object> temporalContext = new ConcurrentHashMap<>();
 
         long currentTime = System.currentTimeMillis();
@@ -189,7 +189,7 @@ public class AgentModelContextEnricher {
      * @param originalContext The original context
      */
     private void enrichSpatialContext(Map<String, Object> enrichedData,
-            AgentModelContextBuilder.AgentModelContext originalContext) {
+            AgentModelContext originalContext) {
         Map<String, Object> spatialContext = new ConcurrentHashMap<>();
 
         // Add spatial context information
@@ -209,7 +209,7 @@ public class AgentModelContextEnricher {
      * @param originalContext The original context
      */
     private void enrichUserContext(Map<String, Object> enrichedData,
-            AgentModelContextBuilder.AgentModelContext originalContext) {
+            AgentModelContext originalContext) {
         Map<String, Object> userContext = new ConcurrentHashMap<>();
 
         // Add user context information
@@ -229,7 +229,7 @@ public class AgentModelContextEnricher {
      * @param originalContext The original context
      */
     private void enrichSystemContext(Map<String, Object> enrichedData,
-            AgentModelContextBuilder.AgentModelContext originalContext) {
+            AgentModelContext originalContext) {
         Map<String, Object> systemContext = new ConcurrentHashMap<>();
 
         // Add system context information
@@ -248,7 +248,7 @@ public class AgentModelContextEnricher {
      * @param context The context to validate
      * @return Validation result with issues and recommendations
      */
-    public ContextValidationResult validate(AgentModelContextBuilder.AgentModelContext context) {
+    public ContextValidationResult validate(AgentModelContext context) {
         ContextValidationResult result = new ContextValidationResult();
 
         // Check required fields
@@ -272,7 +272,7 @@ public class AgentModelContextEnricher {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateRequiredFields(AgentModelContextBuilder.AgentModelContext context,
+    private void validateRequiredFields(AgentModelContext context,
             ContextValidationResult result) {
         if (!context.hasContextData("agentId")) {
             result.addIssue("Missing required field: agentId");
@@ -293,7 +293,7 @@ public class AgentModelContextEnricher {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateDataQuality(AgentModelContextBuilder.AgentModelContext context,
+    private void validateDataQuality(AgentModelContext context,
             ContextValidationResult result) {
         // Check for null or empty values
         for (Map.Entry<String, Object> entry : context.getContextData().entrySet()) {
@@ -309,7 +309,7 @@ public class AgentModelContextEnricher {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateConsistency(AgentModelContextBuilder.AgentModelContext context,
+    private void validateConsistency(AgentModelContext context,
             ContextValidationResult result) {
         String agentType = (String) context.getContextData("agentType");
         String domain = (String) context.getContextData("domain");
@@ -328,7 +328,7 @@ public class AgentModelContextEnricher {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateCompleteness(AgentModelContextBuilder.AgentModelContext context,
+    private void validateCompleteness(AgentModelContext context,
             ContextValidationResult result) {
         // Check if context has minimum required information
         if (!context.hasContextData("capabilities") && !context.hasContextData("skills")) {
@@ -427,36 +427,5 @@ public class AgentModelContextEnricher {
     /**
      * Context validation result.
      */
-    public static class ContextValidationResult {
-        private final java.util.List<String> issues = new java.util.ArrayList<>();
-        private final java.util.List<String> recommendations = new java.util.ArrayList<>();
-
-        public void addIssue(String issue) {
-            issues.add(issue);
-        }
-
-        public void addRecommendation(String recommendation) {
-            recommendations.add(recommendation);
-        }
-
-        public java.util.List<String> getIssues() {
-            return new java.util.ArrayList<>(issues);
-        }
-
-        public java.util.List<String> getRecommendations() {
-            return new java.util.ArrayList<>(recommendations);
-        }
-
-        public boolean isValid() {
-            return issues.isEmpty();
-        }
-
-        public boolean hasIssues() {
-            return !issues.isEmpty();
-        }
-
-        public boolean hasRecommendations() {
-            return !recommendations.isEmpty();
-        }
-    }
+    // class extracted to top-level: org.openhab.core.ai.reasoning.ContextValidationResult
 }

@@ -54,11 +54,5 @@ public class SecurityIncident {
         return severity;
     }
 
-    // Enums
-    public enum SecuritySeverity {
-        LOW,
-        MEDIUM,
-        HIGH,
-        CRITICAL
-    }
+    // enum extracted to top-level: org.openhab.core.ai.agent.infrastructure.security.SecuritySeverity
 }

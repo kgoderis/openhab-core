@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.infrastructure.security.SecurityIncident.SecuritySeverity;
+import org.openhab.core.ai.agent.infrastructure.security.SecuritySeverity;
 import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManager;
 import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;

@@ -48,7 +48,7 @@ public class ActionAnalytics {
     private final Instant lastExecution;
     private final Duration totalExecutionTime;
 
-    private ActionAnalytics(Builder builder) {
+    /* package */ ActionAnalytics(ActionAnalyticsBuilder builder) {
         this.actionId = builder.actionId;
         this.totalExecutions = builder.totalExecutions;
         this.successfulExecutions = builder.successfulExecutions;
@@ -177,108 +177,8 @@ public class ActionAnalytics {
         return parameterUsage.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
     }
 
-    /**
-     * Builder for ActionAnalytics.
-     */
-    public static class Builder {
-        private String actionId = "";
-        private long totalExecutions = 0;
-        private long successfulExecutions = 0;
-        private long failedExecutions = 0;
-        private Duration averageExecutionTime = Duration.ZERO;
-        private Duration minExecutionTime = Duration.ZERO;
-        private Duration maxExecutionTime = Duration.ZERO;
-        private Map<String, Long> executionByAgent = Map.of();
-        private Map<String, Long> executionByTimeOfDay = Map.of();
-        private Map<String, Long> executionByDayOfWeek = Map.of();
-        private List<String> commonErrorMessages = List.of();
-        private Map<String, Long> parameterUsage = Map.of();
-        private Instant firstExecution = Instant.now();
-        private Instant lastExecution = Instant.now();
-        private Duration totalExecutionTime = Duration.ZERO;
-
-        public Builder actionId(String actionId) {
-            this.actionId = actionId;
-            return this;
-        }
-
-        public Builder totalExecutions(long totalExecutions) {
-            this.totalExecutions = totalExecutions;
-            return this;
-        }
-
-        public Builder successfulExecutions(long successfulExecutions) {
-            this.successfulExecutions = successfulExecutions;
-            return this;
-        }
-
-        public Builder failedExecutions(long failedExecutions) {
-            this.failedExecutions = failedExecutions;
-            return this;
-        }
-
-        public Builder averageExecutionTime(Duration averageExecutionTime) {
-            this.averageExecutionTime = averageExecutionTime;
-            return this;
-        }
-
-        public Builder minExecutionTime(Duration minExecutionTime) {
-            this.minExecutionTime = minExecutionTime;
-            return this;
-        }
-
-        public Builder maxExecutionTime(Duration maxExecutionTime) {
-            this.maxExecutionTime = maxExecutionTime;
-            return this;
-        }
-
-        public Builder executionByAgent(Map<String, Long> executionByAgent) {
-            this.executionByAgent = executionByAgent;
-            return this;
-        }
-
-        public Builder executionByTimeOfDay(Map<String, Long> executionByTimeOfDay) {
-            this.executionByTimeOfDay = executionByTimeOfDay;
-            return this;
-        }
-
-        public Builder executionByDayOfWeek(Map<String, Long> executionByDayOfWeek) {
-            this.executionByDayOfWeek = executionByDayOfWeek;
-            return this;
-        }
-
-        public Builder commonErrorMessages(List<String> commonErrorMessages) {
-            this.commonErrorMessages = commonErrorMessages;
-            return this;
-        }
-
-        public Builder parameterUsage(Map<String, Long> parameterUsage) {
-            this.parameterUsage = parameterUsage;
-            return this;
-        }
-
-        public Builder firstExecution(Instant firstExecution) {
-            this.firstExecution = firstExecution;
-            return this;
-        }
-
-        public Builder lastExecution(Instant lastExecution) {
-            this.lastExecution = lastExecution;
-            return this;
-        }
-
-        public Builder totalExecutionTime(Duration totalExecutionTime) {
-            this.totalExecutionTime = totalExecutionTime;
-            return this;
-        }
-
-        public ActionAnalytics build() {
-            return new ActionAnalytics(this);
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
+    public static ActionAnalyticsBuilder builder() {
+        return new ActionAnalyticsBuilder();
     }
 
     @Override

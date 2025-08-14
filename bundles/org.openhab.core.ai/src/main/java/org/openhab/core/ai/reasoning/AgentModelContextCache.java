@@ -91,7 +91,7 @@ public class AgentModelContextCache {
      * @param contextId The context ID to retrieve
      * @return The cached context, or null if not found or expired
      */
-    public AgentModelContextBuilder.AgentModelContext get(String contextId) {
+    public AgentModelContext get(String contextId) {
         CacheEntry entry = cache.get(contextId);
 
         if (entry == null) {
@@ -120,7 +120,7 @@ public class AgentModelContextCache {
      * @param context The context to cache
      * @return True if successfully cached, false otherwise
      */
-    public boolean put(AgentModelContextBuilder.AgentModelContext context) {
+    public boolean put(AgentModelContext context) {
         return put(context, defaultExpiration);
     }
 
@@ -131,7 +131,7 @@ public class AgentModelContextCache {
      * @param expiration The expiration time for this context
      * @return True if successfully cached, false otherwise
      */
-    public boolean put(AgentModelContextBuilder.AgentModelContext context, Duration expiration) {
+    public boolean put(AgentModelContext context, Duration expiration) {
         if (context == null) {
             logger.warn("Attempted to cache null context");
             return false;

@@ -19,7 +19,7 @@ public class Conflict {
     private Instant resolvedAt;
     private ConflictEscalation escalation;
 
-    private Conflict(Builder builder) {
+    Conflict(ConflictBuilder builder) {
         this.conflictId = builder.conflictId;
         this.conflictData = builder.conflictData;
         this.reportedBy = builder.reportedBy;
@@ -49,27 +49,7 @@ public class Conflict {
     public void setResolvedAt(Instant resolvedAt) { this.resolvedAt = resolvedAt; }
     public void setEscalation(ConflictEscalation escalation) { this.escalation = escalation; }
 
-    public static Builder builder() { return new Builder(); }
-
-    @NonNullByDefault
-    public static class Builder {
-        private String conflictId;
-        private ConflictData conflictData;
-        private String reportedBy;
-        private Instant detectedAt;
-        private ConflictAnalysis analysis;
-        private ConflictStatus status;
-        private ConflictPriority priority;
-
-        public Builder conflictId(String conflictId) { this.conflictId = conflictId; return this; }
-        public Builder conflictData(ConflictData conflictData) { this.conflictData = conflictData; return this; }
-        public Builder reportedBy(String reportedBy) { this.reportedBy = reportedBy; return this; }
-        public Builder detectedAt(Instant detectedAt) { this.detectedAt = detectedAt; return this; }
-        public Builder analysis(ConflictAnalysis analysis) { this.analysis = analysis; return this; }
-        public Builder status(ConflictStatus status) { this.status = status; return this; }
-        public Builder priority(ConflictPriority priority) { this.priority = priority; return this; }
-        public Conflict build() { return new Conflict(this); }
-    }
+    public static ConflictBuilder builder() { return new ConflictBuilder(); }
 }
 
 

@@ -6,12 +6,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 
 @NonNullByDefault
 public class TransportNegotiationResult {
-    private final AgentTransport.TransportType selectedTransport;
+    private final TransportType selectedTransport;
     private final Map<String, Object> negotiationData;
     private final boolean success;
     private final String reason;
 
-    public TransportNegotiationResult(AgentTransport.TransportType selectedTransport, Map<String, Object> negotiationData,
+    public TransportNegotiationResult(TransportType selectedTransport, Map<String, Object> negotiationData,
             boolean success, String reason) {
         this.selectedTransport = selectedTransport;
         this.negotiationData = negotiationData;
@@ -19,7 +19,7 @@ public class TransportNegotiationResult {
         this.reason = reason;
     }
 
-    public AgentTransport.TransportType getSelectedTransport() { return selectedTransport; }
+    public TransportType getSelectedTransport() { return selectedTransport; }
     public Map<String, Object> getNegotiationData() { return negotiationData; }
     public boolean isSuccess() { return success; }
     public String getReason() { return reason; }

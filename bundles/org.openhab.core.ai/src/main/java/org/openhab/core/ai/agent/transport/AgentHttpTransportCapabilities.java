@@ -11,10 +11,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-class AgentHttpTransportCapabilities implements AgentTransport.TransportCapabilities {
+class AgentHttpTransportCapabilities implements TransportCapabilities {
     @Override
-    public AgentTransport.TransportType getTransportType() {
-        return AgentTransport.TransportType.REST;
+    public TransportType getTransportType() {
+        return TransportType.REST;
     }
 
     @Override

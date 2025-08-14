@@ -15,15 +15,6 @@ public class ToolException extends Exception {
     private final String toolId;
     private final ToolErrorCode errorCode;
 
-    public enum ToolErrorCode {
-        INVALID_PARAMETER,
-        SERVICE_UNAVAILABLE,
-        RESOURCE_NOT_FOUND,
-        ACCESS_DENIED,
-        EXECUTION_ERROR,
-        TIMEOUT
-    }
-
     public ToolException(String toolId, String message, ToolErrorCode errorCode) {
         super(message);
         this.toolId = toolId;

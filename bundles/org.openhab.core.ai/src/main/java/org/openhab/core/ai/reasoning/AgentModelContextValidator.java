@@ -38,8 +38,8 @@ public class AgentModelContextValidator {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentModelContextValidator.class);
 
-    private final Map<String, ValidationRule> validationRules = new ConcurrentHashMap<>();
-    private final Map<String, OptimizationRule> optimizationRules = new ConcurrentHashMap<>();
+    private final Map<String, ContextValidationRule> validationRules = new ConcurrentHashMap<>();
+    private final Map<String, ContextOptimizationRule> optimizationRules = new ConcurrentHashMap<>();
 
     /**
      * Validate an agent model context for completeness and quality.
@@ -47,7 +47,7 @@ public class AgentModelContextValidator {
      * @param context The context to validate
      * @return Validation result with issues and recommendations
      */
-    public ContextValidationResult validate(AgentModelContextBuilder.AgentModelContext context) {
+    public ContextValidationResult validate(AgentModelContext context) {
         logger.debug("Validating context: {}", context.getContextId());
 
         ContextValidationResult result = new ContextValidationResult();
@@ -77,7 +77,7 @@ public class AgentModelContextValidator {
      * @param context The context to optimize
      * @return Optimization result with recommendations
      */
-    public ContextOptimizationResult optimize(AgentModelContextBuilder.AgentModelContext context) {
+    public ContextOptimizationResult optimize(AgentModelContext context) {
         logger.debug("Optimizing context: {}", context.getContextId());
 
         ContextOptimizationResult result = new ContextOptimizationResult();
@@ -101,7 +101,7 @@ public class AgentModelContextValidator {
      * @param ruleName The name of the rule
      * @param rule The validation rule
      */
-    public void addValidationRule(String ruleName, ValidationRule rule) {
+    public void addValidationRule(String ruleName, ContextValidationRule rule) {
         validationRules.put(ruleName, rule);
         logger.debug("Added validation rule: {}", ruleName);
     }
@@ -112,7 +112,7 @@ public class AgentModelContextValidator {
      * @param ruleName The name of the rule
      * @param rule The optimization rule
      */
-    public void addOptimizationRule(String ruleName, OptimizationRule rule) {
+    public void addOptimizationRule(String ruleName, ContextOptimizationRule rule) {
         optimizationRules.put(ruleName, rule);
         logger.debug("Added optimization rule: {}", ruleName);
     }
@@ -123,7 +123,7 @@ public class AgentModelContextValidator {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateRequiredFields(AgentModelContextBuilder.AgentModelContext context,
+    private void validateRequiredFields(AgentModelContext context,
             ContextValidationResult result) {
         if (!context.hasContextData("agentId")) {
             result.addIssue("Missing required field: agentId");
@@ -156,7 +156,7 @@ public class AgentModelContextValidator {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateDataQuality(AgentModelContextBuilder.AgentModelContext context,
+    private void validateDataQuality(AgentModelContext context,
             ContextValidationResult result) {
         // Check for null or empty values
         for (Map.Entry<String, Object> entry : context.getContextData().entrySet()) {
@@ -187,7 +187,7 @@ public class AgentModelContextValidator {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateConsistency(AgentModelContextBuilder.AgentModelContext context,
+    private void validateConsistency(AgentModelContext context,
             ContextValidationResult result) {
         String agentType = (String) context.getContextData("agentType");
         String domain = (String) context.getContextData("domain");
@@ -222,7 +222,7 @@ public class AgentModelContextValidator {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateCompleteness(AgentModelContextBuilder.AgentModelContext context,
+    private void validateCompleteness(AgentModelContext context,
             ContextValidationResult result) {
         // Check for essential capabilities
         if (!context.hasContextData("capabilities")) {
@@ -246,11 +246,11 @@ public class AgentModelContextValidator {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void applyCustomValidationRules(AgentModelContextBuilder.AgentModelContext context,
+    private void applyCustomValidationRules(AgentModelContext context,
             ContextValidationResult result) {
-        for (Map.Entry<String, ValidationRule> entry : validationRules.entrySet()) {
+        for (Map.Entry<String, ContextValidationRule> entry : validationRules.entrySet()) {
             try {
-                ValidationRule rule = entry.getValue();
+                ContextValidationRule rule = entry.getValue();
                 List<String> ruleIssues = rule.validate(context);
                 for (String issue : ruleIssues) {
                     result.addIssue("Rule '" + entry.getKey() + "': " + issue);
@@ -268,7 +268,7 @@ public class AgentModelContextValidator {
      * @param context The context to optimize
      * @param result The optimization result to update
      */
-    private void optimizeDataStructure(AgentModelContextBuilder.AgentModelContext context,
+    private void optimizeDataStructure(AgentModelContext context,
             ContextOptimizationResult result) {
         // Optimize map structures
         Map<String, Object> contextData = context.getContextData();
@@ -294,7 +294,7 @@ public class AgentModelContextValidator {
      * @param context The context to optimize
      * @param result The optimization result to update
      */
-    private void optimizeMetadata(AgentModelContextBuilder.AgentModelContext context,
+    private void optimizeMetadata(AgentModelContext context,
             ContextOptimizationResult result) {
         Map<String, Object> metadata = context.getMetadata();
 
@@ -320,11 +320,11 @@ public class AgentModelContextValidator {
      * @param context The context to optimize
      * @param result The optimization result to update
      */
-    private void applyCustomOptimizationRules(AgentModelContextBuilder.AgentModelContext context,
+    private void applyCustomOptimizationRules(AgentModelContext context,
             ContextOptimizationResult result) {
-        for (Map.Entry<String, OptimizationRule> entry : optimizationRules.entrySet()) {
+        for (Map.Entry<String, ContextOptimizationRule> entry : optimizationRules.entrySet()) {
             try {
-                OptimizationRule rule = entry.getValue();
+                ContextOptimizationRule rule = entry.getValue();
                 List<String> ruleRecommendations = rule.optimize(context);
                 for (String recommendation : ruleRecommendations) {
                     result.addRecommendation("Rule '" + entry.getKey() + "': " + recommendation);
@@ -349,16 +349,10 @@ public class AgentModelContextValidator {
     /**
      * Validation Rule interface.
      */
-    @FunctionalInterface
-    public interface ValidationRule {
-        List<String> validate(AgentModelContextBuilder.AgentModelContext context);
-    }
+    // ValidationRule extracted to top-level: org.openhab.core.ai.reasoning.ContextValidationRule
 
     /**
      * Optimization Rule interface.
      */
-    @FunctionalInterface
-    public interface OptimizationRule {
-        List<String> optimize(AgentModelContextBuilder.AgentModelContext context);
-    }
+    // OptimizationRule extracted to top-level: org.openhab.core.ai.reasoning.ContextOptimizationRule
 }

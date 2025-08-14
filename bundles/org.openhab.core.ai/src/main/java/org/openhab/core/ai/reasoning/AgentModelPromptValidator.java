@@ -54,7 +54,7 @@ public class AgentModelPromptValidator {
             "\\b(ssn|social[_-]?security|credit[_-]?card|bank[_-]?account|phone[_-]?number|address|email)\\b",
             Pattern.CASE_INSENSITIVE);
 
-    private final Map<String, ValidationRule> validationRules = new ConcurrentHashMap<>();
+    private final Map<String, PromptValidationRule> validationRules = new ConcurrentHashMap<>();
 
     /**
      * Validate a prompt for safety and compliance.
@@ -62,7 +62,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @return Validation result with safety issues and recommendations
      */
-    public PromptSafetyResult validateSafety(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    public PromptSafetyResult validateSafety(AgentModelPrompt prompt) {
         logger.debug("Validating prompt safety: {}",
                 prompt.getPromptText().substring(0, Math.min(100, prompt.getPromptText().length())));
 
@@ -96,7 +96,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @return Validation result with quality issues and recommendations
      */
-    public PromptQualityResult validateQuality(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    public PromptQualityResult validateQuality(AgentModelPrompt prompt) {
         logger.debug("Validating prompt quality: {}",
                 prompt.getPromptText().substring(0, Math.min(100, prompt.getPromptText().length())));
 
@@ -127,7 +127,7 @@ public class AgentModelPromptValidator {
      * @param ruleName The name of the rule
      * @param rule The validation rule
      */
-    public void addValidationRule(String ruleName, ValidationRule rule) {
+    public void addValidationRule(String ruleName, PromptValidationRule rule) {
         validationRules.put(ruleName, rule);
         logger.debug("Added validation rule: {}", ruleName);
     }
@@ -138,7 +138,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to check
      * @return True if the prompt is safe, false otherwise
      */
-    public boolean isSafe(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    public boolean isSafe(AgentModelPrompt prompt) {
         PromptSafetyResult safetyResult = validateSafety(prompt);
         return safetyResult.getSafetyIssues().isEmpty();
     }
@@ -149,7 +149,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to check
      * @return True if the prompt meets quality standards, false otherwise
      */
-    public boolean meetsQualityStandards(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    public boolean meetsQualityStandards(AgentModelPrompt prompt) {
         PromptQualityResult qualityResult = validateQuality(prompt);
         return qualityResult.getQualityIssues().isEmpty();
     }
@@ -160,7 +160,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validatePromptInjection(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptSafetyResult result) {
+    private void validatePromptInjection(AgentModelPrompt prompt, PromptSafetyResult result) {
         String text = prompt.getPromptText().toLowerCase();
 
         // Check for common prompt injection patterns
@@ -197,7 +197,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateSensitiveInformation(AgentModelPromptBuilder.AgentModelPrompt prompt,
+    private void validateSensitiveInformation(AgentModelPrompt prompt,
             PromptSafetyResult result) {
         String text = prompt.getPromptText();
 
@@ -223,7 +223,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateMaliciousContent(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptSafetyResult result) {
+    private void validateMaliciousContent(AgentModelPrompt prompt, PromptSafetyResult result) {
         String text = prompt.getPromptText().toLowerCase();
 
         // Check for destructive commands
@@ -257,7 +257,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validatePersonalInformation(AgentModelPromptBuilder.AgentModelPrompt prompt,
+    private void validatePersonalInformation(AgentModelPrompt prompt,
             PromptSafetyResult result) {
         String text = prompt.getPromptText();
 
@@ -288,7 +288,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateInappropriateContent(AgentModelPromptBuilder.AgentModelPrompt prompt,
+    private void validateInappropriateContent(AgentModelPrompt prompt,
             PromptSafetyResult result) {
         String text = prompt.getPromptText().toLowerCase();
 
@@ -314,7 +314,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateClarity(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptQualityResult result) {
+    private void validateClarity(AgentModelPrompt prompt, PromptQualityResult result) {
         String text = prompt.getPromptText();
 
         // Check for ambiguous language
@@ -342,7 +342,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateCompleteness(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptQualityResult result) {
+    private void validateCompleteness(AgentModelPrompt prompt, PromptQualityResult result) {
         String text = prompt.getPromptText();
 
         // Check for missing essential components
@@ -366,7 +366,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateConsistency(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptQualityResult result) {
+    private void validateConsistency(AgentModelPrompt prompt, PromptQualityResult result) {
         String text = prompt.getPromptText();
 
         // Check for contradictory instructions
@@ -390,7 +390,7 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateRelevance(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptQualityResult result) {
+    private void validateRelevance(AgentModelPrompt prompt, PromptQualityResult result) {
         String text = prompt.getPromptText();
 
         // Check for off-topic content
@@ -416,11 +416,11 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void applyCustomValidationRules(AgentModelPromptBuilder.AgentModelPrompt prompt,
+    private void applyCustomValidationRules(AgentModelPrompt prompt,
             PromptSafetyResult result) {
-        for (Map.Entry<String, ValidationRule> entry : validationRules.entrySet()) {
+        for (Map.Entry<String, PromptValidationRule> entry : validationRules.entrySet()) {
             try {
-                ValidationRule rule = entry.getValue();
+                PromptValidationRule rule = entry.getValue();
                 List<String> ruleIssues = rule.validate(prompt);
                 for (String issue : ruleIssues) {
                     result.addSafetyIssue("Rule '" + entry.getKey() + "': " + issue);
@@ -438,26 +438,14 @@ public class AgentModelPromptValidator {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void applyCustomQualityRules(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptQualityResult result) {
+    private void applyCustomQualityRules(AgentModelPrompt prompt, PromptQualityResult result) {
         // Custom quality rules can be added here
         // For now, we'll implement basic checks
     }
 
-    /**
-     * Prompt Safety Result class.
-     */
     // PromptSafetyResult extracted to org.openhab.core.ai.reasoning.PromptSafetyResult
 
-    /**
-     * Prompt Quality Result class.
-     */
     // PromptQualityResult extracted to org.openhab.core.ai.reasoning.PromptQualityResult
 
-    /**
-     * Validation Rule interface.
-     */
-    @FunctionalInterface
-    public interface ValidationRule {
-        List<String> validate(AgentModelPromptBuilder.AgentModelPrompt prompt);
-    }
+    // ValidationRule extracted to top-level: org.openhab.core.ai.reasoning.PromptValidationRule
 }

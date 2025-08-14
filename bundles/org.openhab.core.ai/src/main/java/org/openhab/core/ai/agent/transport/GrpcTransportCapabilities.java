@@ -11,11 +11,11 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class GrpcTransportCapabilities implements AgentTransport.TransportCapabilities {
+public class GrpcTransportCapabilities implements TransportCapabilities {
 
     @Override
-    public AgentTransport.TransportType getTransportType() {
-        return AgentTransport.TransportType.GRPC;
+    public TransportType getTransportType() {
+        return TransportType.GRPC;
     }
 
     @Override

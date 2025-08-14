@@ -52,7 +52,7 @@ public class AgentModelPromptOptimizer {
      * @param prompt The prompt to optimize
      * @return The optimized prompt
      */
-    public AgentModelPromptBuilder.AgentModelPrompt optimize(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    public AgentModelPrompt optimize(AgentModelPrompt prompt) {
         logger.debug("Optimizing prompt with {} characters", prompt.getPromptText().length());
 
         String optimizedText = prompt.getPromptText();
@@ -96,7 +96,7 @@ public class AgentModelPromptOptimizer {
         optimizedBuilder.withMetadata("optimizedLength", optimizedText.length());
         optimizedBuilder.withMetadata("optimizations", String.join(", ", optimizations));
 
-        AgentModelPromptBuilder.AgentModelPrompt optimizedPrompt = optimizedBuilder.build();
+        AgentModelPrompt optimizedPrompt = optimizedBuilder.build();
 
         logger.debug("Prompt optimization completed: {} -> {} characters, {} optimizations",
                 prompt.getPromptText().length(), optimizedText.length(), optimizations.size());
@@ -110,7 +110,7 @@ public class AgentModelPromptOptimizer {
      * @param prompt The prompt to validate
      * @return Validation result with issues and recommendations
      */
-    public PromptValidationResult validate(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    public PromptValidationResult validate(AgentModelPrompt prompt) {
         logger.debug("Validating prompt: {}",
                 prompt.getPromptText().substring(0, Math.min(100, prompt.getPromptText().length())));
 
@@ -264,7 +264,7 @@ public class AgentModelPromptOptimizer {
      * @param prompt The prompt to optimize
      * @return List of applied optimizations
      */
-    private List<String> applyCustomOptimizationRules(AgentModelPromptBuilder.AgentModelPrompt prompt) {
+    private List<String> applyCustomOptimizationRules(AgentModelPrompt prompt) {
         List<String> optimizations = new ArrayList<>();
 
         for (Map.Entry<String, OptimizationRule> entry : optimizationRules.entrySet()) {
@@ -286,7 +286,7 @@ public class AgentModelPromptOptimizer {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateLength(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptValidationResult result) {
+    private void validateLength(AgentModelPrompt prompt, PromptValidationResult result) {
         int length = prompt.getPromptText().length();
 
         if (length > MAX_PROMPT_LENGTH) {
@@ -307,7 +307,7 @@ public class AgentModelPromptOptimizer {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateContentSafety(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptValidationResult result) {
+    private void validateContentSafety(AgentModelPrompt prompt, PromptValidationResult result) {
         String text = prompt.getPromptText().toLowerCase();
 
         // Check for potentially harmful content
@@ -332,7 +332,7 @@ public class AgentModelPromptOptimizer {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateStructure(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptValidationResult result) {
+    private void validateStructure(AgentModelPrompt prompt, PromptValidationResult result) {
         String text = prompt.getPromptText();
 
         if (!text.contains("System:") && !text.contains("Task:")) {
@@ -354,7 +354,7 @@ public class AgentModelPromptOptimizer {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void validateTokenCount(AgentModelPromptBuilder.AgentModelPrompt prompt, PromptValidationResult result) {
+    private void validateTokenCount(AgentModelPrompt prompt, PromptValidationResult result) {
         int tokens = estimateTokens(prompt.getPromptText());
 
         if (tokens > MAX_TOKENS) {
@@ -374,7 +374,7 @@ public class AgentModelPromptOptimizer {
      * @param prompt The prompt to validate
      * @param result The validation result to update
      */
-    private void applyCustomValidationRules(AgentModelPromptBuilder.AgentModelPrompt prompt,
+    private void applyCustomValidationRules(AgentModelPrompt prompt,
             PromptValidationResult result) {
         // Custom validation rules can be added here
         // For now, we'll implement basic checks
@@ -434,65 +434,5 @@ public class AgentModelPromptOptimizer {
     /**
      * Prompt Validation Result class.
      */
-    public static class PromptValidationResult {
-        private final List<String> issues = new ArrayList<>();
-        private final List<String> warnings = new ArrayList<>();
-        private final List<String> recommendations = new ArrayList<>();
-
-        public void addIssue(String issue) {
-            issues.add(issue);
-        }
-
-        public void addWarning(String warning) {
-            warnings.add(warning);
-        }
-
-        public void addRecommendation(String recommendation) {
-            recommendations.add(recommendation);
-        }
-
-        public List<String> getIssues() {
-            return new ArrayList<>(issues);
-        }
-
-        public List<String> getWarnings() {
-            return new ArrayList<>(warnings);
-        }
-
-        public List<String> getRecommendations() {
-            return new ArrayList<>(recommendations);
-        }
-
-        public boolean isValid() {
-            return issues.isEmpty();
-        }
-
-        public boolean hasWarnings() {
-            return !warnings.isEmpty();
-        }
-
-        public boolean hasRecommendations() {
-            return !recommendations.isEmpty();
-        }
-
-        public int getIssueCount() {
-            return issues.size();
-        }
-
-        public int getWarningCount() {
-            return warnings.size();
-        }
-
-        public int getRecommendationCount() {
-            return recommendations.size();
-        }
-    }
-
-    /**
-     * Optimization Rule interface.
-     */
-    @FunctionalInterface
-    public interface OptimizationRule {
-        List<String> optimize(AgentModelPromptBuilder.AgentModelPrompt prompt);
-    }
+    // classes extracted to top-level: PromptValidationResult, OptimizationRule
 }

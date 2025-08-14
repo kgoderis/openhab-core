@@ -1,10 +1,8 @@
 package org.openhab.core.ai.events;
 
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.events.Event;
 
 /**
@@ -76,178 +74,20 @@ public interface EventFilter {
     /**
      * Filter rule definition
      */
-    interface FilterRule {
-        /**
-         * Get the unique identifier for this filter rule
-         * 
-         * @return The filter rule ID
-         */
-        String getId();
-
-        /**
-         * Get the name of this filter rule
-         * 
-         * @return The filter rule name
-         */
-        String getName();
-
-        /**
-         * Get the description of this filter rule
-         * 
-         * @return The filter rule description
-         */
-        String getDescription();
-
-        /**
-         * Check if this filter rule is enabled
-         * 
-         * @return true if enabled, false if disabled
-         */
-        boolean isEnabled();
-
-        /**
-         * Get the priority of this filter rule (lower numbers = higher priority)
-         * 
-         * @return The filter rule priority
-         */
-        int getPriority();
-
-        /**
-         * Get the filter type
-         * 
-         * @return The filter type
-         */
-        FilterType getType();
-
-        /**
-         * Get the filter configuration
-         * 
-         * @return The filter configuration
-         */
-        Map<String, Object> getConfiguration();
-
-        /**
-         * Apply this filter rule to an event
-         * 
-         * @param event The event to filter
-         * @return true if the event passes the filter, false if it should be filtered out
-         */
-        boolean apply(Event event);
-    }
+    // Extracted: org.openhab.core.ai.events.FilterRule
 
     /**
      * Filter types
      */
-    enum FilterType {
-        /** Priority-based filtering */
-        PRIORITY,
-        /** Pattern-based filtering */
-        PATTERN,
-        /** Sampling-based filtering */
-        SAMPLING,
-        /** Time-based filtering */
-        TIME_BASED,
-        /** Source-based filtering */
-        SOURCE_BASED,
-        /** Type-based filtering */
-        TYPE_BASED,
-        /** Custom filtering */
-        CUSTOM
-    }
+    // Extracted: org.openhab.core.ai.events.FilterType
 
     /**
      * Filter performance statistics
      */
-    interface FilterPerformanceStatistics {
-        /**
-         * Get total events processed
-         * 
-         * @return Total events processed
-         */
-        long getTotalEventsProcessed();
-
-        /**
-         * Get total events filtered out
-         * 
-         * @return Total events filtered out
-         */
-        long getTotalEventsFiltered();
-
-        /**
-         * Get filter rate (percentage of events filtered out)
-         * 
-         * @return Filter rate as a percentage
-         */
-        double getFilterRate();
-
-        /**
-         * Get average processing time per event in milliseconds
-         * 
-         * @return Average processing time
-         */
-        double getAverageProcessingTimeMs();
-
-        /**
-         * Get total processing time in milliseconds
-         * 
-         * @return Total processing time
-         */
-        long getTotalProcessingTimeMs();
-
-        /**
-         * Get performance statistics for a specific filter rule
-         * 
-         * @param filterRuleId The filter rule ID
-         * @return Performance statistics for the filter rule
-         */
-        @Nullable
-        FilterRulePerformanceStatistics getFilterRuleStatistics(String filterRuleId);
-    }
+    // Extracted: org.openhab.core.ai.events.FilterPerformanceStatistics
 
     /**
      * Filter rule performance statistics
      */
-    interface FilterRulePerformanceStatistics {
-        /**
-         * Get the filter rule ID
-         * 
-         * @return The filter rule ID
-         */
-        String getFilterRuleId();
-
-        /**
-         * Get total events processed by this rule
-         * 
-         * @return Total events processed
-         */
-        long getTotalEventsProcessed();
-
-        /**
-         * Get total events filtered out by this rule
-         * 
-         * @return Total events filtered out
-         */
-        long getTotalEventsFiltered();
-
-        /**
-         * Get filter rate for this rule
-         * 
-         * @return Filter rate as a percentage
-         */
-        double getFilterRate();
-
-        /**
-         * Get average processing time for this rule in milliseconds
-         * 
-         * @return Average processing time
-         */
-        double getAverageProcessingTimeMs();
-
-        /**
-         * Get total processing time for this rule in milliseconds
-         * 
-         * @return Total processing time
-         */
-        long getTotalProcessingTimeMs();
-    }
+    // Extracted: org.openhab.core.ai.events.FilterRulePerformanceStatistics
 }

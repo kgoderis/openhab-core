@@ -1,7 +1,6 @@
 package org.openhab.core.ai.action;
 
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -130,70 +129,25 @@ public interface DynamicContextBuilder {
     /**
      * Agent context
      */
-    interface AgentContext {
-        String getAgentId();
-
-        Map<String, Object> getContextData();
-
-        List<String> getAvailableActions();
-
-        Map<String, Object> getEnvironmentState();
-
-        long getTimestamp();
-
-        String getContextId();
-    }
+    // Extracted: org.openhab.core.ai.action.AgentContext
 
     /**
      * Security level
      */
-    enum SecurityLevel {
-        LOW,
-        MEDIUM,
-        HIGH,
-        MAXIMUM
-    }
+    // Extracted: org.openhab.core.ai.action.SecurityLevel
 
     /**
      * Context performance metrics
      */
-    interface ContextPerformanceMetrics {
-        long getTotalContextsBuilt();
-
-        long getCacheHits();
-
-        long getCacheMisses();
-
-        double getAverageBuildTime();
-
-        double getCacheHitRate();
-    }
+    // Extracted: org.openhab.core.ai.action.ContextPerformanceMetrics
 
     /**
      * Context debug log
      */
-    interface ContextDebugLog {
-        String getContextId();
-
-        String getOperation();
-
-        long getTimestamp();
-
-        String getMessage();
-
-        Map<String, Object> getData();
-    }
+    // Extracted: org.openhab.core.ai.action.ContextDebugLog
 
     /**
      * Context validation result
      */
-    interface ContextValidationResult {
-        boolean isValid();
-
-        String getMessage();
-
-        List<String> getErrors();
-
-        List<String> getWarnings();
-    }
+    // Extracted: org.openhab.core.ai.action.ContextValidationResult
 }

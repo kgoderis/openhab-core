@@ -183,70 +183,13 @@ public interface AgentSkillManager {
      */
     AgentSkillResult executeSkill(String skillId, Map<String, Object> parameters);
 
-    /**
-     * Skill validation result
-     */
-    interface SkillValidationResult {
-        boolean isValid();
+    // Extracted: SkillValidationResult
 
-        String getMessage();
+    // Extracted: SkillTestResult
 
-        List<String> getErrors();
-    }
+    // Extracted: SkillPerformanceMetrics
 
-    /**
-     * Skill test result
-     */
-    interface SkillTestResult {
-        boolean isSuccessful();
+    // Extracted: SkillDocumentation
 
-        String getMessage();
-
-        long getExecutionTime();
-
-        Map<String, Object> getTestData();
-    }
-
-    /**
-     * Skill performance metrics
-     */
-    interface SkillPerformanceMetrics {
-        long getTotalExecutions();
-
-        long getSuccessfulExecutions();
-
-        long getFailedExecutions();
-
-        double getAverageExecutionTime();
-
-        double getSuccessRate();
-    }
-
-    /**
-     * Skill documentation
-     */
-    interface SkillDocumentation {
-        String getDescription();
-
-        String getUsage();
-
-        List<String> getParameters();
-
-        List<String> getExamples();
-
-        String getVersion();
-    }
-
-    /**
-     * Skill example
-     */
-    interface SkillExample {
-        String getName();
-
-        String getDescription();
-
-        Map<String, Object> getParameters();
-
-        Object getExpectedResult();
-    }
+    // Extracted: SkillExample
 }

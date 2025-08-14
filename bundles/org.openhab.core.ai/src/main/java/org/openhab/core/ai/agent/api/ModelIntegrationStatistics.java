@@ -43,7 +43,7 @@ public class ModelIntegrationStatistics {
     private final String lastError;
     private final List<String> registeredAgentIds;
 
-    private ModelIntegrationStatistics(ModelIntegrationStatisticsBuilder builder) {
+    ModelIntegrationStatistics(ModelIntegrationStatisticsBuilder builder) {
         this.totalAgents = builder.totalAgents;
         this.activeAgents = builder.activeAgents;
         this.totalRequests = builder.totalRequests;

@@ -39,6 +39,11 @@ public class RuleResourceSpecification extends ResourceSpecification {
     }
 
     @Override
+    public org.openhab.core.ai.tool.api.SpecificationType getType() {
+        return org.openhab.core.ai.tool.api.SpecificationType.RESOURCE;
+    }
+
+    @Override
     public String getId() {
         return ID;
     }

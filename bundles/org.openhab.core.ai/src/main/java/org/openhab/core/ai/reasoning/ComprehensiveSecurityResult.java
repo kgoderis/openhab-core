@@ -35,29 +35,9 @@ public class ComprehensiveSecurityResult {
     public void setSafetyValid(boolean valid) { this.safetyValid = valid; }
     public void setOverallValid(boolean valid) { this.overallValid = valid; }
 
-    public void addSecurityIssues(List<org.openhab.core.ai.reasoning.SecurityIssue> issues) {
-        for (org.openhab.core.ai.reasoning.SecurityIssue issue : issues) {
-            securityIssues.add(new SecurityIssue(issue.getType().name(), issue.getDescription()));
-        }
+    public void addSecurityIssues(List<SecurityIssue> issues) {
+        securityIssues.addAll(issues);
     }
-    public void addSecurityIssue(String type, String description) { securityIssues.add(new SecurityIssue(type, description)); }
-    public void addSafetyIssue(String type, String description) { safetyIssues.add(new SafetyIssue(type, description)); }
-
-    @NonNullByDefault
-    public static class SecurityIssue {
-        private final String type;
-        private final String description;
-        public SecurityIssue(String type, String description) { this.type = type; this.description = description; }
-        public String getType() { return type; }
-        public String getDescription() { return description; }
-    }
-
-    @NonNullByDefault
-    public static class SafetyIssue {
-        private final String type;
-        private final String description;
-        public SafetyIssue(String type, String description) { this.type = type; this.description = description; }
-        public String getType() { return type; }
-        public String getDescription() { return description; }
-    }
+    public void addSecurityIssue(SecurityIssue issue) { securityIssues.add(issue); }
+    public void addSafetyIssue(SafetyIssue issue) { safetyIssues.add(issue); }
 }

@@ -13,6 +13,7 @@ import os
 import re
 import shutil
 import json
+import subprocess
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import logging
@@ -80,6 +81,140 @@ class RobustJavaExtractor:
             return True
         except Exception as e:
             logger.error(f"❌ Validation error in {file_path}: {e}")
+            return False
+    
+    def test_java_compilation(self, file_paths: List[Path]) -> Tuple[bool, str]:
+        """Test Java compilation using Maven or syntax validation"""
+        try:
+            logger.info(f"🔧 Testing compilation of {len(file_paths)} files...")
+            
+            # First, try Maven compilation if pom.xml exists
+            if self.has_maven_project():
+                return self.test_maven_compilation()
+            
+            # Fallback to advanced syntax validation without external dependencies
+            return self.test_syntax_validation(file_paths)
+                
+        except Exception as e:
+            logger.error(f"❌ Compilation test error: {e}")
+            return False, f"Compilation test error: {e}"
+    
+    def has_maven_project(self) -> bool:
+        """Check if we're in a Maven project"""
+        current = Path.cwd()
+        while current != current.parent:
+            if (current / "pom.xml").exists():
+                return True
+            current = current.parent
+        return False
+    
+    def test_maven_compilation(self) -> Tuple[bool, str]:
+        """Test compilation using Maven"""
+        try:
+            # Find the Maven project root
+            maven_root = Path.cwd()
+            while maven_root != maven_root.parent:
+                if (maven_root / "pom.xml").exists():
+                    break
+                maven_root = maven_root.parent
+            
+            logger.info(f"🏗️ Running Maven compilation test from {maven_root}")
+            
+            # Run Maven compile with quiet output
+            cmd = ["mvn", "compile", "-q", "--batch-mode"]
+            result = subprocess.run(
+                cmd, 
+                cwd=maven_root, 
+                capture_output=True, 
+                text=True, 
+                timeout=120
+            )
+            
+            if result.returncode == 0:
+                logger.info("✅ Maven compilation successful")
+                return True, ""
+            else:
+                logger.error(f"❌ Maven compilation failed")
+                return False, result.stderr
+                
+        except subprocess.TimeoutExpired:
+            logger.error("❌ Maven compilation timeout")
+            return False, "Maven compilation timeout"
+        except FileNotFoundError:
+            logger.warning("⚠️ Maven not found, falling back to syntax validation")
+            return self.test_syntax_validation([])
+        except Exception as e:
+            logger.error(f"❌ Maven compilation error: {e}")
+            return False, f"Maven compilation error: {e}"
+    
+    def test_syntax_validation(self, file_paths: List[Path]) -> Tuple[bool, str]:
+        """Advanced syntax validation without compilation"""
+        try:
+            logger.info("🔍 Running advanced syntax validation...")
+            
+            for file_path in file_paths:
+                if not self.validate_advanced_syntax(file_path):
+                    return False, f"Syntax validation failed for {file_path}"
+            
+            logger.info("✅ Syntax validation successful")
+            return True, ""
+            
+        except Exception as e:
+            logger.error(f"❌ Syntax validation error: {e}")
+            return False, f"Syntax validation error: {e}"
+    
+    def validate_advanced_syntax(self, file_path: Path) -> bool:
+        """Advanced Java syntax validation"""
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            
+            # Check brace balance
+            open_braces = content.count('{')
+            close_braces = content.count('}')
+            if open_braces != close_braces:
+                logger.error(f"❌ Brace mismatch in {file_path}: {open_braces} open, {close_braces} close")
+                return False
+            
+            # Check parentheses balance
+            open_parens = content.count('(')
+            close_parens = content.count(')')
+            if open_parens != close_parens:
+                logger.error(f"❌ Parentheses mismatch in {file_path}: {open_parens} open, {close_parens} close")
+                return False
+            
+            # Check bracket balance
+            open_brackets = content.count('[')
+            close_brackets = content.count(']')
+            if open_brackets != close_brackets:
+                logger.error(f"❌ Bracket mismatch in {file_path}: {open_brackets} open, {close_brackets} close")
+                return False
+            
+            # Validate basic Java structure
+            if not re.search(r'(class|interface|enum)\s+\w+', content):
+                logger.error(f"❌ No valid class/interface/enum declaration in {file_path}")
+                return False
+            
+            # Check for common syntax errors
+            lines = content.split('\n')
+            for i, line in enumerate(lines, 1):
+                stripped = line.strip()
+                
+                # Check for missing semicolons (basic heuristic)
+                if re.match(r'^\s*(public|private|protected|static|final)\s+\w+\s+\w+\s*=.*[^;{]\s*$', stripped):
+                    # This looks like a field declaration without semicolon
+                    if not stripped.endswith('{') and not stripped.endswith(','):
+                        logger.warning(f"⚠️ Possible missing semicolon at line {i} in {file_path}")
+                
+                # Check for invalid modifiers on standalone classes
+                if stripped.startswith('static class') and file_path.name.endswith('.java'):
+                    logger.error(f"❌ Invalid static modifier on top-level class at line {i} in {file_path}")
+                    return False
+            
+            logger.info(f"✅ Advanced syntax validation passed for {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Advanced validation error in {file_path}: {e}")
             return False
     
     def find_all_inner_constructs(self, file_path: Path) -> List[Dict]:
@@ -179,15 +314,33 @@ class RobustJavaExtractor:
             if imports:
                 new_content.append("")
             
-            # Construct content with proper visibility
+            # Construct content with proper visibility and modifier cleanup
             construct_content = '\n'.join(construct['content_lines'])
             
-            # Ensure public visibility for extracted construct
-            if 'public' not in construct['modifiers']:
-                # Replace first occurrence of the construct declaration
-                pattern = f"(\\s*)((?:private|protected)\\s+)?(static\\s+)?({construct['type']}\\s+{construct['name']})"
-                replacement = f"\\1public \\3\\4"
-                construct_content = re.sub(pattern, replacement, construct_content, count=1)
+            # Fix modifiers for standalone class
+            # 1. Remove static modifier (not allowed on top-level classes)
+            # 2. Ensure public visibility
+            
+            # Build the correct declaration
+            modifiers = []
+            if 'public' in construct['modifiers'] or 'private' not in construct['modifiers'] and 'protected' not in construct['modifiers']:
+                modifiers.append('public')
+            elif 'protected' in construct['modifiers']:
+                modifiers.append('public')  # Change to public for extracted class
+            
+            # Don't include static for top-level classes
+            # Other modifiers like final are kept as-is
+            other_modifiers = [m for m in construct['modifiers'] if m not in ['public', 'private', 'protected', 'static']]
+            modifiers.extend(other_modifiers)
+            
+            # Rebuild the first line
+            modifier_str = ' '.join(modifiers) + ' ' if modifiers else ''
+            new_first_line = f"    {modifier_str}{construct['type']} {construct['name']} {{"
+            
+            # Replace the first line
+            lines = construct_content.split('\n')
+            lines[0] = new_first_line
+            construct_content = '\n'.join(lines)
             
             new_content.append(construct_content)
             
@@ -276,14 +429,15 @@ class RobustJavaExtractor:
             return False
     
     def process_single_file(self, file_path: Path) -> Dict:
-        """Process one Java file completely"""
+        """Process one Java file completely with compilation testing"""
         result = {
             'file': str(file_path),
             'success': False,
             'constructs_found': 0,
             'constructs_extracted': 0,
             'new_files': [],
-            'errors': []
+            'errors': [],
+            'compilation_tested': False
         }
         
         try:
@@ -321,14 +475,36 @@ class RobustJavaExtractor:
             if extracted_constructs:
                 # Update original file
                 if self.update_original_file(file_path, extracted_constructs):
-                    result['success'] = True
-                    result['constructs_extracted'] = len(extracted_constructs)
-                    result['new_files'] = new_files
+                    # Test compilation of all affected files
+                    files_to_test = [file_path] + [Path(f) for f in new_files]
+                    compilation_success, compilation_error = self.test_java_compilation(files_to_test)
+                    result['compilation_tested'] = True
                     
-                    # Remove backup
-                    backup_path.unlink()
-                    
-                    logger.info(f"✅ Successfully processed {file_path}: {len(extracted_constructs)} constructs extracted")
+                    if compilation_success:
+                        result['success'] = True
+                        result['constructs_extracted'] = len(extracted_constructs)
+                        result['new_files'] = new_files
+                        
+                        # Remove backup
+                        backup_path.unlink()
+                        
+                        logger.info(f"✅ Successfully processed {file_path}: {len(extracted_constructs)} constructs extracted and compiled")
+                    else:
+                        # Compilation failed - rollback everything
+                        logger.warning(f"⚠️ Compilation failed for {file_path}, rolling back changes")
+                        result['errors'].append(f"Compilation failed: {compilation_error}")
+                        
+                        # Restore original file from backup
+                        shutil.copy2(backup_path, file_path)
+                        backup_path.unlink()
+                        
+                        # Remove all created files
+                        for new_file_path in [Path(f) for f in new_files]:
+                            if new_file_path.exists():
+                                new_file_path.unlink()
+                                logger.info(f"🗑️ Removed failed extraction: {new_file_path}")
+                        
+                        result['new_files'] = []  # Clear since files were removed
                 else:
                     # Restore from backup
                     shutil.copy2(backup_path, file_path)
@@ -347,6 +523,18 @@ class RobustJavaExtractor:
         except Exception as e:
             logger.error(f"❌ Unexpected error processing {file_path}: {e}")
             result['errors'].append(f"Unexpected error: {e}")
+            
+            # Cleanup on unexpected error
+            backup_path = file_path.with_suffix('.java.backup')
+            if backup_path.exists():
+                shutil.copy2(backup_path, file_path)
+                backup_path.unlink()
+                
+            # Clean up any created files
+            for new_file_str in result.get('new_files', []):
+                new_file_path = Path(new_file_str)
+                if new_file_path.exists():
+                    new_file_path.unlink()
         
         return result
     

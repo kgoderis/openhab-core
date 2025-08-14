@@ -28,7 +28,9 @@ public class StubResponse {
     private final Instant timestamp;
     private final long processingTimeMs;
 
-    private StubResponse(Builder builder) {
+    // Constructor using inner Builder removed; use StubResponseBuilder instead
+
+    /* package */ StubResponse(StubResponseBuilder builder) {
         this.success = builder.success;
         this.message = builder.message;
         this.data = builder.data;
@@ -135,8 +137,8 @@ public class StubResponse {
      * 
      * @return Builder instance
      */
-    public static Builder builder() {
-        return new Builder();
+    public static StubResponseBuilder builder() {
+        return new StubResponseBuilder();
     }
 
     /**
@@ -206,58 +208,5 @@ public class StubResponse {
                 + ", processingTimeMs=" + processingTimeMs + '}';
     }
 
-    /**
-     * Builder for StubResponse.
-     */
-    public static class Builder {
-        private boolean success = true;
-        private @Nullable String message;
-        private @Nullable Object data;
-        private int statusCode = 200;
-        private @Nullable Map<String, String> headers;
-        private @Nullable Instant timestamp;
-        private long processingTimeMs = 0;
-
-        private Builder() {
-        }
-
-        public Builder success(boolean success) {
-            this.success = success;
-            return this;
-        }
-
-        public Builder message(@Nullable String message) {
-            this.message = message;
-            return this;
-        }
-
-        public Builder data(@Nullable Object data) {
-            this.data = data;
-            return this;
-        }
-
-        public Builder statusCode(int statusCode) {
-            this.statusCode = statusCode;
-            return this;
-        }
-
-        public Builder headers(@Nullable Map<String, String> headers) {
-            this.headers = headers;
-            return this;
-        }
-
-        public Builder timestamp(@Nullable Instant timestamp) {
-            this.timestamp = timestamp;
-            return this;
-        }
-
-        public Builder processingTimeMs(long processingTimeMs) {
-            this.processingTimeMs = processingTimeMs;
-            return this;
-        }
-
-        public StubResponse build() {
-            return new StubResponse(this);
-        }
-    }
+    // Builder extracted to top-level: see StubResponseBuilder
 }

@@ -25,30 +25,7 @@ public class MemoryPattern {
 
     public List<PatternEntry> getPatterns() { return new ArrayList<>(patterns); }
 
-    public static class PatternEntry {
-        private final String category;
-        private int occurrenceCount;
-        private double averageImportance;
-        private Instant lastOccurrence;
-
-        public PatternEntry(String category) {
-            this.category = category;
-            this.occurrenceCount = 0;
-            this.averageImportance = 0.0;
-            this.lastOccurrence = Instant.now();
-        }
-
-        public void addOccurrence(MemoryEntry entry) {
-            occurrenceCount++;
-            averageImportance = ((averageImportance * (occurrenceCount - 1)) + entry.getImportance()) / occurrenceCount;
-            lastOccurrence = entry.getTimestamp();
-        }
-
-        public String getCategory() { return category; }
-        public int getOccurrenceCount() { return occurrenceCount; }
-        public double getAverageImportance() { return averageImportance; }
-        public Instant getLastOccurrence() { return lastOccurrence; }
-    }
+    // Inner class extracted to top-level: org.openhab.core.ai.reasoning.PatternEntry
 }
 
 

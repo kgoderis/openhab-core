@@ -6,14 +6,6 @@ import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
-/**
- * Resource utilization metric for a resource/operation pair.
- *
- * Tracks utilization values, details, and timestamps.
- *
- * @author Karel Goderis - Initial Contribution
- * @since 1.0.0
- */
 @NonNullByDefault
 public class ResourceMetric {
     private final String resource;
@@ -31,7 +23,6 @@ public class ResourceMetric {
         utilizations.add(utilization);
         this.details.add(details);
         timestamps.add(Instant.now());
-
         if (utilizations.size() > 100) {
             utilizations.remove(0);
             this.details.remove(0);
@@ -41,16 +32,9 @@ public class ResourceMetric {
 
     public String getResource() { return resource; }
     public String getOperation() { return operation; }
-    public double getAverageUtilization() {
-        if (utilizations.isEmpty()) {
-            return 0.0;
-        }
-        return utilizations.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-    }
+    public double getAverageUtilization() { return utilizations.isEmpty() ? 0.0 : utilizations.stream().mapToDouble(Double::doubleValue).average().orElse(0.0); }
     public String getLastDetails() { return details.isEmpty() ? "" : details.get(details.size() - 1); }
     public List<Double> getUtilizations() { return new ArrayList<>(utilizations); }
     public List<String> getDetails() { return new ArrayList<>(details); }
     public List<Instant> getTimestamps() { return new ArrayList<>(timestamps); }
 }
-
-

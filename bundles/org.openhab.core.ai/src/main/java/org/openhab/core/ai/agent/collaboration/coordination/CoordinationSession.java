@@ -24,7 +24,7 @@ public class CoordinationSession {
     private @Nullable CoordinationResult result;
     private @Nullable String error;
 
-    private CoordinationSession(Builder builder) {
+    CoordinationSession(CoordinationSessionBuilder builder) {
         this.sessionId = builder.sessionId;
         this.agentIds = builder.agentIds;
         this.protocol = builder.protocol;
@@ -72,46 +72,7 @@ public class CoordinationSession {
         this.error = error;
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private String sessionId;
-        private List<String> agentIds;
-        private CoordinationProtocol protocol;
-        private Instant startTime;
-        private CoordinationState state;
-
-        public Builder sessionId(String sessionId) {
-            this.sessionId = sessionId;
-            return this;
-        }
-
-        public Builder agentIds(List<String> agentIds) {
-            this.agentIds = agentIds;
-            return this;
-        }
-
-        public Builder protocol(CoordinationProtocol protocol) {
-            this.protocol = protocol;
-            return this;
-        }
-
-        public Builder startTime(Instant startTime) {
-            this.startTime = startTime;
-            return this;
-        }
-
-        public Builder state(CoordinationState state) {
-            this.state = state;
-            return this;
-        }
-
-        public CoordinationSession build() {
-            return new CoordinationSession(this);
-        }
-    }
+    public static CoordinationSessionBuilder builder() { return new CoordinationSessionBuilder(); }
 }
 
 

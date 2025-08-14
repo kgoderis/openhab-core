@@ -44,7 +44,7 @@ public class AgentSecurityManager {
     private @Nullable AuditLogger auditLogger;
 
     // A2A-specific configuration
-    private final ServerConfiguration config;
+    private final ServerSecurityConfiguration config;
 
     // Rate limiting and security tracking
     private final Map<String, AtomicLong> requestCounters = new ConcurrentHashMap<>();
@@ -66,7 +66,7 @@ public class AgentSecurityManager {
      */
     @Activate
     public AgentSecurityManager() {
-        this.config = new ServerConfiguration(); // Default configuration for now
+        this.config = new ServerSecurityConfiguration(); // Default configuration for now
         logger.info("A2A Security Manager initialized");
     }
 
@@ -389,101 +389,15 @@ public class AgentSecurityManager {
     /**
      * A2A-specific permissions.
      */
-    public enum A2APermission {
-        CONNECT("connect"),
-        EXECUTE("execute"),
-        READ("read"),
-        WRITE("write"),
-        ADMIN("admin");
-
-        private final String permission;
-
-        A2APermission(String permission) {
-            this.permission = permission;
-        }
-
-        public String getPermission() {
-            return permission;
-        }
-    }
+    // Extracted to top-level: org.openhab.core.ai.agent.lifecycle.A2APermission
 
     /**
      * Security statistics.
      */
-    public static class SecurityStatistics {
-        private final int activeClients;
-        private final int failedAttempts;
-        private final int blockedClients;
-        private final boolean authenticationEnabled;
-        private final boolean requestValidationEnabled;
-        private final int maxConnections;
-        private final int rateLimitPerMinute;
-        private final int activeSessions;
-
-        public SecurityStatistics(int activeClients, int failedAttempts, int blockedClients,
-                boolean authenticationEnabled, boolean requestValidationEnabled, int maxConnections,
-                int rateLimitPerMinute, int activeSessions) {
-            this.activeClients = activeClients;
-            this.failedAttempts = failedAttempts;
-            this.blockedClients = blockedClients;
-            this.authenticationEnabled = authenticationEnabled;
-            this.requestValidationEnabled = requestValidationEnabled;
-            this.maxConnections = maxConnections;
-            this.rateLimitPerMinute = rateLimitPerMinute;
-            this.activeSessions = activeSessions;
-        }
-
-        public int getActiveClients() {
-            return activeClients;
-        }
-
-        public int getFailedAttempts() {
-            return failedAttempts;
-        }
-
-        public int getBlockedClients() {
-            return blockedClients;
-        }
-
-        public boolean isAuthenticationEnabled() {
-            return authenticationEnabled;
-        }
-
-        public boolean isRequestValidationEnabled() {
-            return requestValidationEnabled;
-        }
-
-        public int getMaxConnections() {
-            return maxConnections;
-        }
-
-        public int getRateLimitPerMinute() {
-            return rateLimitPerMinute;
-        }
-
-        public int getActiveSessions() {
-            return activeSessions;
-        }
-    }
+    // Extracted to top-level: org.openhab.core.ai.agent.lifecycle.SecurityStatistics
 
     /**
      * Simple A2A server configuration for security settings.
      */
-    private static class ServerConfiguration {
-        public boolean isEnableAuthentication() {
-            return true;
-        }
-
-        public boolean isEnableRequestValidation() {
-            return true;
-        }
-
-        public int getMaxConnections() {
-            return 100;
-        }
-
-        public int getRateLimitPerMinute() {
-            return 1000;
-        }
-    }
+    // Extracted to top-level: org.openhab.core.ai.agent.lifecycle.ServerSecurityConfiguration
 }

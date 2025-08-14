@@ -4,7 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.execution.ExecutionStrategy;
+import org.openhab.core.ai.agent.execution.ExecutionPriority;
+import org.openhab.core.ai.agent.execution.ExecutionStrategyType;
 
 /**
  * Execution Request
@@ -17,15 +18,15 @@ import org.openhab.core.ai.agent.execution.ExecutionStrategy;
  */
 @NonNullByDefault
 public class ExecutionRequest {
-    private final ExecutionStrategy.ExecutionStrategyType type;
+    private final ExecutionStrategyType type;
     private final String targetName;
     private final Map<String, Object> parameters;
-    private final ExecutionStrategy.ExecutionPriority priority;
+    private final ExecutionPriority priority;
     private final Map<String, Object> context;
     private final boolean requiresValidation;
     private final boolean requiresSafetyChecks;
 
-    private ExecutionRequest(Builder builder) {
+    /* package */ ExecutionRequest(ExecutionRequestBuilder builder) {
         this.type = builder.type;
         this.targetName = builder.targetName;
         this.parameters = new HashMap<>(builder.parameters);
@@ -35,7 +36,7 @@ public class ExecutionRequest {
         this.requiresSafetyChecks = builder.requiresSafetyChecks;
     }
 
-    public ExecutionStrategy.ExecutionStrategyType getType() {
+    public ExecutionStrategyType getType() {
         return type;
     }
 
@@ -47,7 +48,7 @@ public class ExecutionRequest {
         return new HashMap<>(parameters);
     }
 
-    public ExecutionStrategy.ExecutionPriority getPriority() {
+    public ExecutionPriority getPriority() {
         return priority;
     }
 
@@ -63,77 +64,7 @@ public class ExecutionRequest {
         return requiresSafetyChecks;
     }
 
-    /**
-     * Builder for ExecutionRequest
-     */
-    public static class Builder {
-        private ExecutionStrategy.ExecutionStrategyType type = ExecutionStrategy.ExecutionStrategyType.SKILL;
-        private String targetName = "";
-        private Map<String, Object> parameters = new HashMap<>();
-        private ExecutionStrategy.ExecutionPriority priority = ExecutionStrategy.ExecutionPriority.MEDIUM;
-        private Map<String, Object> context = new HashMap<>();
-        private boolean requiresValidation = true;
-        private boolean requiresSafetyChecks = true;
-
-        public Builder type(ExecutionStrategy.ExecutionStrategyType type) {
-            this.type = type;
-            return this;
-        }
-
-        public Builder targetName(String targetName) {
-            this.targetName = targetName;
-            return this;
-        }
-
-        public Builder parameters(Map<String, Object> parameters) {
-            this.parameters = new HashMap<>(parameters);
-            return this;
-        }
-
-        public Builder parameter(String key, Object value) {
-            this.parameters.put(key, value);
-            return this;
-        }
-
-        public Builder priority(ExecutionStrategy.ExecutionPriority priority) {
-            this.priority = priority;
-            return this;
-        }
-
-        public Builder context(Map<String, Object> context) {
-            this.context = new HashMap<>(context);
-            return this;
-        }
-
-        public Builder context(String key, Object value) {
-            this.context.put(key, value);
-            return this;
-        }
-
-        public Builder requiresValidation(boolean requiresValidation) {
-            this.requiresValidation = requiresValidation;
-            return this;
-        }
-
-        public Builder requiresSafetyChecks(boolean requiresSafetyChecks) {
-            this.requiresSafetyChecks = requiresSafetyChecks;
-            return this;
-        }
-
-        public ExecutionRequest build() {
-            if (targetName == null || targetName.trim().isEmpty()) {
-                throw new IllegalArgumentException("Target name cannot be null or empty");
-            }
-            return new ExecutionRequest(this);
-        }
-    }
-
-    /**
-     * Create a new builder
-     * 
-     * @return the builder
-     */
-    public static Builder builder() {
-        return new Builder();
+    public static ExecutionRequestBuilder builder() {
+        return new ExecutionRequestBuilder();
     }
 }

@@ -14,32 +14,19 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public class ReasoningInput implements Comparable<ReasoningInput> {
-    public enum InputType {
-        EVENT,
-        LOG,
-        USER_INPUT,
-        SYSTEM_METRIC
-    }
-
-    public enum Status {
-        PENDING,
-        PROCESSING,
-        ROUTED,
-        FAILED,
-        COMPLETED
-    }
+    // enums extracted to top-level: ReasoningInputType, ReasoningInputStatus
 
     private final String id;
-    private final InputType type;
+    private final ReasoningInputType type;
     private final String content;
     private final Instant timestamp;
     private final Map<String, Object> context;
     private final int priority;
     private double quality;
-    private Status status;
+    private ReasoningInputStatus status;
     private Instant processedAt;
 
-    public ReasoningInput(String id, InputType type, String content, Instant timestamp, Map<String, Object> context,
+    public ReasoningInput(String id, ReasoningInputType type, String content, Instant timestamp, Map<String, Object> context,
             int priority) {
         this.id = id;
         this.type = type;
@@ -48,14 +35,14 @@ public class ReasoningInput implements Comparable<ReasoningInput> {
         this.context = new HashMap<>(context);
         this.priority = priority;
         this.quality = 1.0;
-        this.status = Status.PENDING;
+        this.status = ReasoningInputStatus.PENDING;
     }
 
     public String getId() {
         return id;
     }
 
-    public InputType getType() {
+    public ReasoningInputType getType() {
         return type;
     }
 
@@ -83,11 +70,11 @@ public class ReasoningInput implements Comparable<ReasoningInput> {
         this.quality = quality;
     }
 
-    public Status getStatus() {
+    public ReasoningInputStatus getStatus() {
         return status;
     }
 
-    public void setStatus(Status status) {
+    public void setStatus(ReasoningInputStatus status) {
         this.status = status;
     }
 

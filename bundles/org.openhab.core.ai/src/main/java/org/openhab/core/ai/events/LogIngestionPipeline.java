@@ -322,13 +322,13 @@ public class LogIngestionPipeline {
     /**
      * Calculate anomaly severity
      */
-    private LogAnomaly.Severity calculateAnomalySeverity(LogEntry entry) {
+    private LogAnomalySeverity calculateAnomalySeverity(LogEntry entry) {
         if (entry.getLevel() == LogLevel.ERROR) {
-            return LogAnomaly.Severity.HIGH;
+            return LogAnomalySeverity.HIGH;
         } else if (entry.getLevel() == LogLevel.WARN) {
-            return LogAnomaly.Severity.MEDIUM;
+            return LogAnomalySeverity.MEDIUM;
         } else {
-            return LogAnomaly.Severity.LOW;
+            return LogAnomalySeverity.LOW;
         }
     }
 
@@ -467,13 +467,7 @@ public class LogIngestionPipeline {
 
     // Inner classes extracted to top-level: LogEntry, LogAnomaly, LogCorrelation, LogPerformanceMetrics
 
-    public enum LogLevel {
-        TRACE,
-        DEBUG,
-        INFO,
-        WARN,
-        ERROR
-    }
+    // LogLevel extracted to top-level: org.openhab.core.ai.events.LogLevel
 
     // Inner class extracted to top-level: org.openhab.core.ai.events.LogFileMonitor
 }

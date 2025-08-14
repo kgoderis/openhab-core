@@ -262,7 +262,7 @@ public class AgentTaskManager {
         }
 
         // Update task state
-        state.setState(TaskOrchestrationState.State.CANCELLED);
+        state.setState(TaskOrchestrationStateState.CANCELLED);
         state.setEndTime(System.currentTimeMillis());
 
         // Record cancellation in metrics
@@ -652,7 +652,7 @@ public class AgentTaskManager {
         try {
             TaskOrchestrationState state = taskStates.get(taskId);
             if (state != null) {
-                state.setState(TaskOrchestrationState.State.RUNNING);
+                state.setState(TaskOrchestrationStateState.RUNNING);
                 state.setStartTime(System.currentTimeMillis());
 
                 // Initialize metrics
@@ -675,8 +675,8 @@ public class AgentTaskManager {
     public void pauseTask(String taskId) {
         try {
             TaskOrchestrationState state = taskStates.get(taskId);
-            if (state != null && state.getState() == TaskOrchestrationState.State.RUNNING) {
-                state.setState(TaskOrchestrationState.State.PAUSED);
+            if (state != null && state.getState() == TaskOrchestrationStateState.RUNNING) {
+                state.setState(TaskOrchestrationStateState.PAUSED);
                 logger.debug("Paused task: {}", taskId);
             } else {
                 logger.warn("Cannot pause task {}: not running", taskId);
@@ -695,7 +695,7 @@ public class AgentTaskManager {
         try {
             TaskOrchestrationState state = taskStates.get(taskId);
             if (state != null && state.getState() == TaskOrchestrationState.State.PAUSED) {
-                state.setState(TaskOrchestrationState.State.RUNNING);
+                state.setState(TaskOrchestrationStateState.RUNNING);
                 logger.debug("Resumed task: {}", taskId);
             } else {
                 logger.warn("Cannot resume task {}: not paused", taskId);
@@ -714,7 +714,7 @@ public class AgentTaskManager {
         try {
             TaskOrchestrationState state = taskStates.get(taskId);
             if (state != null) {
-                state.setState(TaskOrchestrationState.State.CANCELLED);
+                state.setState(TaskOrchestrationStateState.CANCELLED);
 
                 // Update metrics
                 TaskMetrics metrics = taskMetrics.get(taskId);
@@ -760,7 +760,7 @@ public class AgentTaskManager {
         try {
             TaskOrchestrationState state = taskStates.get(taskId);
             if (state != null) {
-                state.setState(TaskOrchestrationState.State.ERROR);
+                state.setState(TaskOrchestrationStateState.ERROR);
                 state.setLastError(error);
 
                 // Update metrics
@@ -785,7 +785,7 @@ public class AgentTaskManager {
     public boolean recoverFromTaskError(String taskId) {
         try {
             TaskOrchestrationState state = taskStates.get(taskId);
-            if (state != null && state.getState() == TaskOrchestrationState.State.ERROR) {
+            if (state != null && state.getState() == TaskOrchestrationStateState.ERROR) {
                 // TODO: Implement recovery logic
                 // This could involve retrying with different parameters, using fallback agents, etc.
 
@@ -1277,7 +1277,7 @@ public class AgentTaskManager {
             String taskId = entry.getKey();
             TaskOrchestrationState state = entry.getValue();
 
-            if (state.getState() == TaskOrchestrationState.State.RUNNING) {
+            if (state.getState() == TaskOrchestrationStateState.RUNNING) {
                 String agentId = taskAgentAssignments.get(taskId);
                 if (agentId != null) {
                     resourceAllocationGraph.put(taskId, Set.of(agentId));

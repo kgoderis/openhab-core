@@ -43,7 +43,7 @@ public class SecurityIntegrationService {
      * @return A CompletableFuture containing the comprehensive security validation result
      */
     public CompletableFuture<ComprehensiveSecurityResult> validateSecurity(
-            ModelRequest request, AgentModelContextBuilder.AgentModelContext context,
+            ModelRequest request, AgentModelContext context,
             String actionType, Map<String, Object> actionParameters, String userId) {
 
         logger.debug("Performing comprehensive security validation for request: {}", request.getRequestId());
@@ -74,7 +74,7 @@ public class SecurityIntegrationService {
 
                 if (!safetyResult.isValid()) {
                     result.setSafetyValid(false);
-                    result.addSafetyIssue("SAFETY_VIOLATION", safetyResult.getReason());
+                    result.addSafetyIssue(new SafetyIssue("SAFETY_VIOLATION", safetyResult.getReason()));
                     result.setOverallValid(false);
                     logger.warn("Safety validation failed for request: {}", request.getRequestId());
                     return result;
@@ -89,7 +89,7 @@ public class SecurityIntegrationService {
             } catch (Exception e) {
                 logger.error("Error during comprehensive security validation: {}", e.getMessage(), e);
                 result.setOverallValid(false);
-                result.addSecurityIssue("SYSTEM_ERROR", "Security validation error: " + e.getMessage());
+                result.addSecurityIssue(new SecurityIssue(SecurityIssueType.SYSTEM_ERROR, "Security validation error: " + e.getMessage()));
             }
 
             return result;

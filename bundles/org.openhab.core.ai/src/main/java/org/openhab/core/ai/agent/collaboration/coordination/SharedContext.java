@@ -24,7 +24,7 @@ public class SharedContext {
 	private Instant lastModified;
 	private int version;
 
-	private SharedContext(Builder builder) {
+    SharedContext(SharedContextBuilder builder) {
 		this.contextId = builder.contextId;
 		this.agentIds = builder.agentIds;
 		this.contextData = builder.contextData;
@@ -42,29 +42,10 @@ public class SharedContext {
 	public Instant getLastModified() { return lastModified; }
 	public int getVersion() { return version; }
 
-	public Builder toBuilder() {
-		return new Builder().contextId(contextId).agentIds(agentIds).contextData(contextData)
+    public SharedContextBuilder toBuilder() {
+        return new SharedContextBuilder().contextId(contextId).agentIds(agentIds).contextData(contextData)
 				.accessLevel(accessLevel).createdTime(createdTime).lastModified(lastModified).version(version);
 	}
 
-	public static Builder builder() { return new Builder(); }
-
-	public static class Builder {
-		private String contextId;
-		private List<String> agentIds;
-		private Map<String, Object> contextData;
-		private ContextAccessLevel accessLevel;
-		private Instant createdTime;
-		private Instant lastModified;
-		private int version;
-
-		public Builder contextId(String contextId) { this.contextId = contextId; return this; }
-		public Builder agentIds(List<String> agentIds) { this.agentIds = agentIds; return this; }
-		public Builder contextData(Map<String, Object> contextData) { this.contextData = contextData; return this; }
-		public Builder accessLevel(ContextAccessLevel accessLevel) { this.accessLevel = accessLevel; return this; }
-		public Builder createdTime(Instant createdTime) { this.createdTime = createdTime; return this; }
-		public Builder lastModified(Instant lastModified) { this.lastModified = lastModified; return this; }
-		public Builder version(int version) { this.version = version; return this; }
-		public SharedContext build() { return new SharedContext(this); }
-	}
+    public static SharedContextBuilder builder() { return new SharedContextBuilder(); }
 }

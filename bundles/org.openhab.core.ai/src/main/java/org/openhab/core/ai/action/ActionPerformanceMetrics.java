@@ -41,7 +41,7 @@ public class ActionPerformanceMetrics {
     private final double successRate;
     private final double failureRate;
 
-    private ActionPerformanceMetrics(Builder builder) {
+    /* package */ ActionPerformanceMetrics(ActionPerformanceMetricsBuilder builder) {
         this.actionId = builder.actionId;
         this.totalExecutions = builder.totalExecutions;
         this.successfulExecutions = builder.successfulExecutions;
@@ -121,72 +121,8 @@ public class ActionPerformanceMetrics {
         return Duration.ofMillis(maxExecutionTimeMs);
     }
 
-    /**
-     * Builder for ActionPerformanceMetrics.
-     */
-    public static class Builder {
-        private String actionId = "";
-        private long totalExecutions = 0;
-        private long successfulExecutions = 0;
-        private long failedExecutions = 0;
-        private long totalExecutionTimeMs = 0;
-        private long minExecutionTimeMs = Long.MAX_VALUE;
-        private long maxExecutionTimeMs = 0;
-        private Instant firstExecution = Instant.now();
-        private Instant lastExecution = Instant.now();
-
-        public Builder actionId(String actionId) {
-            this.actionId = actionId;
-            return this;
-        }
-
-        public Builder totalExecutions(long totalExecutions) {
-            this.totalExecutions = totalExecutions;
-            return this;
-        }
-
-        public Builder successfulExecutions(long successfulExecutions) {
-            this.successfulExecutions = successfulExecutions;
-            return this;
-        }
-
-        public Builder failedExecutions(long failedExecutions) {
-            this.failedExecutions = failedExecutions;
-            return this;
-        }
-
-        public Builder totalExecutionTimeMs(long totalExecutionTimeMs) {
-            this.totalExecutionTimeMs = totalExecutionTimeMs;
-            return this;
-        }
-
-        public Builder minExecutionTimeMs(long minExecutionTimeMs) {
-            this.minExecutionTimeMs = minExecutionTimeMs;
-            return this;
-        }
-
-        public Builder maxExecutionTimeMs(long maxExecutionTimeMs) {
-            this.maxExecutionTimeMs = maxExecutionTimeMs;
-            return this;
-        }
-
-        public Builder firstExecution(Instant firstExecution) {
-            this.firstExecution = firstExecution;
-            return this;
-        }
-
-        public Builder lastExecution(Instant lastExecution) {
-            this.lastExecution = lastExecution;
-            return this;
-        }
-
-        public ActionPerformanceMetrics build() {
-            return new ActionPerformanceMetrics(this);
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
+    public static ActionPerformanceMetricsBuilder builder() {
+        return new ActionPerformanceMetricsBuilder();
     }
 
     @Override

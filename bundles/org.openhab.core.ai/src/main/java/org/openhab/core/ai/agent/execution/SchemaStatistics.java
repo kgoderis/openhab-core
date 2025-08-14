@@ -2,9 +2,6 @@ package org.openhab.core.ai.agent.execution;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
-/**
- * Schema generation statistics.
- */
 @NonNullByDefault
 public class SchemaStatistics {
     private final long totalSchemasGenerated;
@@ -35,5 +32,3 @@ public class SchemaStatistics {
         return totalRequests > 0 ? (double) totalSchemaCacheHits / totalRequests : 0.0;
     }
 }
-
-

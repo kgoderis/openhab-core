@@ -7,7 +7,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 @NonNullByDefault
-public class CompositionMetric {
+public final class CompositionMetric {
     private final String compositionId;
     private final boolean success;
     private final Duration duration;

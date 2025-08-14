@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.tool.api.Specification;
+import org.openhab.core.ai.tool.api.SpecificationType;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -135,9 +136,7 @@ public class ToolSpecification implements Specification {
     }
 
     @Override
-    public SpecificationType getType() {
-        return SpecificationType.RESOURCE; // Tools are treated as resources in the specification system
-    }
+    public SpecificationType getType() { return SpecificationType.RESOURCE; }
 
     /**
      * Validate the tool specification.

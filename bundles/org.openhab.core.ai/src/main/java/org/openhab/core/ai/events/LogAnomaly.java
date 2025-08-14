@@ -13,16 +13,16 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public class LogAnomaly {
-    public enum Severity { LOW, MEDIUM, HIGH, CRITICAL }
+    // enum extracted to top-level: org.openhab.core.ai.events.LogAnomalySeverity
 
     private final String id;
     private final LogEntry logEntry;
     private final String type;
-    private final Severity severity;
+    private final LogAnomalySeverity severity;
     private final LocalDateTime timestamp;
     private final Instant detectedAt;
 
-    public LogAnomaly(String id, LogEntry logEntry, String type, Severity severity, LocalDateTime timestamp,
+    public LogAnomaly(String id, LogEntry logEntry, String type, LogAnomalySeverity severity, LocalDateTime timestamp,
             Instant detectedAt) {
         this.id = id;
         this.logEntry = logEntry;
@@ -35,7 +35,7 @@ public class LogAnomaly {
     public String getId() { return id; }
     public LogEntry getLogEntry() { return logEntry; }
     public String getType() { return type; }
-    public Severity getSeverity() { return severity; }
+    public LogAnomalySeverity getSeverity() { return severity; }
     public LocalDateTime getTimestamp() { return timestamp; }
     public Instant getDetectedAt() { return detectedAt; }
 }

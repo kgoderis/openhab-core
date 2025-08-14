@@ -44,7 +44,7 @@ public class DefaultErrorRecoveryService implements org.openhab.core.ai.tool.err
     private final Map<String, Long> serviceLastCheck = new ConcurrentHashMap<>();
 
     // Circuit breaker state
-    private final Map<String, CircuitBreakerState> circuitBreakers = new ConcurrentHashMap<>();
+    private final Map<String, DefaultErrorRecoveryServiceCircuitBreakerState> circuitBreakers = new ConcurrentHashMap<>();
 
     public DefaultErrorRecoveryService(AuditLogger auditLogger) {
         this.auditLogger = auditLogger;
@@ -108,7 +108,7 @@ public class DefaultErrorRecoveryService implements org.openhab.core.ai.tool.err
         // Determine recovery action based on error type and count
         if (errorCount > 5) {
             // Too many errors, open circuit breaker
-            circuitBreakers.put(errorType, CircuitBreakerState.OPEN);
+            circuitBreakers.put(errorType, DefaultErrorRecoveryServiceCircuitBreakerState.OPEN);
             return new RecoveryAction("CIRCUIT_BREAKER_OPEN", "Circuit breaker opened due to too many errors", false,
                     0);
         } else if (errorCount > 2) {
@@ -132,7 +132,7 @@ public class DefaultErrorRecoveryService implements org.openhab.core.ai.tool.err
         }
 
         // Close circuit breaker if it was open
-        circuitBreakers.put(errorType, CircuitBreakerState.CLOSED);
+        circuitBreakers.put(errorType, DefaultErrorRecoveryServiceCircuitBreakerState.CLOSED);
     }
 
     @Override
@@ -194,7 +194,7 @@ public class DefaultErrorRecoveryService implements org.openhab.core.ai.tool.err
         }
         lastErrorTimes.remove(errorType);
         lastErrorMessages.remove(errorType);
-        circuitBreakers.put(errorType, CircuitBreakerState.CLOSED);
+        circuitBreakers.put(errorType, DefaultErrorRecoveryServiceCircuitBreakerState.CLOSED);
         logger.info("Error counters reset for: {}", errorType);
     }
 
@@ -212,13 +212,13 @@ public class DefaultErrorRecoveryService implements org.openhab.core.ai.tool.err
 
     @Override
     public void forceCircuitBreakerOpen(String serviceName) {
-        circuitBreakers.put(serviceName, CircuitBreakerState.OPEN);
+        circuitBreakers.put(serviceName, DefaultErrorRecoveryServiceCircuitBreakerState.OPEN);
         logger.info("Circuit breaker forced open for: {}", serviceName);
     }
 
     @Override
     public void forceCircuitBreakerClose(String serviceName) {
-        circuitBreakers.put(serviceName, CircuitBreakerState.CLOSED);
+        circuitBreakers.put(serviceName, DefaultErrorRecoveryServiceCircuitBreakerState.CLOSED);
         logger.info("Circuit breaker forced closed for: {}", serviceName);
     }
 
@@ -266,9 +266,5 @@ public class DefaultErrorRecoveryService implements org.openhab.core.ai.tool.err
     /**
      * Circuit breaker states
      */
-    private enum CircuitBreakerState {
-        CLOSED, // Normal operation
-        OPEN, // Circuit breaker is open, no requests allowed
-        HALF_OPEN // Testing if service is back to normal
-    }
+    // enum extracted to top-level: org.openhab.core.ai.tool.error.DefaultErrorRecoveryServiceCircuitBreakerState
 }

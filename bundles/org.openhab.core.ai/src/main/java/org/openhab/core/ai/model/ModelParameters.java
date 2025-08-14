@@ -22,7 +22,7 @@ public class ModelParameters {
     private final @Nullable String systemPrompt;
     private final int timeoutMs;
 
-    private ModelParameters(Builder builder) {
+    /* package */ ModelParameters(ModelParametersBuilder builder) {
         this.temperature = builder.temperature;
         this.maxTokens = builder.maxTokens;
         this.model = builder.model;
@@ -106,56 +106,7 @@ public class ModelParameters {
         return (T) additionalParams.get(key);
     }
 
-    public static class Builder {
-        private double temperature = 0.7;
-        private int maxTokens = 1000;
-        private @Nullable String model;
-        private Map<String, Object> additionalParams = Map.of();
-        private boolean stream = false;
-        private @Nullable String systemPrompt;
-        private int timeoutMs = 30000;
-
-        public Builder temperature(double temperature) {
-            this.temperature = temperature;
-            return this;
-        }
-
-        public Builder maxTokens(int maxTokens) {
-            this.maxTokens = maxTokens;
-            return this;
-        }
-
-        public Builder model(@Nullable String model) {
-            this.model = model;
-            return this;
-        }
-
-        public Builder additionalParams(Map<String, Object> additionalParams) {
-            this.additionalParams = additionalParams;
-            return this;
-        }
-
-        public Builder stream(boolean stream) {
-            this.stream = stream;
-            return this;
-        }
-
-        public Builder systemPrompt(@Nullable String systemPrompt) {
-            this.systemPrompt = systemPrompt;
-            return this;
-        }
-
-        public Builder timeoutMs(int timeoutMs) {
-            this.timeoutMs = timeoutMs;
-            return this;
-        }
-
-        public ModelParameters build() {
-            return new ModelParameters(this);
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
+    public static ModelParametersBuilder builder() {
+        return new ModelParametersBuilder();
     }
 }

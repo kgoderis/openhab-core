@@ -10,7 +10,7 @@ import org.openhab.core.ai.tool.api.CompletionContext;
 import org.openhab.core.ai.tool.api.CompletionResult;
 import org.openhab.core.ai.tool.completions.adapter.CommandCompletionAdapter;
 import org.openhab.core.ai.tool.completions.adapter.ConfigurationCompletionAdapter;
-import org.openhab.core.ai.tool.completions.adapter.ItemCompletionAdapter;
+import org.openhab.core.ai.tool.completions.adapter.ItemCompletionHandler;
 import org.openhab.core.ai.tool.completions.adapter.RuleCompletionAdapter;
 import org.openhab.core.automation.RuleRegistry;
 import org.openhab.core.items.ItemRegistry;
@@ -39,14 +39,14 @@ public class CompletionSuggestionService {
     private final AtomicLong totalExecutions = new AtomicLong(0);
     private final AtomicLong totalTimeMs = new AtomicLong(0);
 
-    private @Nullable ItemCompletionAdapter itemCompletionAdapter;
+    private @Nullable ItemCompletionHandler itemCompletionAdapter;
     private @Nullable RuleCompletionAdapter ruleCompletionAdapter;
     private @Nullable CommandCompletionAdapter commandCompletionAdapter;
     private final ConfigurationCompletionAdapter configurationCompletionAdapter = new ConfigurationCompletionAdapter();
 
     @Reference
     public void setItemRegistry(ItemRegistry itemRegistry) {
-        this.itemCompletionAdapter = new ItemCompletionAdapter(itemRegistry);
+        this.itemCompletionAdapter = new ItemCompletionHandler(itemRegistry);
         this.commandCompletionAdapter = new CommandCompletionAdapter(itemRegistry);
     }
 
@@ -78,7 +78,7 @@ public class CompletionSuggestionService {
             CompletionContext context) {
         long start = System.currentTimeMillis();
         try {
-            ItemCompletionAdapter adapter = itemCompletionAdapter;
+            ItemCompletionHandler adapter = itemCompletionAdapter;
             if (adapter == null) {
                 return CompletionResult.failure("ItemCompletionAdapter not available",
                         System.currentTimeMillis() - start);

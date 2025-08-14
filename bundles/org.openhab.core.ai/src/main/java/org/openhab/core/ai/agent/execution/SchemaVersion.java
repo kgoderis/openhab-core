@@ -2,9 +2,6 @@ package org.openhab.core.ai.agent.execution;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
-/**
- * Schema version information.
- */
 @NonNullByDefault
 public class SchemaVersion {
     private final String actionId;
@@ -24,5 +21,3 @@ public class SchemaVersion {
     public TaskSchema getSchema() { return schema; }
     public long getCreatedAt() { return createdAt; }
 }
-
-
