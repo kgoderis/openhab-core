@@ -21,12 +21,30 @@ public class SchemaStatistics {
         this.versionCount = versionCount;
     }
 
-    public long getTotalSchemasGenerated() { return totalSchemasGenerated; }
-    public long getTotalSchemaValidations() { return totalSchemaValidations; }
-    public long getTotalSchemaCacheHits() { return totalSchemaCacheHits; }
-    public long getTotalSchemaCacheMisses() { return totalSchemaCacheMisses; }
-    public int getCacheSize() { return cacheSize; }
-    public int getVersionCount() { return versionCount; }
+    public long getTotalSchemasGenerated() {
+        return totalSchemasGenerated;
+    }
+
+    public long getTotalSchemaValidations() {
+        return totalSchemaValidations;
+    }
+
+    public long getTotalSchemaCacheHits() {
+        return totalSchemaCacheHits;
+    }
+
+    public long getTotalSchemaCacheMisses() {
+        return totalSchemaCacheMisses;
+    }
+
+    public int getCacheSize() {
+        return cacheSize;
+    }
+
+    public int getVersionCount() {
+        return versionCount;
+    }
+
     public double getCacheHitRate() {
         long totalRequests = totalSchemaCacheHits + totalSchemaCacheMisses;
         return totalRequests > 0 ? (double) totalSchemaCacheHits / totalRequests : 0.0;

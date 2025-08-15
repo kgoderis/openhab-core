@@ -20,5 +20,3 @@ class BackupFile {
     long size = 0;
     Instant lastModified;
 }
-
-

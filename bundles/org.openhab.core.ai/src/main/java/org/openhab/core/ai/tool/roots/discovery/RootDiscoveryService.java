@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.resources.specification.ResourceSpecification;
+import org.openhab.core.ai.tool.resources.api.specification.ResourceSpecification;
 
 /**
  * Service for discovering MCP roots.

@@ -11,7 +11,7 @@ import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.api.ToolValidationResult;
+import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 
 /**
  * Test class for the new Tool API classes with Tool* prefix naming convention.
@@ -116,7 +116,7 @@ class ToolAPITest {
     void testToolException() {
         String toolId = "test-tool";
         String message = "Test error message";
-        ToolException.ToolErrorCode errorCode = ToolException.ToolErrorCode.INVALID_PARAMETER;
+        org.openhab.core.ai.tool.api.ToolErrorCode errorCode = org.openhab.core.ai.tool.api.ToolErrorCode.INVALID_PARAMETER;
 
         // Test exception with message
         ToolException exception = new ToolException(toolId, message, errorCode);
@@ -218,16 +218,16 @@ class ToolAPITest {
      */
     @Test
     void testToolErrorCode() {
-        ToolException.ToolErrorCode[] errorCodes = ToolException.ToolErrorCode.values();
+        org.openhab.core.ai.tool.api.ToolErrorCode[] errorCodes = org.openhab.core.ai.tool.api.ToolErrorCode.values();
 
         assertEquals(6, errorCodes.length);
 
         // Test specific error codes
-        assertNotNull(ToolException.ToolErrorCode.valueOf("INVALID_PARAMETER"));
-        assertNotNull(ToolException.ToolErrorCode.valueOf("SERVICE_UNAVAILABLE"));
-        assertNotNull(ToolException.ToolErrorCode.valueOf("RESOURCE_NOT_FOUND"));
-        assertNotNull(ToolException.ToolErrorCode.valueOf("ACCESS_DENIED"));
-        assertNotNull(ToolException.ToolErrorCode.valueOf("EXECUTION_ERROR"));
-        assertNotNull(ToolException.ToolErrorCode.valueOf("TIMEOUT"));
+        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("INVALID_PARAMETER"));
+        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("SERVICE_UNAVAILABLE"));
+        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("RESOURCE_NOT_FOUND"));
+        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("ACCESS_DENIED"));
+        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("EXECUTION_ERROR"));
+        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("TIMEOUT"));
     }
 }

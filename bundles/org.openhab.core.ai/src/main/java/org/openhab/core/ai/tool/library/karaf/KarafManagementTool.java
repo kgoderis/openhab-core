@@ -18,7 +18,7 @@ import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.api.ToolValidationResult;
+import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -133,7 +133,7 @@ public class KarafManagementTool implements Tool {
 
         if (bundleContext == null) {
             throw new ToolException(TOOL_ID, "Bundle context not available",
-                    ToolErrorCode.SERVICE_UNAVAILABLE);
+                    org.openhab.core.ai.tool.api.ToolErrorCode.SERVICE_UNAVAILABLE);
         }
 
         try {
@@ -155,7 +155,7 @@ public class KarafManagementTool implements Tool {
                 case "bundle_services" -> getBundleServices(parameters);
                 case "bundle_dependencies" -> getBundleDependencies(parameters);
                 default -> throw new ToolException(TOOL_ID, "Unknown operation: " + operation,
-                        ToolErrorCode.INVALID_PARAMETER);
+                        org.openhab.core.ai.tool.api.ToolErrorCode.INVALID_PARAMETER);
             };
 
             long executionTime = System.currentTimeMillis() - startTime;
@@ -164,7 +164,7 @@ public class KarafManagementTool implements Tool {
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
             throw new ToolException(TOOL_ID, "Karaf management operation failed: " + e.getMessage(), e,
-                    ToolErrorCode.EXECUTION_ERROR);
+                    org.openhab.core.ai.tool.api.ToolErrorCode.EXECUTION_ERROR);
         }
     }
 

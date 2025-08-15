@@ -31,9 +31,23 @@ public class ConflictPatternAnalysis {
         this.timeRange = timeRange;
     }
 
-    public int getTotalConflicts() { return totalConflicts; }
-    public Map<String, Integer> getAgentConflictCounts() { return agentConflictCounts; }
-    public Map<ConflictType, Integer> getTypeConflictCounts() { return typeConflictCounts; }
-    public Map<ConflictPriority, Integer> getPriorityConflictCounts() { return priorityConflictCounts; }
-    public Duration getTimeRange() { return timeRange; }
+    public int getTotalConflicts() {
+        return totalConflicts;
+    }
+
+    public Map<String, Integer> getAgentConflictCounts() {
+        return agentConflictCounts;
+    }
+
+    public Map<ConflictType, Integer> getTypeConflictCounts() {
+        return typeConflictCounts;
+    }
+
+    public Map<ConflictPriority, Integer> getPriorityConflictCounts() {
+        return priorityConflictCounts;
+    }
+
+    public Duration getTimeRange() {
+        return timeRange;
+    }
 }

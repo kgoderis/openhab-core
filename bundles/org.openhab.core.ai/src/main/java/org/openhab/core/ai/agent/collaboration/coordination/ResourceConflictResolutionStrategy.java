@@ -20,5 +20,3 @@ public class ResourceConflictResolutionStrategy implements ConflictResolutionStr
                 ConflictResolutionResult.success("Resource conflict resolved using priority-based allocation"));
     }
 }
-
-

@@ -35,7 +35,6 @@ public class ServletLifecycleManager {
     private final AtomicLong totalErrors = new AtomicLong(0);
     private final AtomicLong startTime = new AtomicLong(0);
 
-
     /**
      * Activate the servlet lifecycle manager.
      */
@@ -264,5 +263,4 @@ public class ServletLifecycleManager {
         registeredServlets.values().forEach(ServletInfo::resetStatistics);
         logger.info("Servlet Lifecycle Manager statistics reset");
     }
-
 }

@@ -22,11 +22,23 @@ public class ResourceAnalytics {
         this.timestamp = timestamp;
     }
 
-    public double getOverallUtilization() { return overallUtilization; }
-    public List<ResourceMetric> getMetrics() { return metrics; }
-    public List<ResourceIssue> getIssues() { return issues; }
-    public List<ResourceOptimizationRecommendation> getRecommendations() { return recommendations; }
-    public Instant getTimestamp() { return timestamp; }
+    public double getOverallUtilization() {
+        return overallUtilization;
+    }
+
+    public List<ResourceMetric> getMetrics() {
+        return metrics;
+    }
+
+    public List<ResourceIssue> getIssues() {
+        return issues;
+    }
+
+    public List<ResourceOptimizationRecommendation> getRecommendations() {
+        return recommendations;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
 }
-
-

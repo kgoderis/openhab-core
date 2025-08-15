@@ -8,7 +8,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 /**
  * Aggregated execution statistics for agent synchronization operations.
  *
- * <p>Extracted from AgentSynchronizationService.</p>
+ * <p>
+ * Extracted from AgentSynchronizationService.
+ * </p>
  *
  * @author Karel Goderis - Initial Contribution
  * @since 4.0.0
@@ -24,15 +26,9 @@ public final class SynchronizationTaskExecutionStats {
     private final Map<String, Long> tasksByStatus;
     private final Instant lastExecutionTime;
 
-    public SynchronizationTaskExecutionStats(
-            long totalTasksExecuted,
-            long successfulTasks,
-            long failedTasks,
-            long totalExecutionTimeMs,
-            double averageExecutionTimeMs,
-            Map<String, Long> tasksByType,
-            Map<String, Long> tasksByStatus,
-            Instant lastExecutionTime) {
+    public SynchronizationTaskExecutionStats(long totalTasksExecuted, long successfulTasks, long failedTasks,
+            long totalExecutionTimeMs, double averageExecutionTimeMs, Map<String, Long> tasksByType,
+            Map<String, Long> tasksByStatus, Instant lastExecutionTime) {
         this.totalTasksExecuted = totalTasksExecuted;
         this.successfulTasks = successfulTasks;
         this.failedTasks = failedTasks;
@@ -43,14 +39,35 @@ public final class SynchronizationTaskExecutionStats {
         this.lastExecutionTime = lastExecutionTime;
     }
 
-    public long getTotalTasksExecuted() { return totalTasksExecuted; }
-    public long getSuccessfulTasks() { return successfulTasks; }
-    public long getFailedTasks() { return failedTasks; }
-    public long getTotalExecutionTimeMs() { return totalExecutionTimeMs; }
-    public double getAverageExecutionTimeMs() { return averageExecutionTimeMs; }
-    public Map<String, Long> getTasksByType() { return tasksByType; }
-    public Map<String, Long> getTasksByStatus() { return tasksByStatus; }
-    public Instant getLastExecutionTime() { return lastExecutionTime; }
+    public long getTotalTasksExecuted() {
+        return totalTasksExecuted;
+    }
+
+    public long getSuccessfulTasks() {
+        return successfulTasks;
+    }
+
+    public long getFailedTasks() {
+        return failedTasks;
+    }
+
+    public long getTotalExecutionTimeMs() {
+        return totalExecutionTimeMs;
+    }
+
+    public double getAverageExecutionTimeMs() {
+        return averageExecutionTimeMs;
+    }
+
+    public Map<String, Long> getTasksByType() {
+        return tasksByType;
+    }
+
+    public Map<String, Long> getTasksByStatus() {
+        return tasksByStatus;
+    }
+
+    public Instant getLastExecutionTime() {
+        return lastExecutionTime;
+    }
 }
-
-

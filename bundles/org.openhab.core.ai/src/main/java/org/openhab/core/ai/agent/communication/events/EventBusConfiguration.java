@@ -23,20 +23,67 @@ public class EventBusConfiguration {
     private int maxEventBatchSize = 100;
     private Duration batchTimeout = Duration.ofSeconds(5);
 
-    public Duration getEventTimeout() { return eventTimeout; }
-    public void setEventTimeout(Duration eventTimeout) { this.eventTimeout = eventTimeout; }
-    public int getMaxRetries() { return maxRetries; }
-    public void setMaxRetries(int maxRetries) { this.maxRetries = maxRetries; }
-    public Duration getRetryInterval() { return retryInterval; }
-    public void setRetryInterval(Duration retryInterval) { this.retryInterval = retryInterval; }
-    public Duration getEventRetentionPeriod() { return eventRetentionPeriod; }
-    public void setEventRetentionPeriod(Duration eventRetentionPeriod) { this.eventRetentionPeriod = eventRetentionPeriod; }
-    public boolean isEnablePersistence() { return enablePersistence; }
-    public void setEnablePersistence(boolean enablePersistence) { this.enablePersistence = enablePersistence; }
-    public boolean isEnableSchemaValidation() { return enableSchemaValidation; }
-    public void setEnableSchemaValidation(boolean enableSchemaValidation) { this.enableSchemaValidation = enableSchemaValidation; }
-    public int getMaxEventBatchSize() { return maxEventBatchSize; }
-    public void setMaxEventBatchSize(int maxEventBatchSize) { this.maxEventBatchSize = maxEventBatchSize; }
-    public Duration getBatchTimeout() { return batchTimeout; }
-    public void setBatchTimeout(Duration batchTimeout) { this.batchTimeout = batchTimeout; }
+    public Duration getEventTimeout() {
+        return eventTimeout;
+    }
+
+    public void setEventTimeout(Duration eventTimeout) {
+        this.eventTimeout = eventTimeout;
+    }
+
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
+    public void setMaxRetries(int maxRetries) {
+        this.maxRetries = maxRetries;
+    }
+
+    public Duration getRetryInterval() {
+        return retryInterval;
+    }
+
+    public void setRetryInterval(Duration retryInterval) {
+        this.retryInterval = retryInterval;
+    }
+
+    public Duration getEventRetentionPeriod() {
+        return eventRetentionPeriod;
+    }
+
+    public void setEventRetentionPeriod(Duration eventRetentionPeriod) {
+        this.eventRetentionPeriod = eventRetentionPeriod;
+    }
+
+    public boolean isEnablePersistence() {
+        return enablePersistence;
+    }
+
+    public void setEnablePersistence(boolean enablePersistence) {
+        this.enablePersistence = enablePersistence;
+    }
+
+    public boolean isEnableSchemaValidation() {
+        return enableSchemaValidation;
+    }
+
+    public void setEnableSchemaValidation(boolean enableSchemaValidation) {
+        this.enableSchemaValidation = enableSchemaValidation;
+    }
+
+    public int getMaxEventBatchSize() {
+        return maxEventBatchSize;
+    }
+
+    public void setMaxEventBatchSize(int maxEventBatchSize) {
+        this.maxEventBatchSize = maxEventBatchSize;
+    }
+
+    public Duration getBatchTimeout() {
+        return batchTimeout;
+    }
+
+    public void setBatchTimeout(Duration batchTimeout) {
+        this.batchTimeout = batchTimeout;
+    }
 }

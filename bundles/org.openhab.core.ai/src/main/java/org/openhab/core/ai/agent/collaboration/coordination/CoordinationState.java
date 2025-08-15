@@ -13,5 +13,3 @@ public enum CoordinationState {
     FAILED,
     CANCELLED
 }
-
-

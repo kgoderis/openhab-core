@@ -5,8 +5,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 /**
  * Load balancing strategies for selecting agents during delegation.
  *
- * <p>Defines the strategy used by the delegation service when multiple agents
- * are capable of handling a request.</p>
+ * <p>
+ * Defines the strategy used by the delegation service when multiple agents
+ * are capable of handling a request.
+ * </p>
  *
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
@@ -18,5 +20,3 @@ public enum LoadBalancingStrategy {
     CAPABILITY_BASED,
     RANDOM
 }
-
-

@@ -6,10 +6,14 @@ import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationPreset;
 @NonNullByDefault
 public class ProductionPreset implements ConfigurationPreset {
     @Override
-    public String getPresetId() { return "production"; }
+    public String getPresetId() {
+        return "production";
+    }
 
     @Override
-    public String getDescription() { return "Production preset with strict security and performance settings"; }
+    public String getDescription() {
+        return "Production preset with strict security and performance settings";
+    }
 
     @Override
     public CommunicationConfig applyTo(CommunicationConfig config) {
@@ -29,5 +33,3 @@ public class ProductionPreset implements ConfigurationPreset {
         return config;
     }
 }
-
-

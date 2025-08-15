@@ -78,8 +78,8 @@ public class ElicitationManager implements ElicitationService {
 
             // For now, return a mock result indicating pending status
             ElicitationResult result = new ElicitationResult(request.getId(),
-                    ElicitationResult.ElicitationStatus.PENDING, "Elicitation request requires user input", null,
-                    System.currentTimeMillis());
+                    org.openhab.core.ai.tool.elicitation.input.ElicitationStatus.PENDING,
+                    "Elicitation request requires user input", null, System.currentTimeMillis());
 
             LOGGER.info("Elicitation request created: {} - Status: {}", request.getId(), result.getStatus());
             return CompletableFuture.completedFuture(result);
@@ -107,7 +107,8 @@ public class ElicitationManager implements ElicitationService {
             validateResponse(request, response);
 
             // Process response
-            ElicitationResult result = new ElicitationResult(requestId, ElicitationResult.ElicitationStatus.COMPLETED,
+            ElicitationResult result = new ElicitationResult(requestId,
+                    org.openhab.core.ai.tool.elicitation.input.ElicitationStatus.COMPLETED,
                     "Elicitation request completed successfully", response, System.currentTimeMillis());
 
             // Remove from pending requests
@@ -134,8 +135,9 @@ public class ElicitationManager implements ElicitationService {
             }
 
             // Process cancellation
-            ElicitationResult result = new ElicitationResult(requestId, ElicitationResult.ElicitationStatus.CANCELLED,
-                    reason, null, System.currentTimeMillis());
+            ElicitationResult result = new ElicitationResult(requestId,
+                    org.openhab.core.ai.tool.elicitation.input.ElicitationStatus.CANCELLED, reason, null,
+                    System.currentTimeMillis());
 
             // Remove from pending requests
             pendingRequests.remove(requestId);

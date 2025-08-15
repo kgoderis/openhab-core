@@ -24,15 +24,39 @@ public class TaskOrchestrationState {
         this.state = TaskOrchestrationStateState.PENDING;
     }
 
-    public String getTaskId() { return taskId; }
-    public TaskOrchestrationStateState getState() { return state; }
-    public void setState(TaskOrchestrationStateState state) { this.state = state; }
-    public long getStartTime() { return startTime; }
-    public void setStartTime(long startTime) { this.startTime = startTime; }
-    public long getEndTime() { return endTime; }
-    public void setEndTime(long endTime) { this.endTime = endTime; }
-    public @Nullable Exception getLastError() { return lastError; }
-    public void setLastError(Exception lastError) { this.lastError = lastError; }
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public TaskOrchestrationStateState getState() {
+        return state;
+    }
+
+    public void setState(TaskOrchestrationStateState state) {
+        this.state = state;
+    }
+
+    public long getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
+    }
+
+    public long getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(long endTime) {
+        this.endTime = endTime;
+    }
+
+    public @Nullable Exception getLastError() {
+        return lastError;
+    }
+
+    public void setLastError(Exception lastError) {
+        this.lastError = lastError;
+    }
 }
-
-

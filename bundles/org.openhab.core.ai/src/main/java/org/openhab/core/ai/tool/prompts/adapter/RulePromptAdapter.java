@@ -7,10 +7,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.adapter.BaseAdapter;
 import org.openhab.core.ai.tool.api.Adapter;
-import org.openhab.core.ai.tool.api.PromptContext;
-import org.openhab.core.ai.tool.api.PromptResult;
-import org.openhab.core.ai.tool.prompts.dto.Prompt;
-import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
+import org.openhab.core.ai.tool.prompts.api.PromptContext;
+import org.openhab.core.ai.tool.prompts.api.PromptResult;
+import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
 import org.openhab.core.automation.Rule;
 import org.openhab.core.automation.RuleRegistry;
 import org.slf4j.Logger;
@@ -55,8 +55,7 @@ public class RulePromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         final String promptType = typeFromContext == null ? "status" : typeFromContext;
         String name = "Rule " + promptType + ": " + identifier;
         String description = "Prompt for rule " + identifier + " (" + promptType + ")";
-        PromptArgument[] args = new PromptArgument[] {
-                new PromptArgument("ruleUID", "UID of the rule", true),
+        PromptArgument[] args = new PromptArgument[] { new PromptArgument("ruleUID", "UID of the rule", true),
                 new PromptArgument("promptType", "Type of prompt", false),
                 new PromptArgument("includeTriggers", "Include trigger information", false) };
         return new Prompt(name, description, java.util.List.of(args));

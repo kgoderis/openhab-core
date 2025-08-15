@@ -19,7 +19,7 @@ public class NegotiationProposal {
     private final Map<String, Object> proposal;
     private final Instant submittedAt;
 
-    private NegotiationProposal(Builder builder) {
+    /* package */ NegotiationProposal(NegotiationProposalBuilder builder) {
         this.sessionId = builder.sessionId;
         this.agentId = builder.agentId;
         this.proposal = builder.proposal;
@@ -42,38 +42,7 @@ public class NegotiationProposal {
         return submittedAt;
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private String sessionId = "";
-        private String agentId = "";
-        private Map<String, Object> proposal = Map.of();
-        private Instant submittedAt = Instant.now();
-
-        public Builder sessionId(String sessionId) {
-            this.sessionId = sessionId;
-            return this;
-        }
-
-        public Builder agentId(String agentId) {
-            this.agentId = agentId;
-            return this;
-        }
-
-        public Builder proposal(Map<String, Object> proposal) {
-            this.proposal = proposal;
-            return this;
-        }
-
-        public Builder submittedAt(Instant submittedAt) {
-            this.submittedAt = submittedAt;
-            return this;
-        }
-
-        public NegotiationProposal build() {
-            return new NegotiationProposal(this);
-        }
+    public static NegotiationProposalBuilder builder() {
+        return new NegotiationProposalBuilder();
     }
 }

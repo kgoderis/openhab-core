@@ -9,13 +9,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-public record NegotiationStatistics(
-		long totalNegotiations,
-		long successfulNegotiations,
-		long failedNegotiations,
-		long timeoutNegotiations,
-		long abortedNegotiations,
-		int activeSessions,
-		int templates,
-		int strategies) {
+public record NegotiationStatistics(long totalNegotiations, long successfulNegotiations, long failedNegotiations,
+        long timeoutNegotiations, long abortedNegotiations, int activeSessions, int templates, int strategies) {
 }

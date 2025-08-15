@@ -9,7 +9,6 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -30,6 +29,7 @@ import org.slf4j.LoggerFactory;
  * Default implementation of {@link AuditLogger}.
  *
  * Author: Karel Goderis - Initial Contribution
+ * 
  * @since 1.0.0
  */
 @NonNullByDefault
@@ -74,21 +74,39 @@ public class DefaultAuditLogger implements AuditLogger {
     }
 
     @Override
-    public String getAuditLoggerId() { return auditLoggerId; }
+    public String getAuditLoggerId() {
+        return auditLoggerId;
+    }
+
     @Override
-    public String getAuditLoggerName() { return auditLoggerName; }
+    public String getAuditLoggerName() {
+        return auditLoggerName;
+    }
+
     @Override
-    public String getAuditLoggerDescription() { return auditLoggerDescription; }
+    public String getAuditLoggerDescription() {
+        return auditLoggerDescription;
+    }
+
     @Override
-    public String[] getSupportedAuditLevels() { return supportedAuditLevels; }
+    public String[] getSupportedAuditLevels() {
+        return supportedAuditLevels;
+    }
+
     @Override
-    public boolean isEnabled() { return enabled; }
+    public boolean isEnabled() {
+        return enabled;
+    }
 
     @Override
     public void logAuditEvent(AuditEvent event) {
-        if (!enabled) { return; }
+        if (!enabled) {
+            return;
+        }
         try {
-            if (!validateAuditEvent(event)) { return; }
+            if (!validateAuditEvent(event)) {
+                return;
+            }
             writeAuditEventToFile(event);
             totalEvents.incrementAndGet();
             totalBytes.addAndGet(calculateEventSize(event));
@@ -107,7 +125,9 @@ public class DefaultAuditLogger implements AuditLogger {
     }
 
     @Override
-    public Map<String, Object> getConfiguration() { return new HashMap<>(configuration); }
+    public Map<String, Object> getConfiguration() {
+        return new HashMap<>(configuration);
+    }
 
     @Override
     public void updateConfiguration(Map<String, Object> configuration) {
@@ -119,7 +139,9 @@ public class DefaultAuditLogger implements AuditLogger {
     public void rotateLogs() {
         try {
             File currentFile = new File(currentLogFile);
-            if (!currentFile.exists() || currentFile.length() == 0) { return; }
+            if (!currentFile.exists() || currentFile.length() == 0) {
+                return;
+            }
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String backupFile = logDirectory + "/audit_" + timestamp + ".log";
             encryptAndCompressLog(currentLogFile, backupFile + ".zip");
@@ -142,21 +164,39 @@ public class DefaultAuditLogger implements AuditLogger {
         return statistics;
     }
 
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     private void initializeLogDirectory() {
         try {
             Path logPath = Paths.get(logDirectory);
-            if (!Files.exists(logPath)) { Files.createDirectories(logPath); }
-        } catch (IOException e) { LOGGER.error("Failed to create log directory: {}", logDirectory, e); }
+            if (!Files.exists(logPath)) {
+                Files.createDirectories(logPath);
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to create log directory: {}", logDirectory, e);
+        }
     }
 
     private void scheduleLogRotation() {
-        scheduler.scheduleAtFixedRate(() -> { try { rotateLogs(); } catch (Exception e) { LOGGER.error("Scheduled log rotation failed", e); } }, 24, 24, TimeUnit.HOURS);
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                rotateLogs();
+            } catch (Exception e) {
+                LOGGER.error("Scheduled log rotation failed", e);
+            }
+        }, 24, 24, TimeUnit.HOURS);
     }
 
     private void scheduleRetentionCleanup() {
-        scheduler.scheduleAtFixedRate(() -> { try { cleanupOldLogs(); } catch (Exception e) { LOGGER.error("Scheduled retention cleanup failed", e); } }, 1, 1, TimeUnit.DAYS);
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                cleanupOldLogs();
+            } catch (Exception e) {
+                LOGGER.error("Scheduled retention cleanup failed", e);
+            }
+        }, 1, 1, TimeUnit.DAYS);
     }
 
     private boolean validateAuditEvent(AuditEvent event) {
@@ -170,8 +210,12 @@ public class DefaultAuditLogger implements AuditLogger {
         try {
             String logEntry = formatAuditEvent(event);
             byte[] encryptedData = encryptData(logEntry.getBytes());
-            try (FileWriter writer = new FileWriter(currentLogFile, true)) { writer.write(new String(encryptedData) + "\n"); }
-        } catch (Exception e) { LOGGER.error("Failed to write audit event to file", e); }
+            try (FileWriter writer = new FileWriter(currentLogFile, true)) {
+                writer.write(new String(encryptedData) + "\n");
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to write audit event to file", e);
+        }
     }
 
     private String formatAuditEvent(AuditEvent event) {
@@ -180,24 +224,45 @@ public class DefaultAuditLogger implements AuditLogger {
     }
 
     private void checkAndRotateLogs() {
-        try { File currentFile = new File(currentLogFile); if (currentFile.exists() && currentFile.length() > maxFileSize) { rotateLogs(); } } catch (Exception e) { LOGGER.error("Failed to check log rotation", e); }
+        try {
+            File currentFile = new File(currentLogFile);
+            if (currentFile.exists() && currentFile.length() > maxFileSize) {
+                rotateLogs();
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to check log rotation", e);
+        }
     }
 
     private void cleanupOldLogs() {
         try {
             File logDir = new File(logDirectory);
-            if (!logDir.exists()) { return; }
+            if (!logDir.exists()) {
+                return;
+            }
             File[] files = logDir.listFiles((dir, name) -> name.endsWith(".zip"));
-            if (files == null) { return; }
+            if (files == null) {
+                return;
+            }
             long cutoffTime = System.currentTimeMillis() - (retentionDays * 24L * 60 * 60 * 1000);
-            for (File file : files) { if (file.lastModified() < cutoffTime) { if (!file.delete()) { LOGGER.warn("Failed to delete old audit log file: {}", file.getName()); } } }
-        } catch (Exception e) { LOGGER.error("Failed to cleanup old logs", e); }
+            for (File file : files) {
+                if (file.lastModified() < cutoffTime) {
+                    if (!file.delete()) {
+                        LOGGER.warn("Failed to delete old audit log file: {}", file.getName());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to cleanup old logs", e);
+        }
     }
 
     private void encryptAndCompressLog(String sourceFile, String targetFile) {
         try {
             Path sourcePath = Paths.get(sourceFile);
-            if (!Files.exists(sourcePath)) { return; }
+            if (!Files.exists(sourcePath)) {
+                return;
+            }
             byte[] fileContent = Files.readAllBytes(sourcePath);
             byte[] encryptedContent = encryptData(fileContent);
             try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(Paths.get(targetFile)))) {
@@ -206,7 +271,9 @@ public class DefaultAuditLogger implements AuditLogger {
                 zos.write(encryptedContent);
                 zos.closeEntry();
             }
-        } catch (Exception e) { LOGGER.error("Failed to encrypt and compress log file", e); }
+        } catch (Exception e) {
+            LOGGER.error("Failed to encrypt and compress log file", e);
+        }
     }
 
     private SecretKey generateEncryptionKey() {
@@ -219,12 +286,27 @@ public class DefaultAuditLogger implements AuditLogger {
             Cipher cipher = Cipher.getInstance("AES");
             cipher.init(Cipher.ENCRYPT_MODE, encryptionKey);
             return cipher.doFinal(data);
-        } catch (Exception e) { LOGGER.error("Failed to encrypt data", e); return data; }
+        } catch (Exception e) {
+            LOGGER.error("Failed to encrypt data", e);
+            return data;
+        }
     }
 
-    private String generateEventId() { return "audit_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId(); }
-    private long calculateEventSize(AuditEvent event) { return event.getId().length() + event.getLevel().length() + event.getAction().length() + event.getUserId().length() + event.getTimestamp().length() + event.getDetails().toString().length(); }
-    private long getCurrentFileSize() { try { File file = new File(currentLogFile); return file.exists() ? file.length() : 0; } catch (Exception e) { return 0; } }
+    private String generateEventId() {
+        return "audit_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
+    }
+
+    private long calculateEventSize(AuditEvent event) {
+        return event.getId().length() + event.getLevel().length() + event.getAction().length()
+                + event.getUserId().length() + event.getTimestamp().length() + event.getDetails().toString().length();
+    }
+
+    private long getCurrentFileSize() {
+        try {
+            File file = new File(currentLogFile);
+            return file.exists() ? file.length() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
 }
-
-

@@ -1326,10 +1326,7 @@ public class ComplianceValidator {
     /**
      * Functional interface for compliance tests.
      */
-    @FunctionalInterface
-    private interface ComplianceTestFunction {
-        boolean run() throws Exception;
-    }
+    // ComplianceTestFunction extracted to org.openhab.core.ai.tool.compliance.ComplianceTestFunction
 
     /**
      * Get all test results.

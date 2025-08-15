@@ -47,5 +47,3 @@ public class FilterStatistics {
                 totalRequests, blockedRequests, uptimeMs, getBlockRate() * 100, getRequestsPerMinute());
     }
 }
-
-

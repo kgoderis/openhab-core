@@ -1,8 +1,8 @@
 package org.openhab.core.ai.tool.resources;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.api.ResourceRegistry;
-import org.openhab.core.ai.tool.resources.specification.ResourceSpecification;
+import org.openhab.core.ai.tool.resources.api.ResourceRegistry;
+import org.openhab.core.ai.tool.resources.api.specification.ResourceSpecification;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.util.tracker.ServiceTrackerCustomizer;
@@ -71,5 +71,3 @@ public class ResourceServiceCustomizer
         }
     }
 }
-
-

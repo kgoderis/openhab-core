@@ -7,10 +7,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface ContextDebugLog {
     String getContextId();
+
     String getOperation();
+
     long getTimestamp();
+
     String getMessage();
+
     Map<String, Object> getData();
 }
-
-

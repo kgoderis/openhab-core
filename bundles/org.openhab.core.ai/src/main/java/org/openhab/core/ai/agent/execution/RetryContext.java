@@ -20,11 +20,23 @@ public final class RetryContext {
         this.currentAttempts = 0;
     }
 
-    public boolean canRetry() { return currentAttempts < maxRetries; }
-    public void incrementAttempt() { currentAttempts++; }
-    public int getCurrentAttempts() { return currentAttempts; }
-    public int getMaxRetries() { return maxRetries; }
-    public String getTaskId() { return taskId; }
+    public boolean canRetry() {
+        return currentAttempts < maxRetries;
+    }
+
+    public void incrementAttempt() {
+        currentAttempts++;
+    }
+
+    public int getCurrentAttempts() {
+        return currentAttempts;
+    }
+
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
+    public String getTaskId() {
+        return taskId;
+    }
 }
-
-

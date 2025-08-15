@@ -20,5 +20,3 @@ public class DefaultConflictResolutionStrategy implements ConflictResolutionStra
                 .completedFuture(ConflictResolutionResult.success("Default conflict resolution applied"));
     }
 }
-
-

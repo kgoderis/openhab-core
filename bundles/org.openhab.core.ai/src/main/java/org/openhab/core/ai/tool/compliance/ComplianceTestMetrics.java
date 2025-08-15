@@ -63,5 +63,3 @@ public class ComplianceTestMetrics {
         return timestamp;
     }
 }
-
-

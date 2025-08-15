@@ -48,5 +48,3 @@ public class ContextOptions {
         return new ContextOptionsBuilder();
     }
 }
-
-

@@ -30,12 +30,27 @@ public class LogCorrelation {
         this.timestamp = timestamp;
     }
 
-    public String getId() { return id; }
-    public LogEntry getLogEntry() { return logEntry; }
-    public @Nullable Object getSystemEvent() { return systemEvent; }
-    public String getType() { return type; }
-    public double getConfidence() { return confidence; }
-    public Instant getTimestamp() { return timestamp; }
+    public String getId() {
+        return id;
+    }
+
+    public LogEntry getLogEntry() {
+        return logEntry;
+    }
+
+    public @Nullable Object getSystemEvent() {
+        return systemEvent;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public double getConfidence() {
+        return confidence;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
 }
-
-

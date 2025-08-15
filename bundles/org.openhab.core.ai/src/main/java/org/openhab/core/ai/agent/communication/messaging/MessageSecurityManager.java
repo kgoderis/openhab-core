@@ -8,11 +8,12 @@ import io.a2a.spec.Message;
  * Message security validator.
  *
  * Author: Karel Goderis - Initial Contribution
+ * 
  * @since 1.0.0
  */
 @NonNullByDefault
 public class MessageSecurityManager {
-    public boolean validateMessageSecurity(Message message) { return true; }
+    public boolean validateMessageSecurity(Message message) {
+        return true;
+    }
 }
-
-

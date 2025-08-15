@@ -24,21 +24,27 @@ class DefaultRoot implements Root {
     }
 
     @Override
-    public String getId() { return id; }
+    public String getId() {
+        return id;
+    }
 
     @Override
-    public String getPath() { return path; }
+    public String getPath() {
+        return path;
+    }
 
     @Override
-    public String getDescription() { return description; }
+    public String getDescription() {
+        return description;
+    }
 
     @Override
-    public boolean isReadOnly() { return readOnly; }
+    public boolean isReadOnly() {
+        return readOnly;
+    }
 
     @Override
     public String toString() {
         return "Root{id='" + id + "', path='" + path + "', readOnly=" + readOnly + "}";
     }
 }
-
-

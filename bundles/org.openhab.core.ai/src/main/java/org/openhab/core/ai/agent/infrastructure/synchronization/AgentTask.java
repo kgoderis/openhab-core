@@ -27,10 +27,19 @@ public final class AgentTask {
         this.parameters = Map.copyOf(parameters);
     }
 
-    public String getTaskId() { return taskId; }
-    public String getAgentId() { return agentId; }
-    public List<String> getDependencies() { return Collections.unmodifiableList(dependencies); }
-    public Map<String, Object> getParameters() { return Collections.unmodifiableMap(parameters); }
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public String getAgentId() {
+        return agentId;
+    }
+
+    public List<String> getDependencies() {
+        return Collections.unmodifiableList(dependencies);
+    }
+
+    public Map<String, Object> getParameters() {
+        return Collections.unmodifiableMap(parameters);
+    }
 }
-
-

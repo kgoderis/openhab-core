@@ -27,13 +27,31 @@ public class TaskExecutionMetrics {
         this.averageExecutionTime = averageExecutionTime;
     }
 
-    public String getTaskId() { return taskId; }
-    public long getExecutionCount() { return executionCount; }
-    public long getFailureCount() { return failureCount; }
-    public long getRetryCount() { return retryCount; }
-    public long getTotalExecutionTime() { return totalExecutionTime; }
-    public long getAverageExecutionTime() { return averageExecutionTime; }
-    public double getSuccessRate() { return executionCount > 0 ? (double) (executionCount - failureCount) / executionCount : 0.0; }
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public long getExecutionCount() {
+        return executionCount;
+    }
+
+    public long getFailureCount() {
+        return failureCount;
+    }
+
+    public long getRetryCount() {
+        return retryCount;
+    }
+
+    public long getTotalExecutionTime() {
+        return totalExecutionTime;
+    }
+
+    public long getAverageExecutionTime() {
+        return averageExecutionTime;
+    }
+
+    public double getSuccessRate() {
+        return executionCount > 0 ? (double) (executionCount - failureCount) / executionCount : 0.0;
+    }
 }
-
-

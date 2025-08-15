@@ -26,10 +26,23 @@ public class MessageAcknowledgment {
         this.timestamp = builder.timestamp;
     }
 
-    public String getMessageId() { return messageId; }
-    public String getAgentId() { return agentId; }
-    public AcknowledgmentType getAcknowledgmentType() { return acknowledgmentType; }
-    public Instant getTimestamp() { return timestamp; }
+    public String getMessageId() {
+        return messageId;
+    }
 
-    public static MessageAcknowledgmentBuilder builder() { return new MessageAcknowledgmentBuilder(); }
+    public String getAgentId() {
+        return agentId;
+    }
+
+    public AcknowledgmentType getAcknowledgmentType() {
+        return acknowledgmentType;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public static MessageAcknowledgmentBuilder builder() {
+        return new MessageAcknowledgmentBuilder();
+    }
 }

@@ -36,15 +36,39 @@ public class TaskSchema {
         this.createdAt = createdAt;
     }
 
-    public String getActionId() { return actionId; }
-    public String getVersion() { return version; }
-    public Map<String, SchemaParameter> getParameters() { return parameters; }
-    public List<String> getRequiredFields() { return requiredFields; }
-    public List<String> getOptionalFields() { return optionalFields; }
-    public Map<String, Object> getConstraints() { return constraints; }
-    public List<SchemaExample> getExamples() { return examples; }
-    public String getDocumentation() { return documentation; }
-    public long getCreatedAt() { return createdAt; }
+    public String getActionId() {
+        return actionId;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public Map<String, SchemaParameter> getParameters() {
+        return parameters;
+    }
+
+    public List<String> getRequiredFields() {
+        return requiredFields;
+    }
+
+    public List<String> getOptionalFields() {
+        return optionalFields;
+    }
+
+    public Map<String, Object> getConstraints() {
+        return constraints;
+    }
+
+    public List<SchemaExample> getExamples() {
+        return examples;
+    }
+
+    public String getDocumentation() {
+        return documentation;
+    }
+
+    public long getCreatedAt() {
+        return createdAt;
+    }
 }
-
-

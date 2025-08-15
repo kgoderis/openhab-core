@@ -9,5 +9,3 @@ public enum ResolutionOutcome {
     FAILURE,
     COMPROMISE
 }
-
-

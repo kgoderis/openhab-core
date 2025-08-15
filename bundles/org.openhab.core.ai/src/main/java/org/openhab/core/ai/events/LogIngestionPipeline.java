@@ -1,6 +1,5 @@
 package org.openhab.core.ai.events;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -226,7 +225,9 @@ public class LogIngestionPipeline {
     }
 
     /** Package-private accessor for poll interval used by LogFileMonitor */
-    java.time.Duration getPollInterval() { return pollInterval; }
+    java.time.Duration getPollInterval() {
+        return pollInterval;
+    }
 
     /**
      * Parse a single log line into a structured LogEntry

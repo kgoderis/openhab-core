@@ -14,7 +14,15 @@ public class PredictionAlert {
         this.value = value;
     }
 
-    public String getType() { return type; }
-    public String getMessage() { return message; }
-    public double getValue() { return value; }
+    public String getType() {
+        return type;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public double getValue() {
+        return value;
+    }
 }

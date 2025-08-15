@@ -20,5 +20,3 @@ public class ImportFile {
     String content = "";
     Instant lastModified;
 }
-
-

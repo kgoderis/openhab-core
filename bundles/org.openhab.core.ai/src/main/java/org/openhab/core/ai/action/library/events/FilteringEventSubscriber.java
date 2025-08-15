@@ -87,5 +87,3 @@ public class FilteringEventSubscriber implements EventSubscriber {
         return true;
     }
 }
-
-

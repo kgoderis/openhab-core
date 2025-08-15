@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.model.api.ModelProviderType;
-import org.osgi.service.component.annotations.Component;
 import org.openhab.core.ai.tool.monitoring.api.SystemHealthMonitor;
+import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -383,16 +383,9 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
             String specificationId) {
         SpecificationPerformanceMetrics m = specificationMetrics.getOrDefault(specificationId,
                 new SpecificationPerformanceMetrics(specificationId, 0, 0, 0, 0, 0.0, 0.0, 0, Instant.now()));
-        return new org.openhab.core.ai.tool.monitoring.SpecificationPerformanceMetrics(
-                m.specificationId(),
-                m.totalRequests(),
-                m.successfulRequests(),
-                m.failedRequests(),
-                m.totalResponseTime(),
-                m.averageResponseTime(),
-                m.successRate(),
-                (int) calculateThroughput(specificationId),
-                m.lastUpdated());
+        return new org.openhab.core.ai.tool.monitoring.SpecificationPerformanceMetrics(m.specificationId(),
+                m.totalRequests(), m.successfulRequests(), m.failedRequests(), m.totalResponseTime(),
+                m.averageResponseTime(), m.successRate(), (int) calculateThroughput(specificationId), m.lastUpdated());
     }
 
     /**
@@ -405,15 +398,9 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
         return specificationMetrics.values().stream()
                 .collect(Collectors.toMap(SpecificationPerformanceMetrics::specificationId,
                         m -> new org.openhab.core.ai.tool.monitoring.SpecificationPerformanceMetrics(
-                                m.specificationId(),
-                                m.totalRequests(),
-                                m.successfulRequests(),
-                                m.failedRequests(),
-                                m.totalResponseTime(),
-                                m.averageResponseTime(),
-                                m.successRate(),
-                                (int) calculateThroughput(m.specificationId()),
-                                m.lastUpdated())));
+                                m.specificationId(), m.totalRequests(), m.successfulRequests(), m.failedRequests(),
+                                m.totalResponseTime(), m.averageResponseTime(), m.successRate(),
+                                (int) calculateThroughput(m.specificationId()), m.lastUpdated())));
     }
 
     /**
@@ -425,8 +412,8 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
     @Override
     public List<org.openhab.core.ai.tool.monitoring.PerformanceAlert> getSpecificationAlerts(String specificationId) {
         return performanceAlerts.values().stream().filter(alert -> alert.specificationId().equals(specificationId))
-                .map(a -> new org.openhab.core.ai.tool.monitoring.PerformanceAlert(a.alertId(), a.specificationId(), a.type(), a.message(),
-                        a.severity(), a.timestamp()))
+                .map(a -> new org.openhab.core.ai.tool.monitoring.PerformanceAlert(a.alertId(), a.specificationId(),
+                        a.type(), a.message(), a.severity(), a.timestamp()))
                 .collect(Collectors.toList());
     }
 

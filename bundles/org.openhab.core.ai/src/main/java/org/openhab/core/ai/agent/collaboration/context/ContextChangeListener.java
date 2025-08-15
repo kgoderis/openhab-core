@@ -10,7 +10,6 @@ import org.eclipse.jdt.annotation.Nullable;
  */
 @NonNullByDefault
 public interface ContextChangeListener {
-    void onContextChange(String contextId, ContextChangeType changeType, String agentId, @Nullable Map<String, Object> data);
+    void onContextChange(String contextId, ContextChangeType changeType, String agentId,
+            @Nullable Map<String, Object> data);
 }
-
-

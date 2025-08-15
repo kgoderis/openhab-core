@@ -131,5 +131,6 @@ public interface ComplianceTest {
      * @author Karel Goderis - Initial Contribution
      * @since 1.0.0
      */
-    // Nested AbstractComplianceTest extracted to top-level class org.openhab.core.ai.tool.compliance.AbstractComplianceTest
+    // Nested AbstractComplianceTest extracted to top-level class
+    // org.openhab.core.ai.tool.compliance.AbstractComplianceTest
 }

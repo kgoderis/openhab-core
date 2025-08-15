@@ -5,12 +5,12 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.ActionContext;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.action.ActionResult;
+import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.reasoning.MultiStepReasoningEngine;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
+import org.openhab.core.ai.reasoning.engine.MultiStepReasoningEngine;
 
 /**
  * Intelligent Agent Interface

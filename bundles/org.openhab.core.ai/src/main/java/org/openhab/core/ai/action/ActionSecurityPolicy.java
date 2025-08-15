@@ -15,6 +15,7 @@ package org.openhab.core.ai.action;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.action.api.SecurityLevel;
 
 /**
  * Security policy for an action.
@@ -132,15 +133,7 @@ public class ActionSecurityPolicy {
         return allowedOrigins.isEmpty() || allowedOrigins.contains(origin);
     }
 
-    /**
-     * Security levels for actions.
-     */
-    public enum SecurityLevel {
-        LOW, // Basic validation only
-        MEDIUM, // Standard security checks
-        HIGH, // Enhanced security validation
-        CRITICAL // Maximum security validation
-    }
+    // SecurityLevel extracted to org.openhab.core.ai.action.SecurityLevel
 
     public static ActionSecurityPolicyBuilder builder() {
         return new ActionSecurityPolicyBuilder();

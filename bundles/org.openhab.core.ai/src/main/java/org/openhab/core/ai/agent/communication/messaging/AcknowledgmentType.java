@@ -15,5 +15,3 @@ public enum AcknowledgmentType {
     COMPLETED,
     FAILED
 }
-
-

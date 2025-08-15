@@ -26,13 +26,31 @@ public class ConflictResolution {
         this.resolvedAt = resolvedAt;
     }
 
-    public String getResolutionId() { return resolutionId; }
-    public String getStrategy() { return strategy; }
-    public String getMediator() { return mediator; }
-    public ResolutionOutcome getOutcome() { return outcome; }
-    public String getDescription() { return description; }
-    public Map<String, Object> getDetails() { return details; }
-    public Instant getResolvedAt() { return resolvedAt; }
+    public String getResolutionId() {
+        return resolutionId;
+    }
+
+    public String getStrategy() {
+        return strategy;
+    }
+
+    public String getMediator() {
+        return mediator;
+    }
+
+    public ResolutionOutcome getOutcome() {
+        return outcome;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Map<String, Object> getDetails() {
+        return details;
+    }
+
+    public Instant getResolvedAt() {
+        return resolvedAt;
+    }
 }
-
-

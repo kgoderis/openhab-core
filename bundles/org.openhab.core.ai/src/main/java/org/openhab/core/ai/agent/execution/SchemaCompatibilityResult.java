@@ -12,6 +12,11 @@ public class SchemaCompatibilityResult {
         this.message = message;
     }
 
-    public boolean isCompatible() { return compatible; }
-    public String getMessage() { return message; }
+    public boolean isCompatible() {
+        return compatible;
+    }
+
+    public String getMessage() {
+        return message;
+    }
 }

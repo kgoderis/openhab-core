@@ -35,9 +35,15 @@ public final class ExecutionRequestMetadata {
         this.attributes = Map.copyOf(attributes);
     }
 
-    public String getRequestId() { return requestId; }
-    public @Nullable String getCorrelationId() { return correlationId; }
-    public Map<String, Object> getAttributes() { return attributes; }
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public @Nullable String getCorrelationId() {
+        return correlationId;
+    }
+
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
 }
-
-

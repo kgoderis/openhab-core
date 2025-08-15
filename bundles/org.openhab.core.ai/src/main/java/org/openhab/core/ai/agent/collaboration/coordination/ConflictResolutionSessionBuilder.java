@@ -21,24 +21,40 @@ public class ConflictResolutionSessionBuilder {
     Instant startTime;
     ConflictResolutionState state;
 
-    public ConflictResolutionSessionBuilder conflictId(String conflictId) { this.conflictId = conflictId; return this; }
-    public ConflictResolutionSessionBuilder conflictingAgents(List<String> conflictingAgents) { this.conflictingAgents = conflictingAgents; return this; }
-    public ConflictResolutionSessionBuilder conflictType(ConflictType conflictType) { this.conflictType = conflictType; return this; }
-    public ConflictResolutionSessionBuilder conflictData(Map<String, Object> conflictData) { this.conflictData = conflictData; return this; }
-    public ConflictResolutionSessionBuilder startTime(Instant startTime) { this.startTime = startTime; return this; }
-    public ConflictResolutionSessionBuilder state(ConflictResolutionState state) { this.state = state; return this; }
+    public ConflictResolutionSessionBuilder conflictId(String conflictId) {
+        this.conflictId = conflictId;
+        return this;
+    }
+
+    public ConflictResolutionSessionBuilder conflictingAgents(List<String> conflictingAgents) {
+        this.conflictingAgents = conflictingAgents;
+        return this;
+    }
+
+    public ConflictResolutionSessionBuilder conflictType(ConflictType conflictType) {
+        this.conflictType = conflictType;
+        return this;
+    }
+
+    public ConflictResolutionSessionBuilder conflictData(Map<String, Object> conflictData) {
+        this.conflictData = conflictData;
+        return this;
+    }
+
+    public ConflictResolutionSessionBuilder startTime(Instant startTime) {
+        this.startTime = startTime;
+        return this;
+    }
+
+    public ConflictResolutionSessionBuilder state(ConflictResolutionState state) {
+        this.state = state;
+        return this;
+    }
 
     public ConflictResolutionSession build() {
-        ConflictResolutionSession session = ConflictResolutionSession.builder()
-                .conflictId(conflictId)
-                .conflictingAgents(conflictingAgents)
-                .conflictType(conflictType)
-                .conflictData(conflictData)
-                .startTime(startTime)
-                .state(state)
-                .build();
+        ConflictResolutionSession session = ConflictResolutionSession.builder().conflictId(conflictId)
+                .conflictingAgents(conflictingAgents).conflictType(conflictType).conflictData(conflictData)
+                .startTime(startTime).state(state).build();
         return session;
     }
 }
-
-

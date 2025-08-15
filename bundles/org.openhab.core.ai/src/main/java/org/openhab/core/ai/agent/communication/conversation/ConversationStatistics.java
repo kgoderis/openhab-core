@@ -34,12 +34,35 @@ public class ConversationStatistics {
         this.conversationPatterns = conversationPatterns;
     }
 
-    public long getTotalConversations() { return totalConversations; }
-    public long getTotalMessages() { return totalMessages; }
-    public long getTotalConversationTime() { return totalConversationTime; }
-    public long getTotalParticipants() { return totalParticipants; }
-    public int getActiveConversations() { return activeConversations; }
-    public int getConversationHistories() { return conversationHistories; }
-    public int getConversationTemplates() { return conversationTemplates; }
-    public int getConversationPatterns() { return conversationPatterns; }
+    public long getTotalConversations() {
+        return totalConversations;
+    }
+
+    public long getTotalMessages() {
+        return totalMessages;
+    }
+
+    public long getTotalConversationTime() {
+        return totalConversationTime;
+    }
+
+    public long getTotalParticipants() {
+        return totalParticipants;
+    }
+
+    public int getActiveConversations() {
+        return activeConversations;
+    }
+
+    public int getConversationHistories() {
+        return conversationHistories;
+    }
+
+    public int getConversationTemplates() {
+        return conversationTemplates;
+    }
+
+    public int getConversationPatterns() {
+        return conversationPatterns;
+    }
 }

@@ -23,10 +23,19 @@ public final class AgentResponse {
         this.data = data;
     }
 
-    public String getTaskId() { return taskId; }
-    public boolean isSuccess() { return success; }
-    public String getMessage() { return message; }
-    public @Nullable Object getData() { return data; }
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public @Nullable Object getData() {
+        return data;
+    }
 }
-
-

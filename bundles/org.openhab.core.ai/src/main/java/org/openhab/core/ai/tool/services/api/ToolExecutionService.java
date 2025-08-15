@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionResult;
+import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**

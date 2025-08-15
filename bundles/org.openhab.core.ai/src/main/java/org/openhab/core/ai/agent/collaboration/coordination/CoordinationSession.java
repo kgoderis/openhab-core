@@ -72,7 +72,7 @@ public class CoordinationSession {
         this.error = error;
     }
 
-    public static CoordinationSessionBuilder builder() { return new CoordinationSessionBuilder(); }
+    public static CoordinationSessionBuilder builder() {
+        return new CoordinationSessionBuilder();
+    }
 }
-
-

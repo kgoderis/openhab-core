@@ -11,8 +11,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionExecutionService;
-import org.openhab.core.ai.agent.api.AgentActionDelegationService;
+import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.action.api.ActionSecurityValidator;
+import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -351,12 +355,8 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new java.util.HashMap<>();
         ActionExecutionPerformanceMetrics perfMetrics = new ActionExecutionPerformanceMetrics(
-                totalActionExecutions.get(),
-                successfulActionExecutions.get(),
-                failedActionExecutions.get(),
-                totalExecutionTime.get(),
-                totalRetryAttempts.get(),
-                actionResultCache.size());
+                totalActionExecutions.get(), successfulActionExecutions.get(), failedActionExecutions.get(),
+                totalExecutionTime.get(), totalRetryAttempts.get(), actionResultCache.size());
 
         metrics.put("totalExecutions", perfMetrics.getTotalExecutions());
         metrics.put("successfulExecutions", perfMetrics.getSuccessfulExecutions());

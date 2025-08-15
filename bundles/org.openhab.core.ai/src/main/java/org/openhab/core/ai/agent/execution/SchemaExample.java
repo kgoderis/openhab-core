@@ -19,9 +19,15 @@ public class SchemaExample {
         this.parameters = parameters;
     }
 
-    public String getName() { return name; }
-    public String getDescription() { return description; }
-    public Map<String, Object> getParameters() { return parameters; }
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Map<String, Object> getParameters() {
+        return parameters;
+    }
 }
-
-

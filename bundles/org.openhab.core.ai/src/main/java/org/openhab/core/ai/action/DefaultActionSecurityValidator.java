@@ -6,6 +6,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionSecurityValidator;
+import org.openhab.core.ai.action.api.SecurityLevel;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,7 +144,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
         }
 
         // Check if action is enabled
-        if (policy.getSecurityLevel() == ActionSecurityPolicy.SecurityLevel.CRITICAL) {
+        if (policy.getSecurityLevel() == SecurityLevel.MAXIMUM) {
             // Critical security level requires additional validation
             return validateCriticalAction(actionContext);
         }
@@ -157,8 +160,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
         }
 
         // Check rate limiting for high security actions
-        if (policy.getSecurityLevel() == ActionSecurityPolicy.SecurityLevel.HIGH
-                && !checkRateLimit(actionName, actionContext)) {
+        if (policy.getSecurityLevel() == SecurityLevel.HIGH && !checkRateLimit(actionName, actionContext)) {
             return false;
         }
 
@@ -284,35 +286,23 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
      */
     private void initializeDefaultPolicies() {
         // Add default policies for common actions using enhanced ActionSecurityPolicy
-        actionPolicies.put("openhab.items.get",
-                ActionSecurityPolicy.builder().actionId("openhab.items.get")
-                        .securityLevel(ActionSecurityPolicy.SecurityLevel.LOW).requiresAuthentication(false)
-                        .requiresAuthorization(false).build());
+        actionPolicies.put("openhab.items.get", ActionSecurityPolicy.builder().actionId("openhab.items.get")
+                .securityLevel(SecurityLevel.LOW).requiresAuthentication(false).requiresAuthorization(false).build());
 
-        actionPolicies.put("openhab.items.set",
-                ActionSecurityPolicy.builder().actionId("openhab.items.set")
-                        .securityLevel(ActionSecurityPolicy.SecurityLevel.MEDIUM).requiresAuthentication(true)
-                        .requiresAuthorization(true).build());
+        actionPolicies.put("openhab.items.set", ActionSecurityPolicy.builder().actionId("openhab.items.set")
+                .securityLevel(SecurityLevel.MEDIUM).requiresAuthentication(true).requiresAuthorization(true).build());
 
-        actionPolicies.put("openhab.things.get",
-                ActionSecurityPolicy.builder().actionId("openhab.things.get")
-                        .securityLevel(ActionSecurityPolicy.SecurityLevel.LOW).requiresAuthentication(false)
-                        .requiresAuthorization(false).build());
+        actionPolicies.put("openhab.things.get", ActionSecurityPolicy.builder().actionId("openhab.things.get")
+                .securityLevel(SecurityLevel.LOW).requiresAuthentication(false).requiresAuthorization(false).build());
 
-        actionPolicies.put("openhab.rules.get",
-                ActionSecurityPolicy.builder().actionId("openhab.rules.get")
-                        .securityLevel(ActionSecurityPolicy.SecurityLevel.LOW).requiresAuthentication(false)
-                        .requiresAuthorization(false).build());
+        actionPolicies.put("openhab.rules.get", ActionSecurityPolicy.builder().actionId("openhab.rules.get")
+                .securityLevel(SecurityLevel.LOW).requiresAuthentication(false).requiresAuthorization(false).build());
 
-        actionPolicies.put("openhab.rules.create",
-                ActionSecurityPolicy.builder().actionId("openhab.rules.create")
-                        .securityLevel(ActionSecurityPolicy.SecurityLevel.MEDIUM).requiresAuthentication(true)
-                        .requiresAuthorization(true).build());
+        actionPolicies.put("openhab.rules.create", ActionSecurityPolicy.builder().actionId("openhab.rules.create")
+                .securityLevel(SecurityLevel.MEDIUM).requiresAuthentication(true).requiresAuthorization(true).build());
 
-        actionPolicies.put("openhab.rules.delete",
-                ActionSecurityPolicy.builder().actionId("openhab.rules.delete")
-                        .securityLevel(ActionSecurityPolicy.SecurityLevel.HIGH).requiresAuthentication(true)
-                        .requiresAuthorization(true).build());
+        actionPolicies.put("openhab.rules.delete", ActionSecurityPolicy.builder().actionId("openhab.rules.delete")
+                .securityLevel(SecurityLevel.HIGH).requiresAuthentication(true).requiresAuthorization(true).build());
 
         // Add default client permissions
         clientPermissions.put("reasoning-engine", Set.of("*"));

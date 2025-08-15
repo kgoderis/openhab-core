@@ -3,6 +3,7 @@ package org.openhab.core.ai.action;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.action.api.SecurityLevel;
 
 /**
  * Dynamic Context Builder - Defines the contract for building dynamic context

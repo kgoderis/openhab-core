@@ -64,5 +64,3 @@ public class CoordinationStatistics {
         return registeredProtocols;
     }
 }
-
-

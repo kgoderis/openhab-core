@@ -9,7 +9,8 @@ public class ConflictResolutionConfiguration {
     private boolean enableAutoEscalation = true;
     private Duration autoEscalationDelay = Duration.ofMinutes(30);
 
-    public ConflictResolutionConfiguration() {}
+    public ConflictResolutionConfiguration() {
+    }
 
     public boolean isEnableAutoEscalation() {
         return enableAutoEscalation;
@@ -27,5 +28,3 @@ public class ConflictResolutionConfiguration {
         this.autoEscalationDelay = autoEscalationDelay;
     }
 }
-
-

@@ -16,12 +16,12 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import org.openhab.core.OpenHAB;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionMetadata;
-import org.openhab.core.ai.action.ActionResult;
-import org.openhab.core.ai.action.ActionValidationResult;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
+import org.openhab.core.ai.action.api.ActionMetadata;
+import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

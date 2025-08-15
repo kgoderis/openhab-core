@@ -20,5 +20,3 @@ public class PriorityConflictResolutionStrategy implements ConflictResolutionStr
                 ConflictResolutionResult.success("Priority conflict resolved using hierarchical resolution"));
     }
 }
-
-

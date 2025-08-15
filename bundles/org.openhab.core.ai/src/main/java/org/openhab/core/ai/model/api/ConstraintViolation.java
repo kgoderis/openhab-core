@@ -7,9 +7,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface ConstraintViolation {
     String getConstraintId();
+
     String getDescription();
+
     Severity getSeverity();
+
     List<String> getSuggestedActions();
 }
-
-

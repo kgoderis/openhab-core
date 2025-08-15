@@ -39,5 +39,3 @@ public class CachedContext {
         return Instant.now().isAfter(expiryTime);
     }
 }
-
-

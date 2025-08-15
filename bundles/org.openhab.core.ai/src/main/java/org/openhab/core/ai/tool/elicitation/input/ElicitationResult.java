@@ -78,12 +78,5 @@ public class ElicitationResult {
         return "ElicitationResult{requestId='" + requestId + "', status=" + status + ", message='" + message + "'}";
     }
 
-    /**
-     * Elicitation status enumeration.
-     */
-    public enum ElicitationStatus {
-        PENDING,
-        COMPLETED,
-        CANCELLED
-    }
+    // ElicitationStatus extracted to org.openhab.core.ai.tool.elicitation.input.ElicitationStatus
 }

@@ -153,5 +153,7 @@ public class ModelIntegrationStatistics {
         return totalAgents > 0 ? (double) activeAgents / totalAgents : 0.0;
     }
 
-    public static ModelIntegrationStatisticsBuilder builder() { return new ModelIntegrationStatisticsBuilder(); }
+    public static ModelIntegrationStatisticsBuilder builder() {
+        return new ModelIntegrationStatisticsBuilder();
+    }
 }

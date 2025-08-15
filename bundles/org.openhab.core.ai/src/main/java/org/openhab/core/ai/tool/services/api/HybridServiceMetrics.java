@@ -29,14 +29,43 @@ public class HybridServiceMetrics {
         this.toolMetrics = toolMetrics;
     }
 
-    public long getTotalExecutions() { return totalExecutions; }
-    public long getSuccessfulExecutions() { return successfulExecutions; }
-    public long getFailedExecutions() { return failedExecutions; }
-    public long getFallbackExecutions() { return fallbackExecutions; }
-    public long getTotalExecutionTime() { return totalExecutionTime; }
-    public long getTotalCost() { return totalCost; }
-    public Map<ModelProviderType, ProviderMetrics> getProviderMetrics() { return providerMetrics; }
-    public Map<String, ToolMetrics> getToolMetrics() { return toolMetrics; }
-    public double getSuccessRate() { return totalExecutions > 0 ? (double) successfulExecutions / totalExecutions : 0.0; }
-    public double getAverageExecutionTime() { return totalExecutions > 0 ? (double) totalExecutionTime / totalExecutions : 0.0; }
+    public long getTotalExecutions() {
+        return totalExecutions;
+    }
+
+    public long getSuccessfulExecutions() {
+        return successfulExecutions;
+    }
+
+    public long getFailedExecutions() {
+        return failedExecutions;
+    }
+
+    public long getFallbackExecutions() {
+        return fallbackExecutions;
+    }
+
+    public long getTotalExecutionTime() {
+        return totalExecutionTime;
+    }
+
+    public long getTotalCost() {
+        return totalCost;
+    }
+
+    public Map<ModelProviderType, ProviderMetrics> getProviderMetrics() {
+        return providerMetrics;
+    }
+
+    public Map<String, ToolMetrics> getToolMetrics() {
+        return toolMetrics;
+    }
+
+    public double getSuccessRate() {
+        return totalExecutions > 0 ? (double) successfulExecutions / totalExecutions : 0.0;
+    }
+
+    public double getAverageExecutionTime() {
+        return totalExecutions > 0 ? (double) totalExecutionTime / totalExecutions : 0.0;
+    }
 }

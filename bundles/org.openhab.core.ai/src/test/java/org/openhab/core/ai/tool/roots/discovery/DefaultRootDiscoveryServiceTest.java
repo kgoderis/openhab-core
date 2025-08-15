@@ -266,17 +266,17 @@ class DefaultRootDiscoveryServiceTest {
             }
 
             @Override
-            public org.openhab.core.ai.tool.api.validation.ResourceMetadata getResourceMetadata() {
-                return new org.openhab.core.ai.tool.api.validation.ResourceMetadata("1.0.0", // version
+            public org.openhab.core.ai.tool.resources.api.validation.ResourceMetadata getResourceMetadata() {
+                return new org.openhab.core.ai.tool.resources.api.validation.ResourceMetadata("1.0.0", // version
                         "openHAB AI", // author
                         Map.of("path", path, "access", access, "type", "root") // properties
                 );
             }
 
             @Override
-            public org.openhab.core.ai.tool.api.validation.ResourceValidationResult validateParameters(
+            public org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult validateParameters(
                     Map<String, Object> parameters) {
-                return org.openhab.core.ai.tool.api.validation.ResourceValidationResult.success();
+                return org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult.success();
             }
 
             @Override

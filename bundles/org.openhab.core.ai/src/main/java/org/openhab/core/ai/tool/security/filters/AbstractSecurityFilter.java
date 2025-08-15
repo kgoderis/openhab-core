@@ -40,19 +40,29 @@ public abstract class AbstractSecurityFilter implements SecurityFilter {
     }
 
     @Override
-    public String getFilterId() { return filterId; }
+    public String getFilterId() {
+        return filterId;
+    }
 
     @Override
-    public String getFilterName() { return filterName; }
+    public String getFilterName() {
+        return filterName;
+    }
 
     @Override
-    public int getPriority() { return priority; }
+    public int getPriority() {
+        return priority;
+    }
 
     @Override
-    public boolean isEnabled() { return enabled; }
+    public boolean isEnabled() {
+        return enabled;
+    }
 
     @Override
-    public Map<String, Object> getConfiguration() { return new ConcurrentHashMap<>(configuration); }
+    public Map<String, Object> getConfiguration() {
+        return new ConcurrentHashMap<>(configuration);
+    }
 
     @Override
     public void updateConfiguration(Map<String, Object> configuration) {
@@ -63,7 +73,9 @@ public abstract class AbstractSecurityFilter implements SecurityFilter {
     @Override
     public SecurityResult authenticate(Map<String, Object> request) {
         totalRequests.incrementAndGet();
-        if (!enabled) { return SecurityResult.success("Filter disabled"); }
+        if (!enabled) {
+            return SecurityResult.success("Filter disabled");
+        }
         String cacheKey = generateCacheKey(request);
         CachedAuthResult cached = authCache.get(cacheKey);
         if (cached != null && !cached.isExpired()) {
@@ -81,7 +93,10 @@ public abstract class AbstractSecurityFilter implements SecurityFilter {
         return result;
     }
 
-    protected String generateCacheKey(Map<String, Object> request) { return request.toString(); }
+    protected String generateCacheKey(Map<String, Object> request) {
+        return request.toString();
+    }
+
     protected abstract SecurityResult performAuthentication(Map<String, Object> request);
 
     public AuthMetrics getMetrics() {
@@ -89,7 +104,7 @@ public abstract class AbstractSecurityFilter implements SecurityFilter {
                 cacheHits.get(), cacheMisses.get(), authCache.size());
     }
 
-    public void clearCache() { authCache.clear(); }
+    public void clearCache() {
+        authCache.clear();
+    }
 }
-
-

@@ -35,10 +35,19 @@ public final class NegotiationSessionContext {
         this.contextData = Map.copyOf(contextData);
     }
 
-    public String getSessionId() { return sessionId; }
-    public String getTemplateId() { return templateId; }
-    public Map<String, Object> getContextData() { return contextData; }
-    public @Nullable Object get(String key) { return contextData.get(key); }
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public String getTemplateId() {
+        return templateId;
+    }
+
+    public Map<String, Object> getContextData() {
+        return contextData;
+    }
+
+    public @Nullable Object get(String key) {
+        return contextData.get(key);
+    }
 }
-
-

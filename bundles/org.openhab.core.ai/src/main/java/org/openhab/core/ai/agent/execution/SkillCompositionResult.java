@@ -7,9 +7,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface SkillCompositionResult {
     boolean isSuccess();
-    List<SkillCompositionStrategy.SkillExecutionStep> getExecutionPlan();
+
+    List<SkillExecutionStep> getExecutionPlan();
+
     String getErrorMessage();
+
     long getEstimatedExecutionTime();
 }
-
-

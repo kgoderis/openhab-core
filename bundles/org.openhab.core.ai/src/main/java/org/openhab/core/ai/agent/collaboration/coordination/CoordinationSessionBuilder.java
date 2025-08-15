@@ -17,11 +17,32 @@ public class CoordinationSessionBuilder {
     Instant startTime;
     CoordinationState state;
 
-    public CoordinationSessionBuilder sessionId(String sessionId) { this.sessionId = sessionId; return this; }
-    public CoordinationSessionBuilder agentIds(List<String> agentIds) { this.agentIds = agentIds; return this; }
-    public CoordinationSessionBuilder protocol(CoordinationProtocol protocol) { this.protocol = protocol; return this; }
-    public CoordinationSessionBuilder startTime(Instant startTime) { this.startTime = startTime; return this; }
-    public CoordinationSessionBuilder state(CoordinationState state) { this.state = state; return this; }
+    public CoordinationSessionBuilder sessionId(String sessionId) {
+        this.sessionId = sessionId;
+        return this;
+    }
 
-    public CoordinationSession build() { return new CoordinationSession(this); }
+    public CoordinationSessionBuilder agentIds(List<String> agentIds) {
+        this.agentIds = agentIds;
+        return this;
+    }
+
+    public CoordinationSessionBuilder protocol(CoordinationProtocol protocol) {
+        this.protocol = protocol;
+        return this;
+    }
+
+    public CoordinationSessionBuilder startTime(Instant startTime) {
+        this.startTime = startTime;
+        return this;
+    }
+
+    public CoordinationSessionBuilder state(CoordinationState state) {
+        this.state = state;
+        return this;
+    }
+
+    public CoordinationSession build() {
+        return new CoordinationSession(this);
+    }
 }

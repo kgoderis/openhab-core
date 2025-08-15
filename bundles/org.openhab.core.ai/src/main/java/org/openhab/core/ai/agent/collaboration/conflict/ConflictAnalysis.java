@@ -19,11 +19,23 @@ public class ConflictAnalysis {
         this.description = description;
     }
 
-    public boolean isConflictDetected() { return conflictDetected; }
-    public ConflictType getConflictType() { return conflictType; }
-    public ConflictPriority getPriority() { return priority; }
-    public int getSeverity() { return severity; }
-    public String getDescription() { return description; }
+    public boolean isConflictDetected() {
+        return conflictDetected;
+    }
+
+    public ConflictType getConflictType() {
+        return conflictType;
+    }
+
+    public ConflictPriority getPriority() {
+        return priority;
+    }
+
+    public int getSeverity() {
+        return severity;
+    }
+
+    public String getDescription() {
+        return description;
+    }
 }
-
-

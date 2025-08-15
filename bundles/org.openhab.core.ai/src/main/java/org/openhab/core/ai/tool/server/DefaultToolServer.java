@@ -7,6 +7,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.error.DefaultErrorRecoveryService;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.security.DefaultToolSecurityService;
+import org.openhab.core.ai.tool.server.api.TransportType;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -205,7 +206,7 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
      * 
      * @return security statistics or null if security manager is not available
      */
-    public org.openhab.core.ai.tool.security.@Nullable SecurityStatistics getSecurityStatistics() {
+    public org.openhab.core.ai.tool.security.api.@Nullable SecurityStatistics getSecurityStatistics() {
         DefaultToolSecurityService manager = securityManager;
         return manager != null ? manager.getSecurityStatistics() : null;
     }

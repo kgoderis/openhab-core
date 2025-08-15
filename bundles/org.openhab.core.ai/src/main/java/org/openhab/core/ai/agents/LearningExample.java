@@ -5,12 +5,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.ActionResult;
+import org.openhab.core.ai.action.api.ActionResult;
 
 /**
  * Learning example record capturing action execution details for agent learning.
  *
- * <p>Contains action name, parameters, result, success flag, context, and timestamp.</p>
+ * <p>
+ * Contains action name, parameters, result, success flag, context, and timestamp.
+ * </p>
  *
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
@@ -58,5 +60,3 @@ public class LearningExample {
         return timestamp;
     }
 }
-
-

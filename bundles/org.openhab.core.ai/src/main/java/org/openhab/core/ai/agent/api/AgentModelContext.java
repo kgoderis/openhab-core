@@ -1,108 +1,138 @@
 package org.openhab.core.ai.agent.api;
 
-import java.time.Instant;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 
-/**
- * Agent-specific context for model integration
- * 
- * <p>
- * This class contains:
- * - Agent specialization and domain information
- * - Agent capabilities and constraints
- * - Agent-specific prompt templates and preferences
- * - Agent-specific model optimization settings
- * - Agent-specific security and access controls
- * - Agent-specific performance monitoring settings
- * </p>
- * 
- * @author Karel Goderis - Initial Contribution
- */
 @NonNullByDefault
 public class AgentModelContext {
+    private final String contextId;
+    private final Map<String, Object> contextData;
+    private final Map<String, Object> metadata;
 
-    private final String agentId;
-    private final String specialization;
-    private final String domain;
-    private final Map<String, Object> capabilities;
-    private final Map<String, Object> constraints;
-    private final Map<String, String> promptTemplates;
-    private final Map<String, Object> preferences;
-    private final Map<String, Object> optimizationSettings;
-    private final Map<String, Object> securitySettings;
-    private final Map<String, Object> monitoringSettings;
-    private final Instant createdAt;
-    private final Instant lastUpdated;
-
-    AgentModelContext(AgentModelContextBuilder builder) {
-        this.agentId = builder.agentId;
-        this.specialization = builder.specialization;
-        this.domain = builder.domain;
-        this.capabilities = new HashMap<>(builder.capabilities);
-        this.constraints = new HashMap<>(builder.constraints);
-        this.promptTemplates = new HashMap<>(builder.promptTemplates);
-        this.preferences = new HashMap<>(builder.preferences);
-        this.optimizationSettings = new HashMap<>(builder.optimizationSettings);
-        this.securitySettings = new HashMap<>(builder.securitySettings);
-        this.monitoringSettings = new HashMap<>(builder.monitoringSettings);
-        this.createdAt = builder.createdAt;
-        this.lastUpdated = builder.lastUpdated;
+    public AgentModelContext(String contextId, Map<String, Object> contextData, Map<String, Object> metadata) {
+        this.contextId = contextId;
+        this.contextData = new ConcurrentHashMap<>(contextData);
+        this.metadata = new ConcurrentHashMap<>(metadata);
     }
 
-    public String getAgentId() {
-        return agentId;
+    public String getContextId() {
+        return contextId;
     }
 
-    public String getSpecialization() {
-        return specialization;
+    public Map<String, Object> getContextData() {
+        return new ConcurrentHashMap<>(contextData);
     }
 
-    public String getDomain() {
-        return domain;
+    public Map<String, Object> getMetadata() {
+        return new ConcurrentHashMap<>(metadata);
     }
 
+    public @Nullable Object getContextData(String key) {
+        return contextData.get(key);
+    }
+
+    public @Nullable Object getMetadata(String key) {
+        return metadata.get(key);
+    }
+
+    public boolean hasContextData(String key) {
+        return contextData.containsKey(key);
+    }
+
+    public boolean hasMetadata(String key) {
+        return metadata.containsKey(key);
+    }
+
+    /**
+     * Returns the agent specialization if present in metadata under key "specialization".
+     *
+     * @return specialization string or null if not present
+     */
+    public @Nullable String getSpecialization() {
+        @Nullable
+        Object value = metadata.get("specialization");
+        return value != null ? String.valueOf(value) : null;
+    }
+
+    /**
+     * Returns the domain if present in metadata under key "domain".
+     *
+     * @return domain string or null if not present
+     */
+    public @Nullable String getDomain() {
+        @Nullable
+        Object value = metadata.get("domain");
+        return value != null ? String.valueOf(value) : null;
+    }
+
+    /**
+     * Returns capabilities map if present in context data under key "capabilities".
+     *
+     * @return immutable copy of capabilities map, or empty map if absent
+     */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> getCapabilities() {
-        return new HashMap<>(capabilities);
+        @Nullable
+        Object value = contextData.get("capabilities");
+        if (value instanceof Map<?, ?> map) {
+            return Collections.unmodifiableMap(new ConcurrentHashMap<>((Map<String, Object>) map));
+        }
+        return Collections.emptyMap();
     }
 
+    /**
+     * Returns constraints map if present in context data under key "constraints".
+     *
+     * @return immutable copy of constraints map, or empty map if absent
+     */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> getConstraints() {
-        return new HashMap<>(constraints);
+        @Nullable
+        Object value = contextData.get("constraints");
+        if (value instanceof Map<?, ?> map) {
+            return Collections.unmodifiableMap(new ConcurrentHashMap<>((Map<String, Object>) map));
+        }
+        return Collections.emptyMap();
     }
 
-    public Map<String, String> getPromptTemplates() {
-        return new HashMap<>(promptTemplates);
-    }
-
+    /**
+     * Returns preferences map if present in context data under key "preferences".
+     *
+     * @return immutable copy of preferences map, or empty map if absent
+     */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> getPreferences() {
-        return new HashMap<>(preferences);
+        @Nullable
+        Object value = contextData.get("preferences");
+        if (value instanceof Map<?, ?> map) {
+            return Collections.unmodifiableMap(new ConcurrentHashMap<>((Map<String, Object>) map));
+        }
+        return Collections.emptyMap();
     }
 
-    public Map<String, Object> getOptimizationSettings() {
-        return new HashMap<>(optimizationSettings);
+    /**
+     * Returns prompt templates if present in metadata under key "promptTemplates".
+     * The expected value type is Map<String, String>.
+     *
+     * @return immutable copy of prompt templates, or empty map if absent
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, String> getPromptTemplates() {
+        @Nullable
+        Object value = metadata.get("promptTemplates");
+        if (value instanceof Map<?, ?> map) {
+            return Collections.unmodifiableMap(new ConcurrentHashMap<>((Map<String, String>) map));
+        }
+        return Collections.emptyMap();
     }
 
-    public Map<String, Object> getSecuritySettings() {
-        return new HashMap<>(securitySettings);
+    @Override
+    public String toString() {
+        return "AgentModelContext{contextId='" + contextId + "', dataSize=" + contextData.size() + ", metadataSize="
+                + metadata.size() + "}";
     }
-
-    public Map<String, Object> getMonitoringSettings() {
-        return new HashMap<>(monitoringSettings);
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public Instant getLastUpdated() {
-        return lastUpdated;
-    }
-
-    public static AgentModelContextBuilder builder() {
-        return new AgentModelContextBuilder();
-    }
-
-    /* Extracted: org.openhab.core.ai.agent.api.AgentModelContextBuilder */
 }

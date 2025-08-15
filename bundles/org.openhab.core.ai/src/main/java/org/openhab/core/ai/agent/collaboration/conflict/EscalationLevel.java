@@ -8,5 +8,3 @@ public enum EscalationLevel {
     ADMINISTRATOR,
     SYSTEM
 }
-
-

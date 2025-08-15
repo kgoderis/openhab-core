@@ -31,23 +31,82 @@ public final class ActionAnalyticsBuilder {
     Instant lastExecution = Instant.now();
     Duration totalExecutionTime = Duration.ZERO;
 
-    public ActionAnalyticsBuilder actionId(String actionId) { this.actionId = actionId; return this; }
-    public ActionAnalyticsBuilder totalExecutions(long v) { this.totalExecutions = v; return this; }
-    public ActionAnalyticsBuilder successfulExecutions(long v) { this.successfulExecutions = v; return this; }
-    public ActionAnalyticsBuilder failedExecutions(long v) { this.failedExecutions = v; return this; }
-    public ActionAnalyticsBuilder averageExecutionTime(Duration v) { this.averageExecutionTime = v; return this; }
-    public ActionAnalyticsBuilder minExecutionTime(Duration v) { this.minExecutionTime = v; return this; }
-    public ActionAnalyticsBuilder maxExecutionTime(Duration v) { this.maxExecutionTime = v; return this; }
-    public ActionAnalyticsBuilder executionByAgent(Map<String, Long> v) { this.executionByAgent = v; return this; }
-    public ActionAnalyticsBuilder executionByTimeOfDay(Map<String, Long> v) { this.executionByTimeOfDay = v; return this; }
-    public ActionAnalyticsBuilder executionByDayOfWeek(Map<String, Long> v) { this.executionByDayOfWeek = v; return this; }
-    public ActionAnalyticsBuilder commonErrorMessages(List<String> v) { this.commonErrorMessages = v; return this; }
-    public ActionAnalyticsBuilder parameterUsage(Map<String, Long> v) { this.parameterUsage = v; return this; }
-    public ActionAnalyticsBuilder firstExecution(Instant v) { this.firstExecution = v; return this; }
-    public ActionAnalyticsBuilder lastExecution(Instant v) { this.lastExecution = v; return this; }
-    public ActionAnalyticsBuilder totalExecutionTime(Duration v) { this.totalExecutionTime = v; return this; }
+    public ActionAnalyticsBuilder actionId(String actionId) {
+        this.actionId = actionId;
+        return this;
+    }
 
-    public ActionAnalytics build() { return new ActionAnalytics(this); }
+    public ActionAnalyticsBuilder totalExecutions(long v) {
+        this.totalExecutions = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder successfulExecutions(long v) {
+        this.successfulExecutions = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder failedExecutions(long v) {
+        this.failedExecutions = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder averageExecutionTime(Duration v) {
+        this.averageExecutionTime = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder minExecutionTime(Duration v) {
+        this.minExecutionTime = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder maxExecutionTime(Duration v) {
+        this.maxExecutionTime = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder executionByAgent(Map<String, Long> v) {
+        this.executionByAgent = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder executionByTimeOfDay(Map<String, Long> v) {
+        this.executionByTimeOfDay = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder executionByDayOfWeek(Map<String, Long> v) {
+        this.executionByDayOfWeek = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder commonErrorMessages(List<String> v) {
+        this.commonErrorMessages = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder parameterUsage(Map<String, Long> v) {
+        this.parameterUsage = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder firstExecution(Instant v) {
+        this.firstExecution = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder lastExecution(Instant v) {
+        this.lastExecution = v;
+        return this;
+    }
+
+    public ActionAnalyticsBuilder totalExecutionTime(Duration v) {
+        this.totalExecutionTime = v;
+        return this;
+    }
+
+    public ActionAnalytics build() {
+        return new ActionAnalytics(this);
+    }
 }
-
-

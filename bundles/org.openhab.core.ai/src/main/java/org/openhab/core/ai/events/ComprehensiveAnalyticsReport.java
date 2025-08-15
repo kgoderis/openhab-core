@@ -28,13 +28,31 @@ public class ComprehensiveAnalyticsReport {
         this.timestamp = timestamp;
     }
 
-    public double getSystemHealthScore() { return systemHealthScore; }
-    public @Nullable PerformanceAnalytics getPerformanceAnalytics() { return performanceAnalytics; }
-    public @Nullable QualityAnalytics getQualityAnalytics() { return qualityAnalytics; }
-    public @Nullable ResourceAnalytics getResourceAnalytics() { return resourceAnalytics; }
-    public @Nullable PredictiveAnalytics getPredictiveAnalytics() { return predictiveAnalytics; }
-    public List<AnalyticsEvent> getEvents() { return events; }
-    public Instant getTimestamp() { return timestamp; }
+    public double getSystemHealthScore() {
+        return systemHealthScore;
+    }
+
+    public @Nullable PerformanceAnalytics getPerformanceAnalytics() {
+        return performanceAnalytics;
+    }
+
+    public @Nullable QualityAnalytics getQualityAnalytics() {
+        return qualityAnalytics;
+    }
+
+    public @Nullable ResourceAnalytics getResourceAnalytics() {
+        return resourceAnalytics;
+    }
+
+    public @Nullable PredictiveAnalytics getPredictiveAnalytics() {
+        return predictiveAnalytics;
+    }
+
+    public List<AnalyticsEvent> getEvents() {
+        return events;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
 }
-
-

@@ -27,5 +27,3 @@ class WorkflowDefinition {
         this.conditions = conditions;
     }
 }
-
-

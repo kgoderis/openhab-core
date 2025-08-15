@@ -22,8 +22,8 @@ public class LogEntry {
     private final Map<String, Object> metadata;
     private final Instant processedAt;
 
-    public LogEntry(String id, LocalDateTime timestamp, String loggerName, LogLevel level,
-            String message, Map<String, Object> metadata, Instant processedAt) {
+    public LogEntry(String id, LocalDateTime timestamp, String loggerName, LogLevel level, String message,
+            Map<String, Object> metadata, Instant processedAt) {
         this.id = id;
         this.timestamp = timestamp;
         this.loggerName = loggerName;
@@ -33,13 +33,31 @@ public class LogEntry {
         this.processedAt = processedAt;
     }
 
-    public String getId() { return id; }
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public String getLoggerName() { return loggerName; }
-    public LogLevel getLevel() { return level; }
-    public String getMessage() { return message; }
-    public Map<String, Object> getMetadata() { return metadata; }
-    public Instant getProcessedAt() { return processedAt; }
+    public String getId() {
+        return id;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public String getLoggerName() {
+        return loggerName;
+    }
+
+    public LogLevel getLevel() {
+        return level;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    public Instant getProcessedAt() {
+        return processedAt;
+    }
 }
-
-

@@ -33,5 +33,3 @@ class WorkflowExecution {
         this.status = "pending";
     }
 }
-
-

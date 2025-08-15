@@ -9,7 +9,9 @@ import org.openhab.core.ai.agent.api.Agent;
 /**
  * Default implementation of {@link Agent.AgentMetrics} used by {@link AgentRegistry}.
  *
- * <p>Tracks execution times and success/failure counts for an agent.</p>
+ * <p>
+ * Tracks execution times and success/failure counts for an agent.
+ * </p>
  *
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
@@ -55,7 +57,8 @@ final class DefaultAgentMetrics implements Agent.AgentMetrics {
 
     @Override
     public double getAverageExecutionTime() {
-        return executionTimes.isEmpty() ? 0.0 : executionTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
+        return executionTimes.isEmpty() ? 0.0
+                : executionTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
     }
 
     @Override
@@ -63,5 +66,3 @@ final class DefaultAgentMetrics implements Agent.AgentMetrics {
         return executionTimes.size();
     }
 }
-
-

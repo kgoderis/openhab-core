@@ -15,8 +15,11 @@ class JWTFailurePattern {
         this.reason = reason;
     }
 
-    void recordFailure() { failureCount.incrementAndGet(); }
-    long getFailureCount() { return failureCount.get(); }
+    void recordFailure() {
+        failureCount.incrementAndGet();
+    }
+
+    long getFailureCount() {
+        return failureCount.get();
+    }
 }
-
-

@@ -11,5 +11,3 @@ public enum ContextChangeType {
     UPDATED,
     DELETED
 }
-
-

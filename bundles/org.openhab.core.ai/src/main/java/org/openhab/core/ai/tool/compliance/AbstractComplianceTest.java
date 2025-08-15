@@ -45,25 +45,39 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
     }
 
     @Override
-    public String getTestId() { return testId; }
+    public String getTestId() {
+        return testId;
+    }
 
     @Override
-    public String getTestName() { return testName; }
+    public String getTestName() {
+        return testName;
+    }
 
     @Override
-    public String getTestDescription() { return testDescription; }
+    public String getTestDescription() {
+        return testDescription;
+    }
 
     @Override
-    public String getCategory() { return category; }
+    public String getCategory() {
+        return category;
+    }
 
     @Override
-    public int getPriority() { return priority; }
+    public int getPriority() {
+        return priority;
+    }
 
     @Override
-    public boolean isEnabled() { return enabled; }
+    public boolean isEnabled() {
+        return enabled;
+    }
 
     @Override
-    public ComplianceTestResult runTest() { return runTest(new HashMap<>()); }
+    public ComplianceTestResult runTest() {
+        return runTest(new HashMap<>());
+    }
 
     @Override
     public ComplianceTestResult runTest(Map<String, Object> parameters) {
@@ -77,7 +91,11 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
             long executionTime = System.currentTimeMillis() - startTime;
             lastExecutionTimeMs.set(executionTime);
             totalExecutionTimeMs.addAndGet(executionTime);
-            if (result.isPassed()) { successCount.incrementAndGet(); } else { failureCount.incrementAndGet(); }
+            if (result.isPassed()) {
+                successCount.incrementAndGet();
+            } else {
+                failureCount.incrementAndGet();
+            }
             return result;
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
@@ -89,7 +107,9 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
     }
 
     @Override
-    public Map<String, Object> getConfiguration() { return new HashMap<>(configuration); }
+    public Map<String, Object> getConfiguration() {
+        return new HashMap<>(configuration);
+    }
 
     @Override
     public void updateConfiguration(Map<String, Object> configuration) {
@@ -98,10 +118,14 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
     }
 
     @Override
-    public List<String> getDependencies() { return new ArrayList<>(dependencies); }
+    public List<String> getDependencies() {
+        return new ArrayList<>(dependencies);
+    }
 
     @Override
-    public boolean areDependenciesSatisfied(List<String> completedTests) { return completedTests.containsAll(dependencies); }
+    public boolean areDependenciesSatisfied(List<String> completedTests) {
+        return completedTests.containsAll(dependencies);
+    }
 
     @Override
     public Map<String, Object> getPerformanceMetrics() {
@@ -123,16 +147,28 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
     }
 
     @Override
-    public String getVersion() { return version; }
+    public String getVersion() {
+        return version;
+    }
 
     @Override
-    public boolean isVersionCompatible(String requiredVersion) { return version.equals(requiredVersion) || version.startsWith(requiredVersion); }
+    public boolean isVersionCompatible(String requiredVersion) {
+        return version.equals(requiredVersion) || version.startsWith(requiredVersion);
+    }
 
-    public void addDependency(String dependencyTestId) { if (!dependencies.contains(dependencyTestId)) { dependencies.add(dependencyTestId); } }
-    public void removeDependency(String dependencyTestId) { dependencies.remove(dependencyTestId); }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public void addDependency(String dependencyTestId) {
+        if (!dependencies.contains(dependencyTestId)) {
+            dependencies.add(dependencyTestId);
+        }
+    }
+
+    public void removeDependency(String dependencyTestId) {
+        dependencies.remove(dependencyTestId);
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     protected abstract ComplianceTestResult executeTest(Map<String, Object> parameters);
 }
-
-

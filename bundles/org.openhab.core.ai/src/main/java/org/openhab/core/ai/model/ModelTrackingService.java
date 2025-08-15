@@ -1,6 +1,5 @@
 package org.openhab.core.ai.model;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;

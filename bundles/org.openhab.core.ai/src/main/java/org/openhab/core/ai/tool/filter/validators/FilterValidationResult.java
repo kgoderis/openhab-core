@@ -220,7 +220,8 @@ public class FilterValidationResult {
     /**
      * Result of filter validation comparison.
      */
-    // FilterValidationComparisonResult extracted to org.openhab.core.ai.tool.filter.validators.FilterValidationComparisonResult
+    // FilterValidationComparisonResult extracted to
+    // org.openhab.core.ai.tool.filter.validators.FilterValidationComparisonResult
 
     /**
      * Filter validation metrics.

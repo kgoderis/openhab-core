@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.persistence.PersistenceService;
 
 import io.a2a.spec.TaskState;
 
@@ -30,16 +29,31 @@ public class TaskExecutionState {
         this.context = new HashMap<>();
     }
 
-    public String getTaskId() { return taskId; }
-    public TaskState getState() { return state; }
-    public long getStartTime() { return startTime; }
-    public String getExecutor() { return executor; }
-    public Map<String, Object> getContext() { return context; }
-    public void addContext(String key, Object value) { context.put(key, value); }
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public TaskState getState() {
+        return state;
+    }
+
+    public long getStartTime() {
+        return startTime;
+    }
+
+    public String getExecutor() {
+        return executor;
+    }
+
+    public Map<String, Object> getContext() {
+        return context;
+    }
+
+    public void addContext(String key, Object value) {
+        context.put(key, value);
+    }
 
     public void updateState(TaskState newState) {
         // TODO: implement state transition rules if needed
     }
 }
-
-

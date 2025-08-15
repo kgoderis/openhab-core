@@ -7,10 +7,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.adapter.BaseAdapter;
 import org.openhab.core.ai.tool.api.Adapter;
-import org.openhab.core.ai.tool.api.PromptContext;
-import org.openhab.core.ai.tool.api.PromptResult;
-import org.openhab.core.ai.tool.prompts.dto.Prompt;
-import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
+import org.openhab.core.ai.tool.prompts.api.PromptContext;
+import org.openhab.core.ai.tool.prompts.api.PromptResult;
+import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

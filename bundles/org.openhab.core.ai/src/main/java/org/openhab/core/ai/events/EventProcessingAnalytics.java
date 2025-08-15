@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.reasoning.AutonomousReasoningInputManager;
-// Types from the same package are referenced directly without imports
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

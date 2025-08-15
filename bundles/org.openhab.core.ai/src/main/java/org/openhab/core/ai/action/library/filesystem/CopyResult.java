@@ -13,5 +13,3 @@ final class CopyResult {
     int itemsCopied = 0;
     long bytesCopied = 0;
 }
-
-

@@ -57,7 +57,7 @@ public interface Tool {
      * @param parameters the parameters to validate
      * @return validation result
      */
-    ToolValidationResult validateParameters(Map<String, Object> parameters);
+    org.openhab.core.ai.tool.validation.api.ToolValidationResult validateParameters(Map<String, Object> parameters);
 
     /**
      * Execute the tool with the given parameters.

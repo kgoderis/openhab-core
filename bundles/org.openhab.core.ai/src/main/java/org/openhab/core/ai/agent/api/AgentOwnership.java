@@ -8,11 +8,14 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface AgentOwnership {
     String getAgentId();
+
     Set<String> getOwners();
+
     String getPrimaryOwner();
+
     long getCreatedAt();
+
     long getLastModified();
+
     Map<String, Object> getMetadata();
 }
-
-

@@ -370,7 +370,8 @@ public class AgentCommunicationPerformanceMonitor {
     }
 
     // Data classes
-    // records extracted to top-level: PerformanceStatistics, PerformanceOptimizationSuggestion, PerformanceReport, PerformanceBenchmark
+    // records extracted to top-level: PerformanceStatistics, PerformanceOptimizationSuggestion, PerformanceReport,
+    // PerformanceBenchmark
 
     // enum extracted to top-level: org.openhab.core.ai.agent.infrastructure.performance.PerformanceImpact
 }

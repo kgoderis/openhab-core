@@ -9,5 +9,3 @@ public enum LogAnomalySeverity {
     HIGH,
     CRITICAL
 }
-
-

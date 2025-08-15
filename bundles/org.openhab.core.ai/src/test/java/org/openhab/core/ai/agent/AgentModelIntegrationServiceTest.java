@@ -30,8 +30,8 @@ import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.api.AgentModelStatistics;
 import org.openhab.core.ai.agent.api.ModelHealthStatus;
 import org.openhab.core.ai.agent.api.ModelIntegrationStatistics;
-import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.reasoning.SharedModelReasoningEngine;
 
 /**

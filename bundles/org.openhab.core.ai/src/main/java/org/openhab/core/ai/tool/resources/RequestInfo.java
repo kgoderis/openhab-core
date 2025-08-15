@@ -78,5 +78,3 @@ public class RequestInfo {
         return end != null ? Duration.between(startTime, end) : Duration.between(startTime, Instant.now());
     }
 }
-
-

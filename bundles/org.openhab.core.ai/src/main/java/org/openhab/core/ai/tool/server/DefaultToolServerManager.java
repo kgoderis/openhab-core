@@ -476,7 +476,7 @@ public class DefaultToolServerManager implements org.openhab.core.ai.tool.server
 
             // Transport Configuration
             String transportType = configurationService.getConfigValue("mcp.transport.type", "STDIO");
-            builder.transportType(TransportType.valueOf(transportType))
+            builder.transportType(org.openhab.core.ai.tool.server.api.TransportType.valueOf(transportType))
                     .baseUrl(configurationService.getConfigValue("mcp.transport.base.url", "http://localhost:8080"))
                     .messageEndpoint(
                             configurationService.getConfigValue("mcp.transport.message.endpoint", "/mcp/message"))
@@ -611,8 +611,8 @@ public class DefaultToolServerManager implements org.openhab.core.ai.tool.server
      */
     private ServerConfiguration createDefaultConfiguration() {
         return ServerConfiguration.builder().serverId("openhab-tool-server").serverName("openHAB Tool Server")
-                .serverVersion("1.0.0").transportType(TransportType.STDIO).enableTools(true).enableResources(true)
-                .enablePrompts(true).enableLogging(true).build();
+                .serverVersion("1.0.0").transportType(org.openhab.core.ai.tool.server.api.TransportType.STDIO)
+                .enableTools(true).enableResources(true).enablePrompts(true).enableLogging(true).build();
     }
 
     /**

@@ -5,7 +5,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.progress.tracking.ProgressStatus;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressStatus;
 
 /**
  * Tracker for tool execution progress.

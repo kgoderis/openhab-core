@@ -33,7 +33,7 @@ public class NegotiationSession {
     private @Nullable Instant completedAt;
     private final List<NegotiationProposal> proposals = new ArrayList<>();
 
-    private NegotiationSession(Builder builder) {
+    /* package */ NegotiationSession(NegotiationSessionBuilder builder) {
         this.sessionId = builder.sessionId;
         this.initiatorId = builder.initiatorId;
         this.participantIds = builder.participantIds;
@@ -117,68 +117,7 @@ public class NegotiationSession {
         proposals.add(proposal);
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private String sessionId = "";
-        private String initiatorId = "";
-        private Set<String> participantIds = Set.of();
-        private String templateId = "";
-        private String strategyId = "";
-        private Map<String, Object> initialProposal = Map.of();
-        private NegotiationStatus status = NegotiationStatus.ACTIVE;
-        private Instant createdAt = Instant.now();
-        private Instant timeoutAt = Instant.now().plusSeconds(300); // 5 minutes default
-
-        public Builder sessionId(String sessionId) {
-            this.sessionId = sessionId;
-            return this;
-        }
-
-        public Builder initiatorId(String initiatorId) {
-            this.initiatorId = initiatorId;
-            return this;
-        }
-
-        public Builder participantIds(Set<String> participantIds) {
-            this.participantIds = participantIds;
-            return this;
-        }
-
-        public Builder templateId(String templateId) {
-            this.templateId = templateId;
-            return this;
-        }
-
-        public Builder strategyId(String strategyId) {
-            this.strategyId = strategyId;
-            return this;
-        }
-
-        public Builder initialProposal(Map<String, Object> initialProposal) {
-            this.initialProposal = initialProposal;
-            return this;
-        }
-
-        public Builder status(NegotiationStatus status) {
-            this.status = status;
-            return this;
-        }
-
-        public Builder createdAt(Instant createdAt) {
-            this.createdAt = createdAt;
-            return this;
-        }
-
-        public Builder timeoutAt(Instant timeoutAt) {
-            this.timeoutAt = timeoutAt;
-            return this;
-        }
-
-        public NegotiationSession build() {
-            return new NegotiationSession(this);
-        }
+    public static NegotiationSessionBuilder builder() {
+        return new NegotiationSessionBuilder();
     }
 }

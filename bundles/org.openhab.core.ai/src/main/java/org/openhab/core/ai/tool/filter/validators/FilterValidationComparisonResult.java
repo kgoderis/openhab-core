@@ -36,5 +36,3 @@ public class FilterValidationComparisonResult {
         return sameValidity && sameErrors && sameWarnings;
     }
 }
-
-

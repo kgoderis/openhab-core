@@ -14,34 +14,84 @@ import org.eclipse.jdt.annotation.Nullable;
 @NonNullByDefault
 public interface ConflictResolutionResult {
     boolean isSuccess();
+
     String getMessage();
-    @Nullable Conflict getConflict();
-    @Nullable ConflictResolution getResolution();
+
+    @Nullable
+    Conflict getConflict();
+
+    @Nullable
+    ConflictResolution getResolution();
 
     static ConflictResolutionResult success(Conflict conflict, ConflictResolution resolution) {
         return new ConflictResolutionResult() {
-            @Override public boolean isSuccess() { return true; }
-            @Override public String getMessage() { return "Conflict resolved successfully"; }
-            @Override public Conflict getConflict() { return conflict; }
-            @Override public ConflictResolution getResolution() { return resolution; }
+            @Override
+            public boolean isSuccess() {
+                return true;
+            }
+
+            @Override
+            public String getMessage() {
+                return "Conflict resolved successfully";
+            }
+
+            @Override
+            public Conflict getConflict() {
+                return conflict;
+            }
+
+            @Override
+            public ConflictResolution getResolution() {
+                return resolution;
+            }
         };
     }
 
     static ConflictResolutionResult failure(String message) {
         return new ConflictResolutionResult() {
-            @Override public boolean isSuccess() { return false; }
-            @Override public String getMessage() { return message; }
-            @Override public Conflict getConflict() { return null; }
-            @Override public ConflictResolution getResolution() { return null; }
+            @Override
+            public boolean isSuccess() {
+                return false;
+            }
+
+            @Override
+            public String getMessage() {
+                return message;
+            }
+
+            @Override
+            public Conflict getConflict() {
+                return null;
+            }
+
+            @Override
+            public ConflictResolution getResolution() {
+                return null;
+            }
         };
     }
 
     static ConflictResolutionResult notFound(String message) {
         return new ConflictResolutionResult() {
-            @Override public boolean isSuccess() { return false; }
-            @Override public String getMessage() { return message; }
-            @Override public Conflict getConflict() { return null; }
-            @Override public ConflictResolution getResolution() { return null; }
+            @Override
+            public boolean isSuccess() {
+                return false;
+            }
+
+            @Override
+            public String getMessage() {
+                return message;
+            }
+
+            @Override
+            public Conflict getConflict() {
+                return null;
+            }
+
+            @Override
+            public ConflictResolution getResolution() {
+                return null;
+            }
         };
     }
 }

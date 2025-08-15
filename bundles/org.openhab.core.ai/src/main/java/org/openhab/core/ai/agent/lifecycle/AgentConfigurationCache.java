@@ -27,10 +27,19 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 public final class AgentConfigurationCache {
     private final Map<String, Map<String, Object>> cache = new ConcurrentHashMap<>();
 
-    public void put(String agentId, Map<String, Object> config) { cache.put(agentId, Map.copyOf(config)); }
-    public Map<String, Object> get(String agentId) { return cache.getOrDefault(agentId, Map.of()); }
-    public void remove(String agentId) { cache.remove(agentId); }
-    public void clear() { cache.clear(); }
+    public void put(String agentId, Map<String, Object> config) {
+        cache.put(agentId, Map.copyOf(config));
+    }
+
+    public Map<String, Object> get(String agentId) {
+        return cache.getOrDefault(agentId, Map.of());
+    }
+
+    public void remove(String agentId) {
+        cache.remove(agentId);
+    }
+
+    public void clear() {
+        cache.clear();
+    }
 }
-
-

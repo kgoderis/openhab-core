@@ -21,18 +21,53 @@ public class TaskMetrics {
     private final AtomicLong cancellationCount = new AtomicLong(0);
     private final List<Long> executionTimes = new ArrayList<>();
 
-    public TaskMetrics(String taskId) { this.taskId = taskId; }
-    public void recordExecution(long executionTime) { executionCount.incrementAndGet(); executionTimes.add(executionTime); }
-    public void recordSuccess() { successCount.incrementAndGet(); }
-    public void recordError(Exception error) { errorCount.incrementAndGet(); }
-    public void recordCancellation() { cancellationCount.incrementAndGet(); }
-    public String getTaskId() { return taskId; }
-    public long getExecutionCount() { return executionCount.get(); }
-    public long getSuccessCount() { return successCount.get(); }
-    public long getErrorCount() { return errorCount.get(); }
-    public long getCancellationCount() { return cancellationCount.get(); }
-    public List<Long> getExecutionTimes() { return new ArrayList<>(executionTimes); }
-    public double getAverageExecutionTime() { return executionTimes.isEmpty() ? 0.0 : executionTimes.stream().mapToLong(Long::longValue).average().orElse(0.0); }
+    public TaskMetrics(String taskId) {
+        this.taskId = taskId;
+    }
+
+    public void recordExecution(long executionTime) {
+        executionCount.incrementAndGet();
+        executionTimes.add(executionTime);
+    }
+
+    public void recordSuccess() {
+        successCount.incrementAndGet();
+    }
+
+    public void recordError(Exception error) {
+        errorCount.incrementAndGet();
+    }
+
+    public void recordCancellation() {
+        cancellationCount.incrementAndGet();
+    }
+
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public long getExecutionCount() {
+        return executionCount.get();
+    }
+
+    public long getSuccessCount() {
+        return successCount.get();
+    }
+
+    public long getErrorCount() {
+        return errorCount.get();
+    }
+
+    public long getCancellationCount() {
+        return cancellationCount.get();
+    }
+
+    public List<Long> getExecutionTimes() {
+        return new ArrayList<>(executionTimes);
+    }
+
+    public double getAverageExecutionTime() {
+        return executionTimes.isEmpty() ? 0.0
+                : executionTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
+    }
 }
-
-

@@ -12,6 +12,11 @@ public class SchemaValidationResult {
         this.message = message;
     }
 
-    public boolean isValid() { return valid; }
-    public String getMessage() { return message; }
+    public boolean isValid() {
+        return valid;
+    }
+
+    public String getMessage() {
+        return message;
+    }
 }

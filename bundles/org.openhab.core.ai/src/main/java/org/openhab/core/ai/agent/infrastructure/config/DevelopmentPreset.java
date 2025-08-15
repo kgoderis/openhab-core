@@ -6,10 +6,14 @@ import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationPreset;
 @NonNullByDefault
 public class DevelopmentPreset implements ConfigurationPreset {
     @Override
-    public String getPresetId() { return "development"; }
+    public String getPresetId() {
+        return "development";
+    }
 
     @Override
-    public String getDescription() { return "Development preset with relaxed settings for debugging"; }
+    public String getDescription() {
+        return "Development preset with relaxed settings for debugging";
+    }
 
     @Override
     public CommunicationConfig applyTo(CommunicationConfig config) {
@@ -28,5 +32,3 @@ public class DevelopmentPreset implements ConfigurationPreset {
         return config;
     }
 }
-
-

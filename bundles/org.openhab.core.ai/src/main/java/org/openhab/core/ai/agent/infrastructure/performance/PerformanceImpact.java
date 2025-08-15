@@ -8,5 +8,3 @@ public enum PerformanceImpact {
     MEDIUM,
     HIGH
 }
-
-

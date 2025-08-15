@@ -21,11 +21,23 @@ class OAuthTokenInfo {
         this.scopes = scopes;
     }
 
-    String getSubject() { return subject; }
-    String getClientId() { return clientId; }
-    String getIssuer() { return issuer; }
-    Instant getExpiresAt() { return expiresAt; }
-    Set<String> getScopes() { return scopes; }
+    String getSubject() {
+        return subject;
+    }
+
+    String getClientId() {
+        return clientId;
+    }
+
+    String getIssuer() {
+        return issuer;
+    }
+
+    Instant getExpiresAt() {
+        return expiresAt;
+    }
+
+    Set<String> getScopes() {
+        return scopes;
+    }
 }
-
-

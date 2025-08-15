@@ -62,5 +62,3 @@ class BackendServer {
         return total > 0 ? (double) errorCount.get() / total : 0.0;
     }
 }
-
-

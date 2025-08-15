@@ -16,10 +16,19 @@ class SessionPattern {
         this.sessionId = sessionId;
     }
 
-    void recordCreation() { creationCount.incrementAndGet(); }
-    void recordTimeout() { timeoutCount.incrementAndGet(); }
-    long getCreationCount() { return creationCount.get(); }
-    long getTimeoutCount() { return timeoutCount.get(); }
+    void recordCreation() {
+        creationCount.incrementAndGet();
+    }
+
+    void recordTimeout() {
+        timeoutCount.incrementAndGet();
+    }
+
+    long getCreationCount() {
+        return creationCount.get();
+    }
+
+    long getTimeoutCount() {
+        return timeoutCount.get();
+    }
 }
-
-

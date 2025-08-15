@@ -33,7 +33,8 @@ public interface Agent {
      * Backward-compatible nested metrics interface expected by existing usages.
      * Delegates to the top-level {@link org.openhab.core.ai.agent.api.AgentMetrics}.
      */
-    interface AgentMetrics extends org.openhab.core.ai.agent.api.AgentMetrics {}
+    interface AgentMetrics extends org.openhab.core.ai.agent.api.AgentMetrics {
+    }
 
     /**
      * Get the unique identifier for this agent

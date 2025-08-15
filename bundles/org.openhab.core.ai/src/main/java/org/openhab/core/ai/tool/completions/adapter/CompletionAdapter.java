@@ -3,7 +3,7 @@ package org.openhab.core.ai.tool.completions.adapter;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.completions.dto.Completion;
+import org.openhab.core.ai.tool.completions.api.dto.Completion;
 
 /**
  * Adapter for converting between different completion formats.

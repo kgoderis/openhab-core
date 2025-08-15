@@ -44,5 +44,3 @@ public class GrpcTransportCapabilities implements TransportCapabilities {
                 "keepAliveTimeout", 5000);
     }
 }
-
-

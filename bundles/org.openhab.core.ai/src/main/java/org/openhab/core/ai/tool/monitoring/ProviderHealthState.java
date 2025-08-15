@@ -10,8 +10,10 @@ import org.openhab.core.ai.model.api.ModelProviderType;
 /**
  * Provider health state tracker used by the system health monitor.
  *
- * <p>Tracks request counters, response times, failures, last health check
- * and circuit breaker status for a single provider.</p>
+ * <p>
+ * Tracks request counters, response times, failures, last health check
+ * and circuit breaker status for a single provider.
+ * </p>
  *
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
@@ -24,8 +26,8 @@ final class ProviderHealthState {
     private final AtomicLong failedRequests = new AtomicLong(0);
     private final AtomicLong totalResponseTime = new AtomicLong(0);
     private final AtomicLong consecutiveFailures = new AtomicLong(0);
-    private final AtomicReference<CircuitBreakerState> circuitBreakerState =
-            new AtomicReference<>(CircuitBreakerState.CLOSED);
+    private final AtomicReference<CircuitBreakerState> circuitBreakerState = new AtomicReference<>(
+            CircuitBreakerState.CLOSED);
     private final AtomicReference<Instant> lastFailureTime = new AtomicReference<>();
     private final AtomicReference<Instant> lastHealthCheck = new AtomicReference<>();
 
@@ -91,10 +93,19 @@ final class ProviderHealthState {
         return total > 0 ? (double) totalResponseTime.get() / total : 0.0;
     }
 
-    long getFailedRequestsCount() { return failedRequests.get(); }
-    long getConsecutiveFailures() { return consecutiveFailures.get(); }
-    CircuitBreakerState getCircuitBreakerState() { return circuitBreakerState.get(); }
-    Instant getLastHealthCheck() { return lastHealthCheck.get(); }
+    long getFailedRequestsCount() {
+        return failedRequests.get();
+    }
+
+    long getConsecutiveFailures() {
+        return consecutiveFailures.get();
+    }
+
+    CircuitBreakerState getCircuitBreakerState() {
+        return circuitBreakerState.get();
+    }
+
+    Instant getLastHealthCheck() {
+        return lastHealthCheck.get();
+    }
 }
-
-

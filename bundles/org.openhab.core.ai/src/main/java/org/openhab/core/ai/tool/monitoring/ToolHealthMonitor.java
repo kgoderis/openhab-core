@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -406,8 +405,7 @@ public class ToolHealthMonitor {
      */
     public List<PerformanceOptimization> getSpecificationOptimizations(String specificationId) {
         return performanceOptimizations.values().stream()
-                .filter(opt -> opt.getSpecificationId().equals(specificationId))
-                .collect(Collectors.toList());
+                .filter(opt -> opt.getSpecificationId().equals(specificationId)).collect(Collectors.toList());
     }
 
     /**

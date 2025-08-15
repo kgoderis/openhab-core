@@ -58,5 +58,3 @@ public class CoordinationConfiguration {
         this.maxConcurrentConflicts = maxConcurrentConflicts;
     }
 }
-
-

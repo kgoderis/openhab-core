@@ -19,8 +19,7 @@ class AutomationTemplate {
     final List<?> steps;
     final Map<?, ?> defaultParameters;
 
-    AutomationTemplate(String templateId, String name, String description, List<?> steps,
-            Map<?, ?> defaultParameters) {
+    AutomationTemplate(String templateId, String name, String description, List<?> steps, Map<?, ?> defaultParameters) {
         this.templateId = templateId;
         this.name = name;
         this.description = description;
@@ -28,5 +27,3 @@ class AutomationTemplate {
         this.defaultParameters = defaultParameters;
     }
 }
-
-

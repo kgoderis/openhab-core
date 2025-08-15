@@ -8,7 +8,6 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 
-
 /**
  * Agent-specific model provider interface
  * 

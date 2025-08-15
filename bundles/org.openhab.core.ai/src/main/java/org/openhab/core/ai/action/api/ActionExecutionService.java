@@ -6,8 +6,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionResult;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**

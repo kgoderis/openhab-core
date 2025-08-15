@@ -8,5 +8,3 @@ public enum DefaultErrorRecoveryServiceCircuitBreakerState {
     OPEN,
     HALF_OPEN
 }
-
-

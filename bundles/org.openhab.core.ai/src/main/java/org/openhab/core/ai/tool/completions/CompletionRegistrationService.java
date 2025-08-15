@@ -4,8 +4,8 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.api.CompletionRegistry;
-import org.openhab.core.ai.tool.completions.dto.Completion;
+import org.openhab.core.ai.tool.completions.api.CompletionRegistry;
+import org.openhab.core.ai.tool.completions.api.dto.Completion;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

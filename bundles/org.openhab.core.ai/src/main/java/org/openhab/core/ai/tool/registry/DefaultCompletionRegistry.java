@@ -7,8 +7,8 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.api.CompletionRegistry;
-import org.openhab.core.ai.tool.completions.dto.Completion;
+import org.openhab.core.ai.tool.completions.api.CompletionRegistry;
+import org.openhab.core.ai.tool.completions.api.dto.Completion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

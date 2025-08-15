@@ -5,7 +5,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.completions.dto.Completion;
+import org.openhab.core.ai.tool.completions.api.dto.Completion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

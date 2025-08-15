@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.execution.ExecutionPriority;
-import org.openhab.core.ai.agent.execution.ExecutionStrategyType;
+import org.openhab.core.ai.agent.execution.api.ExecutionPriority;
+import org.openhab.core.ai.agent.execution.api.ExecutionStrategyType;
 
 /**
  * Execution Request

@@ -311,6 +311,304 @@ public final class ModelConfig {
 }
 ```
 
+### 28. **Metrics & Monitoring Best Practices**
+
+- **Centralize metrics**
+  - Place all metric types and infrastructure under `org.openhab.core.ai.tool.monitoring` with subpackages:
+    - `api` (interfaces, keys), `collector` (mutable hot-path recorders), `snapshot` (immutable views), `registry` (OSGi service), `export` (Prometheus/JMX/REST), `health` (health monitors, alerts)
+  - Domain packages should only depend on small monitoring APIs/registry; they should not define their own metric classes
+
+- **Collector vs Snapshot pattern**
+  - Use thread-safe collectors for recording: `LongAdder` counters, `System.nanoTime()` durations
+  - Compute derived values (rates, averages, percentiles) in immutable snapshot value objects; avoid math in collectors
+  - Snapshots must be immutable (`private final` fields, no setters) and annotated with `@NonNullByDefault`
+
+- **Capability interfaces (no deep inheritance)**
+  - Define small, composable interfaces in `...monitoring.api`:
+    - `MetricsSnapshot` (marker; may expose `timestampMs()`)
+    - `CountsMetrics` with `total()`, `success()`, `failure()`, default `successRate()`
+    - `LatencyMetrics` with `totalDurationNanos()`, default `averageMs(total)`
+    - `HealthMetrics` with `healthy()`, `breakerState()`
+  - Prefer composition of capabilities in snapshots over base classes
+
+- **Shared value objects**
+  - Use small records to share fields without inheritance:
+    - `record Counts(long total, long success, long failure)`
+    - `record Timing(long totalDurationNanos)`
+
+- **MetricKey (bounded labels)**
+  - Identify metric streams by a small key with bounded labels to control cardinality
+  - Provide factories in `MetricKeys` for common keys (provider, tool, action)
+  - Example:
+```java
+@org.eclipse.jdt.annotation.NonNullByDefault
+public interface MetricKey {
+    String kind();
+    java.util.Map<String, String> labels();
+    default String id() {
+        return kind() + "|" + labels().entrySet().stream()
+            .sorted(java.util.Map.Entry.comparingByKey())
+            .map(e -> e.getKey() + "=" + e.getValue())
+            .reduce((a, b) -> a + "," + b).orElse("");
+    }
+}
+
+public record SimpleMetricKey(String kind, java.util.Map<String, String> labels) implements MetricKey {}
+
+public final class MetricKeys {
+    private MetricKeys() {}
+    public static MetricKey provider(org.openhab.core.ai.model.api.ModelProviderType provider) {
+        return new SimpleMetricKey("provider", java.util.Map.of("name", provider.name()));
+    }
+    public static MetricKey tool(String toolName) {
+        return new SimpleMetricKey("tool", java.util.Map.of("name", toolName));
+    }
+    public static MetricKey action(String actionName) {
+        return new SimpleMetricKey("action", java.util.Map.of("name", actionName));
+    }
+}
+```
+
+- **MetricsRegistry (OSGi service)**
+  - Purpose: single source of truth for collectors; enforces taxonomy; enables enumeration for exporters; supports aggregation and lifecycle
+  - Minimal API:
+```java
+@org.eclipse.jdt.annotation.NonNullByDefault
+public interface MetricsRegistry {
+    ExecutionMetricsCollector executionCollector(MetricKey key);
+    ProviderHealthCollector healthCollector(MetricKey key);
+    java.util.Collection<MetricKey> keys();
+    <S extends MetricsSnapshot> java.util.List<S> snapshots(Class<S> snapshotType);
+    void reset(MetricKey key);
+}
+```
+  - Inject the registry via `@Reference` and obtain collectors by `MetricKey`
+
+- **Collector and snapshot example**
+```java
+@org.eclipse.jdt.annotation.NonNullByDefault
+public final class ExecutionMetricsCollector {
+    private final java.util.concurrent.atomic.LongAdder total = new java.util.concurrent.atomic.LongAdder();
+    private final java.util.concurrent.atomic.LongAdder success = new java.util.concurrent.atomic.LongAdder();
+    private final java.util.concurrent.atomic.LongAdder totalDurationNanos = new java.util.concurrent.atomic.LongAdder();
+
+    public void recordExecution(boolean ok, long durationNanos) {
+        total.increment();
+        totalDurationNanos.add(durationNanos);
+        if (ok) { success.increment(); }
+    }
+
+    public ExecutionMetricsSnapshot snapshot() {
+        long t = total.sum();
+        long s = success.sum();
+        long d = totalDurationNanos.sum();
+        return new ExecutionMetricsSnapshot(new Counts(t, s, Math.max(0, t - s)), new Timing(d), System.currentTimeMillis());
+    }
+}
+
+@org.eclipse.jdt.annotation.NonNullByDefault
+public record ExecutionMetricsSnapshot(Counts counts, Timing timing, long timestampMs)
+        implements MetricsSnapshot, CountsMetrics, LatencyMetrics {
+    public long total() { return counts.total(); }
+    public long success() { return counts.success(); }
+    public long failure() { return counts.failure(); }
+    public long totalDurationNanos() { return timing.totalDurationNanos(); }
+    public double averageMs() { return LatencyMetrics.super.averageMs(total()); }
+}
+```
+
+- **Domain usage (record only)**
+  - Domain services should only record metrics and read snapshots when needed:
+```java
+@org.osgi.service.component.annotations.Reference private MetricsRegistry metricsRegistry;
+
+void updateMetrics(org.openhab.core.ai.model.api.ModelProviderType provider, String action, boolean ok, long durationNanos) {
+    metricsRegistry.executionCollector(MetricKeys.provider(provider)).recordExecution(ok, durationNanos);
+    if (action != null && !action.isBlank()) {
+        metricsRegistry.executionCollector(MetricKeys.action(action)).recordExecution(ok, durationNanos);
+    }
+}
+```
+
+- **Label discipline and units**
+  - Keep labels bounded (`name`, `region`); avoid high-cardinality values (IDs, user input)
+  - Document units in names/Javadoc (e.g., `totalDurationNanos`, `durationMs` in snapshots)
+
+- **Testing**
+  - Concurrency tests for collectors (no lost updates)
+  - Snapshot math tests for edge cases (zero totals)
+  - If exposed via REST, JSON round-trip tests for snapshots
+
+- **Integration with existing classes**
+  - `ProviderHealthMetrics` and `MonitoringStatistics` remain immutable snapshots under `...monitoring.snapshot`
+  - Replace `AtomicLong`-based `ToolMetrics`/`ProviderMetrics` with `...collector` variants using `LongAdder` and `nanoTime`
+  - `ToolExecutionService#getMetrics()` should return an aggregated snapshot type built from the registry
+
+### 29. **Context Classes Best Practices**
+
+- **Immutability with builders**
+  - Make contexts immutable snapshots; use `toBuilder()` for safe, scoped mutations
+  - Annotate with `@NonNullByDefault`; use `@Nullable` only for truly optional fields
+  - Validate required fields in `build()`; fail fast with actionable messages
+
+- **Small capability interfaces (compose, don’t inherit deeply)**
+  - Define narrow capabilities in a shared API package (e.g., `org.openhab.core.ai.context.api`):
+    - `RequestContext` (correlationId, timestamp, deadlineMs)
+    - `SecurityContext` (principalId, permissions)
+    - `ProtocolContext` (protocol, version)
+    - `TracingContext` (traceId, spanId)
+    - `LocaleContext` (locale, timezone)
+  - Domain contexts (e.g., `ActionContext`, `ToolContext`) implement only relevant capabilities
+
+- **Typed accessors + namespaced attributes**
+  - Provide explicit getters for common fields; avoid stringly-typed access for core data
+  - Allow extensibility via a namespaced, JSON-serializable attributes map guarded by constants (`ContextKeys.*`)
+  - Enforce prefixes and supported value types when adding attributes
+
+- **Canonical fields**
+  - Always include `correlationId` (required) and `timestamp` (`Instant`)
+  - Prefer `deadlineMs`/`timeoutMs` over ad-hoc timeouts
+  - Actor (`principalId`, `permissions`), `privacyLevel` (enum), `locale`, `timezone` as needed
+
+- **Security and logging**
+  - Never store secrets/tokens in plain fields; if unavoidable, mark sensitive and exclude from `toString()`
+  - Provide `toSafeString()`/`redact()` for logs; avoid logging full attribute maps
+
+- **Thread-safety and size discipline**
+  - Contexts are immutable and safe to share across threads
+  - Keep them lightweight; do not embed services/OSGi components or heavy objects
+  - Bound attribute map size; avoid high-cardinality payloads
+
+- **Lifecycle and propagation**
+  - Create at ingress; pass downstream unchanged; derive child variants via `toBuilder()`
+  - Propagate `correlationId` across async boundaries
+
+- **Serialization and versioning**
+  - Ensure JSON-friendly types; avoid transient internals
+  - Add a `version` field where contexts cross module/network boundaries
+
+- **Package organization**
+  - `org.openhab.core.ai.context.api`: capability interfaces, `ContextKeys`, shared value objects
+  - Domain-specific contexts live in their domain packages (`action`, `tool`, `auth`) and implement shared interfaces
+  - Avoid a central base class or a “god” context
+
+- **Testing**
+  - Unit-test builders (validation, required fields), immutability, `equals/hashCode`
+  - Round-trip tests for `toBuilder()` and any redaction logic
+  - If serialized, add JSON round-trip tests
+
+- **Anti-patterns**
+  - Mutable public maps; scattered string keys
+  - Deep inheritance trees
+  - Embedding live service references inside contexts
+  - Logging full contexts with sensitive data
+
+```java
+// Example: minimal RequestContext capability and ActionContext with builder
+package org.openhab.core.ai.context.api;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import java.time.Instant;
+import java.util.*;
+
+@NonNullByDefault
+public interface RequestContext {
+    String correlationId();
+    Instant timestamp();
+    long deadlineMs();
+}
+
+@NonNullByDefault
+public final class ActionContext implements RequestContext {
+    private final String correlationId;
+    private final Instant timestamp;
+    private final long deadlineMs;
+    private final Map<String, Object> attributes;
+
+    private ActionContext(Builder b) {
+        this.correlationId = b.correlationId;
+        this.timestamp = b.timestamp;
+        this.deadlineMs = b.deadlineMs;
+        this.attributes = Map.copyOf(b.attributes);
+    }
+
+    public static Builder builder(String correlationId) { return new Builder(correlationId); }
+    public Builder toBuilder() { return new Builder(this); }
+
+    public String correlationId() { return correlationId; }
+    public Instant timestamp() { return timestamp; }
+    public long deadlineMs() { return deadlineMs; }
+    public Map<String, Object> attributes() { return attributes; }
+
+    public String toSafeString() { return "ActionContext{" + "correlationId=" + correlationId + ", deadlineMs=" + deadlineMs + "}"; }
+
+    public static final class Builder {
+        private String correlationId;
+        private Instant timestamp = Instant.now();
+        private long deadlineMs = 30_000L;
+        private Map<String, Object> attributes = new HashMap<>();
+
+        public Builder(String correlationId) { this.correlationId = Objects.requireNonNull(correlationId, "correlationId"); }
+        public Builder(ActionContext src) { this.correlationId = src.correlationId; this.timestamp = src.timestamp; this.deadlineMs = src.deadlineMs; this.attributes = new HashMap<>(src.attributes); }
+
+        public Builder withDeadlineMs(long ms) { this.deadlineMs = ms; return this; }
+        public Builder withAttribute(String key, Object value) { /* validate key & type */ this.attributes.put(key, value); return this; }
+
+        public ActionContext build() {
+            if (deadlineMs <= 0) { throw new IllegalArgumentException("deadlineMs must be > 0"); }
+            return new ActionContext(this);
+        }
+    }
+}
+```
+
+
+### 28. **Configuration Management Best Practices (DS + /conf/ai)**
+
+- **Use OSGi DS with typed MetaType**
+  - Define `@ObjectClassDefinition` (OCD) and bind via `@Designate(ocd=...)`
+  - Implement DS lifecycle: `@Activate` (initial load), `@Modified` (hot-reload), `@Deactivate` (cleanup)
+
+- **Single source of truth service**
+  - Expose a domain-scoped `ConfigService` per boundary (e.g., LLM, agents, MCP)
+  - Map OCD → immutable domain config objects (builder pattern, validated)
+  - Consumers `@Reference` the service; they do not access Config Admin or files directly
+
+- **Multiple sources with clear precedence**
+  - Precedence: Environment variables > Config Admin (.cfg) > files under `/conf/ai` (YAML/JSON) > code defaults
+  - Merge at the service boundary; publish an atomic immutable snapshot to consumers
+
+- **File-backed resources under `/conf/ai`**
+  - Keep typed repositories for content (not keys): `PromptRepository`, `PolicyRepository`, `ModelPresetRepository`
+  - Layout examples:
+    - `/conf/ai/agents.cfg` (namespaced keys)
+    - `/conf/ai/prompts/<agent>/<intent>.yaml`
+    - `/conf/ai/policies/*.yaml`
+    - `/conf/ai/models/*.yaml`
+
+- **Hot-reload with openHAB WatchService**
+  - Register `WatchService` on `/conf/ai` subtrees; on change, re-parse only the affected repository
+  - Rebuild and swap the merged config snapshot atomically; avoid partial reads
+
+- **Placement**
+  - DS config services: `org.openhab.core.ai.config` (or domain-scoped `...agent.config`, `...tool.config`)
+  - Immutable values: `org.openhab.core.ai.model.configuration`
+  - File repositories: `org.openhab.core.ai.config.repo` (prompts/policies/models)
+
+- **Validation and safety**
+  - Validate in builders: ranges, formats, cross-field constraints; fail fast with actionable messages
+  - Validate YAML/JSON schemas; reject invalid or oversized content
+  - Mark secrets in OCD as `AttributeType.PASSWORD`; never log secret values
+
+- **Testing**
+  - Unit test mapping (OCD → immutable), merge/precedence rules, and validation
+  - Integration test DS activation, `@Modified`, and `WatchService` reload paths
+
+- **Do/Don't**
+  - Do: keep configs immutable and thread-safe; publish change events if consumers must react immediately
+  - Don't: perform file I/O or Config Admin lookups from consumers; avoid free-form maps for typed config
+
 ### 27. **Result Classes Best Practices**
 
 - **Immutability and null-safety**

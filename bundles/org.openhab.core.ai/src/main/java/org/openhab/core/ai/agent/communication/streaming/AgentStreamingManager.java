@@ -9,11 +9,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SubmissionPublisher;
 
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionError;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.action.ActionResult;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionError;
+import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.execution.AgentTaskManager;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;

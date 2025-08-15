@@ -32,14 +32,35 @@ public class LogPerformanceMetrics {
         this.activeMonitorsCount = activeMonitorsCount;
     }
 
-    public long getTotalLogLinesProcessed() { return totalLogLinesProcessed; }
-    public long getTotalAnomaliesDetected() { return totalAnomaliesDetected; }
-    public long getTotalCorrelationsFound() { return totalCorrelationsFound; }
-    public long getTotalProcessingTime() { return totalProcessingTime; }
-    public int getRecentLogsCount() { return recentLogsCount; }
-    public int getAnomaliesCount() { return anomaliesCount; }
-    public int getCorrelationsCount() { return correlationsCount; }
-    public int getActiveMonitorsCount() { return activeMonitorsCount; }
+    public long getTotalLogLinesProcessed() {
+        return totalLogLinesProcessed;
+    }
+
+    public long getTotalAnomaliesDetected() {
+        return totalAnomaliesDetected;
+    }
+
+    public long getTotalCorrelationsFound() {
+        return totalCorrelationsFound;
+    }
+
+    public long getTotalProcessingTime() {
+        return totalProcessingTime;
+    }
+
+    public int getRecentLogsCount() {
+        return recentLogsCount;
+    }
+
+    public int getAnomaliesCount() {
+        return anomaliesCount;
+    }
+
+    public int getCorrelationsCount() {
+        return correlationsCount;
+    }
+
+    public int getActiveMonitorsCount() {
+        return activeMonitorsCount;
+    }
 }
-
-

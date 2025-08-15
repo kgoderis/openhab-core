@@ -18,12 +18,23 @@ public class ConflictEscalation {
         this.escalatedAt = builder.escalatedAt;
     }
 
-    public String getConflictId() { return conflictId; }
-    public String getEscalationReason() { return escalationReason; }
-    public EscalationLevel getEscalationLevel() { return escalationLevel; }
-    public Instant getEscalatedAt() { return escalatedAt; }
+    public String getConflictId() {
+        return conflictId;
+    }
 
-    public static ConflictEscalationBuilder builder() { return new ConflictEscalationBuilder(); }
+    public String getEscalationReason() {
+        return escalationReason;
+    }
+
+    public EscalationLevel getEscalationLevel() {
+        return escalationLevel;
+    }
+
+    public Instant getEscalatedAt() {
+        return escalatedAt;
+    }
+
+    public static ConflictEscalationBuilder builder() {
+        return new ConflictEscalationBuilder();
+    }
 }
-
-

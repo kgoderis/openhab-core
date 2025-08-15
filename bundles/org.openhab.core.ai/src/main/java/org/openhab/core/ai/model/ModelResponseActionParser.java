@@ -11,13 +11,14 @@ import java.util.regex.Pattern;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.ActionContext;
 import org.openhab.core.ai.action.ActionRegistry;
+import org.openhab.core.ai.action.api.ActionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -244,7 +245,8 @@ public class ModelResponseActionParser {
         try {
             if (argumentsNode.isObject()) {
                 ObjectNode objectNode = (ObjectNode) argumentsNode;
-                arguments = objectMapper.convertValue(objectNode, Map.class);
+                arguments = objectMapper.convertValue(objectNode, new TypeReference<Map<String, Object>>() {
+                });
             }
         } catch (Exception e) {
             logger.debug("Error parsing JSON arguments: {}", e.getMessage());

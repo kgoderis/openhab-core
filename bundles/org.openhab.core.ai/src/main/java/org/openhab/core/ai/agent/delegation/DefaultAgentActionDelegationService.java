@@ -11,11 +11,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionError;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.action.ActionResult;
-import org.openhab.core.ai.agent.api.AgentActionDelegationService;
+import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionError;
+import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;

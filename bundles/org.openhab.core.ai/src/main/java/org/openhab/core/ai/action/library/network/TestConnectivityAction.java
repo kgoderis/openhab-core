@@ -9,12 +9,12 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionMetadata;
-import org.openhab.core.ai.action.ActionResult;
-import org.openhab.core.ai.action.ActionValidationResult;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
+import org.openhab.core.ai.action.api.ActionMetadata;
+import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -18,8 +18,13 @@ public class AgentServerStatistics {
         this.endpointCount = endpointCount;
     }
 
-    public boolean isRequestHandlerActive() { return requestHandlerActive; }
-    public int getEndpointCount() { return endpointCount; }
+    public boolean isRequestHandlerActive() {
+        return requestHandlerActive;
+    }
+
+    public int getEndpointCount() {
+        return endpointCount;
+    }
 
     @Override
     public String toString() {
@@ -27,5 +32,3 @@ public class AgentServerStatistics {
                 endpointCount);
     }
 }
-
-

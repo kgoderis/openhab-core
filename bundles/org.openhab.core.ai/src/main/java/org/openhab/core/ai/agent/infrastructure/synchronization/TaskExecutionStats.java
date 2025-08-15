@@ -29,10 +29,19 @@ public final class TaskExecutionStats {
         this.lockedResources = lockedResources;
     }
 
-    public int getTotalTasks() { return totalTasks; }
-    public Map<TaskState, Integer> getStateCounts() { return Collections.unmodifiableMap(stateCounts); }
-    public int getActiveLocks() { return activeLocks; }
-    public int getLockedResources() { return lockedResources; }
+    public int getTotalTasks() {
+        return totalTasks;
+    }
+
+    public Map<TaskState, Integer> getStateCounts() {
+        return Collections.unmodifiableMap(stateCounts);
+    }
+
+    public int getActiveLocks() {
+        return activeLocks;
+    }
+
+    public int getLockedResources() {
+        return lockedResources;
+    }
 }
-
-

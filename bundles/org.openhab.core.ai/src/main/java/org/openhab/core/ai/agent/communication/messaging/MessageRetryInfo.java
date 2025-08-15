@@ -26,8 +26,19 @@ public class MessageRetryInfo {
         this.nextRetryTime = nextRetryTime;
     }
 
-    public String getMessageId() { return messageId; }
-    public int getRetryCount() { return retryCount; }
-    public Instant getLastRetryTime() { return lastRetryTime; }
-    public Instant getNextRetryTime() { return nextRetryTime; }
+    public String getMessageId() {
+        return messageId;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public Instant getLastRetryTime() {
+        return lastRetryTime;
+    }
+
+    public Instant getNextRetryTime() {
+        return nextRetryTime;
+    }
 }

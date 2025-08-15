@@ -16,12 +16,11 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.api.AgentSkillManager;
 import org.openhab.core.ai.agent.core.AgentContext;
 import org.openhab.core.ai.agent.core.AgentMetrics;
 import org.openhab.core.ai.agent.core.AgentState;
+import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
-import org.openhab.core.ai.reasoning.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

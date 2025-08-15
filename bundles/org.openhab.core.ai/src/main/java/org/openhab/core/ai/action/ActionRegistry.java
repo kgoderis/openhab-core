@@ -15,6 +15,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.action.api.ActionMetadata;
+import org.openhab.core.ai.action.api.ActionPerformanceMetrics;
+import org.openhab.core.ai.model.ActionExecutionEventStatus;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
@@ -426,9 +429,8 @@ public class ActionRegistry {
         // Record execution event
         if (enableAnalytics) {
             ActionExecutionEvent event = new ActionExecutionEventBuilder().eventId("exec-" + System.currentTimeMillis())
-                    .actionId(actionId).agentId(agentId).status(success
-                            ? org.openhab.core.ai.model.ActionExecutionEventStatus.SUCCESS
-                            : org.openhab.core.ai.model.ActionExecutionEventStatus.FAILED)
+                    .actionId(actionId).agentId(agentId)
+                    .status(success ? ActionExecutionEventStatus.SUCCESS : ActionExecutionEventStatus.FAILED)
                     .error(error).build();
 
             synchronized (executionHistory) {

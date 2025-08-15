@@ -17,8 +17,11 @@ class SecurityViolationPattern {
         this.protocol = protocol;
     }
 
-    void recordViolation() { violationCount.incrementAndGet(); }
-    long getViolationCount() { return violationCount.get(); }
+    void recordViolation() {
+        violationCount.incrementAndGet();
+    }
+
+    long getViolationCount() {
+        return violationCount.get();
+    }
 }
-
-

@@ -114,5 +114,3 @@ public interface ContextRetrievalResult {
         };
     }
 }
-
-

@@ -24,5 +24,3 @@ public class ImportStats {
     List<String> validationErrors = new ArrayList<>();
     List<Map<String, Object>> details = new ArrayList<>();
 }
-
-

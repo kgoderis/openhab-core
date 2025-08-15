@@ -20,15 +20,17 @@ class PermissionCheckPattern {
 
     void recordCheck(boolean granted) {
         totalChecks.incrementAndGet();
-        if (!granted) { deniedChecks.incrementAndGet(); }
+        if (!granted) {
+            deniedChecks.incrementAndGet();
+        }
     }
 
-    long getTotalChecks() { return totalChecks.get(); }
+    long getTotalChecks() {
+        return totalChecks.get();
+    }
 
     double getDenialRate() {
         long total = totalChecks.get();
         return total > 0 ? (double) deniedChecks.get() / total : 0.0;
     }
 }
-
-

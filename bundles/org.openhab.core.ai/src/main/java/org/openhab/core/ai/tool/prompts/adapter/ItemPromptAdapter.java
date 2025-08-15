@@ -7,10 +7,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.adapter.BaseAdapter;
 import org.openhab.core.ai.tool.api.Adapter;
-import org.openhab.core.ai.tool.api.PromptContext;
-import org.openhab.core.ai.tool.api.PromptResult;
-import org.openhab.core.ai.tool.prompts.dto.Prompt;
-import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
+import org.openhab.core.ai.tool.prompts.api.PromptContext;
+import org.openhab.core.ai.tool.prompts.api.PromptResult;
+import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.slf4j.Logger;
@@ -58,8 +58,7 @@ public class ItemPromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         final String promptType = typeFromContext == null ? "status" : typeFromContext;
         String name = "Item " + promptType + ": " + identifier;
         String description = "Prompt for item " + identifier + " (" + promptType + ")";
-        PromptArgument[] args = new PromptArgument[] {
-                new PromptArgument("itemName", "Name of the item", true),
+        PromptArgument[] args = new PromptArgument[] { new PromptArgument("itemName", "Name of the item", true),
                 new PromptArgument("promptType", "Type of prompt", false),
                 new PromptArgument("includeMetadata", "Include item metadata", false) };
         return new Prompt(name, description, java.util.List.of(args));

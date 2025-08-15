@@ -49,5 +49,3 @@ public class ComplianceTestComparisonResult {
         return sameTestId && sameCategory && samePassed && sameStatus && sameDuration;
     }
 }
-
-

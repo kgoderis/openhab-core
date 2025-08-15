@@ -16,7 +16,7 @@ public enum A2APermission {
         this.permission = permission;
     }
 
-    public String getPermission() { return permission; }
+    public String getPermission() {
+        return permission;
+    }
 }
-
-

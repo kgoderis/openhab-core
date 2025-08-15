@@ -7,9 +7,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface AgentOwnershipResolverOwnershipTestResult {
     boolean isSuccessful();
+
     String getMessage();
+
     long getResolutionTime();
+
     Map<String, Object> getTestData();
 }
-
-

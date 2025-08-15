@@ -17,16 +17,33 @@ final class RuleCachedData {
     private volatile long lastRefreshTime = 0;
     private final long refreshIntervalMs = 5 * 60 * 1000; // 5 minutes
 
-    RuleCachedData(Rule rule) { this.rule = rule; }
+    RuleCachedData(Rule rule) {
+        this.rule = rule;
+    }
 
-    @Nullable Rule getRule() { return rule; }
-    void setRule(@Nullable Rule rule) { this.rule = rule; }
+    @Nullable
+    Rule getRule() {
+        return rule;
+    }
 
-    @Nullable String getContent() { return content; }
-    void setContent(@Nullable String content) { this.content = content; }
+    void setRule(@Nullable Rule rule) {
+        this.rule = rule;
+    }
 
-    boolean needsRefresh() { return System.currentTimeMillis() - lastRefreshTime > refreshIntervalMs; }
-    void updateRefreshTime() { lastRefreshTime = System.currentTimeMillis(); }
+    @Nullable
+    String getContent() {
+        return content;
+    }
+
+    void setContent(@Nullable String content) {
+        this.content = content;
+    }
+
+    boolean needsRefresh() {
+        return System.currentTimeMillis() - lastRefreshTime > refreshIntervalMs;
+    }
+
+    void updateRefreshTime() {
+        lastRefreshTime = System.currentTimeMillis();
+    }
 }
-
-

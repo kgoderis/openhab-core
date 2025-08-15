@@ -4,6 +4,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.transport.api.AgentTransport;
+import org.openhab.core.ai.agent.transport.api.TransportHealth;
+import org.openhab.core.ai.agent.transport.api.TransportType;
 
 /**
  * Agent Transport Provider Interface for A2A Protocol.

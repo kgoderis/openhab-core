@@ -508,7 +508,8 @@ public class AgentCommunicationConfigurationManager {
     // Data classes extracted to top-level in this package:
     // ConfigurationStatistics, ConfigurationValidationResult, ConfigurationVersion
 
-    // Configuration classes extracted to top-level: CommunicationConfig, MessagingConfig, SecurityConfig, PerformanceConfig
+    // Configuration classes extracted to top-level: CommunicationConfig, MessagingConfig, SecurityConfig,
+    // PerformanceConfig
 
     // MessagingConfig extracted to top-level
 
@@ -517,11 +518,20 @@ public class AgentCommunicationConfigurationManager {
     // PerformanceConfig extracted to top-level
 
     // Default template implementations
-    /* Extracted: org.openhab.core.ai.agent.infrastructure.config.BasicConfigurationTemplate implements ConfigurationTemplate */
+    /*
+     * Extracted: org.openhab.core.ai.agent.infrastructure.config.BasicConfigurationTemplate implements
+     * ConfigurationTemplate
+     */
 
-    /* Extracted: org.openhab.core.ai.agent.infrastructure.config.SecureConfigurationTemplate implements ConfigurationTemplate */
+    /*
+     * Extracted: org.openhab.core.ai.agent.infrastructure.config.SecureConfigurationTemplate implements
+     * ConfigurationTemplate
+     */
 
-    /* Extracted: org.openhab.core.ai.agent.infrastructure.config.HighPerformanceConfigurationTemplate implements ConfigurationTemplate */
+    /*
+     * Extracted: org.openhab.core.ai.agent.infrastructure.config.HighPerformanceConfigurationTemplate implements
+     * ConfigurationTemplate
+     */
 
     // Default preset implementations
     /* Extracted: org.openhab.core.ai.agent.infrastructure.config.DevelopmentPreset implements ConfigurationPreset */

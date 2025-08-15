@@ -13,5 +13,3 @@ final class MoveResult {
     int itemsMoved = 0;
     long bytesMoved = 0;
 }
-
-

@@ -46,5 +46,3 @@ public class CorrelationValidationResult {
         return error;
     }
 }
-
-

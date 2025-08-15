@@ -10,15 +10,15 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionError;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.action.ActionResult;
+import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionError;
+import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.api.IntelligentAgent;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.reasoning.MultiStepReasoningEngine;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
+import org.openhab.core.ai.reasoning.engine.MultiStepReasoningEngine;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +68,8 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
     private final Map<String, List<LearningExample>> learningHistory = new HashMap<>();
 
     @Override
-    public CompletableFuture<ActionResult> executeIntelligentAction(String actionName, Map<String, Object> parameters) {
+    public CompletableFuture<org.openhab.core.ai.action.api.ActionResult> executeIntelligentAction(String actionName,
+            Map<String, Object> parameters) {
         return CompletableFuture.supplyAsync(() -> {
             String actionId = generateActionId();
             Instant startTime = Instant.now();
@@ -274,7 +275,7 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                         }
                     }
                     if (fetchedAction != null) {
-                        org.openhab.core.ai.action.ActionResult result = fetchedAction
+                        org.openhab.core.ai.action.api.ActionResult result = fetchedAction
                                 .execute(action.getProtocolContext(), action);
                         results.add(ActionResult.success(result,
                                 Duration.between(Instant.now(), Instant.now()).toMillis()));

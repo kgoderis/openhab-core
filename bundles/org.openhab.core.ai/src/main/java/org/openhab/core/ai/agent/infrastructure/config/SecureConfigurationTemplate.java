@@ -8,10 +8,14 @@ import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationTemplate
 @NonNullByDefault
 public class SecureConfigurationTemplate implements ConfigurationTemplate {
     @Override
-    public String getTemplateId() { return "secure"; }
+    public String getTemplateId() {
+        return "secure";
+    }
 
     @Override
-    public String getDescription() { return "Secure configuration template with encryption and authentication"; }
+    public String getDescription() {
+        return "Secure configuration template with encryption and authentication";
+    }
 
     @Override
     public CommunicationConfig createConfiguration(String configId, Map<String, Object> parameters) {
@@ -42,5 +46,3 @@ public class SecureConfigurationTemplate implements ConfigurationTemplate {
         return config;
     }
 }
-
-

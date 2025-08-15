@@ -8,5 +8,3 @@ public enum ElicitationStatus {
     COMPLETED,
     CANCELLED
 }
-
-

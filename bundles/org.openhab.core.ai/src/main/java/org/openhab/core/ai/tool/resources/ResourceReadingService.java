@@ -6,11 +6,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.api.ResourceContext;
-import org.openhab.core.ai.tool.api.ResourceRegistry;
-import org.openhab.core.ai.tool.api.ResourceResult;
-import org.openhab.core.ai.tool.api.validation.ResourceValidationResult;
-import org.openhab.core.ai.tool.resources.specification.ResourceSpecification;
+import org.openhab.core.ai.tool.resources.api.ResourceContext;
+import org.openhab.core.ai.tool.resources.api.ResourceRegistry;
+import org.openhab.core.ai.tool.resources.api.ResourceResult;
+import org.openhab.core.ai.tool.resources.api.specification.ResourceSpecification;
+import org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

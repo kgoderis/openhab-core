@@ -6,8 +6,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.progress.tracking.ProgressOperation;
-import org.openhab.core.ai.tool.progress.tracking.ProgressStatus;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressOperation;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressStatus;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

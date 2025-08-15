@@ -21,14 +21,29 @@ final class ItemCachedData {
         this.item = item;
     }
 
-    @Nullable Item getItem() { return item; }
-    void setItem(@Nullable Item item) { this.item = item; }
+    @Nullable
+    Item getItem() {
+        return item;
+    }
 
-    @Nullable String getContent() { return content; }
-    void setContent(@Nullable String content) { this.content = content; }
+    void setItem(@Nullable Item item) {
+        this.item = item;
+    }
 
-    boolean needsRefresh() { return System.currentTimeMillis() - lastRefreshTime > refreshIntervalMs; }
-    void updateRefreshTime() { lastRefreshTime = System.currentTimeMillis(); }
+    @Nullable
+    String getContent() {
+        return content;
+    }
+
+    void setContent(@Nullable String content) {
+        this.content = content;
+    }
+
+    boolean needsRefresh() {
+        return System.currentTimeMillis() - lastRefreshTime > refreshIntervalMs;
+    }
+
+    void updateRefreshTime() {
+        lastRefreshTime = System.currentTimeMillis();
+    }
 }
-
-

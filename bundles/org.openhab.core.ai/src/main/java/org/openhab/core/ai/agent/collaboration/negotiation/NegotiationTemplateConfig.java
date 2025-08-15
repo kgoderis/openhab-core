@@ -32,8 +32,11 @@ public final class NegotiationTemplateConfig {
         this.parameters = Map.copyOf(parameters);
     }
 
-    public String getTemplateId() { return templateId; }
-    public Map<String, Object> getParameters() { return parameters; }
+    public String getTemplateId() {
+        return templateId;
+    }
+
+    public Map<String, Object> getParameters() {
+        return parameters;
+    }
 }
-
-

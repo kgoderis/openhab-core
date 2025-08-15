@@ -61,7 +61,7 @@ public final class HealthHandler implements com.sun.net.httpserver.HttpHandler {
             response.append("  \"version\": \"").append(config.getServerVersion()).append("\",\n");
 
             if (serverInstance.isSecurityEnabled()) {
-                org.openhab.core.ai.tool.security.SecurityStatistics securityStats = serverInstance
+                org.openhab.core.ai.tool.security.api.SecurityStatistics securityStats = serverInstance
                         .getSecurityStatistics();
                 if (securityStats != null) {
                     response.append("  \"security\": {\n");

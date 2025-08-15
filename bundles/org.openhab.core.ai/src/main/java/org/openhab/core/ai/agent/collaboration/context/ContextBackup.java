@@ -66,5 +66,3 @@ public class ContextBackup {
                 contextId, backupTime, backupData.size());
     }
 }
-
-

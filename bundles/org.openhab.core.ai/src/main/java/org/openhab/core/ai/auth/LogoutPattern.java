@@ -13,8 +13,11 @@ class LogoutPattern {
         this.principalId = principalId;
     }
 
-    void recordLogout() { logoutCount.incrementAndGet(); }
-    long getLogoutCount() { return logoutCount.get(); }
+    void recordLogout() {
+        logoutCount.incrementAndGet();
+    }
+
+    long getLogoutCount() {
+        return logoutCount.get();
+    }
 }
-
-

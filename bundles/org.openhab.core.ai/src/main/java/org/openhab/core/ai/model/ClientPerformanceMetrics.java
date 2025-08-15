@@ -10,44 +10,44 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public class ClientPerformanceMetrics {
-	private final double averageResponseTime;
-	private final long minResponseTime;
-	private final long maxResponseTime;
-	private final double errorRate;
-	private final long totalErrors;
-	private final long totalRequests;
+    private final double averageResponseTime;
+    private final long minResponseTime;
+    private final long maxResponseTime;
+    private final double errorRate;
+    private final long totalErrors;
+    private final long totalRequests;
 
-	public ClientPerformanceMetrics(double averageResponseTime, long minResponseTime, long maxResponseTime,
-			double errorRate, long totalErrors, long totalRequests) {
-		this.averageResponseTime = averageResponseTime;
-		this.minResponseTime = minResponseTime;
-		this.maxResponseTime = maxResponseTime;
-		this.errorRate = errorRate;
-		this.totalErrors = totalErrors;
-		this.totalRequests = totalRequests;
-	}
+    public ClientPerformanceMetrics(double averageResponseTime, long minResponseTime, long maxResponseTime,
+            double errorRate, long totalErrors, long totalRequests) {
+        this.averageResponseTime = averageResponseTime;
+        this.minResponseTime = minResponseTime;
+        this.maxResponseTime = maxResponseTime;
+        this.errorRate = errorRate;
+        this.totalErrors = totalErrors;
+        this.totalRequests = totalRequests;
+    }
 
-	public double getAverageResponseTime() {
-		return averageResponseTime;
-	}
+    public double getAverageResponseTime() {
+        return averageResponseTime;
+    }
 
-	public long getMinResponseTime() {
-		return minResponseTime;
-	}
+    public long getMinResponseTime() {
+        return minResponseTime;
+    }
 
-	public long getMaxResponseTime() {
-		return maxResponseTime;
-	}
+    public long getMaxResponseTime() {
+        return maxResponseTime;
+    }
 
-	public double getErrorRate() {
-		return errorRate;
-	}
+    public double getErrorRate() {
+        return errorRate;
+    }
 
-	public long getTotalErrors() {
-		return totalErrors;
-	}
+    public long getTotalErrors() {
+        return totalErrors;
+    }
 
-	public long getTotalRequests() {
-		return totalRequests;
-	}
+    public long getTotalRequests() {
+        return totalRequests;
+    }
 }

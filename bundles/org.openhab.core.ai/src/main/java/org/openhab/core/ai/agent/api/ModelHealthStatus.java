@@ -22,12 +22,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class ModelHealthStatus {
 
-    public enum HealthState {
-        HEALTHY,
-        DEGRADED,
-        UNHEALTHY,
-        UNKNOWN
-    }
+    // HealthState extracted to org.openhab.core.ai.agent.api.HealthState
 
     private final HealthState overallHealth;
     private final boolean primaryModelAvailable;
@@ -111,5 +106,7 @@ public class ModelHealthStatus {
         return overallHealth == HealthState.UNHEALTHY;
     }
 
-    public static ModelHealthStatusBuilder builder() { return new ModelHealthStatusBuilder(); }
+    public static ModelHealthStatusBuilder builder() {
+        return new ModelHealthStatusBuilder();
+    }
 }

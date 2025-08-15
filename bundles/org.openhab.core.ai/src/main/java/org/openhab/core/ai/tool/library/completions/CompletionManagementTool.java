@@ -10,7 +10,7 @@ import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.api.ToolValidationResult;
+import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

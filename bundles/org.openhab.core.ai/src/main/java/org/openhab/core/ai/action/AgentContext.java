@@ -8,11 +8,14 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface AgentContext {
     String getAgentId();
+
     Map<String, Object> getContextData();
+
     List<String> getAvailableActions();
+
     Map<String, Object> getEnvironmentState();
+
     long getTimestamp();
+
     String getContextId();
 }
-
-

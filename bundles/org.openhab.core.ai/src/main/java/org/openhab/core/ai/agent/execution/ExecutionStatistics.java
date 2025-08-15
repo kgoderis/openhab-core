@@ -14,10 +14,19 @@ public final class ExecutionStatistics {
         this.failedExecutions = failedExecutions;
     }
 
-    public long getTotalExecutions() { return totalExecutions; }
-    public long getSuccessfulExecutions() { return successfulExecutions; }
-    public long getFailedExecutions() { return failedExecutions; }
-    public double getSuccessRate() { return totalExecutions > 0 ? (double) successfulExecutions / totalExecutions : 0.0; }
+    public long getTotalExecutions() {
+        return totalExecutions;
+    }
+
+    public long getSuccessfulExecutions() {
+        return successfulExecutions;
+    }
+
+    public long getFailedExecutions() {
+        return failedExecutions;
+    }
+
+    public double getSuccessRate() {
+        return totalExecutions > 0 ? (double) successfulExecutions / totalExecutions : 0.0;
+    }
 }
-
-

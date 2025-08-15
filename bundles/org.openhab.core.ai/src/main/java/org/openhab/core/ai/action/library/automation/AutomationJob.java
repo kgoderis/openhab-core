@@ -35,5 +35,3 @@ class AutomationJob {
         this.status = "pending";
     }
 }
-
-

@@ -27,13 +27,31 @@ public class QualityAnalytics {
         this.timestamp = timestamp;
     }
 
-    public double getOverallQuality() { return overallQuality; }
-    public List<QualityMetric> getMetrics() { return metrics; }
-    public List<QualityIssue> getIssues() { return issues; }
-    public List<QualityImprovementRecommendation> getRecommendations() { return recommendations; }
-    public long getTotalErrors() { return totalErrors; }
-    public long getTotalWarnings() { return totalWarnings; }
-    public Instant getTimestamp() { return timestamp; }
+    public double getOverallQuality() {
+        return overallQuality;
+    }
+
+    public List<QualityMetric> getMetrics() {
+        return metrics;
+    }
+
+    public List<QualityIssue> getIssues() {
+        return issues;
+    }
+
+    public List<QualityImprovementRecommendation> getRecommendations() {
+        return recommendations;
+    }
+
+    public long getTotalErrors() {
+        return totalErrors;
+    }
+
+    public long getTotalWarnings() {
+        return totalWarnings;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
 }
-
-

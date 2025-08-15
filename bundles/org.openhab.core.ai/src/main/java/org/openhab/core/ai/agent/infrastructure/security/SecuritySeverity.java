@@ -9,5 +9,3 @@ public enum SecuritySeverity {
     HIGH,
     CRITICAL
 }
-
-

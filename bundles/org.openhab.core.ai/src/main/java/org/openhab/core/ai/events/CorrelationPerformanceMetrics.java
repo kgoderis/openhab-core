@@ -59,5 +59,3 @@ public class CorrelationPerformanceMetrics {
         return patternCount;
     }
 }
-
-

@@ -36,13 +36,39 @@ public class EventBusStatistics {
         this.deadLetterQueueSize = deadLetterQueueSize;
     }
 
-    public long getTotalEventsPublished() { return totalEventsPublished; }
-    public long getTotalEventsDelivered() { return totalEventsDelivered; }
-    public long getTotalEventsFiltered() { return totalEventsFiltered; }
-    public long getTotalEventsFailed() { return totalEventsFailed; }
-    public long getTotalEventsInDeadLetterQueue() { return totalEventsInDeadLetterQueue; }
-    public int getStoredEvents() { return storedEvents; }
-    public int getActiveSubscriptions() { return activeSubscriptions; }
-    public int getRegisteredSchemas() { return registeredSchemas; }
-    public int getDeadLetterQueueSize() { return deadLetterQueueSize; }
+    public long getTotalEventsPublished() {
+        return totalEventsPublished;
+    }
+
+    public long getTotalEventsDelivered() {
+        return totalEventsDelivered;
+    }
+
+    public long getTotalEventsFiltered() {
+        return totalEventsFiltered;
+    }
+
+    public long getTotalEventsFailed() {
+        return totalEventsFailed;
+    }
+
+    public long getTotalEventsInDeadLetterQueue() {
+        return totalEventsInDeadLetterQueue;
+    }
+
+    public int getStoredEvents() {
+        return storedEvents;
+    }
+
+    public int getActiveSubscriptions() {
+        return activeSubscriptions;
+    }
+
+    public int getRegisteredSchemas() {
+        return registeredSchemas;
+    }
+
+    public int getDeadLetterQueueSize() {
+        return deadLetterQueueSize;
+    }
 }

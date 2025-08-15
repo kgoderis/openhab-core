@@ -23,7 +23,15 @@ public class ConflictHistory {
         this.conflicts = new ArrayList<>();
     }
 
-    public String getAgentId() { return agentId; }
-    public List<Conflict> getConflicts() { return conflicts; }
-    public void addConflict(Conflict conflict) { conflicts.add(conflict); }
+    public String getAgentId() {
+        return agentId;
+    }
+
+    public List<Conflict> getConflicts() {
+        return conflicts;
+    }
+
+    public void addConflict(Conflict conflict) {
+        conflicts.add(conflict);
+    }
 }

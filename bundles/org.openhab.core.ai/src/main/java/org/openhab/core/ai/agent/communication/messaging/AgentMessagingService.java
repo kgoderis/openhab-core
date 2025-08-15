@@ -20,7 +20,7 @@ import org.openhab.core.ai.agent.communication.messaging.api.MessageDeliveryResu
 import org.openhab.core.ai.agent.communication.messaging.api.MessageFilter;
 import org.openhab.core.ai.agent.communication.messaging.api.MessageRouter;
 import org.openhab.core.ai.agent.communication.messaging.api.MessageValidator;
-import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
+import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

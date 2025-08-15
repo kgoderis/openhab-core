@@ -9,10 +9,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.api.ResourceContext;
-import org.openhab.core.ai.tool.api.ResourceRegistry;
-import org.openhab.core.ai.tool.api.ResourceResult;
-import org.openhab.core.ai.tool.api.validation.ResourceValidationResult;
+import org.openhab.core.ai.tool.resources.api.ResourceContext;
+import org.openhab.core.ai.tool.resources.api.ResourceRegistry;
+import org.openhab.core.ai.tool.resources.api.ResourceResult;
+import org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -36,7 +36,7 @@ public class ResourceTemplateService {
 
     private static final Logger logger = LoggerFactory.getLogger(ResourceTemplateService.class);
 
-    private final Map<String, ResourceTemplate> templates = new ConcurrentHashMap<>();
+    private final Map<String, org.openhab.core.ai.tool.resources.api.ResourceTemplate> templates = new ConcurrentHashMap<>();
     private final AtomicLong totalTemplateRequests = new AtomicLong(0);
     private final AtomicLong totalTemplateCompletions = new AtomicLong(0);
     private final AtomicLong totalTemplateTime = new AtomicLong(0);
@@ -84,17 +84,21 @@ public class ResourceTemplateService {
      */
     private void createItemTemplates() {
         // Template for getting item state
-        ResourceTemplate getItemTemplate = new ResourceTemplate("get-item-state", "Get Item State",
-                "Template for retrieving the current state of an openHAB item", "items",
-                Map.of("itemName", new TemplateParameter("itemName", "string", "The name of the item", true, null)),
+        org.openhab.core.ai.tool.resources.api.ResourceTemplate getItemTemplate = new org.openhab.core.ai.tool.resources.api.ResourceTemplate(
+                "get-item-state", "Get Item State", "Template for retrieving the current state of an openHAB item",
+                "items", Map.of("itemName", new org.openhab.core.ai.tool.resources.api.TemplateParameter("itemName",
+                        "string", "The name of the item", true, null)),
                 Map.of("action", "get"));
         templates.put("get-item-state", getItemTemplate);
 
         // Template for setting item state
-        ResourceTemplate setItemTemplate = new ResourceTemplate("set-item-state", "Set Item State",
-                "Template for setting the state of an openHAB item", "items",
-                Map.of("itemName", new TemplateParameter("itemName", "string", "The name of the item", true, null),
-                        "value", new TemplateParameter("value", "string", "The value to set", true, null)),
+        org.openhab.core.ai.tool.resources.api.ResourceTemplate setItemTemplate = new org.openhab.core.ai.tool.resources.api.ResourceTemplate(
+                "set-item-state", "Set Item State", "Template for setting the state of an openHAB item", "items",
+                Map.of("itemName",
+                        new org.openhab.core.ai.tool.resources.api.TemplateParameter("itemName", "string",
+                                "The name of the item", true, null),
+                        "value", new org.openhab.core.ai.tool.resources.api.TemplateParameter("value", "string",
+                                "The value to set", true, null)),
                 Map.of("action", "set"));
         templates.put("set-item-state", setItemTemplate);
     }
@@ -104,18 +108,21 @@ public class ResourceTemplateService {
      */
     private void createThingTemplates() {
         // Template for getting thing status
-        ResourceTemplate getThingTemplate = new ResourceTemplate("get-thing-status", "Get Thing Status",
-                "Template for retrieving the status of an openHAB thing", "things",
-                Map.of("thingUID", new TemplateParameter("thingUID", "string", "The UID of the thing", true, null)),
+        org.openhab.core.ai.tool.resources.api.ResourceTemplate getThingTemplate = new org.openhab.core.ai.tool.resources.api.ResourceTemplate(
+                "get-thing-status", "Get Thing Status", "Template for retrieving the status of an openHAB thing",
+                "things", Map.of("thingUID", new org.openhab.core.ai.tool.resources.api.TemplateParameter("thingUID",
+                        "string", "The UID of the thing", true, null)),
                 Map.of("action", "get"));
         templates.put("get-thing-status", getThingTemplate);
 
         // Template for configuring thing
-        ResourceTemplate configureThingTemplate = new ResourceTemplate("configure-thing", "Configure Thing",
-                "Template for configuring an openHAB thing", "things",
-                Map.of("thingUID", new TemplateParameter("thingUID", "string", "The UID of the thing", true, null),
-                        "configuration",
-                        new TemplateParameter("configuration", "object", "Configuration parameters", true, null)),
+        org.openhab.core.ai.tool.resources.api.ResourceTemplate configureThingTemplate = new org.openhab.core.ai.tool.resources.api.ResourceTemplate(
+                "configure-thing", "Configure Thing", "Template for configuring an openHAB thing", "things",
+                Map.of("thingUID",
+                        new org.openhab.core.ai.tool.resources.api.TemplateParameter("thingUID", "string",
+                                "The UID of the thing", true, null),
+                        "configuration", new org.openhab.core.ai.tool.resources.api.TemplateParameter("configuration",
+                                "object", "Configuration parameters", true, null)),
                 Map.of("action", "configure"));
         templates.put("configure-thing", configureThingTemplate);
     }
@@ -125,18 +132,21 @@ public class ResourceTemplateService {
      */
     private void createRuleTemplates() {
         // Template for getting rule information
-        ResourceTemplate getRuleTemplate = new ResourceTemplate("get-rule-info", "Get Rule Information",
-                "Template for retrieving information about an openHAB rule", "rules",
-                Map.of("ruleUID", new TemplateParameter("ruleUID", "string", "The UID of the rule", true, null)),
+        org.openhab.core.ai.tool.resources.api.ResourceTemplate getRuleTemplate = new org.openhab.core.ai.tool.resources.api.ResourceTemplate(
+                "get-rule-info", "Get Rule Information", "Template for retrieving information about an openHAB rule",
+                "rules", Map.of("ruleUID", new org.openhab.core.ai.tool.resources.api.TemplateParameter("ruleUID",
+                        "string", "The UID of the rule", true, null)),
                 Map.of("action", "get"));
         templates.put("get-rule-info", getRuleTemplate);
 
         // Template for enabling/disabling rule
-        ResourceTemplate toggleRuleTemplate = new ResourceTemplate(
-                "toggle-rule", "Toggle Rule", "Template for enabling or disabling an openHAB rule", "rules", Map
-                        .of("ruleUID", new TemplateParameter("ruleUID", "string", "The UID of the rule", true, null),
-                                "enabled", new TemplateParameter("enabled", "boolean",
-                                        "Whether to enable or disable the rule", true, null)),
+        org.openhab.core.ai.tool.resources.api.ResourceTemplate toggleRuleTemplate = new org.openhab.core.ai.tool.resources.api.ResourceTemplate(
+                "toggle-rule", "Toggle Rule", "Template for enabling or disabling an openHAB rule", "rules",
+                Map.of("ruleUID",
+                        new org.openhab.core.ai.tool.resources.api.TemplateParameter("ruleUID", "string",
+                                "The UID of the rule", true, null),
+                        "enabled", new org.openhab.core.ai.tool.resources.api.TemplateParameter("enabled", "boolean",
+                                "Whether to enable or disable the rule", true, null)),
                 Map.of("action", "enable"));
         templates.put("toggle-rule", toggleRuleTemplate);
     }
@@ -146,19 +156,22 @@ public class ResourceTemplateService {
      */
     private void createConfigurationTemplates() {
         // Template for getting configuration
-        ResourceTemplate getConfigTemplate = new ResourceTemplate("get-configuration", "Get Configuration",
-                "Template for retrieving openHAB configuration", "configuration",
-                Map.of("configPath",
-                        new TemplateParameter("configPath", "string", "The configuration path", true, null)),
+        org.openhab.core.ai.tool.resources.api.ResourceTemplate getConfigTemplate = new org.openhab.core.ai.tool.resources.api.ResourceTemplate(
+                "get-configuration", "Get Configuration", "Template for retrieving openHAB configuration",
+                "configuration",
+                Map.of("configPath", new org.openhab.core.ai.tool.resources.api.TemplateParameter("configPath",
+                        "string", "The configuration path", true, null)),
                 Map.of("action", "get"));
         templates.put("get-configuration", getConfigTemplate);
 
         // Template for setting configuration
-        ResourceTemplate setConfigTemplate = new ResourceTemplate("set-configuration", "Set Configuration",
-                "Template for setting openHAB configuration", "configuration",
+        org.openhab.core.ai.tool.resources.api.ResourceTemplate setConfigTemplate = new org.openhab.core.ai.tool.resources.api.ResourceTemplate(
+                "set-configuration", "Set Configuration", "Template for setting openHAB configuration", "configuration",
                 Map.of("configPath",
-                        new TemplateParameter("configPath", "string", "The configuration path", true, null), "value",
-                        new TemplateParameter("value", "object", "The configuration value", true, null)),
+                        new org.openhab.core.ai.tool.resources.api.TemplateParameter("configPath", "string",
+                                "The configuration path", true, null),
+                        "value", new org.openhab.core.ai.tool.resources.api.TemplateParameter("value", "object",
+                                "The configuration value", true, null)),
                 Map.of("action", "set"));
         templates.put("set-configuration", setConfigTemplate);
     }
@@ -177,7 +190,7 @@ public class ResourceTemplateService {
             logger.debug("Listing resource templates");
 
             List<Map<String, Object>> templateList = new ArrayList<>();
-            for (ResourceTemplate template : templates.values()) {
+            for (org.openhab.core.ai.tool.resources.api.ResourceTemplate template : templates.values()) {
                 templateList.add(template.toMap());
             }
 
@@ -214,16 +227,17 @@ public class ResourceTemplateService {
         try {
             logger.debug("Getting parameter completions for template: {} with params: {}", templateId, partialParams);
 
-            ResourceTemplate template = templates.get(templateId);
+            org.openhab.core.ai.tool.resources.api.ResourceTemplate template = templates.get(templateId);
             if (template == null) {
                 return ResourceResult.failure("Template not found: " + templateId,
                         System.currentTimeMillis() - startTime);
             }
 
             Map<String, Object> completions = new HashMap<>();
-            for (Map.Entry<String, TemplateParameter> entry : template.getParameters().entrySet()) {
+            for (Map.Entry<String, org.openhab.core.ai.tool.resources.api.TemplateParameter> entry : template
+                    .getParameters().entrySet()) {
                 String paramName = entry.getKey();
-                TemplateParameter param = entry.getValue();
+                org.openhab.core.ai.tool.resources.api.TemplateParameter param = entry.getValue();
 
                 if (!partialParams.containsKey(paramName)) {
                     completions.put(paramName, Map.of("type", param.getType(), "description", param.getDescription(),
@@ -257,17 +271,19 @@ public class ResourceTemplateService {
      */
     public ResourceValidationResult validateTemplateParameters(String templateId, Map<String, Object> parameters) {
         try {
-            ResourceTemplate template = templates.get(templateId);
+            org.openhab.core.ai.tool.resources.api.ResourceTemplate template = templates.get(templateId);
             if (template == null) {
                 return ResourceValidationResult.failure("Template not found: " + templateId);
             }
 
-            Map<String, TemplateParameter> templateParams = template.getParameters();
+            Map<String, org.openhab.core.ai.tool.resources.api.TemplateParameter> templateParams = template
+                    .getParameters();
 
             // Check required parameters
-            for (Map.Entry<String, TemplateParameter> entry : templateParams.entrySet()) {
+            for (Map.Entry<String, org.openhab.core.ai.tool.resources.api.TemplateParameter> entry : templateParams
+                    .entrySet()) {
                 String paramName = entry.getKey();
-                TemplateParameter param = entry.getValue();
+                org.openhab.core.ai.tool.resources.api.TemplateParameter param = entry.getValue();
 
                 if (param.isRequired() && !parameters.containsKey(paramName)) {
                     return ResourceValidationResult.failure("Required parameter missing: " + paramName);
@@ -279,7 +295,7 @@ public class ResourceTemplateService {
                 String paramName = entry.getKey();
                 Object paramValue = entry.getValue();
 
-                TemplateParameter templateParam = templateParams.get(paramName);
+                org.openhab.core.ai.tool.resources.api.TemplateParameter templateParam = templateParams.get(paramName);
                 if (templateParam != null) {
                     if (!isValidType(paramValue, templateParam.getType())) {
                         return ResourceValidationResult.failure(

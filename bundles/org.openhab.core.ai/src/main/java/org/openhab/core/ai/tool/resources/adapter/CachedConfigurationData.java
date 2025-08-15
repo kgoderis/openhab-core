@@ -45,5 +45,3 @@ public class CachedConfigurationData {
         lastRefreshTime = System.currentTimeMillis();
     }
 }
-
-

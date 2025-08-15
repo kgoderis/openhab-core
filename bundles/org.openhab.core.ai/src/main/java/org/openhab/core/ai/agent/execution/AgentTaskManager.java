@@ -18,15 +18,15 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionError;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.action.ActionResult;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionError;
+import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.core.MessageType;
 import org.openhab.core.ai.agent.infrastructure.persistence.AgentPersistenceManager;
 import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentSynchronizationManager;
-import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
+import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -694,7 +694,7 @@ public class AgentTaskManager {
     public void resumeTask(String taskId) {
         try {
             TaskOrchestrationState state = taskStates.get(taskId);
-            if (state != null && state.getState() == TaskOrchestrationState.State.PAUSED) {
+            if (state != null && state.getState() == TaskOrchestrationStateState.PAUSED) {
                 state.setState(TaskOrchestrationStateState.RUNNING);
                 logger.debug("Resumed task: {}", taskId);
             } else {
@@ -789,7 +789,7 @@ public class AgentTaskManager {
                 // TODO: Implement recovery logic
                 // This could involve retrying with different parameters, using fallback agents, etc.
 
-                state.setState(TaskOrchestrationState.State.RUNNING);
+                state.setState(TaskOrchestrationStateState.RUNNING);
                 logger.debug("Recovered from error for task: {}", taskId);
                 return true;
             }
@@ -1315,7 +1315,7 @@ public class AgentTaskManager {
             String taskId = entry.getKey();
             TaskOrchestrationState state = entry.getValue();
 
-            if (state.getState() == TaskOrchestrationState.State.RUNNING && state.getStartTime() > latestStartTime) {
+            if (state.getState() == TaskOrchestrationStateState.RUNNING && state.getStartTime() > latestStartTime) {
                 taskToCancel = taskId;
                 latestStartTime = state.getStartTime();
             }

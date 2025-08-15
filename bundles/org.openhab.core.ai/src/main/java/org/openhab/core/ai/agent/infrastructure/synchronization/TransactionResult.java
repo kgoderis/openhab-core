@@ -26,9 +26,15 @@ public final class TransactionResult {
         this.responses = new ArrayList<>(responses);
     }
 
-    public boolean isSuccess() { return success; }
-    public String getMessage() { return message; }
-    public List<TaskStatusUpdateEvent> getResponses() { return Collections.unmodifiableList(responses); }
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public List<TaskStatusUpdateEvent> getResponses() {
+        return Collections.unmodifiableList(responses);
+    }
 }
-
-

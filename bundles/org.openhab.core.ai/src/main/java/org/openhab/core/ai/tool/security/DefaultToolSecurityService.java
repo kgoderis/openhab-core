@@ -12,6 +12,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.security.api.AccessLogEntry;
+import org.openhab.core.ai.tool.security.api.RateLimitInfo;
+import org.openhab.core.ai.tool.security.api.SecurityStatistics;
+import org.openhab.core.ai.tool.security.api.SpecificationPermissions;
+import org.openhab.core.ai.tool.security.api.UserRole;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

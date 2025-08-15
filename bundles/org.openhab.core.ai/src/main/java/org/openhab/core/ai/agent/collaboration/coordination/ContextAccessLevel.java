@@ -10,7 +10,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public enum ContextAccessLevel {
-	PRIVATE,
-	SHARED,
-	PUBLIC
+    PRIVATE,
+    SHARED,
+    PUBLIC
 }

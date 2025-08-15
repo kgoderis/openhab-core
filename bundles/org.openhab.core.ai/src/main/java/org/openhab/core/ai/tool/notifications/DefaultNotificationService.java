@@ -6,9 +6,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.notifications.events.Notification;
-import org.openhab.core.ai.tool.notifications.events.NotificationListener;
-import org.openhab.core.ai.tool.notifications.events.NotificationType;
+import org.openhab.core.ai.tool.notifications.api.events.Notification;
+import org.openhab.core.ai.tool.notifications.api.events.NotificationListener;
+import org.openhab.core.ai.tool.notifications.api.events.NotificationType;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

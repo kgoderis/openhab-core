@@ -8,10 +8,14 @@ import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationTemplate
 @NonNullByDefault
 public class HighPerformanceConfigurationTemplate implements ConfigurationTemplate {
     @Override
-    public String getTemplateId() { return "high-performance"; }
+    public String getTemplateId() {
+        return "high-performance";
+    }
 
     @Override
-    public String getDescription() { return "High-performance configuration template optimized for speed"; }
+    public String getDescription() {
+        return "High-performance configuration template optimized for speed";
+    }
 
     @Override
     public CommunicationConfig createConfiguration(String configId, Map<String, Object> parameters) {
@@ -40,5 +44,3 @@ public class HighPerformanceConfigurationTemplate implements ConfigurationTempla
         return config;
     }
 }
-
-

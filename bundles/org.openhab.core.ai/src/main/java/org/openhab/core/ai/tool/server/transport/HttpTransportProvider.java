@@ -2,7 +2,6 @@ package org.openhab.core.ai.tool.server.transport;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.security.KeyStore;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

@@ -6,11 +6,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.api.PromptContext;
-import org.openhab.core.ai.tool.api.PromptResult;
 import org.openhab.core.ai.tool.prompts.adapter.ItemPromptAdapter;
 import org.openhab.core.ai.tool.prompts.adapter.RulePromptAdapter;
 import org.openhab.core.ai.tool.prompts.adapter.SystemPromptAdapter;
+import org.openhab.core.ai.tool.prompts.api.PromptContext;
+import org.openhab.core.ai.tool.prompts.api.PromptResult;
 import org.openhab.core.automation.RuleRegistry;
 import org.openhab.core.items.ItemRegistry;
 import org.osgi.service.component.annotations.Activate;

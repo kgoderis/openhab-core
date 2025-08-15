@@ -6,8 +6,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.prompts.dto.Prompt;
-import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
+import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,8 +41,7 @@ public abstract class BasePrompt {
      * @param arguments List of prompt arguments
      * @param refreshIntervalMs Refresh interval in milliseconds (0 for no auto-refresh)
      */
-    protected BasePrompt(String name, String description, List<PromptArgument> arguments,
-            long refreshIntervalMs) {
+    protected BasePrompt(String name, String description, List<PromptArgument> arguments, long refreshIntervalMs) {
         this.name = name;
         this.description = description;
         this.arguments = new CopyOnWriteArrayList<>(arguments);

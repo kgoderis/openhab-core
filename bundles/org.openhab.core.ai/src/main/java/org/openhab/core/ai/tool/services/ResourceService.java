@@ -4,9 +4,9 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.api.ResourceContext;
-import org.openhab.core.ai.tool.api.ResourceResult;
-import org.openhab.core.ai.tool.resources.specification.ResourceSpecification;
+import org.openhab.core.ai.tool.resources.api.ResourceContext;
+import org.openhab.core.ai.tool.resources.api.ResourceResult;
+import org.openhab.core.ai.tool.resources.api.specification.ResourceSpecification;
 
 /**
  * Service interface for resource operations.

@@ -8,5 +8,3 @@ public enum CircuitBreakerState {
     OPEN, // Circuit is open, requests are failing
     HALF_OPEN // Testing if service has recovered
 }
-
-

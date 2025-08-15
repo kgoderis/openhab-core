@@ -9,8 +9,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.ActionMetadata;
 import org.openhab.core.ai.action.ActionRegistry;
+import org.openhab.core.ai.action.api.ActionMetadata;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;

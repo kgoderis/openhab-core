@@ -52,5 +52,3 @@ public class ToolServiceCustomizer implements ServiceTrackerCustomizer<Tool, Too
         }
     }
 }
-
-

@@ -18,5 +18,3 @@ public class SessionInfo {
         this.lastAccessTime = lastAccessTime;
     }
 }
-
-

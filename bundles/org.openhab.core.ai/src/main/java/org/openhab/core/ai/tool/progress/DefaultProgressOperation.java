@@ -1,8 +1,8 @@
 package org.openhab.core.ai.tool.progress;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.progress.tracking.ProgressOperation;
-import org.openhab.core.ai.tool.progress.tracking.ProgressStatus;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressOperation;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressStatus;
 
 /**
  * Default progress operation implementation extracted from DefaultProgressTrackingService.
@@ -35,52 +35,80 @@ final class DefaultProgressOperation implements ProgressOperation {
     }
 
     @Override
-    public String getId() { return id; }
+    public String getId() {
+        return id;
+    }
 
     @Override
-    public String getDescription() { return description; }
+    public String getDescription() {
+        return description;
+    }
 
     @Override
-    public int getTotalSteps() { return totalSteps; }
+    public int getTotalSteps() {
+        return totalSteps;
+    }
 
     @Override
-    public ProgressStatus getStatus() { return status; }
+    public ProgressStatus getStatus() {
+        return status;
+    }
 
     @Override
-    public void setStatus(ProgressStatus status) { this.status = status; }
+    public void setStatus(ProgressStatus status) {
+        this.status = status;
+    }
 
     @Override
-    public int getCurrentStep() { return currentStep; }
+    public int getCurrentStep() {
+        return currentStep;
+    }
 
     @Override
-    public void setCurrentStep(int currentStep) { this.currentStep = currentStep; }
+    public void setCurrentStep(int currentStep) {
+        this.currentStep = currentStep;
+    }
 
     @Override
-    public String getMessage() { return message; }
+    public String getMessage() {
+        return message;
+    }
 
     @Override
-    public void setMessage(String message) { this.message = message; }
+    public void setMessage(String message) {
+        this.message = message;
+    }
 
     @Override
-    public long getStartTime() { return startTime; }
+    public long getStartTime() {
+        return startTime;
+    }
 
     @Override
-    public long getLastUpdateTime() { return lastUpdateTime; }
+    public long getLastUpdateTime() {
+        return lastUpdateTime;
+    }
 
     @Override
-    public void setLastUpdateTime(long lastUpdateTime) { this.lastUpdateTime = lastUpdateTime; }
+    public void setLastUpdateTime(long lastUpdateTime) {
+        this.lastUpdateTime = lastUpdateTime;
+    }
 
     @Override
-    public long getCompletionTime() { return completionTime; }
+    public long getCompletionTime() {
+        return completionTime;
+    }
 
     @Override
-    public void setCompletionTime(long completionTime) { this.completionTime = completionTime; }
+    public void setCompletionTime(long completionTime) {
+        this.completionTime = completionTime;
+    }
 
     @Override
     public double getProgressPercentage() {
-        if (totalSteps <= 0) { return 0.0; }
+        if (totalSteps <= 0) {
+            return 0.0;
+        }
         return Math.min(100.0, (double) currentStep / totalSteps * 100.0);
     }
 }
-
-

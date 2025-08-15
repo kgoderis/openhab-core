@@ -13,7 +13,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.communication.protocol.AgentProtocolHandler;
 import org.openhab.core.ai.agent.execution.AgentTaskManager;
-import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
+import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.rest.SharedRestInfrastructure;
 import org.openhab.core.ai.tool.server.api.ToolServer;
 import org.openhab.core.io.rest.RESTConstants;

@@ -10,8 +10,7 @@ public class ResourceIssue {
     private final String details;
     private final String recommendation;
 
-    public ResourceIssue(String resource, String operation, double utilization, String details,
-            String recommendation) {
+    public ResourceIssue(String resource, String operation, double utilization, String details, String recommendation) {
         this.resource = resource;
         this.operation = operation;
         this.utilization = utilization;
@@ -19,11 +18,23 @@ public class ResourceIssue {
         this.recommendation = recommendation;
     }
 
-    public String getResource() { return resource; }
-    public String getOperation() { return operation; }
-    public double getUtilization() { return utilization; }
-    public String getDetails() { return details; }
-    public String getRecommendation() { return recommendation; }
+    public String getResource() {
+        return resource;
+    }
+
+    public String getOperation() {
+        return operation;
+    }
+
+    public double getUtilization() {
+        return utilization;
+    }
+
+    public String getDetails() {
+        return details;
+    }
+
+    public String getRecommendation() {
+        return recommendation;
+    }
 }
-
-

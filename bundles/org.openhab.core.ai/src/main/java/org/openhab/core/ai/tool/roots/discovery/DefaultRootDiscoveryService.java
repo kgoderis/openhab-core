@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.resources.specification.ResourceSpecification;
+import org.openhab.core.ai.tool.resources.api.specification.ResourceSpecification;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -281,23 +281,23 @@ public class DefaultRootDiscoveryService implements RootDiscoveryService {
             }
 
             @Override
-            public org.openhab.core.ai.tool.api.validation.ResourceMetadata getResourceMetadata() {
-                return new org.openhab.core.ai.tool.api.validation.ResourceMetadata("1.0.0", // version
+            public org.openhab.core.ai.tool.resources.api.validation.ResourceMetadata getResourceMetadata() {
+                return new org.openhab.core.ai.tool.resources.api.validation.ResourceMetadata("1.0.0", // version
                         "openHAB AI", // author
                         Map.of("path", path, "access", access, "type", "root") // properties
                 );
             }
 
             @Override
-            public org.openhab.core.ai.tool.api.validation.ResourceValidationResult validateParameters(
+            public org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult validateParameters(
                     Map<String, Object> parameters) {
-                return org.openhab.core.ai.tool.api.validation.ResourceValidationResult.success();
+                return org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult.success();
             }
 
             @Override
-            public org.openhab.core.ai.tool.api.ResourceResult execute(Map<String, Object> parameters,
-                    org.openhab.core.ai.tool.api.ResourceContext context) {
-                return org.openhab.core.ai.tool.api.ResourceResult.success(
+            public org.openhab.core.ai.tool.resources.api.ResourceResult execute(Map<String, Object> parameters,
+                    org.openhab.core.ai.tool.resources.api.ResourceContext context) {
+                return org.openhab.core.ai.tool.resources.api.ResourceResult.success(
                         Map.of("root", name, "path", path, "access", access), // content
                         0 // executionTimeMs
                 );

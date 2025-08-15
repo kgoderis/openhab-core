@@ -5,7 +5,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 /**
  * A2A request handler interface for processing Agent-to-Agent protocol requests.
  *
- * <p>Implementations process messages and manage task-related operations.
+ * <p>
+ * Implementations process messages and manage task-related operations.
  * </p>
  *
  * @author Karel Goderis - Initial Contribution
@@ -37,5 +38,3 @@ public interface A2ARequestHandler {
      */
     boolean cancelTask(String taskId);
 }
-
-

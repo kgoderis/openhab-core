@@ -50,15 +50,41 @@ public class SystemAggregatedStatistics {
         return new ArrayList<>(agentStatistics);
     }
 
-    public long getTotalAgentRequests() { return totalAgentRequests; }
-    public long getTotalAgentSuccessfulRequests() { return totalAgentSuccessfulRequests; }
-    public long getTotalAgentFailedRequests() { return totalAgentFailedRequests; }
-    public long getTotalAgentResponseTime() { return totalAgentResponseTime; }
-    public long getTotalAgentTokens() { return totalAgentTokens; }
-    public double getTotalAgentCost() { return totalAgentCost; }
-    public @Nullable SystemUsageStats getTrackingStats() { return trackingStats; }
-    public int getRegisteredAgentCount() { return registeredAgentCount; }
-    public Instant getTimestamp() { return timestamp; }
+    public long getTotalAgentRequests() {
+        return totalAgentRequests;
+    }
+
+    public long getTotalAgentSuccessfulRequests() {
+        return totalAgentSuccessfulRequests;
+    }
+
+    public long getTotalAgentFailedRequests() {
+        return totalAgentFailedRequests;
+    }
+
+    public long getTotalAgentResponseTime() {
+        return totalAgentResponseTime;
+    }
+
+    public long getTotalAgentTokens() {
+        return totalAgentTokens;
+    }
+
+    public double getTotalAgentCost() {
+        return totalAgentCost;
+    }
+
+    public @Nullable SystemUsageStats getTrackingStats() {
+        return trackingStats;
+    }
+
+    public int getRegisteredAgentCount() {
+        return registeredAgentCount;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
 
     public double getAgentSuccessRate() {
         return totalAgentRequests > 0 ? (double) totalAgentSuccessfulRequests / totalAgentRequests : 0.0;
@@ -78,5 +104,3 @@ public class SystemAggregatedStatistics {
         return totalAgentRequests + trackingRequests;
     }
 }
-
-

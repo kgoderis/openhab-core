@@ -1,6 +1,5 @@
 package org.openhab.core.ai.tool.server;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -21,7 +20,7 @@ public class ServerConfiguration {
     private final String serverId;
     private final String serverName;
     private final String serverVersion;
-    private final TransportType transportType;
+    private final org.openhab.core.ai.tool.server.api.TransportType transportType;
     private final String baseUrl;
     private final String messageEndpoint;
     private final String sseEndpoint;
@@ -206,7 +205,7 @@ public class ServerConfiguration {
      * 
      * @return Transport type
      */
-    public TransportType getTransportType() {
+    public org.openhab.core.ai.tool.server.api.TransportType getTransportType() {
         return transportType;
     }
 
@@ -679,6 +678,4 @@ public class ServerConfiguration {
                 + ", enableTools=" + enableTools + ", enableResources=" + enableResources + ", enablePrompts="
                 + enablePrompts + ", enableLogging=" + enableLogging + '}';
     }
-
-    
 }

@@ -1,8 +1,6 @@
 package org.openhab.core.ai.tool.security.filters;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -68,5 +66,6 @@ public interface SecurityFilter {
      */
     void updateConfiguration(Map<String, Object> configuration);
 
-    // AbstractSecurityFilter extracted to top-level class org.openhab.core.ai.tool.security.filters.AbstractSecurityFilter
+    // AbstractSecurityFilter extracted to top-level class
+    // org.openhab.core.ai.tool.security.filters.AbstractSecurityFilter
 }

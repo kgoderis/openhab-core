@@ -23,12 +23,27 @@ public class SubscriptionInfo {
         this.createdAt = System.currentTimeMillis();
     }
 
-    public String getSubscriptionId() { return subscriptionId; }
-    public String getClientId() { return clientId; }
-    public Set<String> getEventTypes() { return eventTypes; }
-    public @Nullable Map<String, String> getFilters() { return filters; }
-    public long getCreatedAt() { return createdAt; }
-    public String getSseUrl() { return "/mcp/events/" + subscriptionId; }
+    public String getSubscriptionId() {
+        return subscriptionId;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public Set<String> getEventTypes() {
+        return eventTypes;
+    }
+
+    public @Nullable Map<String, String> getFilters() {
+        return filters;
+    }
+
+    public long getCreatedAt() {
+        return createdAt;
+    }
+
+    public String getSseUrl() {
+        return "/mcp/events/" + subscriptionId;
+    }
 }
-
-

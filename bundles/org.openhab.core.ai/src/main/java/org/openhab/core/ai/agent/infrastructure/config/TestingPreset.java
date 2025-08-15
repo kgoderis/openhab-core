@@ -6,10 +6,14 @@ import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationPreset;
 @NonNullByDefault
 public class TestingPreset implements ConfigurationPreset {
     @Override
-    public String getPresetId() { return "testing"; }
+    public String getPresetId() {
+        return "testing";
+    }
 
     @Override
-    public String getDescription() { return "Testing preset optimized for automated testing"; }
+    public String getDescription() {
+        return "Testing preset optimized for automated testing";
+    }
 
     @Override
     public CommunicationConfig applyTo(CommunicationConfig config) {
@@ -29,5 +33,3 @@ public class TestingPreset implements ConfigurationPreset {
         return config;
     }
 }
-
-

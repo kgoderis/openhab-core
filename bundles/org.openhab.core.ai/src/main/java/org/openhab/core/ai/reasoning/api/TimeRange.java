@@ -14,5 +14,3 @@ public enum TimeRange {
     LAST_WEEK,
     LAST_MONTH
 }
-
-

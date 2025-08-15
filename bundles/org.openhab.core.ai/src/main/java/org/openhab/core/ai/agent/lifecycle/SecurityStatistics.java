@@ -13,9 +13,8 @@ public class SecurityStatistics {
     private final int rateLimitPerMinute;
     private final int activeSessions;
 
-    public SecurityStatistics(int activeClients, int failedAttempts, int blockedClients,
-            boolean authenticationEnabled, boolean requestValidationEnabled, int maxConnections,
-            int rateLimitPerMinute, int activeSessions) {
+    public SecurityStatistics(int activeClients, int failedAttempts, int blockedClients, boolean authenticationEnabled,
+            boolean requestValidationEnabled, int maxConnections, int rateLimitPerMinute, int activeSessions) {
         this.activeClients = activeClients;
         this.failedAttempts = failedAttempts;
         this.blockedClients = blockedClients;
@@ -26,14 +25,35 @@ public class SecurityStatistics {
         this.activeSessions = activeSessions;
     }
 
-    public int getActiveClients() { return activeClients; }
-    public int getFailedAttempts() { return failedAttempts; }
-    public int getBlockedClients() { return blockedClients; }
-    public boolean isAuthenticationEnabled() { return authenticationEnabled; }
-    public boolean isRequestValidationEnabled() { return requestValidationEnabled; }
-    public int getMaxConnections() { return maxConnections; }
-    public int getRateLimitPerMinute() { return rateLimitPerMinute; }
-    public int getActiveSessions() { return activeSessions; }
+    public int getActiveClients() {
+        return activeClients;
+    }
+
+    public int getFailedAttempts() {
+        return failedAttempts;
+    }
+
+    public int getBlockedClients() {
+        return blockedClients;
+    }
+
+    public boolean isAuthenticationEnabled() {
+        return authenticationEnabled;
+    }
+
+    public boolean isRequestValidationEnabled() {
+        return requestValidationEnabled;
+    }
+
+    public int getMaxConnections() {
+        return maxConnections;
+    }
+
+    public int getRateLimitPerMinute() {
+        return rateLimitPerMinute;
+    }
+
+    public int getActiveSessions() {
+        return activeSessions;
+    }
 }
-
-

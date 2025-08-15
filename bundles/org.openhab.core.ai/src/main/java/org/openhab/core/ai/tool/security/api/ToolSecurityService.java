@@ -6,11 +6,6 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.security.AccessLogEntry;
-import org.openhab.core.ai.tool.security.RateLimitInfo;
-import org.openhab.core.ai.tool.security.SecurityStatistics;
-import org.openhab.core.ai.tool.security.SpecificationPermissions;
-import org.openhab.core.ai.tool.security.UserRole;
 
 /**
  * Tool Security Service Interface

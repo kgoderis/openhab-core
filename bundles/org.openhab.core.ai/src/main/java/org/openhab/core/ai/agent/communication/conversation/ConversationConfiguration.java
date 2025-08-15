@@ -21,16 +21,51 @@ public class ConversationConfiguration {
     private boolean enableAnalytics = true;
     private boolean enableExport = true;
 
-    public Duration getConversationTimeout() { return conversationTimeout; }
-    public void setConversationTimeout(Duration conversationTimeout) { this.conversationTimeout = conversationTimeout; }
-    public Duration getHistoryRetentionPeriod() { return historyRetentionPeriod; }
-    public void setHistoryRetentionPeriod(Duration historyRetentionPeriod) { this.historyRetentionPeriod = historyRetentionPeriod; }
-    public int getMaxParticipants() { return maxParticipants; }
-    public void setMaxParticipants(int maxParticipants) { this.maxParticipants = maxParticipants; }
-    public int getMaxMessageLength() { return maxMessageLength; }
-    public void setMaxMessageLength(int maxMessageLength) { this.maxMessageLength = maxMessageLength; }
-    public boolean isEnableAnalytics() { return enableAnalytics; }
-    public void setEnableAnalytics(boolean enableAnalytics) { this.enableAnalytics = enableAnalytics; }
-    public boolean isEnableExport() { return enableExport; }
-    public void setEnableExport(boolean enableExport) { this.enableExport = enableExport; }
+    public Duration getConversationTimeout() {
+        return conversationTimeout;
+    }
+
+    public void setConversationTimeout(Duration conversationTimeout) {
+        this.conversationTimeout = conversationTimeout;
+    }
+
+    public Duration getHistoryRetentionPeriod() {
+        return historyRetentionPeriod;
+    }
+
+    public void setHistoryRetentionPeriod(Duration historyRetentionPeriod) {
+        this.historyRetentionPeriod = historyRetentionPeriod;
+    }
+
+    public int getMaxParticipants() {
+        return maxParticipants;
+    }
+
+    public void setMaxParticipants(int maxParticipants) {
+        this.maxParticipants = maxParticipants;
+    }
+
+    public int getMaxMessageLength() {
+        return maxMessageLength;
+    }
+
+    public void setMaxMessageLength(int maxMessageLength) {
+        this.maxMessageLength = maxMessageLength;
+    }
+
+    public boolean isEnableAnalytics() {
+        return enableAnalytics;
+    }
+
+    public void setEnableAnalytics(boolean enableAnalytics) {
+        this.enableAnalytics = enableAnalytics;
+    }
+
+    public boolean isEnableExport() {
+        return enableExport;
+    }
+
+    public void setEnableExport(boolean enableExport) {
+        this.enableExport = enableExport;
+    }
 }

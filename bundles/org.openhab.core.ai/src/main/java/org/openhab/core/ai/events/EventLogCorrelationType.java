@@ -10,5 +10,3 @@ public enum EventLogCorrelationType {
     PERFORMANCE_CORRELATION,
     GENERAL_CORRELATION
 }
-
-

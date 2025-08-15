@@ -18,7 +18,8 @@ import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.junit.jupiter.api.Test;
-import org.openhab.core.ai.tool.prompts.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
 
 /**
  * Unit tests for the Prompt class.

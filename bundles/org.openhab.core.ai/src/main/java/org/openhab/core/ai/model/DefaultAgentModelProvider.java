@@ -15,6 +15,7 @@ import org.openhab.core.ai.agent.api.AgentModelContext;
 import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.api.AgentModelStatistics;
+import org.openhab.core.ai.agent.api.HealthState;
 import org.openhab.core.ai.agent.api.ModelHealthStatus;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
@@ -306,13 +307,13 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
         double errorRate = totalRequests > 0 ? (double) failedRequests / totalRequests : 0.0;
         double avgResponseTime = calculateAverageResponseTime();
 
-        ModelHealthStatus.HealthState healthState;
+        HealthState healthState;
         if (errorRate < 0.05 && avgResponseTime < 5000) {
-            healthState = ModelHealthStatus.HealthState.HEALTHY;
+            healthState = HealthState.HEALTHY;
         } else if (errorRate < 0.15 && avgResponseTime < 10000) {
-            healthState = ModelHealthStatus.HealthState.DEGRADED;
+            healthState = HealthState.DEGRADED;
         } else {
-            healthState = ModelHealthStatus.HealthState.UNHEALTHY;
+            healthState = HealthState.UNHEALTHY;
         }
 
         return ModelHealthStatus.builder().overallHealth(healthState).primaryModelAvailable(!fallbackActive)

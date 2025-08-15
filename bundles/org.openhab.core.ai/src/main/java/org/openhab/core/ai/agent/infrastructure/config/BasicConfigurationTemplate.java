@@ -8,10 +8,14 @@ import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationTemplate
 @NonNullByDefault
 public class BasicConfigurationTemplate implements ConfigurationTemplate {
     @Override
-    public String getTemplateId() { return "basic"; }
+    public String getTemplateId() {
+        return "basic";
+    }
 
     @Override
-    public String getDescription() { return "Basic configuration template for simple agent communication"; }
+    public String getDescription() {
+        return "Basic configuration template for simple agent communication";
+    }
 
     @Override
     public CommunicationConfig createConfiguration(String configId, Map<String, Object> parameters) {
@@ -40,5 +44,3 @@ public class BasicConfigurationTemplate implements ConfigurationTemplate {
         return config;
     }
 }
-
-

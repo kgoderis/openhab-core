@@ -10,7 +10,9 @@ import io.a2a.spec.TaskStatusUpdateEvent;
 /**
  * Fallback strategy applied when task execution fails.
  *
- * <p>Supports multiple strategies like retrying with a different agent or simplified execution.</p>
+ * <p>
+ * Supports multiple strategies like retrying with a different agent or simplified execution.
+ * </p>
  *
  * @author Karel Goderis - Initial Contribution
  * @since 4.0.0
@@ -60,8 +62,11 @@ public final class FallbackStrategy {
         return taskManager.createErrorResponse(task, message);
     }
 
-    public String getTaskId() { return taskId; }
-    public String getStrategyType() { return strategyType; }
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public String getStrategyType() {
+        return strategyType;
+    }
 }
-
-

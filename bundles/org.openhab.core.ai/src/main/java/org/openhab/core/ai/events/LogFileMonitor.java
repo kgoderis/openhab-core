@@ -32,7 +32,7 @@ public class LogFileMonitor {
         this.fileName = fileName;
         this.filePath = filePath;
     }
-    
+
     public void start() {
         if (isRunning) {
             return;
@@ -92,5 +92,3 @@ public class LogFileMonitor {
         return newLines;
     }
 }
-
-

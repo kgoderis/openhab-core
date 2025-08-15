@@ -4,8 +4,8 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.notifications.events.NotificationListener;
-import org.openhab.core.ai.tool.notifications.events.NotificationType;
+import org.openhab.core.ai.tool.notifications.api.events.NotificationListener;
+import org.openhab.core.ai.tool.notifications.api.events.NotificationType;
 
 /**
  * Interface for MCP Notification service.

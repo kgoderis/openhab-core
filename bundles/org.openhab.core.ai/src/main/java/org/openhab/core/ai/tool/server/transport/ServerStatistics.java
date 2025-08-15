@@ -27,12 +27,27 @@ public class ServerStatistics {
         this.activeConnections = activeConnections;
     }
 
-    public long getTotalRequests() { return totalRequests; }
-    public long getSuccessfulRequests() { return successfulRequests; }
-    public long getFailedRequests() { return failedRequests; }
-    public long getTotalResponseTime() { return totalResponseTime; }
-    public double getAverageResponseTime() { return averageResponseTime; }
-    public int getActiveConnections() { return activeConnections; }
+    public long getTotalRequests() {
+        return totalRequests;
+    }
+
+    public long getSuccessfulRequests() {
+        return successfulRequests;
+    }
+
+    public long getFailedRequests() {
+        return failedRequests;
+    }
+
+    public long getTotalResponseTime() {
+        return totalResponseTime;
+    }
+
+    public double getAverageResponseTime() {
+        return averageResponseTime;
+    }
+
+    public int getActiveConnections() {
+        return activeConnections;
+    }
 }
-
-

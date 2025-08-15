@@ -101,5 +101,3 @@ public class EventProcessingStatistics {
         return totalEventsProcessed > 0 ? (double) reasoningTriggers / totalEventsProcessed : 0.0;
     }
 }
-
-

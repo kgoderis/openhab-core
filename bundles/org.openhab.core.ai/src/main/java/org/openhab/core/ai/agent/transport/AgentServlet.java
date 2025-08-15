@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.transport.api.A2ARequestHandler;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.osgi.service.component.annotations.Activate;
@@ -26,7 +27,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.openhab.core.ai.agent.transport.api.A2ARequestHandler;
 
 /**
  * A2A Servlet component for openHAB HTTP server integration.
@@ -583,7 +583,7 @@ public class AgentServlet extends HttpServlet {
     public AgentServerStatistics getServerStatistics() {
         A2ARequestHandler handler = requestHandler.get();
         return new AgentServerStatistics(handler != null, 4); // 4 endpoints: /message/send, /task/get, /task/cancel,
-                                                         // /.well-known/agent.json
+        // /.well-known/agent.json
     }
 
     /**

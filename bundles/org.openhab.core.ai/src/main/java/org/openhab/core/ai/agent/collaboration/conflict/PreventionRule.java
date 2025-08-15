@@ -13,5 +13,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface PreventionRule {
     String getRuleId();
+
     boolean shouldPrevent(Conflict conflict);
 }

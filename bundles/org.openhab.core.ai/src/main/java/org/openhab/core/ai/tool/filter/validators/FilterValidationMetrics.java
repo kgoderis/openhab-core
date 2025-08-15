@@ -44,5 +44,3 @@ public class FilterValidationMetrics {
         return timestamp;
     }
 }
-
-

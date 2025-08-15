@@ -10,5 +10,3 @@ public enum ConflictType {
     COORDINATION_CONFLICT,
     COMMUNICATION_CONFLICT
 }
-
-

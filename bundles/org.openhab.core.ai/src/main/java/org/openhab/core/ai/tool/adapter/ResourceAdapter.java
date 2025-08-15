@@ -3,8 +3,8 @@ package org.openhab.core.ai.tool.adapter;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.api.validation.ResourceValidationResult;
-import org.openhab.core.ai.tool.resources.specification.ResourceSpecification;
+import org.openhab.core.ai.tool.resources.api.specification.ResourceSpecification;
+import org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

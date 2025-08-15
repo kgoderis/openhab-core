@@ -18,11 +18,23 @@ public class QualityIssue {
         this.recommendation = recommendation;
     }
 
-    public String getComponent() { return component; }
-    public String getOperation() { return operation; }
-    public double getQuality() { return quality; }
-    public String getDetails() { return details; }
-    public String getRecommendation() { return recommendation; }
+    public String getComponent() {
+        return component;
+    }
+
+    public String getOperation() {
+        return operation;
+    }
+
+    public double getQuality() {
+        return quality;
+    }
+
+    public String getDetails() {
+        return details;
+    }
+
+    public String getRecommendation() {
+        return recommendation;
+    }
 }
-
-

@@ -30,11 +30,32 @@ public class ResourceMetric {
         }
     }
 
-    public String getResource() { return resource; }
-    public String getOperation() { return operation; }
-    public double getAverageUtilization() { return utilizations.isEmpty() ? 0.0 : utilizations.stream().mapToDouble(Double::doubleValue).average().orElse(0.0); }
-    public String getLastDetails() { return details.isEmpty() ? "" : details.get(details.size() - 1); }
-    public List<Double> getUtilizations() { return new ArrayList<>(utilizations); }
-    public List<String> getDetails() { return new ArrayList<>(details); }
-    public List<Instant> getTimestamps() { return new ArrayList<>(timestamps); }
+    public String getResource() {
+        return resource;
+    }
+
+    public String getOperation() {
+        return operation;
+    }
+
+    public double getAverageUtilization() {
+        return utilizations.isEmpty() ? 0.0
+                : utilizations.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+    }
+
+    public String getLastDetails() {
+        return details.isEmpty() ? "" : details.get(details.size() - 1);
+    }
+
+    public List<Double> getUtilizations() {
+        return new ArrayList<>(utilizations);
+    }
+
+    public List<String> getDetails() {
+        return new ArrayList<>(details);
+    }
+
+    public List<Instant> getTimestamps() {
+        return new ArrayList<>(timestamps);
+    }
 }

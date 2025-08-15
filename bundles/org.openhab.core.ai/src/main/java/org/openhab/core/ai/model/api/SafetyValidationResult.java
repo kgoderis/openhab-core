@@ -7,8 +7,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface SafetyValidationResult {
     boolean isValid();
+
     List<ConstraintViolation> getViolations();
+
     List<String> getRecommendations();
 }
-
-

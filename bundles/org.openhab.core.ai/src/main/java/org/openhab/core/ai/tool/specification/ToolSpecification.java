@@ -136,7 +136,9 @@ public class ToolSpecification implements Specification {
     }
 
     @Override
-    public SpecificationType getType() { return SpecificationType.RESOURCE; }
+    public SpecificationType getType() {
+        return SpecificationType.RESOURCE;
+    }
 
     /**
      * Validate the tool specification.

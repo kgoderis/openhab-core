@@ -36,13 +36,39 @@ public class MessagingStatistics {
         this.activeSubscriptions = activeSubscriptions;
     }
 
-    public long getTotalMessagesSent() { return totalMessagesSent; }
-    public long getTotalMessagesDelivered() { return totalMessagesDelivered; }
-    public long getTotalMessagesAcknowledged() { return totalMessagesAcknowledged; }
-    public long getTotalMessagesFailed() { return totalMessagesFailed; }
-    public long getTotalBroadcastMessages() { return totalBroadcastMessages; }
-    public int getStoredMessages() { return storedMessages; }
-    public int getPendingDeliveries() { return pendingDeliveries; }
-    public int getPendingAcknowledgments() { return pendingAcknowledgments; }
-    public int getActiveSubscriptions() { return activeSubscriptions; }
+    public long getTotalMessagesSent() {
+        return totalMessagesSent;
+    }
+
+    public long getTotalMessagesDelivered() {
+        return totalMessagesDelivered;
+    }
+
+    public long getTotalMessagesAcknowledged() {
+        return totalMessagesAcknowledged;
+    }
+
+    public long getTotalMessagesFailed() {
+        return totalMessagesFailed;
+    }
+
+    public long getTotalBroadcastMessages() {
+        return totalBroadcastMessages;
+    }
+
+    public int getStoredMessages() {
+        return storedMessages;
+    }
+
+    public int getPendingDeliveries() {
+        return pendingDeliveries;
+    }
+
+    public int getPendingAcknowledgments() {
+        return pendingAcknowledgments;
+    }
+
+    public int getActiveSubscriptions() {
+        return activeSubscriptions;
+    }
 }

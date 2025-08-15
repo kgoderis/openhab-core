@@ -29,11 +29,27 @@ public class MessageOptions {
         this.metadata = builder.metadata;
     }
 
-    public boolean isEncrypted() { return encrypted; }
-    public boolean isPersistent() { return persistent; }
-    public Duration getTimeout() { return timeout; }
-    public int getMaxRetries() { return maxRetries; }
-    public Map<String, Object> getMetadata() { return metadata; }
+    public boolean isEncrypted() {
+        return encrypted;
+    }
 
-    public static MessageOptionsBuilder builder() { return new MessageOptionsBuilder(); }
+    public boolean isPersistent() {
+        return persistent;
+    }
+
+    public Duration getTimeout() {
+        return timeout;
+    }
+
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    public static MessageOptionsBuilder builder() {
+        return new MessageOptionsBuilder();
+    }
 }

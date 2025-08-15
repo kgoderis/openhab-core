@@ -25,7 +25,7 @@ class SharedSseManagerTest {
     @Test
     void testCreateMcpConnection() {
         String clientId = "test-mcp-client";
-        SharedSseManager.SseConnection connection = sseManager.createMcpConnection(clientId);
+        SseConnection connection = sseManager.createMcpConnection(clientId);
 
         assertNotNull(connection);
         assertEquals("mcp", connection.getProtocol());
@@ -38,7 +38,7 @@ class SharedSseManagerTest {
     @Test
     void testCreateA2aConnection() {
         String clientId = "test-a2a-client";
-        SharedSseManager.SseConnection connection = sseManager.createA2aConnection(clientId);
+        SseConnection connection = sseManager.createA2aConnection(clientId);
 
         assertNotNull(connection);
         assertEquals("a2a", connection.getProtocol());
@@ -51,7 +51,7 @@ class SharedSseManagerTest {
     @Test
     void testCloseConnection() {
         String clientId = "test-client";
-        SharedSseManager.SseConnection connection = sseManager.createMcpConnection(clientId);
+        SseConnection connection = sseManager.createMcpConnection(clientId);
         String connectionId = connection.getConnectionId();
 
         // Close connection
@@ -64,9 +64,9 @@ class SharedSseManagerTest {
     @Test
     void testBroadcastEvent() {
         String clientId = "test-client";
-        SharedSseManager.SseConnection connection = sseManager.createMcpConnection(clientId);
+        SseConnection connection = sseManager.createMcpConnection(clientId);
 
-        SharedSseManager.SseEvent event = new SharedSseManager.SseEvent("test", "test-data", "test-id");
+        SseEvent event = new SseEvent("test", "test-data", "test-id");
 
         // Broadcast event
         sseManager.broadcastEvent("mcp", event);
@@ -78,10 +78,10 @@ class SharedSseManagerTest {
     @Test
     void testSendEventToConnection() {
         String clientId = "test-client";
-        SharedSseManager.SseConnection connection = sseManager.createMcpConnection(clientId);
+        SseConnection connection = sseManager.createMcpConnection(clientId);
         String connectionId = connection.getConnectionId();
 
-        SharedSseManager.SseEvent event = new SharedSseManager.SseEvent("test", "test-data", "test-id");
+        SseEvent event = new SseEvent("test", "test-data", "test-id");
 
         // Send event to specific connection
         boolean success = sseManager.sendEventToConnection(connectionId, "mcp", event);
@@ -92,7 +92,7 @@ class SharedSseManagerTest {
 
     @Test
     void testSendEventToNonExistentConnection() {
-        SharedSseManager.SseEvent event = new SharedSseManager.SseEvent("test", "test-data", "test-id");
+        SseEvent event = new SseEvent("test", "test-data", "test-id");
 
         // Send event to non-existent connection
         boolean success = sseManager.sendEventToConnection("non-existent", "mcp", event);
@@ -108,7 +108,7 @@ class SharedSseManagerTest {
         sseManager.createMcpConnection(clientId1);
         sseManager.createMcpConnection(clientId2);
 
-        Map<String, SharedSseManager.SseConnection> activeConnections = sseManager.getActiveConnections("mcp");
+        Map<String, SseConnection> activeConnections = sseManager.getActiveConnections("mcp");
 
         assertEquals(2, activeConnections.size());
     }
@@ -141,7 +141,7 @@ class SharedSseManagerTest {
     @Test
     void testCleanupInactiveConnections() {
         String clientId = "test-client";
-        SharedSseManager.SseConnection connection = sseManager.createMcpConnection(clientId);
+        SseConnection connection = sseManager.createMcpConnection(clientId);
 
         // Deactivate connection
         connection.setActive(false);
@@ -149,7 +149,7 @@ class SharedSseManagerTest {
         // Clean up inactive connections
         sseManager.cleanupInactiveConnections(1000);
 
-        Map<String, SharedSseManager.SseConnection> activeConnections = sseManager.getActiveConnections("mcp");
+        Map<String, SseConnection> activeConnections = sseManager.getActiveConnections("mcp");
         assertEquals(0, activeConnections.size());
     }
 
@@ -165,7 +165,7 @@ class SharedSseManagerTest {
         String data = "test-data";
         String id = "test-id";
 
-        SharedSseManager.SseEvent event = new SharedSseManager.SseEvent(eventType, data, id);
+        SseEvent event = new SseEvent(eventType, data, id);
 
         assertEquals(eventType, event.getEventType());
         assertEquals(data, event.getData());
@@ -179,7 +179,7 @@ class SharedSseManagerTest {
         String data = "test-data";
         String id = "test-id";
 
-        SharedSseManager.SseEvent event = new SharedSseManager.SseEvent(eventType, data, id);
+        SseEvent event = new SseEvent(eventType, data, id);
         String sseFormat = event.toSseFormat();
 
         assertTrue(sseFormat.contains("id: " + id));
@@ -193,7 +193,7 @@ class SharedSseManagerTest {
         String eventType = "test-event";
         String data = "test-data";
 
-        SharedSseManager.SseEvent event = new SharedSseManager.SseEvent(eventType, data, null);
+        SseEvent event = new SseEvent(eventType, data, null);
         String sseFormat = event.toSseFormat();
 
         assertFalse(sseFormat.contains("id:"));
@@ -206,7 +206,7 @@ class SharedSseManagerTest {
         String data = "test-data";
         String id = "test-id";
 
-        SharedSseManager.SseEvent event = new SharedSseManager.SseEvent(null, data, id);
+        SseEvent event = new SseEvent(null, data, id);
         String sseFormat = event.toSseFormat();
 
         assertTrue(sseFormat.contains("id: " + id));
@@ -217,7 +217,7 @@ class SharedSseManagerTest {
     @Test
     void testConnectionActivityUpdate() {
         String clientId = "test-client";
-        SharedSseManager.SseConnection connection = sseManager.createMcpConnection(clientId);
+        SseConnection connection = sseManager.createMcpConnection(clientId);
 
         long initialActivity = connection.getLastActivity();
 
@@ -239,14 +239,14 @@ class SharedSseManagerTest {
         String mcpClientId = "mcp-client";
         String a2aClientId = "a2a-client";
 
-        SharedSseManager.SseConnection mcpConnection = sseManager.createMcpConnection(mcpClientId);
-        SharedSseManager.SseConnection a2aConnection = sseManager.createA2aConnection(a2aClientId);
+        SseConnection mcpConnection = sseManager.createMcpConnection(mcpClientId);
+        SseConnection a2aConnection = sseManager.createA2aConnection(a2aClientId);
 
         assertEquals("mcp", mcpConnection.getProtocol());
         assertEquals("a2a", a2aConnection.getProtocol());
 
-        Map<String, SharedSseManager.SseConnection> mcpConnections = sseManager.getActiveConnections("mcp");
-        Map<String, SharedSseManager.SseConnection> a2aConnections = sseManager.getActiveConnections("a2a");
+        Map<String, SseConnection> mcpConnections = sseManager.getActiveConnections("mcp");
+        Map<String, SseConnection> a2aConnections = sseManager.getActiveConnections("a2a");
 
         assertEquals(1, mcpConnections.size());
         assertEquals(1, a2aConnections.size());

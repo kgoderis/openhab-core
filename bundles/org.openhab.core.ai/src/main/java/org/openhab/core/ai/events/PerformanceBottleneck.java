@@ -21,11 +21,23 @@ public class PerformanceBottleneck {
         this.recommendation = recommendation;
     }
 
-    public String getComponent() { return component; }
-    public String getOperation() { return operation; }
-    public Duration getAverageDuration() { return averageDuration; }
-    public double getSuccessRate() { return successRate; }
-    public String getRecommendation() { return recommendation; }
+    public String getComponent() {
+        return component;
+    }
+
+    public String getOperation() {
+        return operation;
+    }
+
+    public Duration getAverageDuration() {
+        return averageDuration;
+    }
+
+    public double getSuccessRate() {
+        return successRate;
+    }
+
+    public String getRecommendation() {
+        return recommendation;
+    }
 }
-
-

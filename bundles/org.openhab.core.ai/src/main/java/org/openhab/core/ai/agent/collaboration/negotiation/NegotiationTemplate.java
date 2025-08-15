@@ -19,7 +19,7 @@ public class NegotiationTemplate {
     private final Duration timeout;
     private final int maxRounds;
 
-    private NegotiationTemplate(Builder builder) {
+    /* package */ NegotiationTemplate(NegotiationTemplateBuilder builder) {
         this.templateId = builder.templateId;
         this.name = builder.name;
         this.description = builder.description;
@@ -47,44 +47,7 @@ public class NegotiationTemplate {
         return maxRounds;
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private String templateId = "";
-        private String name = "";
-        private String description = "";
-        private Duration timeout = Duration.ofMinutes(5);
-        private int maxRounds = 3;
-
-        public Builder templateId(String templateId) {
-            this.templateId = templateId;
-            return this;
-        }
-
-        public Builder name(String name) {
-            this.name = name;
-            return this;
-        }
-
-        public Builder description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
-            return this;
-        }
-
-        public Builder maxRounds(int maxRounds) {
-            this.maxRounds = maxRounds;
-            return this;
-        }
-
-        public NegotiationTemplate build() {
-            return new NegotiationTemplate(this);
-        }
+    public static NegotiationTemplateBuilder builder() {
+        return new NegotiationTemplateBuilder();
     }
 }

@@ -13,8 +13,11 @@ class TokenRefreshPattern {
         this.principalId = principalId;
     }
 
-    void recordRefresh() { refreshCount.incrementAndGet(); }
-    long getRefreshCount() { return refreshCount.get(); }
+    void recordRefresh() {
+        refreshCount.incrementAndGet();
+    }
+
+    long getRefreshCount() {
+        return refreshCount.get();
+    }
 }
-
-

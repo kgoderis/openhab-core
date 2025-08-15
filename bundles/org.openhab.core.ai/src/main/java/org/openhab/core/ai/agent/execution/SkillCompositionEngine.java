@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.api.AgentSkillManager;
-import org.openhab.core.ai.agent.api.AgentSkillResult;
+import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
+import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.agents.SkillExecutionRequest;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
 import org.osgi.service.component.annotations.Activate;
@@ -93,7 +93,7 @@ public class SkillCompositionEngine {
                 }
 
                 // Compose skills using strategy
-                SkillCompositionStrategy.SkillCompositionResult compositionResult = strategy.compose(skills, context);
+                SkillCompositionResult compositionResult = strategy.compose(skills, context);
                 if (!compositionResult.isSuccess()) {
                     return CompositionResult.error(compositionId, compositionResult.getErrorMessage(), 0);
                 }
@@ -119,14 +119,13 @@ public class SkillCompositionEngine {
     /**
      * Execute composition plan
      */
-    private CompositionResult executeCompositionPlan(List<SkillCompositionStrategy.SkillExecutionStep> steps,
-            String compositionId) {
+    private CompositionResult executeCompositionPlan(List<SkillExecutionStep> steps, String compositionId) {
         try {
             List<AgentSkillResult> results = new ArrayList<>();
             long totalExecutionTime = 0;
 
             // Execute steps in order
-            for (SkillCompositionStrategy.SkillExecutionStep step : steps) {
+            for (SkillExecutionStep step : steps) {
                 // Check dependencies
                 if (!checkDependencies(step, results)) {
                     return CompositionResult.error(compositionId,
@@ -162,8 +161,7 @@ public class SkillCompositionEngine {
     /**
      * Check step dependencies
      */
-    private boolean checkDependencies(SkillCompositionStrategy.SkillExecutionStep step,
-            List<AgentSkillResult> previousResults) {
+    private boolean checkDependencies(SkillExecutionStep step, List<AgentSkillResult> previousResults) {
         List<String> dependencies = step.getDependencies();
         if (dependencies == null || dependencies.isEmpty()) {
             return true;

@@ -11,5 +11,3 @@ public enum AnalyticsEventType {
     WARNING,
     INFO
 }
-
-

@@ -7,6 +7,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressInfo;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressOperation;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressStatus;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,11 +84,14 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
                     operation.getStatus().name(), operation.getMessage(), operation.getLastUpdateTime(),
                     getOperationMetadata(operationId));
         }
-        return null;
+        // Return a default placeholder when the operation is not found to respect non-null contract
+        return new ProgressInfo(operationId, 0, 0, "PENDING", "", System.currentTimeMillis(), java.util.Map.of());
     }
 
     @Override
-    public Map<String, Object> getConfiguration() { return new ConcurrentHashMap<>(configuration); }
+    public Map<String, Object> getConfiguration() {
+        return new ConcurrentHashMap<>(configuration);
+    }
 
     @Override
     public void updateConfiguration(Map<String, Object> configuration) {
@@ -94,11 +101,18 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
     }
 
     protected abstract ProgressOperation createProgressOperation(String operationId, int totalSteps);
+
     protected abstract void persistOperationStart(String operationId, int totalSteps);
+
     protected abstract void persistProgressUpdate(String operationId, int currentStep, String message);
+
     protected abstract void persistOperationCompletion(String operationId, String message);
+
     protected abstract void persistConfiguration();
-    protected abstract void sendProgressNotification(String operationId, String status, int currentStep, String message);
+
+    protected abstract void sendProgressNotification(String operationId, String status, int currentStep,
+            String message);
+
     protected abstract Map<String, Object> getOperationMetadata(String operationId);
 
     private int getTotalSteps(String operationId) {
@@ -112,15 +126,17 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
 
     private double calculateSuccessRate() {
         int total = totalOperations.get();
-        if (total == 0) { return 0.0; }
+        if (total == 0) {
+            return 0.0;
+        }
         return (double) completedOperations.get() / total * 100.0;
     }
 
     private double calculateAverageProcessingTime() {
         int completed = completedOperations.get();
-        if (completed == 0) { return 0.0; }
+        if (completed == 0) {
+            return 0.0;
+        }
         return (double) totalProcessingTime.get() / completed;
     }
 }
-
-

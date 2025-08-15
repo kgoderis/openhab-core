@@ -17,5 +17,3 @@ public final class RestRateLimitInfo {
         this.resetTime = resetTime;
     }
 }
-
-

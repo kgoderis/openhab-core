@@ -9,7 +9,6 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 
-
 /**
  * Service for integrating AI models directly into autonomous agents
  * 

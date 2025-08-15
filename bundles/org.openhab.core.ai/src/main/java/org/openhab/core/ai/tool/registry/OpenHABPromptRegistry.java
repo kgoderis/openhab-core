@@ -8,9 +8,9 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.api.PromptRegistry;
-import org.openhab.core.ai.tool.prompts.dto.Prompt;
-import org.openhab.core.ai.tool.prompts.dto.PromptArgument;
+import org.openhab.core.ai.tool.prompts.api.PromptRegistry;
+import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
+import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
 import org.openhab.core.ai.tool.prompts.library.AutomationPrompt;
 import org.openhab.core.ai.tool.prompts.library.ItemControlPrompt;
 import org.openhab.core.ai.tool.prompts.library.SystemDiagnosticsPrompt;
@@ -127,8 +127,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
         // Item Control Prompt
         Prompt itemControlPrompt = new Prompt("item_control", "Control openHAB items with parameterized commands",
                 Arrays.asList(new PromptArgument("itemName", "Name of the openHAB item to control", true),
-                        new PromptArgument("action", "Action to perform (ON, OFF, TOGGLE, INCREASE, DECREASE)",
-                                true),
+                        new PromptArgument("action", "Action to perform (ON, OFF, TOGGLE, INCREASE, DECREASE)", true),
                         new PromptArgument("value", "Optional value for the action", false)));
         prompts.put("item_control", itemControlPrompt);
 
@@ -141,8 +140,8 @@ public class OpenHABPromptRegistry implements PromptRegistry {
         // Item Configuration Prompt
         Prompt itemConfigPrompt = new Prompt("item_configuration", "Configure and manage openHAB item settings",
                 Arrays.asList(new PromptArgument("itemName", "Name of the openHAB item to configure", true),
-                        new PromptArgument("operation",
-                                "Configuration operation to perform (GET, SET, UPDATE, DELETE)", true),
+                        new PromptArgument("operation", "Configuration operation to perform (GET, SET, UPDATE, DELETE)",
+                                true),
                         new PromptArgument("config", "Configuration parameters", false)));
         prompts.put("item_configuration", itemConfigPrompt);
     }
@@ -159,8 +158,8 @@ public class OpenHABPromptRegistry implements PromptRegistry {
 
         // Rule Management Prompt
         Prompt ruleManagementPrompt = new Prompt("rule_management", "Manage and configure openHAB rules", Arrays.asList(
-                new PromptArgument("operation",
-                        "Rule management operation (LIST, CREATE, UPDATE, DELETE, VALIDATE)", true),
+                new PromptArgument("operation", "Rule management operation (LIST, CREATE, UPDATE, DELETE, VALIDATE)",
+                        true),
                 new PromptArgument("ruleUID", "UID of the rule (for specific operations)", false),
                 new PromptArgument("ruleDefinition", "Rule definition for create/update operations", false)));
         prompts.put("rule_management", ruleManagementPrompt);
@@ -180,8 +179,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
                 "Perform system diagnostics and health checks",
                 Arrays.asList(new PromptArgument("diagnosticType",
                         "Type of diagnostic to perform (SYSTEM_HEALTH, PERFORMANCE, MEMORY, NETWORK, STORAGE, SECURITY)",
-                        true),
-                        new PromptArgument("scope", "Scope of the diagnostic (FULL, QUICK, TARGETED)", false),
+                        true), new PromptArgument("scope", "Scope of the diagnostic (FULL, QUICK, TARGETED)", false),
                         new PromptArgument("includeDetails", "Include detailed diagnostic information", false)));
         prompts.put("system_diagnostics", systemDiagnosticsPrompt);
 
@@ -197,10 +195,9 @@ public class OpenHABPromptRegistry implements PromptRegistry {
         Prompt securityPrompt = new Prompt("security_audit", "Perform security audits and vulnerability checks",
                 Arrays.asList(new PromptArgument("auditType",
                         "Type of security audit to perform (AUTHENTICATION, AUTHORIZATION, CONFIGURATION, NETWORK, COMPREHENSIVE)",
-                        true),
-                        new PromptArgument("includeRemediation", "Include remediation suggestions", false),
-                        new PromptArgument("severity",
-                                "Minimum severity level to report (LOW, MEDIUM, HIGH, CRITICAL)", false)));
+                        true), new PromptArgument("includeRemediation", "Include remediation suggestions", false),
+                        new PromptArgument("severity", "Minimum severity level to report (LOW, MEDIUM, HIGH, CRITICAL)",
+                                false)));
         prompts.put("security_audit", securityPrompt);
     }
 
@@ -454,8 +451,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
                     }
                 case SystemDiagnosticsPrompt.PROMPT_NAME:
                     if (systemDiagnosticsPrompt != null) {
-                        PromptExecutionResult result = systemDiagnosticsPrompt
-                                .execute(arguments);
+                        PromptExecutionResult result = systemDiagnosticsPrompt.execute(arguments);
                         return new PromptExecutionResult(result.isSuccess(), result.getErrorMessage(),
                                 result.getContent());
                     } else {
@@ -541,6 +537,4 @@ public class OpenHABPromptRegistry implements PromptRegistry {
                 return null;
         }
     }
-
-
 }

@@ -11,5 +11,3 @@ public enum ToolErrorCode {
     EXECUTION_ERROR,
     TIMEOUT
 }
-
-

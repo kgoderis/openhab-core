@@ -23,11 +23,23 @@ public final class CompositionMetric {
         this.timestamp = timestamp;
     }
 
-    public String getCompositionId() { return compositionId; }
-    public boolean isSuccess() { return success; }
-    public Duration getDuration() { return duration; }
-    public @Nullable String getMessage() { return message; }
-    public Instant getTimestamp() { return timestamp; }
+    public String getCompositionId() {
+        return compositionId;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public Duration getDuration() {
+        return duration;
+    }
+
+    public @Nullable String getMessage() {
+        return message;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
 }
-
-

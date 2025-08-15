@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.agent.api.AgentActionDelegationService;
+import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**

@@ -16,8 +16,19 @@ public class SchemaVersion {
         this.createdAt = createdAt;
     }
 
-    public String getActionId() { return actionId; }
-    public String getVersion() { return version; }
-    public TaskSchema getSchema() { return schema; }
-    public long getCreatedAt() { return createdAt; }
+    public String getActionId() {
+        return actionId;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public TaskSchema getSchema() {
+        return schema;
+    }
+
+    public long getCreatedAt() {
+        return createdAt;
+    }
 }

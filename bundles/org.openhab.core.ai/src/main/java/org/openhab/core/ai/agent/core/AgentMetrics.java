@@ -7,7 +7,7 @@ import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.ActionMetric;
+import org.openhab.core.ai.action.api.ActionMetric;
 
 /**
  * Metrics for autonomous agent performance and behavior

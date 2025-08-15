@@ -7,9 +7,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface ContextValidationResult {
     boolean isValid();
+
     String getMessage();
+
     List<String> getErrors();
+
     List<String> getWarnings();
 }
-
-

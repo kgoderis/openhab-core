@@ -13,19 +13,34 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface ModelTrainingResult {
     boolean isSuccess();
+
     String getMessage();
 
     static ModelTrainingResult success(String message) {
         return new ModelTrainingResult() {
-            @Override public boolean isSuccess() { return true; }
-            @Override public String getMessage() { return message; }
+            @Override
+            public boolean isSuccess() {
+                return true;
+            }
+
+            @Override
+            public String getMessage() {
+                return message;
+            }
         };
     }
 
     static ModelTrainingResult failure(String message) {
         return new ModelTrainingResult() {
-            @Override public boolean isSuccess() { return false; }
-            @Override public String getMessage() { return message; }
+            @Override
+            public boolean isSuccess() {
+                return false;
+            }
+
+            @Override
+            public String getMessage() {
+                return message;
+            }
         };
     }
 }

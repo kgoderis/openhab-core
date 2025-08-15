@@ -9,9 +9,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.adapter.BaseAdapter;
 import org.openhab.core.ai.tool.api.Adapter;
-import org.openhab.core.ai.tool.api.CompletionContext;
-import org.openhab.core.ai.tool.api.CompletionResult;
-import org.openhab.core.ai.tool.completions.dto.Completion;
+import org.openhab.core.ai.tool.completions.api.CompletionContext;
+import org.openhab.core.ai.tool.completions.api.CompletionResult;
+import org.openhab.core.ai.tool.completions.api.dto.Completion;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.slf4j.Logger;
@@ -190,5 +190,3 @@ public class ItemCompletionHandler extends BaseAdapter
         return s == null ? "" : s.toLowerCase();
     }
 }
-
-

@@ -31,22 +31,39 @@ public class PerformanceMetric {
         }
     }
 
-    public String getComponent() { return component; }
-    public String getOperation() { return operation; }
+    public String getComponent() {
+        return component;
+    }
+
+    public String getOperation() {
+        return operation;
+    }
 
     public Duration getAverageDuration() {
-        if (durations.isEmpty()) { return Duration.ZERO; }
+        if (durations.isEmpty()) {
+            return Duration.ZERO;
+        }
         long totalMillis = durations.stream().mapToLong(Duration::toMillis).sum();
         return Duration.ofMillis(totalMillis / durations.size());
     }
 
     public double getSuccessRate() {
-        if (successes.isEmpty()) { return 1.0; }
+        if (successes.isEmpty()) {
+            return 1.0;
+        }
         long successCount = successes.stream().filter(s -> s).count();
         return (double) successCount / successes.size();
     }
 
-    public List<Duration> getDurations() { return new ArrayList<>(durations); }
-    public List<Boolean> getSuccesses() { return new ArrayList<>(successes); }
-    public List<Instant> getTimestamps() { return new ArrayList<>(timestamps); }
+    public List<Duration> getDurations() {
+        return new ArrayList<>(durations);
+    }
+
+    public List<Boolean> getSuccesses() {
+        return new ArrayList<>(successes);
+    }
+
+    public List<Instant> getTimestamps() {
+        return new ArrayList<>(timestamps);
+    }
 }

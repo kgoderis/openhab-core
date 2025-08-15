@@ -28,9 +28,8 @@ public class LifecycleStatistics {
     private final boolean allServletsHealthy;
     private final Map<String, ServletInfo> servlets;
 
-    public LifecycleStatistics(boolean active, int servletCount, long totalRequests, long totalErrors,
-            long uptimeMs, double errorRate, double requestsPerMinute, boolean allServletsHealthy,
-            Map<String, ServletInfo> servlets) {
+    public LifecycleStatistics(boolean active, int servletCount, long totalRequests, long totalErrors, long uptimeMs,
+            double errorRate, double requestsPerMinute, boolean allServletsHealthy, Map<String, ServletInfo> servlets) {
         this.active = active;
         this.servletCount = servletCount;
         this.totalRequests = totalRequests;

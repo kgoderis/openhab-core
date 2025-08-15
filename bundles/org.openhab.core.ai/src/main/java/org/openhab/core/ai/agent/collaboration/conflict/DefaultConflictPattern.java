@@ -25,7 +25,9 @@ public class DefaultConflictPattern implements ConflictPattern {
     }
 
     @Override
-    public String getPatternId() { return patternId; }
+    public String getPatternId() {
+        return patternId;
+    }
 
     @Override
     public boolean matches(Conflict conflict) {
@@ -47,7 +49,9 @@ public class DefaultConflictPattern implements ConflictPattern {
         }
     }
 
-    public long getOccurrenceCount() { return occurrenceCount.get(); }
+    public long getOccurrenceCount() {
+        return occurrenceCount.get();
+    }
 
     public List<Conflict> getRecentConflicts() {
         synchronized (recentConflicts) {

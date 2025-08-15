@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.events.Event;
 import org.openhab.core.events.EventSubscriber;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -187,5 +186,4 @@ public class EventSubscriptionRegistry {
     /**
      * Filtering event subscriber that forwards events to SSE endpoints.
      */
-    
 }

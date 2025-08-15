@@ -24,12 +24,27 @@ public class ConflictData {
         this.policyId = policyId;
     }
 
-    public String getDescription() { return description; }
-    public int getSeverity() { return severity; }
-    public Map<String, Object> getData() { return data; }
-    public List<String> getInvolvedAgents() { return involvedAgents; }
-    public String getResourceId() { return resourceId; }
-    public String getPolicyId() { return policyId; }
+    public String getDescription() {
+        return description;
+    }
+
+    public int getSeverity() {
+        return severity;
+    }
+
+    public Map<String, Object> getData() {
+        return data;
+    }
+
+    public List<String> getInvolvedAgents() {
+        return involvedAgents;
+    }
+
+    public String getResourceId() {
+        return resourceId;
+    }
+
+    public String getPolicyId() {
+        return policyId;
+    }
 }
-
-

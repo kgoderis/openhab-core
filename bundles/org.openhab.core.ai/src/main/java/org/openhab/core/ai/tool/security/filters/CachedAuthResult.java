@@ -28,5 +28,3 @@ final class CachedAuthResult {
         return System.currentTimeMillis() > expirationTime;
     }
 }
-
-

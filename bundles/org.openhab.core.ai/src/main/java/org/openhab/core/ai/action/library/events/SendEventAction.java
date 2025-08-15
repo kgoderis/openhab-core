@@ -7,12 +7,12 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.ActionContext;
-import org.openhab.core.ai.action.ActionMetadata;
-import org.openhab.core.ai.action.ActionResult;
-import org.openhab.core.ai.action.ActionValidationResult;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
+import org.openhab.core.ai.action.api.ActionMetadata;
+import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.events.Event;
 import org.openhab.core.events.EventPublisher;
 import org.osgi.service.component.annotations.Component;

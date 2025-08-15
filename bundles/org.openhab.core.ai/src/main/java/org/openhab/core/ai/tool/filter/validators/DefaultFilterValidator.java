@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
  * Default implementation of {@link FilterValidator}.
  *
  * Author: Karel Goderis - Initial Contribution
+ * 
  * @since 1.0.0
  */
 @NonNullByDefault
@@ -49,15 +50,29 @@ public class DefaultFilterValidator implements FilterValidator {
     }
 
     @Override
-    public String getValidatorId() { return validatorId; }
+    public String getValidatorId() {
+        return validatorId;
+    }
+
     @Override
-    public String getValidatorName() { return validatorName; }
+    public String getValidatorName() {
+        return validatorName;
+    }
+
     @Override
-    public String getValidatorDescription() { return validatorDescription; }
+    public String getValidatorDescription() {
+        return validatorDescription;
+    }
+
     @Override
-    public String[] getSupportedFilterTypes() { return supportedFilterTypes; }
+    public String[] getSupportedFilterTypes() {
+        return supportedFilterTypes;
+    }
+
     @Override
-    public boolean isEnabled() { return enabled; }
+    public boolean isEnabled() {
+        return enabled;
+    }
 
     @Override
     public FilterValidationResult validateFilter(Map<String, Object> filterConfig) {
@@ -78,7 +93,11 @@ public class DefaultFilterValidator implements FilterValidator {
             lastValidationTimeMs.set(validationTime);
             totalValidationTimeMs.addAndGet(validationTime);
 
-            if (result.isValid()) { successCount.incrementAndGet(); } else { failureCount.incrementAndGet(); }
+            if (result.isValid()) {
+                successCount.incrementAndGet();
+            } else {
+                failureCount.incrementAndGet();
+            }
             validationCache.put(cacheKey, result);
             LOGGER.debug("Filter validation completed in {}ms with result: {}", validationTime,
                     result.isValid() ? "valid" : "invalid");
@@ -112,12 +131,16 @@ public class DefaultFilterValidator implements FilterValidator {
             long validationTime = System.currentTimeMillis() - startTime;
             lastValidationTimeMs.set(validationTime);
             totalValidationTimeMs.addAndGet(validationTime);
-            if (result.isValid()) { successCount.incrementAndGet(); } else { failureCount.incrementAndGet(); }
+            if (result.isValid()) {
+                successCount.incrementAndGet();
+            } else {
+                failureCount.incrementAndGet();
+            }
             validationCache.put(cacheKey, result);
             LOGGER.debug("Expression validation completed in {}ms with result: {}", validationTime,
                     result.isValid() ? "valid" : "invalid");
             return result;
-		} catch (Exception e) {
+        } catch (Exception e) {
             long validationTime = System.currentTimeMillis() - startTime;
             lastValidationTimeMs.set(validationTime);
             totalValidationTimeMs.addAndGet(validationTime);
@@ -128,7 +151,9 @@ public class DefaultFilterValidator implements FilterValidator {
     }
 
     @Override
-    public Map<String, Object> getConfiguration() { return new HashMap<>(configuration); }
+    public Map<String, Object> getConfiguration() {
+        return new HashMap<>(configuration);
+    }
 
     @Override
     public void updateConfiguration(Map<String, Object> configuration) {
@@ -156,18 +181,25 @@ public class DefaultFilterValidator implements FilterValidator {
         metrics.put("failureCount", failureCount.get());
         metrics.put("cacheSize", validationCache.size());
         metrics.put("customFilterTypes", customFilterTypes.size());
-        metrics.put("averageValidationTimeMs", totalValidations > 0 ? totalValidationTimeMs.get() / totalValidations : 0L);
+        metrics.put("averageValidationTimeMs",
+                totalValidations > 0 ? totalValidationTimeMs.get() / totalValidations : 0L);
         metrics.put("successRate", totalValidations > 0 ? (double) successCount.get() / totalValidations : 0.0);
         metrics.put("cacheHitRate", totalValidations > 0 ? (double) cacheHitCount.get() / totalValidations : 0.0);
         return metrics;
     }
 
     @Override
-    public void clearCache() { validationCache.clear(); }
+    public void clearCache() {
+        validationCache.clear();
+    }
 
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
-    private String generateCacheKey(Map<String, Object> filterConfig) { return "filter:" + filterConfig.hashCode(); }
+    private String generateCacheKey(Map<String, Object> filterConfig) {
+        return "filter:" + filterConfig.hashCode();
+    }
 
     private FilterValidationResult performFilterValidation(Map<String, Object> filterConfig) {
         List<String> errors = new ArrayList<>();
@@ -233,7 +265,9 @@ public class DefaultFilterValidator implements FilterValidator {
 
     private boolean isSupportedFilterType(String filterType) {
         for (String supportedType : supportedFilterTypes) {
-            if (supportedType.equals(filterType)) { return true; }
+            if (supportedType.equals(filterType)) {
+                return true;
+            }
         }
         return false;
     }
@@ -241,8 +275,14 @@ public class DefaultFilterValidator implements FilterValidator {
     private boolean hasBalancedParentheses(String expression) {
         int count = 0;
         for (char c : expression.toCharArray()) {
-            if (c == '(') { count++; }
-            else if (c == ')') { count--; if (count < 0) { return false; } }
+            if (c == '(') {
+                count++;
+            } else if (c == ')') {
+                count--;
+                if (count < 0) {
+                    return false;
+                }
+            }
         }
         return count == 0;
     }
@@ -251,5 +291,3 @@ public class DefaultFilterValidator implements FilterValidator {
         return !expression.contains("invalid_field") && !expression.contains("__private");
     }
 }
-
-

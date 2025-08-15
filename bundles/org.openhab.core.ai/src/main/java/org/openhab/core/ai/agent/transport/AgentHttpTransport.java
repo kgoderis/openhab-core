@@ -10,6 +10,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.transport.api.AgentTransport;
+import org.openhab.core.ai.agent.transport.api.TransportCapabilities;
+import org.openhab.core.ai.agent.transport.api.TransportHealth;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

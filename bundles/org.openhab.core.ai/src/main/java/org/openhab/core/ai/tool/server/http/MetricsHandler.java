@@ -57,7 +57,7 @@ public final class MetricsHandler implements com.sun.net.httpserver.HttpHandler 
             response.append("mcp_server_healthy ").append(serverInstance.isHealthy() ? 1 : 0).append("\n");
 
             if (serverInstance.isSecurityEnabled()) {
-                org.openhab.core.ai.tool.security.SecurityStatistics securityStats = serverInstance
+                org.openhab.core.ai.tool.security.api.SecurityStatistics securityStats = serverInstance
                         .getSecurityStatistics();
                 if (securityStats != null) {
                     response.append("# HELP mcp_security_total_requests Total number of security requests\n");

@@ -15,5 +15,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface ConflictMediator {
     String getMediatorId();
+
     ConflictResolution mediate(Conflict conflict, List<String> participants);
 }

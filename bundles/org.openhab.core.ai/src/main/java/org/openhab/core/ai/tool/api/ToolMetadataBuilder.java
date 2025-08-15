@@ -33,5 +33,3 @@ public class ToolMetadataBuilder {
         return new ToolMetadata(version, author, description);
     }
 }
-
-

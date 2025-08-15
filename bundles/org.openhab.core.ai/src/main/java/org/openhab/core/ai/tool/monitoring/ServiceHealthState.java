@@ -63,7 +63,7 @@ final class ServiceHealthState {
         return total > 0 ? (double) totalResponseTime.get() / total : 0.0;
     }
 
-    Instant getLastHealthCheck() { return lastHealthCheck.get(); }
+    Instant getLastHealthCheck() {
+        return lastHealthCheck.get();
+    }
 }
-
-

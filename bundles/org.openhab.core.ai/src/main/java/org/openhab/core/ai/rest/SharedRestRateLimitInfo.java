@@ -12,5 +12,3 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 final class SharedRestRateLimitInfo {
     final java.util.List<Long> requests = new java.util.concurrent.CopyOnWriteArrayList<>();
 }
-
-

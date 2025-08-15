@@ -24,8 +24,8 @@ public class EventLogCorrelation {
     private final Instant createdAt;
 
     public EventLogCorrelation(String id, EventInfo eventInfo, LogEntry logEntry, double confidence,
-            double temporalConfidence, double patternConfidence, double causalityConfidence, EventLogCorrelationType type,
-            Instant createdAt) {
+            double temporalConfidence, double patternConfidence, double causalityConfidence,
+            EventLogCorrelationType type, Instant createdAt) {
         this.id = id;
         this.eventInfo = eventInfo;
         this.logEntry = logEntry;
@@ -83,5 +83,3 @@ public class EventLogCorrelation {
 
     // enum extracted to top-level: org.openhab.core.ai.events.EventLogCorrelationType
 }
-
-

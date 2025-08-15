@@ -11,5 +11,3 @@ public enum TaskOrchestrationStateState {
     ERROR,
     CANCELLED
 }
-
-

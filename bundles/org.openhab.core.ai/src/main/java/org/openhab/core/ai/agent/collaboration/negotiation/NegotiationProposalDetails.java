@@ -32,8 +32,11 @@ public final class NegotiationProposalDetails {
         this.terms = Map.copyOf(terms);
     }
 
-    public String getProposalId() { return proposalId; }
-    public Map<String, Object> getTerms() { return terms; }
+    public String getProposalId() {
+        return proposalId;
+    }
+
+    public Map<String, Object> getTerms() {
+        return terms;
+    }
 }
-
-

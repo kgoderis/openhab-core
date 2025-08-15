@@ -13,6 +13,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface ConflictPattern {
     String getPatternId();
+
     boolean matches(Conflict conflict);
+
     void recordOccurrence(Conflict conflict);
 }

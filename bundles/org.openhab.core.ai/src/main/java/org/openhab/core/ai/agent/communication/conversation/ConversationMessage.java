@@ -30,14 +30,33 @@ public class ConversationMessage {
         this.timestamp = builder.timestamp;
     }
 
-    public String getMessageId() { return messageId; }
-    public String getConversationId() { return conversationId; }
-    public String getFromAgentId() { return fromAgentId; }
-    public String getContent() { return content; }
-    public MessageType getMessageType() { return messageType; }
-    public Instant getTimestamp() { return timestamp; }
+    public String getMessageId() {
+        return messageId;
+    }
 
-    public static ConversationMessageBuilder builder() { return new ConversationMessageBuilder(); }
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public String getFromAgentId() {
+        return fromAgentId;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public MessageType getMessageType() {
+        return messageType;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public static ConversationMessageBuilder builder() {
+        return new ConversationMessageBuilder();
+    }
 
     /* Extracted: org.openhab.core.ai.agent.communication.conversation.ConversationMessageBuilder */
 }

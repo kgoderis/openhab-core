@@ -14,8 +14,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionResult;
 import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionStrategy;
 import org.openhab.core.ai.agent.collaboration.coordination.api.CoordinationProtocol;
-import org.openhab.core.ai.agent.collaboration.coordination.api.CoordinationResult;
-import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
+import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -299,7 +298,6 @@ public class AgentCoordinationManager {
     /**
      * Coordination statistics
      */
-    
 
     // Enums extracted to top-level: CoordinationState, ConflictResolutionState
 

@@ -12,5 +12,3 @@ public enum FilterType {
     TYPE_BASED,
     CUSTOM
 }
-
-

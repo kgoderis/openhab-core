@@ -32,8 +32,11 @@ public final class SecurityConstraint {
         this.restrictedRoles = Set.copyOf(restrictedRoles);
     }
 
-    public boolean isParameterForbidden(String name) { return forbiddenParameters.contains(name); }
-    public boolean isRoleRestricted(String role) { return restrictedRoles.contains(role); }
+    public boolean isParameterForbidden(String name) {
+        return forbiddenParameters.contains(name);
+    }
+
+    public boolean isRoleRestricted(String role) {
+        return restrictedRoles.contains(role);
+    }
 }
-
-

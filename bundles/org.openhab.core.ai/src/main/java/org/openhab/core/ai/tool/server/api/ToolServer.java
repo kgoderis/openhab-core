@@ -8,7 +8,7 @@ import org.openhab.core.ai.tool.error.DefaultErrorRecoveryService;
 import org.openhab.core.ai.tool.error.ErrorInfo;
 import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.security.DefaultToolSecurityService;
-import org.openhab.core.ai.tool.security.SecurityStatistics;
+import org.openhab.core.ai.tool.security.api.SecurityStatistics;
 
 /**
  * Tool Server Interface (consolidated MCP server API)

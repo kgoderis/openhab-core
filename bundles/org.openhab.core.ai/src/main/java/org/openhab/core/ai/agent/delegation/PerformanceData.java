@@ -35,10 +35,19 @@ public final class PerformanceData {
         this.averageExecutionMs = averageExecutionMs;
     }
 
-    public long getTotalDelegations() { return totalDelegations; }
-    public long getSuccessfulDelegations() { return successfulDelegations; }
-    public long getFailedDelegations() { return failedDelegations; }
-    public long getAverageExecutionMs() { return averageExecutionMs; }
+    public long getTotalDelegations() {
+        return totalDelegations;
+    }
+
+    public long getSuccessfulDelegations() {
+        return successfulDelegations;
+    }
+
+    public long getFailedDelegations() {
+        return failedDelegations;
+    }
+
+    public long getAverageExecutionMs() {
+        return averageExecutionMs;
+    }
 }
-
-

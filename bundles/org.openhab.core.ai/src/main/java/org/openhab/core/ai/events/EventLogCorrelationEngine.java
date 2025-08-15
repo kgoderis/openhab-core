@@ -228,8 +228,8 @@ public class EventLogCorrelationEngine {
     /**
      * Correlate log entries with events
      */
-    public CompletableFuture<List<EventLogCorrelation>> correlateLogsWithEvents(
-            List<LogEntry> logEntries, List<Object> events) {
+    public CompletableFuture<List<EventLogCorrelation>> correlateLogsWithEvents(List<LogEntry> logEntries,
+            List<Object> events) {
         return CompletableFuture.supplyAsync(() -> {
             Instant startTime = Instant.now();
             List<EventLogCorrelation> correlations = new ArrayList<>();
@@ -482,8 +482,7 @@ public class EventLogCorrelationEngine {
     /**
      * Determine correlation type
      */
-    private EventLogCorrelationType determineCorrelationType(EventInfo eventInfo,
-            LogEntry logEntry) {
+    private EventLogCorrelationType determineCorrelationType(EventInfo eventInfo, LogEntry logEntry) {
         // Determine correlation type based on event and log characteristics
         if (logEntry.getLevel() == LogLevel.ERROR) {
             return EventLogCorrelationType.ERROR_CORRELATION;

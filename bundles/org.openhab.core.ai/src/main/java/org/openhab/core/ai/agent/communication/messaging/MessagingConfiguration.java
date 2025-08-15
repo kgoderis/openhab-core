@@ -22,18 +22,59 @@ public class MessagingConfiguration {
     private boolean enablePersistence = true;
     private int maxMessageSize = 1024 * 1024; // 1MB
 
-    public Duration getMessageTimeout() { return messageTimeout; }
-    public void setMessageTimeout(Duration messageTimeout) { this.messageTimeout = messageTimeout; }
-    public int getMaxRetries() { return maxRetries; }
-    public void setMaxRetries(int maxRetries) { this.maxRetries = maxRetries; }
-    public Duration getRetryInterval() { return retryInterval; }
-    public void setRetryInterval(Duration retryInterval) { this.retryInterval = retryInterval; }
-    public Duration getMessageRetentionPeriod() { return messageRetentionPeriod; }
-    public void setMessageRetentionPeriod(Duration messageRetentionPeriod) { this.messageRetentionPeriod = messageRetentionPeriod; }
-    public boolean isEnableEncryption() { return enableEncryption; }
-    public void setEnableEncryption(boolean enableEncryption) { this.enableEncryption = enableEncryption; }
-    public boolean isEnablePersistence() { return enablePersistence; }
-    public void setEnablePersistence(boolean enablePersistence) { this.enablePersistence = enablePersistence; }
-    public int getMaxMessageSize() { return maxMessageSize; }
-    public void setMaxMessageSize(int maxMessageSize) { this.maxMessageSize = maxMessageSize; }
+    public Duration getMessageTimeout() {
+        return messageTimeout;
+    }
+
+    public void setMessageTimeout(Duration messageTimeout) {
+        this.messageTimeout = messageTimeout;
+    }
+
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
+    public void setMaxRetries(int maxRetries) {
+        this.maxRetries = maxRetries;
+    }
+
+    public Duration getRetryInterval() {
+        return retryInterval;
+    }
+
+    public void setRetryInterval(Duration retryInterval) {
+        this.retryInterval = retryInterval;
+    }
+
+    public Duration getMessageRetentionPeriod() {
+        return messageRetentionPeriod;
+    }
+
+    public void setMessageRetentionPeriod(Duration messageRetentionPeriod) {
+        this.messageRetentionPeriod = messageRetentionPeriod;
+    }
+
+    public boolean isEnableEncryption() {
+        return enableEncryption;
+    }
+
+    public void setEnableEncryption(boolean enableEncryption) {
+        this.enableEncryption = enableEncryption;
+    }
+
+    public boolean isEnablePersistence() {
+        return enablePersistence;
+    }
+
+    public void setEnablePersistence(boolean enablePersistence) {
+        this.enablePersistence = enablePersistence;
+    }
+
+    public int getMaxMessageSize() {
+        return maxMessageSize;
+    }
+
+    public void setMaxMessageSize(int maxMessageSize) {
+        this.maxMessageSize = maxMessageSize;
+    }
 }

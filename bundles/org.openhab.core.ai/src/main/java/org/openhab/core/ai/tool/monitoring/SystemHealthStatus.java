@@ -16,8 +16,13 @@ public class SystemHealthStatus {
         this.serviceMetrics = serviceMetrics;
     }
 
-    public Map<ModelProviderType, ProviderHealthMetrics> getProviderMetrics() { return providerMetrics; }
-    public Map<String, ServiceHealthMetrics> getServiceMetrics() { return serviceMetrics; }
+    public Map<ModelProviderType, ProviderHealthMetrics> getProviderMetrics() {
+        return providerMetrics;
+    }
+
+    public Map<String, ServiceHealthMetrics> getServiceMetrics() {
+        return serviceMetrics;
+    }
 
     public boolean isSystemHealthy() {
         return providerMetrics.values().stream().allMatch(ProviderHealthMetrics::isHealthy)

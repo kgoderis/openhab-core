@@ -178,7 +178,7 @@ public class AgentTransportPortManager {
             Integer port = entry.getValue();
 
             if (port == null || (port == 0 && transportType != TransportType.REST)) { // HTTP transport
-                                                                                                     // is client-side
+                                                                                      // is client-side
                 logger.error("Invalid port assignment for transport type {}: port {}", transportType, port);
                 allValid = false;
             } else if (port != 0 && !isPortAvailable(port)) {

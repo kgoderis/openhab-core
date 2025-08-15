@@ -23,12 +23,12 @@ class AuthenticationPattern {
         }
     }
 
-    long getTotalAttempts() { return totalAttempts.get(); }
+    long getTotalAttempts() {
+        return totalAttempts.get();
+    }
 
     double getFailureRate() {
         long total = totalAttempts.get();
         return total > 0 ? (double) failedAttempts.get() / total : 0.0;
     }
 }
-
-

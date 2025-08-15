@@ -185,7 +185,8 @@ public interface AgentSecurityManager {
      * @param severity Security severity
      * @return List of security incidents
      */
-    List<SecurityIncident> getSecurityIncidentsBySeverity(org.openhab.core.ai.agent.infrastructure.security.SecuritySeverity severity);
+    List<SecurityIncident> getSecurityIncidentsBySeverity(
+            org.openhab.core.ai.agent.infrastructure.security.SecuritySeverity severity);
 
     /**
      * Get audit logs by agent

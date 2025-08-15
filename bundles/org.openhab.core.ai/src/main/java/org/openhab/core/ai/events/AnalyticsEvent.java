@@ -30,11 +30,23 @@ public class AnalyticsEvent {
         this.timestamp = timestamp;
     }
 
-    public String getId() { return id; }
-    public AnalyticsEventType getType() { return type; }
-    public String getMessage() { return message; }
-    public @Nullable Object getData() { return data; }
-    public Instant getTimestamp() { return timestamp; }
+    public String getId() {
+        return id;
+    }
+
+    public AnalyticsEventType getType() {
+        return type;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public @Nullable Object getData() {
+        return data;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
 }
-
-

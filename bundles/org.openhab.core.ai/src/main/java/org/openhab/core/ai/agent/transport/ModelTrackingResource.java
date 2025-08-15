@@ -16,10 +16,10 @@ import javax.ws.rs.core.Response;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.model.ModelTrackingService;
 import org.openhab.core.ai.model.AgentClientSession;
 import org.openhab.core.ai.model.ClientPerformanceMetrics;
 import org.openhab.core.ai.model.ClientUsageInfo;
+import org.openhab.core.ai.model.ModelTrackingService;
 import org.openhab.core.ai.model.ProviderUsageStats;
 import org.openhab.core.ai.model.SystemUsageStats;
 import org.openhab.core.ai.model.api.ModelProviderType;
@@ -150,8 +150,7 @@ public class ModelTrackingResource implements RESTResource {
             client.put("agent_ids", new ArrayList<>(usage.getActiveAgents().keySet()));
 
             // Add performance metrics if available
-            ClientPerformanceMetrics performance = service.getClientPerformance(providerType,
-                    modelName);
+            ClientPerformanceMetrics performance = service.getClientPerformance(providerType, modelName);
             if (performance != null) {
                 Map<String, Object> metrics = new HashMap<>();
                 metrics.put("average_response_time", performance.getAverageResponseTime());
@@ -284,8 +283,7 @@ public class ModelTrackingResource implements RESTResource {
             Map<ModelProviderType, ProviderUsageStats> providerStats = service.getProviderStats();
             List<Map<String, Object>> providers = new ArrayList<>();
 
-            for (Map.Entry<ModelProviderType, ProviderUsageStats> entry : providerStats
-                    .entrySet()) {
+            for (Map.Entry<ModelProviderType, ProviderUsageStats> entry : providerStats.entrySet()) {
                 ProviderUsageStats stats = entry.getValue();
                 Map<String, Object> provider = new HashMap<>();
                 provider.put("provider_type", entry.getKey().name());

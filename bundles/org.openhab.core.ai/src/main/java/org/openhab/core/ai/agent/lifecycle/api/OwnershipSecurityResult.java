@@ -1,0 +1,17 @@
+package org.openhab.core.ai.agent.lifecycle.api;
+
+import java.util.List;
+import java.util.Map;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
+@NonNullByDefault
+public interface OwnershipSecurityResult {
+    boolean isAllowed();
+
+    String getMessage();
+
+    List<String> getRequiredPermissions();
+
+    Map<String, Object> getSecurityContext();
+}

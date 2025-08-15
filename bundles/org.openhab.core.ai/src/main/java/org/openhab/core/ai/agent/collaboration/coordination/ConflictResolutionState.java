@@ -13,5 +13,3 @@ public enum ConflictResolutionState {
     FAILED,
     ESCALATED
 }
-
-

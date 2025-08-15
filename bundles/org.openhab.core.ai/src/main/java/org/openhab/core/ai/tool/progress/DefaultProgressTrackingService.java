@@ -5,8 +5,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.progress.tracking.ProgressOperation;
-import org.openhab.core.ai.tool.progress.tracking.ProgressStatus;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressOperation;
+import org.openhab.core.ai.tool.progress.api.tracking.ProgressStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

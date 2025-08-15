@@ -30,7 +30,15 @@ public class ConversationHistory {
         lastActivity = Instant.now();
     }
 
-    public String getConversationId() { return conversationId; }
-    public List<ConversationMessage> getMessages() { return List.copyOf(messages); }
-    public Instant getLastActivity() { return lastActivity; }
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public List<ConversationMessage> getMessages() {
+        return List.copyOf(messages);
+    }
+
+    public Instant getLastActivity() {
+        return lastActivity;
+    }
 }

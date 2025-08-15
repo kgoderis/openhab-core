@@ -20,5 +20,3 @@ public class CommunicationConflictResolutionStrategy implements ConflictResoluti
                 ConflictResolutionResult.success("Communication conflict resolved using retry mechanism"));
     }
 }
-
-

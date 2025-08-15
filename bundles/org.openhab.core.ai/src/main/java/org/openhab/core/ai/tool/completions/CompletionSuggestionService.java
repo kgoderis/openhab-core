@@ -6,12 +6,12 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.api.CompletionContext;
-import org.openhab.core.ai.tool.api.CompletionResult;
 import org.openhab.core.ai.tool.completions.adapter.CommandCompletionAdapter;
 import org.openhab.core.ai.tool.completions.adapter.ConfigurationCompletionAdapter;
 import org.openhab.core.ai.tool.completions.adapter.ItemCompletionHandler;
 import org.openhab.core.ai.tool.completions.adapter.RuleCompletionAdapter;
+import org.openhab.core.ai.tool.completions.api.CompletionContext;
+import org.openhab.core.ai.tool.completions.api.CompletionResult;
 import org.openhab.core.automation.RuleRegistry;
 import org.openhab.core.items.ItemRegistry;
 import org.osgi.service.component.annotations.Activate;

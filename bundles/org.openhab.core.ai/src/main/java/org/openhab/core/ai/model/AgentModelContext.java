@@ -19,6 +19,7 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.api.AgentModelContextBuilder;
 
 /**
  * Represents the context information for agent-specific model interactions.

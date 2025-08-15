@@ -25,10 +25,14 @@ public class DefaultConflictLearningModel implements ConflictLearningModel {
     }
 
     @Override
-    public String getModelId() { return modelId; }
+    public String getModelId() {
+        return modelId;
+    }
 
     @Override
-    public void train(java.util.List<Conflict> trainingData) { trained.set(true); }
+    public void train(java.util.List<Conflict> trainingData) {
+        trained.set(true);
+    }
 
     @Override
     public ConflictResolution predict(Conflict conflict) {

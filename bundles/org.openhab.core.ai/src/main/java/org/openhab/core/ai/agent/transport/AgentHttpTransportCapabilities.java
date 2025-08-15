@@ -3,6 +3,7 @@ package org.openhab.core.ai.agent.transport;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.transport.api.TransportCapabilities;
 
 /**
  * HTTP transport capabilities (extracted from AgentHttpTransport).
@@ -39,13 +40,10 @@ class AgentHttpTransportCapabilities implements TransportCapabilities {
 
     @Override
     public Map<String, Object> getConfiguration() {
-        return Map.of("baseUrl", "http://localhost:8080",
-                "endpoints",
+        return Map.of("baseUrl", "http://localhost:8080", "endpoints",
                 Map.of("messageSend", "/a2a/message/send", "messageStream", "/a2a/message/stream", "health",
                         "/a2a/health", "status", "/a2a/status", "agentCard", "/.well-known/agent.json"),
                 "cors", Map.of("enabled", true, "allowedOrigins", "*", "allowedMethods", "GET,POST,OPTIONS"),
                 "compression", "none");
     }
 }
-
-

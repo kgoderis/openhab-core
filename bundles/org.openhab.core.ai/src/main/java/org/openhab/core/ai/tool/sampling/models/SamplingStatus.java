@@ -8,5 +8,3 @@ public enum SamplingStatus {
     APPROVED,
     REJECTED
 }
-
-

@@ -15,5 +15,3 @@ public interface LoadBalancer {
 
     Map<String, Object> getStatistics();
 }
-
-

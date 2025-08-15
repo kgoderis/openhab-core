@@ -15,6 +15,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public interface ConflictLearningModel {
     String getModelId();
+
     void train(List<Conflict> trainingData);
+
     ConflictResolution predict(Conflict conflict);
 }

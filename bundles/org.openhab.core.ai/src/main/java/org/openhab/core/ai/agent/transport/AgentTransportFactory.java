@@ -7,6 +7,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.transport.api.AgentTransport;
+import org.openhab.core.ai.agent.transport.api.TransportNegotiationResult;
+import org.openhab.core.ai.agent.transport.api.TransportSelectionStrategy;
+import org.openhab.core.ai.agent.transport.api.TransportType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -134,8 +138,7 @@ public class AgentTransportFactory {
      * @param configuration the configuration
      * @return the transport instance
      */
-    private AgentTransport createTransportInstance(TransportType transportType,
-            Map<String, Object> configuration) {
+    private AgentTransport createTransportInstance(TransportType transportType, Map<String, Object> configuration) {
         switch (transportType) {
             case REST:
                 // HTTP transport is client-side, communicates with AgentServlet

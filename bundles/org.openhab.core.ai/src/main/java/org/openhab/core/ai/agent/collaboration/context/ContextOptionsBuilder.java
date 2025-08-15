@@ -59,5 +59,3 @@ public class ContextOptionsBuilder {
         return metadata;
     }
 }
-
-

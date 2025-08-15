@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.completions.specification.CompletionSpecification;
+import org.openhab.core.ai.tool.completions.api.specification.CompletionSpecification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

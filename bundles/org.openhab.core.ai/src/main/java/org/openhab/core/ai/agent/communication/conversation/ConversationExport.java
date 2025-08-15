@@ -24,11 +24,21 @@ public class ConversationExport {
         this.exportTime = builder.exportTime;
     }
 
-    public Conversation getConversation() { return conversation; }
-    public ConversationHistory getHistory() { return history; }
-    public Instant getExportTime() { return exportTime; }
+    public Conversation getConversation() {
+        return conversation;
+    }
 
-    public static ConversationExportBuilder builder() { return new ConversationExportBuilder(); }
+    public ConversationHistory getHistory() {
+        return history;
+    }
+
+    public Instant getExportTime() {
+        return exportTime;
+    }
+
+    public static ConversationExportBuilder builder() {
+        return new ConversationExportBuilder();
+    }
 
     /* Extracted: org.openhab.core.ai.agent.communication.conversation.ConversationExportBuilder */
 }

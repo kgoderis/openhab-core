@@ -8,7 +8,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 /**
  * Transaction result for agent synchronization operations.
  *
- * <p>Extracted from AgentSynchronizationService.</p>
+ * <p>
+ * Extracted from AgentSynchronizationService.
+ * </p>
  *
  * @author Karel Goderis - Initial Contribution
  * @since 4.0.0
@@ -25,15 +27,8 @@ public final class SynchronizationTransactionResult {
     private final Instant endTime;
     private final long durationMs;
 
-    public SynchronizationTransactionResult(
-            String transactionId,
-            boolean success,
-            String status,
-            String message,
-            List<String> completedTasks,
-            List<String> failedTasks,
-            Instant startTime,
-            Instant endTime,
+    public SynchronizationTransactionResult(String transactionId, boolean success, String status, String message,
+            List<String> completedTasks, List<String> failedTasks, Instant startTime, Instant endTime,
             long durationMs) {
         this.transactionId = transactionId;
         this.success = success;
@@ -46,15 +41,39 @@ public final class SynchronizationTransactionResult {
         this.durationMs = durationMs;
     }
 
-    public String getTransactionId() { return transactionId; }
-    public boolean isSuccess() { return success; }
-    public String getStatus() { return status; }
-    public String getMessage() { return message; }
-    public List<String> getCompletedTasks() { return completedTasks; }
-    public List<String> getFailedTasks() { return failedTasks; }
-    public Instant getStartTime() { return startTime; }
-    public Instant getEndTime() { return endTime; }
-    public long getDurationMs() { return durationMs; }
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public List<String> getCompletedTasks() {
+        return completedTasks;
+    }
+
+    public List<String> getFailedTasks() {
+        return failedTasks;
+    }
+
+    public Instant getStartTime() {
+        return startTime;
+    }
+
+    public Instant getEndTime() {
+        return endTime;
+    }
+
+    public long getDurationMs() {
+        return durationMs;
+    }
 }
-
-

@@ -135,5 +135,7 @@ public class AgentModelStatistics {
         return totalCacheRequests > 0 ? (double) cacheHits / totalCacheRequests : 0.0;
     }
 
-    public static AgentModelStatisticsBuilder builder() { return new AgentModelStatisticsBuilder(); }
+    public static AgentModelStatisticsBuilder builder() {
+        return new AgentModelStatisticsBuilder();
+    }
 }

@@ -1,9 +1,5 @@
 package org.openhab.core.ai.agent.infrastructure.synchronization;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**

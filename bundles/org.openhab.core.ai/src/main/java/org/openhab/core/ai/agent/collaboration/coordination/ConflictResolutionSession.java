@@ -78,7 +78,7 @@ public class ConflictResolutionSession {
         this.error = error;
     }
 
-    public static ConflictResolutionSessionBuilder builder() { return new ConflictResolutionSessionBuilder(); }
+    public static ConflictResolutionSessionBuilder builder() {
+        return new ConflictResolutionSessionBuilder();
+    }
 }
-
-

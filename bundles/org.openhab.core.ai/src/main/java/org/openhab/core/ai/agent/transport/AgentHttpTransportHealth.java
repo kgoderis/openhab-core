@@ -3,6 +3,7 @@ package org.openhab.core.ai.agent.transport;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.transport.api.TransportHealth;
 
 /**
  * HTTP transport health (extracted from AgentHttpTransport).
@@ -45,5 +46,3 @@ class AgentHttpTransportHealth implements TransportHealth {
         return healthMetrics;
     }
 }
-
-

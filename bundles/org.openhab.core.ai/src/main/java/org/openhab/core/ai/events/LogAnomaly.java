@@ -32,12 +32,27 @@ public class LogAnomaly {
         this.detectedAt = detectedAt;
     }
 
-    public String getId() { return id; }
-    public LogEntry getLogEntry() { return logEntry; }
-    public String getType() { return type; }
-    public LogAnomalySeverity getSeverity() { return severity; }
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public Instant getDetectedAt() { return detectedAt; }
+    public String getId() {
+        return id;
+    }
+
+    public LogEntry getLogEntry() {
+        return logEntry;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public LogAnomalySeverity getSeverity() {
+        return severity;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public Instant getDetectedAt() {
+        return detectedAt;
+    }
 }
-
-

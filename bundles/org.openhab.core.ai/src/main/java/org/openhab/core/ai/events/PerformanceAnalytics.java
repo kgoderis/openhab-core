@@ -12,6 +12,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * and optimization recommendations with a timestamp and totals.
  *
  * Author: Karel Goderis - Initial Contribution
+ * 
  * @since 1.0.0
  */
 @NonNullByDefault
@@ -36,13 +37,31 @@ public class PerformanceAnalytics {
         this.timestamp = timestamp;
     }
 
-    public double getOverallPerformance() { return overallPerformance; }
-    public List<PerformanceMetric> getMetrics() { return metrics; }
-    public List<PerformanceBottleneck> getBottlenecks() { return bottlenecks; }
-    public List<OptimizationRecommendation> getRecommendations() { return recommendations; }
-    public long getTotalEventsProcessed() { return totalEventsProcessed; }
-    public long getTotalProcessingTime() { return totalProcessingTime; }
-    public Instant getTimestamp() { return timestamp; }
+    public double getOverallPerformance() {
+        return overallPerformance;
+    }
+
+    public List<PerformanceMetric> getMetrics() {
+        return metrics;
+    }
+
+    public List<PerformanceBottleneck> getBottlenecks() {
+        return bottlenecks;
+    }
+
+    public List<OptimizationRecommendation> getRecommendations() {
+        return recommendations;
+    }
+
+    public long getTotalEventsProcessed() {
+        return totalEventsProcessed;
+    }
+
+    public long getTotalProcessingTime() {
+        return totalProcessingTime;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
 }
-
-

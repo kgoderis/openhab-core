@@ -23,8 +23,8 @@ public class ConflictResolutionStatistics {
     private final int mediators;
 
     public ConflictResolutionStatistics(long totalConflictsDetected, long totalConflictsResolved,
-            long totalConflictsEscalated, long totalConflictsPrevented, long totalResolutionTime,
-            int activeConflicts, int conflictHistorySize, int resolutionStrategies, int mediators) {
+            long totalConflictsEscalated, long totalConflictsPrevented, long totalResolutionTime, int activeConflicts,
+            int conflictHistorySize, int resolutionStrategies, int mediators) {
         this.totalConflictsDetected = totalConflictsDetected;
         this.totalConflictsResolved = totalConflictsResolved;
         this.totalConflictsEscalated = totalConflictsEscalated;
@@ -36,13 +36,39 @@ public class ConflictResolutionStatistics {
         this.mediators = mediators;
     }
 
-    public long getTotalConflictsDetected() { return totalConflictsDetected; }
-    public long getTotalConflictsResolved() { return totalConflictsResolved; }
-    public long getTotalConflictsEscalated() { return totalConflictsEscalated; }
-    public long getTotalConflictsPrevented() { return totalConflictsPrevented; }
-    public long getTotalResolutionTime() { return totalResolutionTime; }
-    public int getActiveConflicts() { return activeConflicts; }
-    public int getConflictHistorySize() { return conflictHistorySize; }
-    public int getResolutionStrategies() { return resolutionStrategies; }
-    public int getMediators() { return mediators; }
+    public long getTotalConflictsDetected() {
+        return totalConflictsDetected;
+    }
+
+    public long getTotalConflictsResolved() {
+        return totalConflictsResolved;
+    }
+
+    public long getTotalConflictsEscalated() {
+        return totalConflictsEscalated;
+    }
+
+    public long getTotalConflictsPrevented() {
+        return totalConflictsPrevented;
+    }
+
+    public long getTotalResolutionTime() {
+        return totalResolutionTime;
+    }
+
+    public int getActiveConflicts() {
+        return activeConflicts;
+    }
+
+    public int getConflictHistorySize() {
+        return conflictHistorySize;
+    }
+
+    public int getResolutionStrategies() {
+        return resolutionStrategies;
+    }
+
+    public int getMediators() {
+        return mediators;
+    }
 }

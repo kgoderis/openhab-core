@@ -3,6 +3,7 @@ package org.openhab.core.ai.agent.transport;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.transport.api.TransportHealth;
 
 /**
  * Top-level gRPC transport health DTO extracted from AgentGrpcTransport.
@@ -46,5 +47,3 @@ public class GrpcTransportHealth implements TransportHealth {
         return healthMetrics;
     }
 }
-
-

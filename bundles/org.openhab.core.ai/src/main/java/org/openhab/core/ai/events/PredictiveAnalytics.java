@@ -22,11 +22,23 @@ public class PredictiveAnalytics {
         this.timestamp = timestamp;
     }
 
-    public double getPredictedLoad() { return predictedLoad; }
-    public double getPredictedPerformance() { return predictedPerformance; }
-    public double getPredictedQuality() { return predictedQuality; }
-    public List<PredictionAlert> getAlerts() { return alerts; }
-    public Instant getTimestamp() { return timestamp; }
+    public double getPredictedLoad() {
+        return predictedLoad;
+    }
+
+    public double getPredictedPerformance() {
+        return predictedPerformance;
+    }
+
+    public double getPredictedQuality() {
+        return predictedQuality;
+    }
+
+    public List<PredictionAlert> getAlerts() {
+        return alerts;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
 }
-
-

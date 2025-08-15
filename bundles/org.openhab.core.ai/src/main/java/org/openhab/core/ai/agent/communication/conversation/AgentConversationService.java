@@ -19,7 +19,7 @@ import org.openhab.core.ai.agent.communication.conversation.api.ConversationEndR
 import org.openhab.core.ai.agent.communication.conversation.api.ConversationPattern;
 import org.openhab.core.ai.agent.communication.conversation.api.ConversationTemplate;
 import org.openhab.core.ai.agent.communication.conversation.api.MessageDeliveryResult;
-import org.openhab.core.ai.agent.lifecycle.AgentRegistry;
+import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
