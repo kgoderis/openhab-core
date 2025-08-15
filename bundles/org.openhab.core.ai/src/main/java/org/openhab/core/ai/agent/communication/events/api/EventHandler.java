@@ -1,6 +1,7 @@
 package org.openhab.core.ai.agent.communication.events.api;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.communication.events.AgentEvent;
 
 /**
  * Event handler contract.

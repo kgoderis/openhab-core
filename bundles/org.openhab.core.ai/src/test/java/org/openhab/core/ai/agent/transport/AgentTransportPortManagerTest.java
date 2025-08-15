@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.agent.transport.api.TransportType;
 
 /**
  * Unit tests for AgentTransportPortManager.

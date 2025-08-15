@@ -14,6 +14,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.communication.events.api.EventFilter;
+import org.openhab.core.ai.agent.communication.events.api.EventHandler;
 import org.openhab.core.ai.agent.communication.events.api.EventOptions;
 import org.openhab.core.ai.agent.communication.events.api.EventPublishResult;
 import org.openhab.core.ai.agent.communication.events.api.EventRouter;

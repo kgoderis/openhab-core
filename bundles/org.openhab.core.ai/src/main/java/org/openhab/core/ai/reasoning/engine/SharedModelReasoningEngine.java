@@ -44,6 +44,8 @@ import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
+import org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus;
+import org.openhab.core.ai.reasoning.session.ModelReasoningSession;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -503,18 +505,18 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     }
 
     @Override
-    public org.openhab.core.ai.reasoning.api.ReasoningEngineStatus getStatus() {
+    public org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus getStatus() {
         if (shutdown) {
-            return org.openhab.core.ai.reasoning.api.ReasoningEngineStatus.SHUTDOWN;
+            return org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus.SHUTDOWN;
         }
         if (!isRunning) {
-            return org.openhab.core.ai.reasoning.api.ReasoningEngineStatus.ERROR;
+            return org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus.ERROR;
         }
         ReasoningEngineHealthStatus health = getReasoningEngineHealthStatus();
         if (health.isHealthy()) {
-            return org.openhab.core.ai.reasoning.api.ReasoningEngineStatus.ACTIVE;
+            return org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus.ACTIVE;
         } else {
-            return org.openhab.core.ai.reasoning.api.ReasoningEngineStatus.DEGRADED;
+            return org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus.DEGRADED;
         }
     }
 

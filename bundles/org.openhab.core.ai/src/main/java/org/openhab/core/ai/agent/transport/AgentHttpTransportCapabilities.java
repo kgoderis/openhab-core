@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.agent.transport.api.TransportCapabilities;
+import org.openhab.core.ai.agent.transport.api.TransportType;
 
 /**
  * HTTP transport capabilities (extracted from AgentHttpTransport).

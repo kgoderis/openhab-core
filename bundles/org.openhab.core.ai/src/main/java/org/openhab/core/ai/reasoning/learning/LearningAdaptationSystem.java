@@ -11,6 +11,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.reasoning.metrics.LearningPerformanceMetrics;
+import org.openhab.core.ai.reasoning.metrics.LearningPerformanceMetricsBuilder;
 import org.openhab.core.ai.reasoning.patterns.BehaviorPattern;
 import org.openhab.core.ai.reasoning.policies.UserPreferenceModel;
 import org.openhab.core.ai.reasoning.strategies.adaptation.AdaptiveStrategy;

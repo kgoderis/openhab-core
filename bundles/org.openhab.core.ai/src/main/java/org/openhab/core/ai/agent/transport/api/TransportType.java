@@ -1,4 +1,4 @@
-package org.openhab.core.ai.agent.transport;
+package org.openhab.core.ai.agent.transport.api;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 

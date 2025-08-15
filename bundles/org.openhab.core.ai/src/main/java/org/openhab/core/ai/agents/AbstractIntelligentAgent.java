@@ -16,7 +16,7 @@ import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.api.IntelligentAgent;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
+import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.engine.MultiStepReasoningEngine;
 import org.osgi.service.component.annotations.Reference;

@@ -18,6 +18,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
+import org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus;
 
 /**
  * Interface for reasoning engines in the AI system.

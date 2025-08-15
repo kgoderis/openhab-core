@@ -3,6 +3,8 @@ package org.openhab.core.ai.agent.transport;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.transport.api.TransportCapabilities;
+import org.openhab.core.ai.agent.transport.api.TransportType;
 
 /**
  * Top-level gRPC transport capabilities extracted from AgentGrpcTransport.

@@ -10,7 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.core.ai.reasoning.api;
+package org.openhab.core.ai.reasoning.security.api;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 

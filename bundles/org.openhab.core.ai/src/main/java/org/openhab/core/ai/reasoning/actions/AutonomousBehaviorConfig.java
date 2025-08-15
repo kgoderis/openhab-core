@@ -10,6 +10,18 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.reasoning.configuration.AgentConfiguration;
+import org.openhab.core.ai.reasoning.configuration.AgentFullConfiguration;
+import org.openhab.core.ai.reasoning.configuration.ConfigurationResult;
+import org.openhab.core.ai.reasoning.constraints.ConstraintDefinition;
+import org.openhab.core.ai.reasoning.constraints.ConstraintResult;
+import org.openhab.core.ai.reasoning.metrics.ConfigurationPerformanceMetrics;
+import org.openhab.core.ai.reasoning.policies.BehaviorPolicy;
+import org.openhab.core.ai.reasoning.policies.PolicyResult;
+import org.openhab.core.ai.reasoning.policies.SafetyPolicyConfig;
+import org.openhab.core.ai.reasoning.policies.UserPreferenceConfig;
+import org.openhab.core.ai.reasoning.results.PreferenceResult;
+import org.openhab.core.ai.reasoning.results.SafetyResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

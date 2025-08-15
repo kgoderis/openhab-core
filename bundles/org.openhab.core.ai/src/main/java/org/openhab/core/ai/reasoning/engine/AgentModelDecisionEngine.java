@@ -5,7 +5,18 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.api.AgentModelContext;
+import org.openhab.core.ai.agent.api.AgentModelContextBuilder;
 import org.openhab.core.ai.model.ModelResponse;
+import org.openhab.core.ai.reasoning.context.ContextPriority;
+import org.openhab.core.ai.reasoning.decision.DecisionContext;
+import org.openhab.core.ai.reasoning.decision.DecisionStatus;
+import org.openhab.core.ai.reasoning.enums.RiskLevel;
+import org.openhab.core.ai.reasoning.prompts.AgentModelPrompt;
+import org.openhab.core.ai.reasoning.prompts.AgentModelPromptBuilder;
+import org.openhab.core.ai.reasoning.prompts.PromptPriority;
+import org.openhab.core.ai.reasoning.prompts.PromptType;
+import org.openhab.core.ai.reasoning.results.DecisionResult;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;

@@ -20,10 +20,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.openhab.core.ai.reasoning.configuration.api.ConfigurationManager;
-import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.error.api.ErrorHandler;
 import org.openhab.core.ai.reasoning.memory.api.MemoryManager;
+import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.security.api.SecurityManager;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
