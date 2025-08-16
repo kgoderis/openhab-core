@@ -1,7 +1,9 @@
 package org.openhab.core.ai.tool.filter.validators;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -95,7 +97,7 @@ public class FilterValidationResult {
 
     // ===== CACHING SUPPORT =====
 
-    private static final java.util.concurrent.ConcurrentHashMap<String, FilterValidationResult> cache = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, FilterValidationResult> cache = new ConcurrentHashMap<>();
     private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
     private final long cacheTimestamp = System.currentTimeMillis();
 
@@ -138,7 +140,7 @@ public class FilterValidationResult {
      * @return cache statistics
      */
     public static Map<String, Object> getCacheStats() {
-        Map<String, Object> stats = new java.util.HashMap<>();
+        Map<String, Object> stats = new HashMap<>();
         stats.put("size", cache.size());
         stats.put("ttlMs", CACHE_TTL_MS);
         return stats;
@@ -152,7 +154,7 @@ public class FilterValidationResult {
      * @return serializable map representation
      */
     public Map<String, Object> toMap() {
-        Map<String, Object> map = new java.util.HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("valid", valid);
         map.put("errors", errors);
         map.put("warnings", warnings);

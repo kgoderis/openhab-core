@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -393,9 +394,7 @@ public class AgentPersistenceManager implements ReadyTracker {
 
         // Add per-executor statistics
         Map<String, Object> executorStats = new HashMap<>();
-        taskExecutors.values().stream()
-                .collect(java.util.stream.Collectors.groupingBy(executor -> executor,
-                        java.util.stream.Collectors.counting()))
+        taskExecutors.values().stream().collect(Collectors.groupingBy(executor -> executor, Collectors.counting()))
                 .forEach((executor, count) -> executorStats.put(executor, count));
         stats.put("executorStatistics", executorStats);
 

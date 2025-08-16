@@ -225,7 +225,7 @@ public class LogIngestionPipeline {
     }
 
     /** Package-private accessor for poll interval used by LogFileMonitor */
-    java.time.Duration getPollInterval() {
+    Duration getPollInterval() {
         return pollInterval;
     }
 

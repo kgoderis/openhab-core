@@ -1,7 +1,9 @@
 package org.openhab.core.ai.action.library.network;
 
+import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -159,7 +161,7 @@ public class GetNetworkInterfacesAction implements Action {
 
             // Generate summary
             result.put("summary", generateInterfaceSummary(interfaces));
-            result.put("timestamp", java.time.Instant.now().toString());
+            result.put("timestamp", Instant.now().toString());
 
             long executionTime = System.currentTimeMillis() - startTime;
             return ActionResult.success(result, executionTime);
@@ -291,7 +293,7 @@ public class GetNetworkInterfacesAction implements Action {
         return "unknown";
     }
 
-    private String getNetworkAddress(java.net.InetAddress address, int prefixLength) {
+    private String getNetworkAddress(InetAddress address, int prefixLength) {
         try {
             byte[] addr = address.getAddress();
             int mask = 0xffffffff << (32 - prefixLength);
@@ -301,7 +303,7 @@ public class GetNetworkInterfacesAction implements Action {
                 networkAddr[i] = (byte) (addr[i] & (mask >> (24 - i * 8)));
             }
 
-            return java.net.InetAddress.getByAddress(networkAddr).getHostAddress();
+            return InetAddress.getByAddress(networkAddr).getHostAddress();
         } catch (Exception e) {
             logger.debug("Could not calculate network address: {}", e.getMessage());
             return "unknown";

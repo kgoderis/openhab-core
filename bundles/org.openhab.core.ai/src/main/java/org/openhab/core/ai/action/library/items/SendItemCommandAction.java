@@ -19,6 +19,7 @@ import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.events.ItemCommandEvent;
 import org.openhab.core.items.events.ItemEventFactory;
+import org.openhab.core.library.types.StringType;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.TypeParser;
@@ -173,7 +174,7 @@ public class SendItemCommandAction implements Action {
                 if (tempCommand == null) {
                     if (forceCommand) {
                         // If parsing fails but force is enabled, create a string command
-                        newCommand = org.openhab.core.library.types.StringType.valueOf(commandValue);
+                        newCommand = StringType.valueOf(commandValue);
                         validationPassed = false;
                         logger.debug("Command validation failed, but forcing string command: {}", commandValue);
                     } else {
@@ -189,7 +190,7 @@ public class SendItemCommandAction implements Action {
                 Command tempCommand = TypeParser.parseCommand(item.getAcceptedCommandTypes(), commandValue);
                 if (tempCommand == null) {
                     // If parsing fails, create a string command
-                    tempCommand = org.openhab.core.library.types.StringType.valueOf(commandValue);
+                    tempCommand = StringType.valueOf(commandValue);
                 }
                 newCommand = tempCommand;
                 validationPassed = false; // Since we didn't validate

@@ -1,5 +1,7 @@
 package org.openhab.core.ai.reasoning.memory;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -14,8 +16,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.reasoning.api.MemoryConsolidationResult;
+import org.openhab.core.ai.reasoning.api.MemoryPerformanceMetrics;
+import org.openhab.core.ai.reasoning.api.MemorySearchResult;
+import org.openhab.core.ai.reasoning.api.MemoryStoreResult;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.memory.api.MemoryManager;
+import org.openhab.core.ai.reasoning.session.MemoryReasoningSession;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -51,7 +58,7 @@ public class AgentMemory implements MemoryManager {
     private final Map<String, MemoryPattern> memoryPatterns = new ConcurrentHashMap<>();
 
     // Reasoning session management (UNIFIED MEMORY ARCHITECTURE)
-    private final Map<String, org.openhab.core.ai.reasoning.session.MemoryReasoningSession> activeSessions = new ConcurrentHashMap<>();
+    private final Map<String, MemoryReasoningSession> activeSessions = new ConcurrentHashMap<>();
     private final Map<String, org.openhab.core.ai.reasoning.session.SessionContext> sessionContexts = new ConcurrentHashMap<>();
     private final Map<String, LearningHistory> learningHistory = new ConcurrentHashMap<>();
 
@@ -241,7 +248,7 @@ public class AgentMemory implements MemoryManager {
         try {
             patternLock.readLock().lock();
 
-            org.openhab.core.ai.reasoning.memory.MemoryPattern pattern = memoryPatterns.get(agentId);
+            MemoryPattern pattern = memoryPatterns.get(agentId);
             if (pattern == null) {
                 return Collections.emptyList();
             }
@@ -255,8 +262,8 @@ public class AgentMemory implements MemoryManager {
     /**
      * Get memory performance metrics
      */
-    public org.openhab.core.ai.reasoning.metrics.MemoryPerformanceMetrics getPerformanceMetrics() {
-        return org.openhab.core.ai.reasoning.metrics.MemoryPerformanceMetrics.builder()
+    public MemoryPerformanceMetrics getPerformanceMetrics() {
+        return MemoryPerformanceMetrics.builder()
                 .totalStores(totalMemoryStores.get()).totalRetrievals(totalMemoryRetrievals.get())
                 .totalConsolidations(totalMemoryConsolidations.get())
                 .totalPatternRecognitions(totalPatternRecognitions.get()).shortTermMemoryCount(shortTermMemories.size())
@@ -270,8 +277,7 @@ public class AgentMemory implements MemoryManager {
      */
     public ReasoningSessionResult storeReasoningSession(String agentId, String sessionId, ReasoningContext context) {
         try {
-            org.openhab.core.ai.reasoning.session.MemoryReasoningSession session = new org.openhab.core.ai.reasoning.session.MemoryReasoningSession(
-                    sessionId, agentId, context);
+            MemoryReasoningSession session = new MemoryReasoningSession(sessionId, agentId, context);
             activeSessions.put(sessionId, session);
 
             // Also store in short-term memory for quick access
@@ -290,9 +296,8 @@ public class AgentMemory implements MemoryManager {
     /**
      * Retrieve a reasoning session for an agent
      */
-    public org.openhab.core.ai.reasoning.session.MemoryReasoningSession retrieveReasoningSession(String agentId,
-            String sessionId) {
-        org.openhab.core.ai.reasoning.session.MemoryReasoningSession session = activeSessions.get(sessionId);
+    public MemoryReasoningSession retrieveReasoningSession(String agentId, String sessionId) {
+        MemoryReasoningSession session = activeSessions.get(sessionId);
         if (session != null && session.getAgentId().equals(agentId)) {
             return session;
         }
@@ -363,7 +368,7 @@ public class AgentMemory implements MemoryManager {
     /**
      * Get all active sessions for an agent
      */
-    public List<org.openhab.core.ai.reasoning.session.MemoryReasoningSession> getActiveSessions(String agentId) {
+    public List<MemoryReasoningSession> getActiveSessions(String agentId) {
         return activeSessions.values().stream().filter(session -> session.getAgentId().equals(agentId)).toList();
     }
 
@@ -406,7 +411,7 @@ public class AgentMemory implements MemoryManager {
         // For now, we'll implement a basic file-based persistence
         try {
             String persistenceDir = System.getProperty("openhab.userdata") + "/ai/memory";
-            java.io.File dir = new java.io.File(persistenceDir);
+            File dir = new File(persistenceDir);
             if (!dir.exists()) {
                 dir.mkdirs();
                 logger.debug("Created memory persistence directory: {}", persistenceDir);
@@ -414,12 +419,12 @@ public class AgentMemory implements MemoryManager {
             }
 
             // Load short-term memories
-            java.io.File shortTermFile = new java.io.File(dir, "short-term-memory.json");
+            File shortTermFile = new File(dir, "short-term-memory.json");
             if (shortTermFile.exists()) {
                 // Implement JSON deserialization for short-term memories
                 logger.debug("Found short-term memory file, loading...");
                 try {
-                    String jsonContent = new String(java.nio.file.Files.readAllBytes(shortTermFile.toPath()));
+                    String jsonContent = new String(Files.readAllBytes(shortTermFile.toPath()));
                     deserializeShortTermMemories(jsonContent);
                     logger.debug("Successfully loaded short-term memories from file");
                 } catch (Exception e) {
@@ -428,12 +433,12 @@ public class AgentMemory implements MemoryManager {
             }
 
             // Load long-term memories
-            java.io.File longTermFile = new java.io.File(dir, "long-term-memory.json");
+            File longTermFile = new File(dir, "long-term-memory.json");
             if (longTermFile.exists()) {
                 // Implement JSON deserialization for long-term memories
                 logger.debug("Found long-term memory file, loading...");
                 try {
-                    String jsonContent = new String(java.nio.file.Files.readAllBytes(longTermFile.toPath()));
+                    String jsonContent = new String(Files.readAllBytes(longTermFile.toPath()));
                     deserializeLongTermMemories(jsonContent);
                     logger.debug("Successfully loaded long-term memories from file");
                 } catch (Exception e) {
@@ -442,12 +447,12 @@ public class AgentMemory implements MemoryManager {
             }
 
             // Load memory patterns
-            java.io.File patternsFile = new java.io.File(dir, "memory-patterns.json");
+            File patternsFile = new File(dir, "memory-patterns.json");
             if (patternsFile.exists()) {
                 // Implement JSON deserialization for memory patterns
                 logger.debug("Found memory patterns file, loading...");
                 try {
-                    String jsonContent = new String(java.nio.file.Files.readAllBytes(patternsFile.toPath()));
+                    String jsonContent = new String(Files.readAllBytes(patternsFile.toPath()));
                     deserializeMemoryPatterns(jsonContent);
                     logger.debug("Successfully loaded memory patterns from file");
                 } catch (Exception e) {
@@ -470,7 +475,7 @@ public class AgentMemory implements MemoryManager {
         // For now, we'll implement a basic file-based persistence
         try {
             String persistenceDir = System.getProperty("openhab.userdata") + "/ai/memory";
-            java.io.File dir = new java.io.File(persistenceDir);
+            File dir = new File(persistenceDir);
             if (!dir.exists()) {
                 dir.mkdirs();
             }
@@ -480,8 +485,8 @@ public class AgentMemory implements MemoryManager {
             logger.debug("Saving short-term memories...");
             try {
                 String jsonContent = serializeShortTermMemories();
-                java.io.File shortTermFile = new java.io.File(dir, "short-term-memory.json");
-                java.nio.file.Files.write(shortTermFile.toPath(), jsonContent.getBytes());
+                File shortTermFile = new File(dir, "short-term-memory.json");
+                Files.write(shortTermFile.toPath(), jsonContent.getBytes());
                 logger.debug("Successfully saved short-term memories to file");
             } catch (Exception e) {
                 logger.warn("Failed to save short-term memories to file: {}", e.getMessage());
@@ -492,8 +497,8 @@ public class AgentMemory implements MemoryManager {
             logger.debug("Saving long-term memories...");
             try {
                 String jsonContent = serializeLongTermMemories();
-                java.io.File longTermFile = new java.io.File(dir, "long-term-memory.json");
-                java.nio.file.Files.write(longTermFile.toPath(), jsonContent.getBytes());
+                File longTermFile = new File(dir, "long-term-memory.json");
+                Files.write(longTermFile.toPath(), jsonContent.getBytes());
                 logger.debug("Successfully saved long-term memories to file");
             } catch (Exception e) {
                 logger.warn("Failed to save long-term memories to file: {}", e.getMessage());
@@ -504,8 +509,8 @@ public class AgentMemory implements MemoryManager {
             logger.debug("Saving memory patterns...");
             try {
                 String jsonContent = serializeMemoryPatterns();
-                java.io.File patternsFile = new java.io.File(dir, "memory-patterns.json");
-                java.nio.file.Files.write(patternsFile.toPath(), jsonContent.getBytes());
+                File patternsFile = new File(dir, "memory-patterns.json");
+                Files.write(patternsFile.toPath(), jsonContent.getBytes());
                 logger.debug("Successfully saved memory patterns to file");
             } catch (Exception e) {
                 logger.warn("Failed to save memory patterns to file: {}", e.getMessage());
@@ -558,57 +563,54 @@ public class AgentMemory implements MemoryManager {
 
     // MemoryManager interface implementation
     @Override
-    public CompletableFuture<org.openhab.core.ai.reasoning.api.MemoryStoreResult> storeShortTermMemory(String agentId,
-            String memory, @Nullable Map<String, Object> metadata) {
+    public CompletableFuture<MemoryStoreResult> storeShortTermMemory(String agentId, String memory,
+            @Nullable Map<String, Object> metadata) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 MemoryEntry entry = new MemoryEntry(generateMemoryId(), memory, "general", 0.5,
                         metadata != null ? metadata : new ConcurrentHashMap<>());
                 AgentMemoryStoreResult result = storeShortTermMemory(agentId, entry);
                 if (result.isSuccess()) {
-                    return new org.openhab.core.ai.reasoning.api.MemoryStoreResult(true, result.getEntry().getId(),
-                            null);
+                    return new MemoryStoreResult(true, result.getEntry().getId(), null);
                 } else {
-                    return new org.openhab.core.ai.reasoning.api.MemoryStoreResult(false, null, result.getError());
+                    return new MemoryStoreResult(false, null, result.getError());
                 }
             } catch (Exception e) {
                 logger.error("Error storing short-term memory for agent: {}", agentId, e);
-                return new org.openhab.core.ai.reasoning.api.MemoryStoreResult(false, null, e.getMessage());
+                return new MemoryStoreResult(false, null, e.getMessage());
             }
         });
     }
 
     @Override
-    public CompletableFuture<org.openhab.core.ai.reasoning.api.MemoryStoreResult> storeLongTermMemory(String agentId,
-            String memory, @Nullable Map<String, Object> metadata) {
+    public CompletableFuture<MemoryStoreResult> storeLongTermMemory(String agentId, String memory,
+            @Nullable Map<String, Object> metadata) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 MemoryEntry entry = new MemoryEntry(generateMemoryId(), memory, "general", 0.5,
                         metadata != null ? metadata : new ConcurrentHashMap<>());
                 AgentMemoryStoreResult result = storeLongTermMemory(agentId, entry);
                 if (result.isSuccess()) {
-                    return new org.openhab.core.ai.reasoning.api.MemoryStoreResult(true, result.getEntry().getId(),
-                            null);
+                    return new MemoryStoreResult(true, result.getEntry().getId(), null);
                 } else {
-                    return new org.openhab.core.ai.reasoning.api.MemoryStoreResult(false, null, result.getError());
+                    return new MemoryStoreResult(false, null, result.getError());
                 }
             } catch (Exception e) {
                 logger.error("Error storing long-term memory for agent: {}", agentId, e);
-                return new org.openhab.core.ai.reasoning.api.MemoryStoreResult(false, null, e.getMessage());
+                return new MemoryStoreResult(false, null, e.getMessage());
             }
         });
     }
 
     @Override
-    public CompletableFuture<List<org.openhab.core.ai.reasoning.api.MemorySearchResult>> searchMemories(String agentId,
-            String query, int limit) {
+    public CompletableFuture<List<MemorySearchResult>> searchMemories(String agentId, String query, int limit) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 List<MemoryEntry> results = searchMemoriesInternal(agentId, query, limit);
-                List<org.openhab.core.ai.reasoning.api.MemorySearchResult> searchResults = new ArrayList<>();
+                List<MemorySearchResult> searchResults = new ArrayList<>();
                 for (MemoryEntry entry : results) {
-                    searchResults.add(new org.openhab.core.ai.reasoning.api.MemorySearchResult(entry.getId(),
-                            entry.getContent(), entry.getRelevance(), entry.getTimestamp().toEpochMilli()));
+                    searchResults.add(new MemorySearchResult(entry.getId(), entry.getContent(), entry.getRelevance(),
+                            entry.getTimestamp().toEpochMilli()));
                 }
                 return searchResults;
             } catch (Exception e) {
@@ -619,35 +621,34 @@ public class AgentMemory implements MemoryManager {
     }
 
     @Override
-    public CompletableFuture<org.openhab.core.ai.reasoning.api.MemoryConsolidationResult> consolidateMemories(
-            String agentId) {
+    public CompletableFuture<MemoryConsolidationResult> consolidateMemories(String agentId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 AgentMemoryConsolidationResult result = consolidateMemoriesInternal(agentId);
-                return new org.openhab.core.ai.reasoning.api.MemoryConsolidationResult(result.isSuccess(),
-                        result.getConsolidatedCount(), result.getError());
+                return new MemoryConsolidationResult(result.isSuccess(), result.getConsolidatedCount(),
+                        result.getError());
             } catch (Exception e) {
                 logger.error("Error consolidating memories for agent: {}", agentId, e);
-                return new org.openhab.core.ai.reasoning.api.MemoryConsolidationResult(false, 0, e.getMessage());
+                return new MemoryConsolidationResult(false, 0, e.getMessage());
             }
         });
     }
 
     @Override
-    public CompletableFuture<org.openhab.core.ai.reasoning.api.MemoryPerformanceMetrics> getPerformanceMetrics(
-            String agentId) {
+    public CompletableFuture<MemoryPerformanceMetrics> getPerformanceMetrics(String agentId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                org.openhab.core.ai.reasoning.MemoryPerformanceMetrics metrics = getPerformanceMetrics();
-                return new org.openhab.core.ai.reasoning.api.MemoryPerformanceMetrics(
-                        metrics.getTotalStores() + metrics.getTotalRetrievals(), metrics.getShortTermMemoryCount(),
-                        metrics.getLongTermMemoryCount(), 0.0, // averageSearchTime - not tracked in current
-                                                               // implementation
+                MemoryPerformanceMetrics metrics = getPerformanceMetrics();
+                return new MemoryPerformanceMetrics(metrics.getTotalStores() + metrics.getTotalRetrievals(),
+                        metrics.getShortTermMemoryCount(), metrics.getLongTermMemoryCount(), 0.0, // averageSearchTime -
+                                                                                                  // not tracked in
+                                                                                                  // current
+                                                                                                  // implementation
                         0.0 // averageStorageTime - not tracked in current implementation
                 );
             } catch (Exception e) {
                 logger.error("Error getting performance metrics for agent: {}", agentId, e);
-                return new org.openhab.core.ai.reasoning.api.MemoryPerformanceMetrics(0, 0, 0, 0.0, 0.0);
+                return new MemoryPerformanceMetrics(0, 0, 0, 0.0, 0.0);
             }
         });
     }
@@ -842,7 +843,7 @@ public class AgentMemory implements MemoryManager {
                 List<Map<String, Object>> patternsData = (List<Map<String, Object>>) entry.getValue();
 
                 MemoryPattern pattern = new MemoryPattern(agentId);
-                for (Map<String, Object> patternData : patternsData) {
+                for (PatternEntry patternEntry : patternsData) {
                     PatternEntry patternEntry = new PatternEntry((String) patternData.get("category"));
                     // Note: PatternEntry doesn't have setters, so we can't restore the full state
                     // In a real implementation, you'd need to add setters or use a different approach

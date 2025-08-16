@@ -45,7 +45,7 @@ public class AgentModelPromptOptimizer {
     private static final double TOKENS_PER_CHAR = 0.25; // Rough estimation
     private static final int MAX_TOKENS = 2000;
 
-    private final Map<String, org.openhab.core.ai.reasoning.optimization.OptimizationRule> optimizationRules = new ConcurrentHashMap<>();
+    private final Map<String, OptimizationRule> optimizationRules = new ConcurrentHashMap<>();
 
     /**
      * Optimize a prompt for better performance and accuracy.
@@ -164,7 +164,7 @@ public class AgentModelPromptOptimizer {
      * @param ruleName The name of the rule
      * @param rule The optimization rule
      */
-    public void addOptimizationRule(String ruleName, org.openhab.core.ai.reasoning.optimization.OptimizationRule rule) {
+    public void addOptimizationRule(String ruleName, OptimizationRule rule) {
         optimizationRules.put(ruleName, rule);
         logger.debug("Added optimization rule: {}", ruleName);
     }

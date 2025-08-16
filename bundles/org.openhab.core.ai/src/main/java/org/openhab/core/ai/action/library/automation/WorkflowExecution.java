@@ -14,7 +14,7 @@ import org.eclipse.jdt.annotation.Nullable;
  * @since 1.0.0
  */
 @NonNullByDefault
-class WorkflowExecution {
+public class WorkflowExecution {
     final String executionId;
     final String workflowId;
     final Map<?, ?> parameters;

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -221,37 +222,36 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
             timeout = Duration.ofSeconds(30); // Default fallback
         }
 
-        return executionFuture.orTimeout(timeout.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS)
-                .handle((result, throwable) -> {
-                    agentInfo.decrementLoad();
+        return executionFuture.orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS).handle((result, throwable) -> {
+            agentInfo.decrementLoad();
 
-                    if (throwable != null) {
-                        logger.warn("Action execution failed on agent {}: {}", agentId, throwable.getMessage());
+            if (throwable != null) {
+                logger.warn("Action execution failed on agent {}: {}", agentId, throwable.getMessage());
 
-                        // Try failover if enabled
-                        Boolean failoverEnabled = enableFailover.get();
-                        if (failoverEnabled != null && failoverEnabled) {
-                            return attemptFailover(actionContext, agentId, startTime);
-                        }
+                // Try failover if enabled
+                Boolean failoverEnabled = enableFailover.get();
+                if (failoverEnabled != null && failoverEnabled) {
+                    return attemptFailover(actionContext, agentId, startTime);
+                }
 
-                        failedDelegations.incrementAndGet();
-                        return ActionResult.error("Action execution failed on agent",
-                                new ActionError("AGENT_EXECUTION_ERROR", throwable.getMessage()),
-                                Duration.between(startTime, Instant.now()).toMillis());
-                    }
+                failedDelegations.incrementAndGet();
+                return ActionResult.error("Action execution failed on agent",
+                        new ActionError("AGENT_EXECUTION_ERROR", throwable.getMessage()),
+                        Duration.between(startTime, Instant.now()).toMillis());
+            }
 
-                    if (result != null && result.isSuccess()) {
-                        successfulDelegations.incrementAndGet();
-                    } else {
-                        failedDelegations.incrementAndGet();
-                    }
+            if (result != null && result.isSuccess()) {
+                successfulDelegations.incrementAndGet();
+            } else {
+                failedDelegations.incrementAndGet();
+            }
 
-                    long executionTime = Duration.between(startTime, Instant.now()).toMillis();
-                    totalDelegationTime.addAndGet(executionTime);
+            long executionTime = Duration.between(startTime, Instant.now()).toMillis();
+            totalDelegationTime.addAndGet(executionTime);
 
-                    logger.debug("Action delegation completed in {} ms on agent {}", executionTime, agentId);
-                    return result;
-                });
+            logger.debug("Action delegation completed in {} ms on agent {}", executionTime, agentId);
+            return result;
+        });
     }
 
     /**

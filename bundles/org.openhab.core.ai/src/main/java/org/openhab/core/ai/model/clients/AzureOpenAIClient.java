@@ -1,5 +1,6 @@
 package org.openhab.core.ai.model.clients;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -30,6 +32,7 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatRequestMessage;
 import com.azure.ai.openai.models.ChatRequestUserMessage;
 import com.azure.core.credential.AzureKeyCredential;
 
@@ -55,7 +58,7 @@ public class AzureOpenAIClient implements ModelClient {
     private final AtomicInteger successfulRequests = new AtomicInteger(0);
     private final AtomicInteger errorCount = new AtomicInteger(0);
     private final AtomicReference<String> lastError = new AtomicReference<>();
-    private final AtomicReference<java.time.Instant> lastErrorTime = new AtomicReference<>();
+    private final AtomicReference<Instant> lastErrorTime = new AtomicReference<>();
     private final AtomicLong minResponseTime = new AtomicLong(Long.MAX_VALUE);
     private final AtomicLong maxResponseTime = new AtomicLong(0);
 
@@ -85,8 +88,7 @@ public class AzureOpenAIClient implements ModelClient {
 
                 // Build options
                 ChatCompletionsOptions options = new ChatCompletionsOptions(
-                        messages.stream().map(msg -> (com.azure.ai.openai.models.ChatRequestMessage) msg)
-                                .collect(java.util.stream.Collectors.toList()));
+                        messages.stream().map(msg -> (ChatRequestMessage) msg).collect(Collectors.toList()));
                 options.setMaxTokens(params.getMaxTokens());
                 options.setTemperature(params.getTemperature());
 
@@ -135,8 +137,7 @@ public class AzureOpenAIClient implements ModelClient {
 
                 // Build options
                 ChatCompletionsOptions options = new ChatCompletionsOptions(
-                        messages.stream().map(msg -> (com.azure.ai.openai.models.ChatRequestMessage) msg)
-                                .collect(java.util.stream.Collectors.toList()));
+                        messages.stream().map(msg -> (ChatRequestMessage) msg).collect(Collectors.toList()));
                 options.setMaxTokens(params.getMaxTokens());
                 options.setTemperature(params.getTemperature());
                 options.setStream(true);
@@ -207,11 +208,11 @@ public class AzureOpenAIClient implements ModelClient {
             double successRate = totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get()
                     : 0.0;
 
-            return new ModelHealthStatus(available, java.time.Instant.now(), avgResponseTime, successRate,
-                    errorCount.get(), lastError.get(), lastErrorTime.get());
+            return new ModelHealthStatus(available, Instant.now(), avgResponseTime, successRate, errorCount.get(),
+                    lastError.get(), lastErrorTime.get());
         } catch (Exception e) {
-            return new ModelHealthStatus(false, java.time.Instant.now(), -1, 0.0, errorCount.get() + 1,
-                    e.getMessage() != null ? e.getMessage() : "Unknown error", java.time.Instant.now());
+            return new ModelHealthStatus(false, Instant.now(), -1, 0.0, errorCount.get() + 1,
+                    e.getMessage() != null ? e.getMessage() : "Unknown error", Instant.now());
         }
     }
 
@@ -234,8 +235,7 @@ public class AzureOpenAIClient implements ModelClient {
                 List<ChatRequestUserMessage> messages = List.of(userMessage);
 
                 ChatCompletionsOptions options = new ChatCompletionsOptions(
-                        messages.stream().map(msg -> (com.azure.ai.openai.models.ChatRequestMessage) msg)
-                                .collect(java.util.stream.Collectors.toList()));
+                        messages.stream().map(msg -> (ChatRequestMessage) msg).collect(Collectors.toList()));
                 options.setMaxTokens(5);
 
                 ChatCompletions response = openAIClient.getChatCompletions(config.getDeploymentName(), options);
@@ -302,7 +302,7 @@ public class AzureOpenAIClient implements ModelClient {
             errorCount.incrementAndGet();
             if (errorMessage != null) {
                 lastError.set(errorMessage);
-                lastErrorTime.set(java.time.Instant.now());
+                lastErrorTime.set(Instant.now());
             }
         }
 

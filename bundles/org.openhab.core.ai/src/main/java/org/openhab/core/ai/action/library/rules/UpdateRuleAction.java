@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action.library.rules;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -76,7 +77,7 @@ public class UpdateRuleAction implements Action {
                 Map.of("type", "boolean", "description", "Whether to overwrite existing properties", "default", false));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -101,17 +102,17 @@ public class UpdateRuleAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String ruleUID = (String) parameters.get("ruleUID");
         if (ruleUID == null || ruleUID.trim().isEmpty()) {
-            return ActionValidationResult.invalid(java.util.List.of("ruleUID is required and cannot be empty"));
+            return ActionValidationResult.invalid(List.of("ruleUID is required and cannot be empty"));
         }
 
         // Check if rule exists
         if (ruleRegistry.get(ruleUID) == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Rule with UID '" + ruleUID + "' does not exist"));
+            return ActionValidationResult.invalid(List.of("Rule with UID '" + ruleUID + "' does not exist"));
         }
 
         return ActionValidationResult.valid(parameters);
@@ -124,16 +125,13 @@ public class UpdateRuleAction implements Action {
             String name = (String) parameters.get("name");
             String description = (String) parameters.get("description");
             @SuppressWarnings("unchecked")
-            java.util.List<String> tags = (java.util.List<String>) parameters.get("tags");
+            List<String> tags = (List<String>) parameters.get("tags");
             @SuppressWarnings("unchecked")
-            java.util.List<Map<String, Object>> triggers = (java.util.List<Map<String, Object>>) parameters
-                    .get("triggers");
+            List<Map<String, Object>> triggers = (List<Map<String, Object>>) parameters.get("triggers");
             @SuppressWarnings("unchecked")
-            java.util.List<Map<String, Object>> conditions = (java.util.List<Map<String, Object>>) parameters
-                    .get("conditions");
+            List<Map<String, Object>> conditions = (List<Map<String, Object>>) parameters.get("conditions");
             @SuppressWarnings("unchecked")
-            java.util.List<Map<String, Object>> actions = (java.util.List<Map<String, Object>>) parameters
-                    .get("actions");
+            List<Map<String, Object>> actions = (List<Map<String, Object>>) parameters.get("actions");
             @SuppressWarnings("unchecked")
             Map<String, Object> configuration = (Map<String, Object>) parameters.get("configuration");
             Boolean enabled = (Boolean) parameters.get("enabled");
@@ -196,10 +194,9 @@ public class UpdateRuleAction implements Action {
     /**
      * Create an updated rule by merging existing rule with new parameters
      */
-    private Rule createUpdatedRule(Rule existingRule, String name, String description, java.util.List<String> tags,
-            java.util.List<Map<String, Object>> triggers, java.util.List<Map<String, Object>> conditions,
-            java.util.List<Map<String, Object>> actions, Map<String, Object> configuration, Boolean enabled,
-            boolean overwrite) {
+    private Rule createUpdatedRule(Rule existingRule, String name, String description, List<String> tags,
+            List<Map<String, Object>> triggers, List<Map<String, Object>> conditions, List<Map<String, Object>> actions,
+            Map<String, Object> configuration, Boolean enabled, boolean overwrite) {
 
         // For now, we'll return the existing rule since we can't create new Rule objects
         // In a full implementation, we would need to use the proper constructor patterns
@@ -240,7 +237,7 @@ public class UpdateRuleAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "update", "automation")).build();
+                .tags(List.of("rules", "update", "automation")).build();
     }
 
     @Override

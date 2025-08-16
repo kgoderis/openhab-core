@@ -466,8 +466,8 @@ public class ResourceManagementTool implements Tool {
                 }
 
                 @Override
-                public org.openhab.core.ai.tool.api.SpecificationType getType() {
-                    return org.openhab.core.ai.tool.api.SpecificationType.RESOURCE;
+                public SpecificationType getType() {
+                    return SpecificationType.RESOURCE;
                 }
             };
 

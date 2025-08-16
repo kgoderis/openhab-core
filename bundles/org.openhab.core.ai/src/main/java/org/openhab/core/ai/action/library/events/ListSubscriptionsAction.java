@@ -1,5 +1,8 @@
 package org.openhab.core.ai.action.library.events;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -67,10 +70,10 @@ public class ListSubscriptionsAction implements Action {
 
     @Override
     public Map<String, Object> getParameterSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
 
-        Map<String, Object> properties = new java.util.HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put("clientId", Map.of("type", "string", "description", "MCP client identifier"));
         properties.put("includeDetails",
                 Map.of("type", "boolean", "description", "Include detailed subscription information", "default", true));
@@ -83,10 +86,10 @@ public class ListSubscriptionsAction implements Action {
 
     @Override
     public Map<String, Object> getReturnSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
 
-        Map<String, Object> properties = new java.util.HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put("clientId", Map.of("type", "string", "description", "MCP client identifier"));
         properties.put("subscriptions", Map.of("type", "array", "description", "List of active subscriptions"));
         properties.put("totalCount", Map.of("type", "integer", "description", "Total number of subscriptions"));
@@ -99,7 +102,7 @@ public class ListSubscriptionsAction implements Action {
 
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
-        List<String> errors = new java.util.ArrayList<>();
+        List<String> errors = new ArrayList<>();
 
         // Validate clientId
         Object clientIdObj = parameters.get("clientId");
@@ -157,7 +160,7 @@ public class ListSubscriptionsAction implements Action {
 
     @Override
     public Map<String, Object> getCapabilities() {
-        Map<String, Object> capabilities = new java.util.HashMap<>();
+        Map<String, Object> capabilities = new HashMap<>();
         capabilities.put("supportsAsync", true);
         capabilities.put("supportsFiltering", false);
         capabilities.put("supportsPagination", false);
@@ -180,9 +183,9 @@ public class ListSubscriptionsAction implements Action {
     }
 
     private Map<String, Object> listSubscriptions(Map<String, Object> parameters, ActionContext context) {
-        Map<String, Object> result = new java.util.HashMap<>();
+        Map<String, Object> result = new HashMap<>();
         result.put("action", "list_subscriptions");
-        result.put("timestamp", java.time.Instant.now().toString());
+        result.put("timestamp", Instant.now().toString());
 
         // Extract parameters
         String clientId = (String) parameters.get("clientId");
@@ -221,7 +224,7 @@ public class ListSubscriptionsAction implements Action {
     }
 
     private Map<String, Object> convertSubscriptionInfoToMap(SubscriptionInfo info) {
-        Map<String, Object> map = new java.util.HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("subscriptionId", info.getSubscriptionId());
         map.put("clientId", info.getClientId());
         map.put("eventTypes", info.getEventTypes());

@@ -1,10 +1,12 @@
 package org.openhab.core.ai.tool.prompts.library;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.registry.PromptExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +43,7 @@ public class SystemDiagnosticsPrompt {
      * @param arguments the prompt arguments
      * @return the execution result
      */
-    public org.openhab.core.ai.tool.registry.PromptExecutionResult execute(Map<String, Object> arguments) {
+    public PromptExecutionResult execute(Map<String, Object> arguments) {
         totalExecutions.incrementAndGet();
         long startTime = System.currentTimeMillis();
 
@@ -59,7 +61,7 @@ public class SystemDiagnosticsPrompt {
                         + ". Valid types are: SYSTEM_HEALTH, PERFORMANCE, MEMORY, NETWORK, STORAGE, SECURITY";
                 logger.warn(errorMessage);
                 failedExecutions.incrementAndGet();
-                return new org.openhab.core.ai.tool.registry.PromptExecutionResult(false, errorMessage, null);
+                return new PromptExecutionResult(false, errorMessage, null);
             }
 
             // Execute the diagnostic
@@ -69,13 +71,13 @@ public class SystemDiagnosticsPrompt {
             logger.debug("System diagnostics prompt executed successfully: {} {} {}", diagnosticType, scope,
                     includeDetails);
 
-            return new org.openhab.core.ai.tool.registry.PromptExecutionResult(true, null, result);
+            return new PromptExecutionResult(true, null, result);
 
         } catch (Exception e) {
             String errorMessage = "Error executing system diagnostics prompt: " + e.getMessage();
             logger.error(errorMessage, e);
             failedExecutions.incrementAndGet();
-            return new org.openhab.core.ai.tool.registry.PromptExecutionResult(false, errorMessage, null);
+            return new PromptExecutionResult(false, errorMessage, null);
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
             totalExecutionTimeMs.addAndGet(executionTime);
@@ -128,7 +130,7 @@ public class SystemDiagnosticsPrompt {
      * @return performance metrics as a map
      */
     public Map<String, Object> getPerformanceMetrics() {
-        Map<String, Object> metrics = new java.util.HashMap<>();
+        Map<String, Object> metrics = new HashMap<>();
         metrics.put("totalExecutions", totalExecutions.get());
         metrics.put("successfulExecutions", successfulExecutions.get());
         metrics.put("failedExecutions", failedExecutions.get());
@@ -169,10 +171,10 @@ public class SystemDiagnosticsPrompt {
      * @return the argument schema
      */
     public Map<String, Object> getArgumentSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
 
         // diagnosticType argument
-        Map<String, Object> diagnosticTypeSchema = new java.util.HashMap<>();
+        Map<String, Object> diagnosticTypeSchema = new HashMap<>();
         diagnosticTypeSchema.put("type", "string");
         diagnosticTypeSchema.put("description",
                 "Type of diagnostic to perform (SYSTEM_HEALTH, PERFORMANCE, MEMORY, NETWORK, STORAGE, SECURITY)");
@@ -182,7 +184,7 @@ public class SystemDiagnosticsPrompt {
         schema.put("diagnosticType", diagnosticTypeSchema);
 
         // scope argument
-        Map<String, Object> scopeSchema = new java.util.HashMap<>();
+        Map<String, Object> scopeSchema = new HashMap<>();
         scopeSchema.put("type", "string");
         scopeSchema.put("description", "Scope of the diagnostic (FULL, QUICK, TARGETED)");
         scopeSchema.put("required", false);
@@ -190,7 +192,7 @@ public class SystemDiagnosticsPrompt {
         schema.put("scope", scopeSchema);
 
         // includeDetails argument
-        Map<String, Object> includeDetailsSchema = new java.util.HashMap<>();
+        Map<String, Object> includeDetailsSchema = new HashMap<>();
         includeDetailsSchema.put("type", "string");
         includeDetailsSchema.put("description", "Include detailed diagnostic information");
         includeDetailsSchema.put("required", false);

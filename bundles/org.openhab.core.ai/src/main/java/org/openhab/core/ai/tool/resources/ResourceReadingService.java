@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.resources;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -178,7 +179,7 @@ public class ResourceReadingService {
 
             // TODO: Implement actual subscription mechanism
             // For now, return a mock subscription result
-            Map<String, Object> subscriptionResult = new java.util.HashMap<>();
+            Map<String, Object> subscriptionResult = new HashMap<>();
             subscriptionResult.put("subscriptionId", "sub-" + System.currentTimeMillis());
             subscriptionResult.put("resourceId", resourceId);
             subscriptionResult.put("status", "active");
@@ -202,7 +203,7 @@ public class ResourceReadingService {
      * @return Performance metrics map
      */
     public Map<String, Object> getPerformanceMetrics() {
-        Map<String, Object> metrics = new java.util.HashMap<>();
+        Map<String, Object> metrics = new HashMap<>();
         metrics.put("totalReads", totalReads.get());
         metrics.put("cacheHits", cacheHits.get());
         metrics.put("cacheMisses", cacheMisses.get());

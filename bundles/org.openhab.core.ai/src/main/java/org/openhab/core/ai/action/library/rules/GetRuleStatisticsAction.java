@@ -1,7 +1,10 @@
 package org.openhab.core.ai.action.library.rules;
 
+import java.time.Duration;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,7 +83,7 @@ public class GetRuleStatisticsAction implements Action {
 
         Map<String, Object> properties = new HashMap<>();
         properties.put("ruleUID", Map.of("type", "string", "description", "The UID of the rule to get statistics for"));
-        properties.put("timeRange", Map.of("type", "string", "enum", java.util.List.of("1h", "24h", "7d", "30d", "all"),
+        properties.put("timeRange", Map.of("type", "string", "enum", List.of("1h", "24h", "7d", "30d", "all"),
                 "description", "Time range for statistics", "default", "24h"));
         properties.put("includePerformance",
                 Map.of("type", "boolean", "description", "Include performance statistics", "default", true));
@@ -94,7 +97,7 @@ public class GetRuleStatisticsAction implements Action {
                 "Persistence service to use (e.g., 'rrd4j', 'influxdb', 'jdbc')", "default", "rrd4j"));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -249,7 +252,7 @@ public class GetRuleStatisticsAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "statistics", "monitoring")).build();
+                .tags(List.of("rules", "statistics", "monitoring")).build();
     }
 
     @Override
@@ -399,7 +402,7 @@ public class GetRuleStatisticsAction implements Action {
                 // Track usage patterns if requested
                 if (includeUsage) {
                     ZonedDateTime executionDateTime = ZonedDateTime.ofInstant(historicItem.getTimestamp().toInstant(),
-                            java.time.ZoneId.systemDefault());
+                            ZoneId.systemDefault());
 
                     String hour = executionDateTime.getHour() + ":00";
                     hourlyUsage.put(hour, hourlyUsage.getOrDefault(hour, 0) + 1);
@@ -432,10 +435,9 @@ public class GetRuleStatisticsAction implements Action {
             statistics.put("totalExecutionTime", totalExecutionTime);
 
             // Time range statistics
-            statistics.put("lastExecution",
-                    lastExecutionTime > 0 ? new java.util.Date(lastExecutionTime).toString() : "Never");
+            statistics.put("lastExecution", lastExecutionTime > 0 ? new Date(lastExecutionTime).toString() : "Never");
             statistics.put("firstExecution",
-                    firstExecutionTime < Long.MAX_VALUE ? new java.util.Date(firstExecutionTime).toString() : "Never");
+                    firstExecutionTime < Long.MAX_VALUE ? new Date(firstExecutionTime).toString() : "Never");
             statistics.put("executionFrequency", calculateExecutionFrequency(totalExecutions, startTime, endTime));
 
             // Performance statistics if requested
@@ -523,7 +525,7 @@ public class GetRuleStatisticsAction implements Action {
      * Calculate execution frequency (executions per hour).
      */
     private double calculateExecutionFrequency(int totalExecutions, ZonedDateTime startTime, ZonedDateTime endTime) {
-        long durationHours = java.time.Duration.between(startTime, endTime).toHours();
+        long durationHours = Duration.between(startTime, endTime).toHours();
         return durationHours > 0 ? (double) totalExecutions / durationHours : 0.0;
     }
 

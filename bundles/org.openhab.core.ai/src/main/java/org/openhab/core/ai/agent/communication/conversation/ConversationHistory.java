@@ -2,6 +2,7 @@ package org.openhab.core.ai.agent.communication.conversation;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -16,12 +17,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class ConversationHistory {
     private final String conversationId;
-    private final java.util.concurrent.CopyOnWriteArrayList<ConversationMessage> messages;
+    private final CopyOnWriteArrayList<ConversationMessage> messages;
     private Instant lastActivity;
 
     public ConversationHistory(String conversationId) {
         this.conversationId = conversationId;
-        this.messages = new java.util.concurrent.CopyOnWriteArrayList<>();
+        this.messages = new CopyOnWriteArrayList<>();
         this.lastActivity = Instant.now();
     }
 

@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.registry;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
+import reactor.core.publisher.Mono;
 
 /**
  * Implementation of CompletionRegistry for MCP Completions.
@@ -110,7 +112,7 @@ public class DefaultCompletionRegistry implements CompletionRegistry {
             LOGGER.debug("Creating sync completion specifications for {} completions", completions.size());
 
             // Create completion specifications using MCP SDK builders
-            var specs = new java.util.ArrayList<McpServerFeatures.SyncCompletionSpecification>();
+            var specs = new ArrayList<McpServerFeatures.SyncCompletionSpecification>();
 
             for (var entry : getAllCompletions().entrySet()) {
                 var completion = entry.getValue();
@@ -151,7 +153,7 @@ public class DefaultCompletionRegistry implements CompletionRegistry {
             LOGGER.debug("Creating async completion specifications for {} completions", completions.size());
 
             // Create completion specifications using MCP SDK builders
-            var specs = new java.util.ArrayList<McpServerFeatures.AsyncCompletionSpecification>();
+            var specs = new ArrayList<McpServerFeatures.AsyncCompletionSpecification>();
 
             for (var entry : getAllCompletions().entrySet()) {
                 var completion = entry.getValue();
@@ -164,7 +166,7 @@ public class DefaultCompletionRegistry implements CompletionRegistry {
                             (exchange, request) -> {
                                 LOGGER.debug("Handling async completion for: {}", completion.getPromptReference());
 
-                                return reactor.core.publisher.Mono.fromCallable(() -> {
+                                return Mono.fromCallable(() -> {
                                     return new McpSchema.CompleteResult(new McpSchema.CompleteResult.CompleteCompletion(
                                             completion.getSuggestions(), completion.getTotal(), completion.hasMore()));
                                 });
@@ -191,7 +193,7 @@ public class DefaultCompletionRegistry implements CompletionRegistry {
     @Override
     public Map<String, Object>[] getCompletionDescriptors() {
         try {
-            var list = new java.util.ArrayList<Map<String, Object>>();
+            var list = new ArrayList<Map<String, Object>>();
             for (var entry : getAllCompletions().entrySet()) {
                 var c = entry.getValue();
                 list.add(Map.of("promptReference", c.getPromptReference(), "description", c.getDescription(),

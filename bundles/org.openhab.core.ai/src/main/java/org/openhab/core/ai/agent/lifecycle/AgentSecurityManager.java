@@ -1,6 +1,7 @@
 package org.openhab.core.ai.agent.lifecycle;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -254,7 +255,7 @@ public class AgentSecurityManager {
             return Map.of();
         }
 
-        Map<String, String> credentials = new java.util.HashMap<>();
+        Map<String, String> credentials = new HashMap<>();
 
         // Extract authentication-related information from metadata
         if (metadata.containsKey("apiKey")) {

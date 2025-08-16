@@ -3,6 +3,7 @@ package org.openhab.core.ai.tool.api;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 
 /**
  * Interface for MCP tools that can be executed by the MCP server.
@@ -57,7 +58,7 @@ public interface Tool {
      * @param parameters the parameters to validate
      * @return validation result
      */
-    org.openhab.core.ai.tool.validation.api.ToolValidationResult validateParameters(Map<String, Object> parameters);
+    ToolValidationResult validateParameters(Map<String, Object> parameters);
 
     /**
      * Execute the tool with the given parameters.

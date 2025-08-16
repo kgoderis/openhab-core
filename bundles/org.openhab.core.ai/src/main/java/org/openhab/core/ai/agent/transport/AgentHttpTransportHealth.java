@@ -12,7 +12,7 @@ import org.openhab.core.ai.agent.transport.api.TransportHealth;
  * @since 1.0.0
  */
 @NonNullByDefault
-class AgentHttpTransportHealth implements TransportHealth {
+public class AgentHttpTransportHealth implements TransportHealth {
     private final boolean healthy;
     private final String healthMessage;
     private final long lastHealthCheck;

@@ -49,6 +49,16 @@ public class AgentModelContextBuilder {
     }
 
     /**
+     * Set the agent ID for this context (alias for withAgentId).
+     * 
+     * @param agentId The agent identifier
+     * @return This builder instance for method chaining
+     */
+    public AgentModelContextBuilder agentId(String agentId) {
+        return withAgentId(agentId);
+    }
+
+    /**
      * Set the agent type for this context.
      * 
      * @param agentType The type of agent (e.g., "energy", "security", "comfort")
@@ -168,6 +178,39 @@ public class AgentModelContextBuilder {
      */
     public AgentModelContextBuilder withMetadata(String key, Object value) {
         metadata.put(key, value);
+        return this;
+    }
+
+    /**
+     * Set the specialization for this context.
+     * 
+     * @param specialization The specialization type
+     * @return This builder instance for method chaining
+     */
+    public AgentModelContextBuilder specialization(String specialization) {
+        contextData.put("specialization", specialization);
+        return this;
+    }
+
+    /**
+     * Set the domain for this context.
+     * 
+     * @param domain The domain type
+     * @return This builder instance for method chaining
+     */
+    public AgentModelContextBuilder domain(String domain) {
+        contextData.put("domain", domain);
+        return this;
+    }
+
+    /**
+     * Set the capabilities for this context.
+     * 
+     * @param capabilities The capabilities map
+     * @return This builder instance for method chaining
+     */
+    public AgentModelContextBuilder capabilities(Map<String, Object> capabilities) {
+        contextData.put("capabilities", capabilities);
         return this;
     }
 

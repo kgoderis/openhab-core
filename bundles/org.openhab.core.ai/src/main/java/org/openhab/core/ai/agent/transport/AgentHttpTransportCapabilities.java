@@ -13,7 +13,7 @@ import org.openhab.core.ai.agent.transport.api.TransportType;
  * @since 1.0.0
  */
 @NonNullByDefault
-class AgentHttpTransportCapabilities implements TransportCapabilities {
+public class AgentHttpTransportCapabilities implements TransportCapabilities {
     @Override
     public TransportType getTransportType() {
         return TransportType.REST;

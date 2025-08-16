@@ -2,6 +2,10 @@ package org.openhab.core.ai.tool.progress;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -78,7 +82,7 @@ public class DefaultProgressTrackingService implements ProgressService {
     public Map<String, ProgressOperation> getAllActiveOperations() {
         return operations.entrySet().stream()
                 .filter(entry -> entry.getValue().getStatus() == ProgressStatus.IN_PROGRESS)
-                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     @Override
@@ -102,12 +106,11 @@ public class DefaultProgressTrackingService implements ProgressService {
 
     // Progress persistence and cleanup
     private final Map<String, ProgressOperation> completedOperations = new ConcurrentHashMap<>();
-    private final java.util.concurrent.ScheduledExecutorService cleanupExecutor = java.util.concurrent.Executors
-            .newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor();
 
     public DefaultProgressTrackingService() {
         // Schedule cleanup task to run every hour
-        cleanupExecutor.scheduleAtFixedRate(this::cleanupOldOperations, 1, 1, java.util.concurrent.TimeUnit.HOURS);
+        cleanupExecutor.scheduleAtFixedRate(this::cleanupOldOperations, 1, 1, TimeUnit.HOURS);
     }
 
     /**

@@ -118,7 +118,7 @@ public class ListRulesAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         // Validate limit
@@ -127,10 +127,10 @@ public class ListRulesAction implements Action {
             try {
                 int limit = Integer.parseInt(limitObj.toString());
                 if (limit < 1 || limit > 1000) {
-                    return ActionValidationResult.invalid(java.util.List.of("limit must be between 1 and 1000"));
+                    return ActionValidationResult.invalid(List.of("limit must be between 1 and 1000"));
                 }
             } catch (NumberFormatException e) {
-                return ActionValidationResult.invalid(java.util.List.of("limit must be a valid integer"));
+                return ActionValidationResult.invalid(List.of("limit must be a valid integer"));
             }
         }
 
@@ -140,10 +140,10 @@ public class ListRulesAction implements Action {
             try {
                 int offset = Integer.parseInt(offsetObj.toString());
                 if (offset < 0) {
-                    return ActionValidationResult.invalid(java.util.List.of("offset must be non-negative"));
+                    return ActionValidationResult.invalid(List.of("offset must be non-negative"));
                 }
             } catch (NumberFormatException e) {
-                return ActionValidationResult.invalid(java.util.List.of("offset must be a valid integer"));
+                return ActionValidationResult.invalid(List.of("offset must be a valid integer"));
             }
         }
 
@@ -194,7 +194,7 @@ public class ListRulesAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "list", "filter", "sort")).build();
+                .tags(List.of("rules", "list", "filter", "sort")).build();
     }
 
     @Override

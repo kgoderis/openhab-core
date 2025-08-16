@@ -1,6 +1,7 @@
 package org.openhab.core.ai.tool.security.filters;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -237,7 +238,7 @@ public class ProtocolSecurityFilter implements Filter {
      * @return map of credentials
      */
     private Map<String, String> extractCredentials(HttpServletRequest request) {
-        Map<String, String> credentials = new java.util.HashMap<>();
+        Map<String, String> credentials = new HashMap<>();
 
         // Extract Authorization header
         String authorization = request.getHeader("Authorization");

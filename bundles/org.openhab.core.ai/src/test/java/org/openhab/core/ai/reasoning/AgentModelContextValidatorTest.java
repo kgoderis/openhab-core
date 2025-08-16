@@ -14,6 +14,7 @@ package org.openhab.core.ai.reasoning;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -145,7 +146,7 @@ class AgentModelContextValidatorTest {
     void testAddCustomValidationRule() {
         // Arrange
         AgentModelContextValidator.ValidationRule rule = context -> {
-            List<String> issues = new java.util.ArrayList<>();
+            List<String> issues = new ArrayList<>();
             if (context.getContextData().containsKey("testField")) {
                 issues.add("Custom validation failed");
             }
@@ -166,7 +167,7 @@ class AgentModelContextValidatorTest {
     void testAddCustomOptimizationRule() {
         // Arrange
         AgentModelContextValidator.OptimizationRule rule = context -> {
-            List<String> recommendations = new java.util.ArrayList<>();
+            List<String> recommendations = new ArrayList<>();
             if (context.getContextData().size() > 10) {
                 recommendations.add("Consider reducing context size");
             }

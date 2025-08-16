@@ -3,6 +3,7 @@ package org.openhab.core.ai.action.library.network;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -182,7 +183,7 @@ public class GetNetworkStatusAction implements Action {
                 result.put("networkHealth", assessNetworkHealth());
             }
 
-            result.put("timestamp", java.time.Instant.now().toString());
+            result.put("timestamp", Instant.now().toString());
 
             long executionTime = System.currentTimeMillis() - startTime;
             return ActionResult.success(result, executionTime);

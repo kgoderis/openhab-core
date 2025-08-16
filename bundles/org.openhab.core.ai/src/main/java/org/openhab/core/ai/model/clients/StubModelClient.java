@@ -115,6 +115,6 @@ public class StubModelClient implements ModelClient {
 
     @Override
     public @Nullable ModelRateLimitInfo getRateLimitInfo() {
-        return new ModelRateLimitInfo(1000, 1000, java.time.Instant.now().plusSeconds(3600), "per hour");
+        return new ModelRateLimitInfo(1000, 1000, Instant.now().plusSeconds(3600), "per hour");
     }
 }

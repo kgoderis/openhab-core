@@ -1,6 +1,8 @@
 package org.openhab.core.ai.action.library.rules;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -77,7 +79,7 @@ public class ExecuteRuleAction implements Action {
                 Map.of("type", "boolean", "description", "Force execution even if rule is disabled", "default", false));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -105,19 +107,18 @@ public class ExecuteRuleAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String ruleUID = (String) parameters.get("ruleUID");
         if (ruleUID == null || ruleUID.trim().isEmpty()) {
-            return ActionValidationResult.invalid(java.util.List.of("ruleUID is required and cannot be empty"));
+            return ActionValidationResult.invalid(List.of("ruleUID is required and cannot be empty"));
         }
 
         Object timeout = parameters.get("timeout");
         if (timeout != null) {
             if (!(timeout instanceof Integer) || (Integer) timeout < 1 || (Integer) timeout > 300) {
-                return ActionValidationResult
-                        .invalid(java.util.List.of("timeout must be an integer between 1 and 300"));
+                return ActionValidationResult.invalid(List.of("timeout must be an integer between 1 and 300"));
             }
         }
 
@@ -149,7 +150,7 @@ public class ExecuteRuleAction implements Action {
 
             // Follow the same flow as openHAB Core REST implementation
             // 1. Validate the rule if requested
-            java.util.List<String> warnings = new java.util.ArrayList<>();
+            List<String> warnings = new ArrayList<>();
             boolean validationPassed = true;
 
             if (validateBeforeExecute) {
@@ -235,7 +236,7 @@ public class ExecuteRuleAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "execute", "automation")).build();
+                .tags(List.of("rules", "execute", "automation")).build();
     }
 
     @Override

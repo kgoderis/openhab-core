@@ -1,8 +1,22 @@
 package org.openhab.core.ai.tool.server;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.tool.server.http.HealthHandler;
+import org.openhab.core.ai.tool.server.http.MetricsHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.sun.net.httpserver.HttpServer;
 
 /**
  * Health metrics endpoint for MCP operations.
@@ -12,16 +26,16 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public class ToolMetricsEndpoint {
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ToolMetricsEndpoint.class);
+    private static final Logger logger = LoggerFactory.getLogger(ToolMetricsEndpoint.class);
 
     private final DefaultToolServer serverInstance;
     private final ServerConfiguration config;
-    private final com.sun.net.httpserver.HttpServer httpServer;
-    private final java.util.concurrent.ScheduledExecutorService executor;
+    private final HttpServer httpServer;
+    private final ScheduledExecutorService executor;
 
     // Metrics counters
-    private final java.util.concurrent.atomic.AtomicLong totalRequests = new java.util.concurrent.atomic.AtomicLong(0);
-    private final java.util.concurrent.atomic.AtomicLong totalErrors = new java.util.concurrent.atomic.AtomicLong(0);
+    private final AtomicLong totalRequests = new AtomicLong(0);
+    private final AtomicLong totalErrors = new AtomicLong(0);
     private final long startTime = System.currentTimeMillis();
 
     public ToolMetricsEndpoint(DefaultToolServer serverInstance, ServerConfiguration config) throws IOException {
@@ -31,23 +45,22 @@ public class ToolMetricsEndpoint {
         // Create HTTP server on configurable port
         // Use SSE port from config or default to 8080
         int port = config.getSsePort();
-        this.httpServer = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(port), 0);
+        this.httpServer = HttpServer.create(new InetSocketAddress(port), 0);
 
         // Set up endpoints - always enable health and metrics for now
-        httpServer.createContext("/health", new org.openhab.core.ai.tool.server.http.HealthHandler(serverInstance,
-                config, startTime, totalRequests, totalErrors));
+        httpServer.createContext("/health",
+                new HealthHandler(serverInstance, config, startTime, totalRequests, totalErrors));
         logger.info("Health endpoint enabled at /health");
 
-        httpServer.createContext("/metrics", new org.openhab.core.ai.tool.server.http.MetricsHandler(serverInstance,
-                startTime, totalRequests, totalErrors));
+        httpServer.createContext("/metrics", new MetricsHandler(serverInstance, startTime, totalRequests, totalErrors));
         logger.info("Metrics endpoint enabled at /metrics");
 
         // Create executor for background tasks
-        this.executor = java.util.concurrent.Executors.newScheduledThreadPool(1);
+        this.executor = Executors.newScheduledThreadPool(1);
 
         // Start health check scheduler
         executor.scheduleAtFixedRate(this::performHealthCheck, 30000, // 30 seconds
-                30000, java.util.concurrent.TimeUnit.MILLISECONDS);
+                30000, TimeUnit.MILLISECONDS);
     }
 
     public void start() {
@@ -59,7 +72,7 @@ public class ToolMetricsEndpoint {
         httpServer.stop(0);
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {
@@ -85,8 +98,8 @@ public class ToolMetricsEndpoint {
      * 
      * @return Health status as a map
      */
-    public java.util.Map<String, Object> getHealthStatus() {
-        java.util.Map<String, Object> status = new java.util.HashMap<>();
+    public Map<String, Object> getHealthStatus() {
+        Map<String, Object> status = new HashMap<>();
 
         // Basic health checks
         status.put("serverRunning", serverInstance.isRunning());
@@ -123,8 +136,8 @@ public class ToolMetricsEndpoint {
      * 
      * @return Performance metrics as a map
      */
-    public java.util.Map<String, Object> getPerformanceMetrics() {
-        java.util.Map<String, Object> metrics = new java.util.HashMap<>();
+    public Map<String, Object> getPerformanceMetrics() {
+        Map<String, Object> metrics = new HashMap<>();
 
         // Request metrics
         metrics.put("totalRequests", totalRequests.get());
@@ -150,8 +163,8 @@ public class ToolMetricsEndpoint {
      * 
      * @return System resources as a map
      */
-    public java.util.Map<String, Object> getSystemResources() {
-        java.util.Map<String, Object> resources = new java.util.HashMap<>();
+    public Map<String, Object> getSystemResources() {
+        Map<String, Object> resources = new HashMap<>();
 
         Runtime runtime = Runtime.getRuntime();
         long totalMemory = runtime.totalMemory();
@@ -167,7 +180,7 @@ public class ToolMetricsEndpoint {
 
         // Disk information
         try {
-            java.io.File file = new java.io.File(".");
+            File file = new File(".");
             resources.put("diskFreeSpace", file.getFreeSpace());
             resources.put("diskTotalSpace", file.getTotalSpace());
             resources.put("diskUsableSpace", file.getUsableSpace());
@@ -187,7 +200,7 @@ public class ToolMetricsEndpoint {
      * @param status Health status map
      * @return Health score (0-100)
      */
-    private double calculateHealthScore(java.util.Map<String, Object> status) {
+    private double calculateHealthScore(Map<String, Object> status) {
         double score = 100.0;
 
         // Deduct points for various issues
@@ -296,7 +309,7 @@ public class ToolMetricsEndpoint {
      */
     private long getDiskFreeSpace() {
         try {
-            java.io.File file = new java.io.File(".");
+            File file = new File(".");
             return file.getFreeSpace();
         } catch (Exception e) {
             logger.warn("Could not get disk free space", e);

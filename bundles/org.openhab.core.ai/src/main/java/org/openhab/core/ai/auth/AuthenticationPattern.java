@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 @NonNullByDefault
-class AuthenticationPattern {
+public class AuthenticationPattern {
     private final String principalId;
     private final String protocol;
     private final AtomicLong totalAttempts = new AtomicLong(0);

@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -195,8 +196,8 @@ public class AgentCommunicationConfigurationManager {
     public CompletableFuture<ConfigurationValidationResult> validateConfiguration(CommunicationConfig config) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                List<String> errors = new java.util.ArrayList<>();
-                List<String> warnings = new java.util.ArrayList<>();
+                List<String> errors = new ArrayList<>();
+                List<String> warnings = new ArrayList<>();
 
                 // Validate required fields
                 if (config.getConfigId() == null || config.getConfigId().isEmpty()) {

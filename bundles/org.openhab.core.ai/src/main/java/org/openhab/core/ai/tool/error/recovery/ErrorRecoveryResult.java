@@ -1,6 +1,10 @@
 package org.openhab.core.ai.tool.error.recovery;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -107,7 +111,7 @@ public class ErrorRecoveryResult {
     }
 
     // Implement error recovery result caching
-    private static final Map<String, ErrorRecoveryResult> resultCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, ErrorRecoveryResult> resultCache = new ConcurrentHashMap<>();
     private static final long CACHE_TTL_MS = 300000; // 5 minutes
 
     /**
@@ -153,7 +157,7 @@ public class ErrorRecoveryResult {
      * @return JSON string representation
      */
     public String toJson() {
-        java.util.Map<String, Object> jsonMap = new java.util.HashMap<>();
+        Map<String, Object> jsonMap = new HashMap<>();
         jsonMap.put("recovered", recovered);
         jsonMap.put("status", status);
         jsonMap.put("message", message);
@@ -171,7 +175,7 @@ public class ErrorRecoveryResult {
         if (!details.isEmpty()) {
             json.append(",\"details\":{");
             boolean first = true;
-            for (java.util.Map.Entry<String, Object> entry : details.entrySet()) {
+            for (Map.Entry<String, Object> entry : details.entrySet()) {
                 if (!first)
                     json.append(",");
                 json.append("\"").append(entry.getKey()).append("\":\"").append(entry.getValue()).append("\"");
@@ -251,24 +255,21 @@ public class ErrorRecoveryResult {
      */
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(recovered, status, message, timestamp);
+        return Objects.hash(recovered, status, message, timestamp);
     }
 
     // Add support for error recovery result metrics
-    private static final java.util.concurrent.atomic.AtomicLong totalResults = new java.util.concurrent.atomic.AtomicLong(
-            0);
-    private static final java.util.concurrent.atomic.AtomicLong successfulResults = new java.util.concurrent.atomic.AtomicLong(
-            0);
-    private static final java.util.concurrent.atomic.AtomicLong failedResults = new java.util.concurrent.atomic.AtomicLong(
-            0);
+    private static final AtomicLong totalResults = new AtomicLong(0);
+    private static final AtomicLong successfulResults = new AtomicLong(0);
+    private static final AtomicLong failedResults = new AtomicLong(0);
 
     /**
      * Get metrics for all recovery results
      * 
      * @return metrics map
      */
-    public static java.util.Map<String, Object> getMetrics() {
-        java.util.Map<String, Object> metrics = new java.util.HashMap<>();
+    public static Map<String, Object> getMetrics() {
+        Map<String, Object> metrics = new HashMap<>();
         long total = totalResults.get();
         long successful = successfulResults.get();
         long failed = failedResults.get();

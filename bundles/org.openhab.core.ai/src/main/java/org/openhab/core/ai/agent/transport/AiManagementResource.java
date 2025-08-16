@@ -10,6 +10,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -270,7 +271,7 @@ public class AiManagementResource implements RESTResource {
     @GET
     @Path("tools/search")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response searchTools(@javax.ws.rs.QueryParam("query") String query) {
+    public Response searchTools(@QueryParam("query") String query) {
         // TODO: Implement actual tool search functionality
         // TODO: Integrate with ToolRegistry search capabilities
         List<Map<String, Object>> results = new ArrayList<>();

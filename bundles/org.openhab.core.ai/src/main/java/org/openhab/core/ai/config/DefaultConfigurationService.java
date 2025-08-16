@@ -17,6 +17,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -160,8 +161,7 @@ public class DefaultConfigurationService implements ConfigurationService {
             return Set.copyOf(configuration.keySet());
         }
 
-        return configuration.keySet().stream().filter(key -> key.startsWith(prefix))
-                .collect(java.util.stream.Collectors.toSet());
+        return configuration.keySet().stream().filter(key -> key.startsWith(prefix)).collect(Collectors.toSet());
     }
 
     @Override
@@ -171,7 +171,7 @@ public class DefaultConfigurationService implements ConfigurationService {
         }
 
         return configuration.entrySet().stream().filter(entry -> entry.getKey().startsWith(prefix))
-                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     @Override

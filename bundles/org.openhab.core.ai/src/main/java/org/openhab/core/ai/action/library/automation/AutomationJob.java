@@ -14,7 +14,7 @@ import org.eclipse.jdt.annotation.Nullable;
  * @since 1.0.0
  */
 @NonNullByDefault
-class AutomationJob {
+public class AutomationJob {
     final String jobId;
     final String name;
     final String type;

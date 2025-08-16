@@ -2,7 +2,9 @@ package org.openhab.core.ai.integration.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
 // TODO: Uncomment when discovery action classes are implemented
 // import org.openhab.core.ai.action.actions.discovery.*;
 
@@ -12,7 +14,7 @@ import org.junit.jupiter.api.Test;
  * TODO: This test is currently disabled because the discovery action classes
  * are not yet implemented. Re-enable when the action classes are available.
  */
-@org.junit.jupiter.api.Disabled("Discovery action classes not yet implemented")
+@Disabled("Discovery action classes not yet implemented")
 class DiscoveryActionIntegrationTest extends BaseActionIntegrationTest {
 
     @Test

@@ -477,8 +477,8 @@ public class MultiStepReasoningEngine {
     /**
      * Get performance metrics
      */
-    public org.openhab.core.ai.reasoning.PerformanceMetrics getPerformanceMetrics() {
-        return new org.openhab.core.ai.reasoning.PerformanceMetricsBuilder().totalSessions(totalReasoningSessions.get())
+    public PerformanceMetrics getPerformanceMetrics() {
+        return new PerformanceMetricsBuilder().totalSessions(totalReasoningSessions.get())
                 .successfulSessions(successfulReasoningSessions.get()).failedSessions(failedReasoningSessions.get())
                 .totalSteps(totalReasoningSteps.get()).totalActions(totalActions.get())
                 .averageSessionDuration(calculateAverageSessionDuration()).build();

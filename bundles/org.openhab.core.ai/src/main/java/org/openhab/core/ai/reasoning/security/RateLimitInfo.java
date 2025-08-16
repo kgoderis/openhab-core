@@ -11,7 +11,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-class RateLimitInfo {
+public class RateLimitInfo {
     final String agentId;
     final int maxRequestsPerMinute;
     final int maxRequestsPerSecond;
@@ -20,7 +20,7 @@ class RateLimitInfo {
     long lastMinuteReset;
     long lastSecondReset;
 
-    RateLimitInfo(String agentId, int maxRequestsPerMinute, int maxRequestsPerSecond) {
+    public RateLimitInfo(String agentId, int maxRequestsPerMinute, int maxRequestsPerSecond) {
         this.agentId = agentId;
         this.maxRequestsPerMinute = maxRequestsPerMinute;
         this.maxRequestsPerSecond = maxRequestsPerSecond;

@@ -12,7 +12,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-class WorkflowDefinition {
+public class WorkflowDefinition {
     final String workflowId;
     final String name;
     final String description;

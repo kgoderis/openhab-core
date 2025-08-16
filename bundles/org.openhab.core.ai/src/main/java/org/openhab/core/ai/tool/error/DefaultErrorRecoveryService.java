@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuditLogger;
+import org.openhab.core.ai.tool.error.api.ErrorRecoveryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +24,7 @@ import org.slf4j.LoggerFactory;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class DefaultErrorRecoveryService implements org.openhab.core.ai.tool.error.api.ErrorRecoveryService {
+public class DefaultErrorRecoveryService implements ErrorRecoveryService {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultErrorRecoveryService.class);
 

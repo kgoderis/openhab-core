@@ -1,11 +1,22 @@
 package org.openhab.core.ai.tool.server.http;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
+import org.openhab.core.ai.tool.security.api.SecurityStatistics;
 import org.openhab.core.ai.tool.server.DefaultToolServer;
 import org.openhab.core.ai.tool.server.ServerConfiguration;
+import org.openhab.core.ai.tool.server.TransportHealthInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 
 /**
  * HTTP handler that serves JSON health information for the MCP Tool server.
@@ -19,9 +30,9 @@ import org.openhab.core.ai.tool.server.ServerConfiguration;
  * @since 1.0.0
  */
 @NonNullByDefault
-public final class HealthHandler implements com.sun.net.httpserver.HttpHandler {
+public final class HealthHandler implements HttpHandler {
 
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(HealthHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(HealthHandler.class);
 
     private final DefaultToolServer serverInstance;
     private final ServerConfiguration config;
@@ -39,12 +50,12 @@ public final class HealthHandler implements com.sun.net.httpserver.HttpHandler {
     }
 
     @Override
-    public void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+    public void handle(HttpExchange exchange) throws IOException {
         try {
             totalRequests.incrementAndGet();
 
             boolean healthy = serverInstance.isHealthy();
-            org.openhab.core.ai.tool.server.TransportHealthInfo transportHealth = serverInstance.getTransportHealth();
+            TransportHealthInfo transportHealth = serverInstance.getTransportHealth();
 
             StringBuilder response = new StringBuilder();
             response.append("{\n");
@@ -61,8 +72,7 @@ public final class HealthHandler implements com.sun.net.httpserver.HttpHandler {
             response.append("  \"version\": \"").append(config.getServerVersion()).append("\",\n");
 
             if (serverInstance.isSecurityEnabled()) {
-                org.openhab.core.ai.tool.security.api.SecurityStatistics securityStats = serverInstance
-                        .getSecurityStatistics();
+                SecurityStatistics securityStats = serverInstance.getSecurityStatistics();
                 if (securityStats != null) {
                     response.append("  \"security\": {\n");
                     response.append("    \"totalRequests\": ").append(securityStats.getTotalAccessAttempts())
@@ -76,8 +86,7 @@ public final class HealthHandler implements com.sun.net.httpserver.HttpHandler {
             }
 
             if (serverInstance.isErrorRecoveryEnabled()) {
-                org.openhab.core.ai.tool.error.ErrorRecoveryStatistics errorStats = serverInstance
-                        .getErrorRecoveryStatistics();
+                ErrorRecoveryStatistics errorStats = serverInstance.getErrorRecoveryStatistics();
                 if (errorStats != null) {
                     response.append("  \"errorRecovery\": {\n");
                     response.append("    \"totalErrors\": ").append(errorStats.getTotalErrors()).append(",\n");
@@ -88,17 +97,17 @@ public final class HealthHandler implements com.sun.net.httpserver.HttpHandler {
                 }
             }
 
-            response.append("  \"timestamp\": \"").append(java.time.Instant.now()).append("\"\n");
+            response.append("  \"timestamp\": \"").append(Instant.now()).append("\"\n");
             response.append("}");
 
-            byte[] responseBytes = response.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] responseBytes = response.toString().getBytes(StandardCharsets.UTF_8);
             var headers = exchange.getResponseHeaders();
             if (headers != null) {
                 headers.add("Content-Type", "application/json");
             }
             exchange.sendResponseHeaders(healthy ? 200 : 503, responseBytes.length);
 
-            try (java.io.OutputStream os = exchange.getResponseBody()) {
+            try (OutputStream os = exchange.getResponseBody()) {
                 if (os != null) {
                     os.write(responseBytes);
                 }
@@ -108,13 +117,13 @@ public final class HealthHandler implements com.sun.net.httpserver.HttpHandler {
             totalErrors.incrementAndGet();
             logger.error("Error handling health check request", e);
             String errorResponse = "{\"error\": \"Internal server error\"}";
-            byte[] responseBytes = errorResponse.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] responseBytes = errorResponse.getBytes(StandardCharsets.UTF_8);
             var headers = exchange.getResponseHeaders();
             if (headers != null) {
                 headers.add("Content-Type", "application/json");
             }
             exchange.sendResponseHeaders(500, responseBytes.length);
-            try (java.io.OutputStream os = exchange.getResponseBody()) {
+            try (OutputStream os = exchange.getResponseBody()) {
                 if (os != null) {
                     os.write(responseBytes);
                 }

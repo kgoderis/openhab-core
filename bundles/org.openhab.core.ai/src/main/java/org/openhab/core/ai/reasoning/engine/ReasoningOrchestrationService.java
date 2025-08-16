@@ -27,19 +27,19 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.IntelligentToolClient;
-import org.openhab.core.ai.reasoning.memory.AgentMemory;
-import org.openhab.core.ai.reasoning.metrics.OrchestrationMetrics;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
-import org.openhab.core.ai.reasoning.strategies.api.ReasoningStrategy;
-import org.openhab.core.ai.reasoning.strategies.execution.AdaptiveReasoningStrategy;
-import org.openhab.core.ai.reasoning.validation.ValidationResult;
+import org.openhab.core.ai.reasoning.constraints.SafetyConstraintManager;
 import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningPlanStep;
 import org.openhab.core.ai.reasoning.learning.LearningAdaptationSystem;
-import org.openhab.core.ai.reasoning.constraints.SafetyConstraintManager;
+import org.openhab.core.ai.reasoning.memory.AgentMemory;
+import org.openhab.core.ai.reasoning.metrics.OrchestrationMetrics;
 import org.openhab.core.ai.reasoning.session.ReasoningSession;
 import org.openhab.core.ai.reasoning.strategies.ParallelReasoningStrategy;
 import org.openhab.core.ai.reasoning.strategies.SequentialReasoningStrategy;
+import org.openhab.core.ai.reasoning.strategies.api.ReasoningStrategy;
+import org.openhab.core.ai.reasoning.strategies.execution.AdaptiveReasoningStrategy;
+import org.openhab.core.ai.reasoning.validation.ValidationResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -113,7 +113,7 @@ public class ReasoningOrchestrationService {
         activated = false;
 
         // Cancel all active sessions
-        activeSessions.values().forEach(org.openhab.core.ai.reasoning.session.ReasoningSession::cancel);
+        activeSessions.values().forEach(ReasoningSession::cancel);
         activeSessions.clear();
 
         // Shutdown executor service

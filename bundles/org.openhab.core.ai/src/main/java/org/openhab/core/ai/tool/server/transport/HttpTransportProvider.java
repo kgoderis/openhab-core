@@ -1,10 +1,16 @@
 package org.openhab.core.ai.tool.server.transport;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.security.KeyStore;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -16,6 +22,9 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
@@ -343,7 +352,7 @@ public class HttpTransportProvider implements TransportProvider {
         httpServer = HttpServer.create(new InetSocketAddress(host, port), maxConnections);
 
         // Configure server
-        httpServer.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(maxConnections));
+        httpServer.setExecutor(Executors.newFixedThreadPool(maxConnections));
 
         // Add request handlers
         setupRequestHandlers(httpServer);
@@ -367,7 +376,7 @@ public class HttpTransportProvider implements TransportProvider {
         httpsServer.setHttpsConfigurator(new HttpsConfigurator(sslContext));
 
         // Configure server
-        httpsServer.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(maxConnections));
+        httpsServer.setExecutor(Executors.newFixedThreadPool(maxConnections));
 
         // Add request handlers
         setupRequestHandlers(httpsServer);
@@ -386,7 +395,7 @@ public class HttpTransportProvider implements TransportProvider {
 
         // Load keystore
         KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-        try (java.io.FileInputStream fis = new java.io.FileInputStream(sslKeyStore)) {
+        try (FileInputStream fis = new FileInputStream(sslKeyStore)) {
             keyStore.load(fis, sslKeyStorePassword.toCharArray());
         }
 
@@ -394,7 +403,7 @@ public class HttpTransportProvider implements TransportProvider {
         KeyStore trustStore = null;
         if (sslTrustStore != null && !sslTrustStore.trim().isEmpty()) {
             trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-            try (java.io.FileInputStream fis = new java.io.FileInputStream(sslTrustStore)) {
+            try (FileInputStream fis = new FileInputStream(sslTrustStore)) {
                 trustStore.load(fis, sslTrustStorePassword != null ? sslTrustStorePassword.toCharArray() : null);
             }
         }
@@ -419,12 +428,12 @@ public class HttpTransportProvider implements TransportProvider {
                 totalRequests.incrementAndGet();
 
                 Map<String, Object> health = getHealthStatus();
-                String response = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(health);
+                String response = new ObjectMapper().writeValueAsString(health);
 
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
                 exchange.sendResponseHeaders(200, response.getBytes().length);
 
-                try (java.io.OutputStream os = exchange.getResponseBody()) {
+                try (OutputStream os = exchange.getResponseBody()) {
                     os.write(response.getBytes());
                 }
 
@@ -444,12 +453,12 @@ public class HttpTransportProvider implements TransportProvider {
                 totalRequests.incrementAndGet();
 
                 Map<String, Object> stats = getStatistics();
-                String response = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(stats);
+                String response = new ObjectMapper().writeValueAsString(stats);
 
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
                 exchange.sendResponseHeaders(200, response.getBytes().length);
 
-                try (java.io.OutputStream os = exchange.getResponseBody()) {
+                try (OutputStream os = exchange.getResponseBody()) {
                     os.write(response.getBytes());
                 }
 
@@ -516,9 +525,9 @@ public class HttpTransportProvider implements TransportProvider {
     /**
      * Handle MCP message requests.
      */
-    private void handleMcpMessage(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+    private void handleMcpMessage(HttpExchange exchange) throws IOException {
         // Read request body
-        java.io.InputStream requestBody = exchange.getRequestBody();
+        InputStream requestBody = exchange.getRequestBody();
         String requestContent = new String(requestBody.readAllBytes());
 
         // Parse MCP message (simplified - in real implementation, use proper MCP SDK)
@@ -531,7 +540,7 @@ public class HttpTransportProvider implements TransportProvider {
         exchange.getResponseHeaders().add("Content-Type", "application/json");
         exchange.sendResponseHeaders(200, responseContent.getBytes().length);
 
-        try (java.io.OutputStream os = exchange.getResponseBody()) {
+        try (OutputStream os = exchange.getResponseBody()) {
             os.write(responseContent.getBytes());
         }
     }
@@ -539,8 +548,8 @@ public class HttpTransportProvider implements TransportProvider {
     /**
      * Handle SSE connections for real-time events.
      */
-    private void handleSseConnection(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
-        try (java.io.OutputStream os = exchange.getResponseBody()) {
+    private void handleSseConnection(HttpExchange exchange) throws IOException {
+        try (OutputStream os = exchange.getResponseBody()) {
             // Send initial connection event
             String initialEvent = "data: {\"type\": \"connected\", \"timestamp\": " + System.currentTimeMillis()
                     + "}\n\n";
@@ -577,12 +586,12 @@ public class HttpTransportProvider implements TransportProvider {
 
         try {
             // Parse JSON request
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            com.fasterxml.jackson.databind.JsonNode requestNode = mapper.readTree(requestContent);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode requestNode = mapper.readTree(requestContent);
 
             // Extract method and parameters
             String method = requestNode.path("method").asText();
-            com.fasterxml.jackson.databind.JsonNode params = requestNode.path("params");
+            JsonNode params = requestNode.path("params");
 
             // Process based on method
             String result;
@@ -614,7 +623,7 @@ public class HttpTransportProvider implements TransportProvider {
     /**
      * Handle tools/list method.
      */
-    private String handleToolsList(com.fasterxml.jackson.databind.JsonNode params) {
+    private String handleToolsList(JsonNode params) {
         // Return list of available tools
         return "{\"jsonrpc\": \"2.0\", \"result\": {\"tools\": []}, \"id\": 1}";
     }
@@ -622,7 +631,7 @@ public class HttpTransportProvider implements TransportProvider {
     /**
      * Handle tools/call method.
      */
-    private String handleToolsCall(com.fasterxml.jackson.databind.JsonNode params) {
+    private String handleToolsCall(JsonNode params) {
         // Execute tool call
         return "{\"jsonrpc\": \"2.0\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"Tool executed successfully\"}]}, \"id\": 1}";
     }
@@ -630,7 +639,7 @@ public class HttpTransportProvider implements TransportProvider {
     /**
      * Handle resources/list method.
      */
-    private String handleResourcesList(com.fasterxml.jackson.databind.JsonNode params) {
+    private String handleResourcesList(JsonNode params) {
         // Return list of available resources
         return "{\"jsonrpc\": \"2.0\", \"result\": {\"resources\": []}, \"id\": 1}";
     }
@@ -638,7 +647,7 @@ public class HttpTransportProvider implements TransportProvider {
     /**
      * Handle resources/read method.
      */
-    private String handleResourcesRead(com.fasterxml.jackson.databind.JsonNode params) {
+    private String handleResourcesRead(JsonNode params) {
         // Read resource content
         return "{\"jsonrpc\": \"2.0\", \"result\": {\"contents\": [{\"type\": \"text\", \"text\": \"Resource content\"}]}, \"id\": 1}";
     }
@@ -729,8 +738,8 @@ public class HttpTransportProvider implements TransportProvider {
         for (BackendServer backend : backendServerMap.values()) {
             try {
                 // Simple health check - try to connect to the backend
-                java.net.URL url = new java.net.URL(backend.getUrl() + "/health");
-                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+                URL url = new URL(backend.getUrl() + "/health");
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setConnectTimeout(5000);
                 connection.setReadTimeout(5000);
                 connection.setRequestMethod("GET");

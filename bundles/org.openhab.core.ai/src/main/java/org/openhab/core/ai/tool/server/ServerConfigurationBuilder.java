@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.tool.server.api.TransportType;
 
 /**
  * Builder for {@link ServerConfiguration}.
@@ -16,7 +17,7 @@ public final class ServerConfigurationBuilder {
     String serverId = "default-server-id";
     String serverName = "openHAB MCP Server";
     String serverVersion = "1.0.0";
-    org.openhab.core.ai.tool.server.api.TransportType transportType = org.openhab.core.ai.tool.server.api.TransportType.STDIO;
+    TransportType transportType = TransportType.STDIO;
     String baseUrl = "http://localhost:8080";
     String messageEndpoint = "/mcp/message";
     String sseEndpoint = "/mcp/events";
@@ -90,7 +91,7 @@ public final class ServerConfigurationBuilder {
         return this;
     }
 
-    public ServerConfigurationBuilder transportType(org.openhab.core.ai.tool.server.api.TransportType transportType) {
+    public ServerConfigurationBuilder transportType(TransportType transportType) {
         this.transportType = transportType;
         return this;
     }

@@ -6,6 +6,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -37,7 +38,7 @@ public class AgentRestExtensions implements RESTResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getExtensionsInfo(@javax.ws.rs.core.Context HttpHeaders headers) {
+    public Response getExtensionsInfo(@Context HttpHeaders headers) {
         // Simple ETag/If-None-Match support for demo purposes
         String etag = "W/\"ai-extensions-v1\"";
         String ifNoneMatch = headers.getHeaderString(HttpHeaders.IF_NONE_MATCH);
@@ -52,8 +53,7 @@ public class AgentRestExtensions implements RESTResource {
     @GET
     @Path("features")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getFeatures(@QueryParam("category") String category,
-            @javax.ws.rs.core.Context HttpHeaders headers) {
+    public Response getFeatures(@QueryParam("category") String category, @Context HttpHeaders headers) {
         // Rate limiting simulation
         String userAgent = headers.getHeaderString(HttpHeaders.USER_AGENT);
         if (userAgent != null && userAgent.contains("bot")) {

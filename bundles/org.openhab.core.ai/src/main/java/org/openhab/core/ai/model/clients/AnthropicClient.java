@@ -1,5 +1,6 @@
 package org.openhab.core.ai.model.clients;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,7 @@ public class AnthropicClient implements ModelClient {
     private final AtomicInteger successfulRequests = new AtomicInteger(0);
     private final AtomicInteger errorCount = new AtomicInteger(0);
     private final AtomicReference<String> lastError = new AtomicReference<>();
-    private final AtomicReference<java.time.Instant> lastErrorTime = new AtomicReference<>();
+    private final AtomicReference<Instant> lastErrorTime = new AtomicReference<>();
     private final AtomicLong minResponseTime = new AtomicLong(Long.MAX_VALUE);
     private final AtomicLong maxResponseTime = new AtomicLong(0);
 
@@ -154,8 +155,7 @@ public class AnthropicClient implements ModelClient {
                 var stream = anthropicClient.messages().createStreaming(request);
 
                 StringBuilder responseContent = new StringBuilder();
-                java.util.concurrent.atomic.AtomicReference<String> modelNameRef = new java.util.concurrent.atomic.AtomicReference<>(
-                        config.getModelName());
+                AtomicReference<String> modelNameRef = new AtomicReference<>(config.getModelName());
 
                 // Process streaming response
                 stream.stream().forEach(event -> {
@@ -220,11 +220,11 @@ public class AnthropicClient implements ModelClient {
             double successRate = totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get()
                     : 0.0;
 
-            return new ModelHealthStatus(available, java.time.Instant.now(), avgResponseTime, successRate,
-                    errorCount.get(), lastError.get(), lastErrorTime.get());
+            return new ModelHealthStatus(available, Instant.now(), avgResponseTime, successRate, errorCount.get(),
+                    lastError.get(), lastErrorTime.get());
         } catch (Exception e) {
-            return new ModelHealthStatus(false, java.time.Instant.now(), -1, 0.0, errorCount.get() + 1,
-                    e.getMessage() != null ? e.getMessage() : "Unknown error", java.time.Instant.now());
+            return new ModelHealthStatus(false, Instant.now(), -1, 0.0, errorCount.get() + 1,
+                    e.getMessage() != null ? e.getMessage() : "Unknown error", Instant.now());
         }
     }
 
@@ -313,7 +313,7 @@ public class AnthropicClient implements ModelClient {
             errorCount.incrementAndGet();
             if (errorMessage != null) {
                 lastError.set(errorMessage);
-                lastErrorTime.set(java.time.Instant.now());
+                lastErrorTime.set(Instant.now());
             }
         }
 

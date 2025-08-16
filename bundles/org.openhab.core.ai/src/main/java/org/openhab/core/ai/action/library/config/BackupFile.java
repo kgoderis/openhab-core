@@ -12,7 +12,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-class BackupFile {
+public class BackupFile {
     String path = "";
     Path absolutePath;
     String name = "";

@@ -10,6 +10,8 @@ import org.openhab.core.ai.config.ConfigurationService;
 import org.openhab.core.ai.tool.logging.ToolLoggingManager;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.server.api.ToolServer;
+import org.openhab.core.ai.tool.server.api.ToolServerManager;
+import org.openhab.core.ai.tool.server.api.TransportType;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
 import org.osgi.framework.BundleContext;
@@ -31,8 +33,8 @@ import org.slf4j.LoggerFactory;
  * @since 1.0.0
  */
 @NonNullByDefault
-@Component(service = org.openhab.core.ai.tool.server.api.ToolServerManager.class, immediate = true)
-public class DefaultToolServerManager implements org.openhab.core.ai.tool.server.api.ToolServerManager {
+@Component(service = ToolServerManager.class, immediate = true)
+public class DefaultToolServerManager implements ToolServerManager {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultToolServerManager.class);
 
@@ -57,7 +59,7 @@ public class DefaultToolServerManager implements org.openhab.core.ai.tool.server
     private @Nullable ConfigurationService configurationService;
 
     private @Nullable BundleContext bundleContext;
-    private final Map<String, org.openhab.core.ai.tool.server.DefaultToolServer> serverInstances = new ConcurrentHashMap<>();
+    private final Map<String, DefaultToolServer> serverInstances = new ConcurrentHashMap<>();
 
     private boolean started = false;
     private boolean componentsInitialized = false;
@@ -113,7 +115,7 @@ public class DefaultToolServerManager implements org.openhab.core.ai.tool.server
      * @param serverId Server identifier
      * @return Server instance or null if not found
      */
-    public org.openhab.core.ai.tool.server.DefaultToolServer getServerInstance(String serverId) {
+    public DefaultToolServer getServerInstance(String serverId) {
         // Validate input parameter
         if (serverId == null) {
             throw new IllegalArgumentException("Server ID cannot be null");
@@ -122,7 +124,7 @@ public class DefaultToolServerManager implements org.openhab.core.ai.tool.server
             throw new IllegalArgumentException("Server ID cannot be empty");
         }
 
-        org.openhab.core.ai.tool.server.DefaultToolServer server = serverInstances.get(serverId);
+        DefaultToolServer server = serverInstances.get(serverId);
 
         // Log server instance access
         if (loggingManager != null) {
@@ -476,7 +478,7 @@ public class DefaultToolServerManager implements org.openhab.core.ai.tool.server
 
             // Transport Configuration
             String transportType = configurationService.getConfigValue("mcp.transport.type", "STDIO");
-            builder.transportType(org.openhab.core.ai.tool.server.api.TransportType.valueOf(transportType))
+            builder.transportType(TransportType.valueOf(transportType))
                     .baseUrl(configurationService.getConfigValue("mcp.transport.base.url", "http://localhost:8080"))
                     .messageEndpoint(
                             configurationService.getConfigValue("mcp.transport.message.endpoint", "/mcp/message"))
@@ -611,8 +613,8 @@ public class DefaultToolServerManager implements org.openhab.core.ai.tool.server
      */
     private ServerConfiguration createDefaultConfiguration() {
         return ServerConfiguration.builder().serverId("openhab-tool-server").serverName("openHAB Tool Server")
-                .serverVersion("1.0.0").transportType(org.openhab.core.ai.tool.server.api.TransportType.STDIO)
-                .enableTools(true).enableResources(true).enablePrompts(true).enableLogging(true).build();
+                .serverVersion("1.0.0").transportType(TransportType.STDIO).enableTools(true).enableResources(true)
+                .enablePrompts(true).enableLogging(true).build();
     }
 
     /**

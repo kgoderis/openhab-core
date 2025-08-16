@@ -2,6 +2,7 @@ package org.openhab.core.ai.tool.validation.api;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -12,12 +13,11 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-class RulePerformanceMetrics {
-    private final java.util.concurrent.atomic.AtomicLong executionCount = new java.util.concurrent.atomic.AtomicLong(0);
-    private final java.util.concurrent.atomic.AtomicLong totalExecutionTimeMs = new java.util.concurrent.atomic.AtomicLong(
-            0);
-    private final java.util.concurrent.atomic.AtomicLong successCount = new java.util.concurrent.atomic.AtomicLong(0);
-    private final java.util.concurrent.atomic.AtomicLong failureCount = new java.util.concurrent.atomic.AtomicLong(0);
+public class RulePerformanceMetrics {
+    private final AtomicLong executionCount = new AtomicLong(0);
+    private final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
+    private final AtomicLong successCount = new AtomicLong(0);
+    private final AtomicLong failureCount = new AtomicLong(0);
 
     void recordExecution(long executionTimeMs, boolean success) {
         executionCount.incrementAndGet();

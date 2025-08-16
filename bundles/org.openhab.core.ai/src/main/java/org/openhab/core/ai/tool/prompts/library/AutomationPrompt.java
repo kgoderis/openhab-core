@@ -1,10 +1,12 @@
 package org.openhab.core.ai.tool.prompts.library;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.registry.PromptExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +43,7 @@ public class AutomationPrompt {
      * @param arguments the prompt arguments
      * @return the execution result
      */
-    public org.openhab.core.ai.tool.registry.PromptExecutionResult execute(Map<String, Object> arguments) {
+    public PromptExecutionResult execute(Map<String, Object> arguments) {
         totalExecutions.incrementAndGet();
         long startTime = System.currentTimeMillis();
 
@@ -59,7 +61,7 @@ public class AutomationPrompt {
                         + ". Valid actions are: ENABLE, DISABLE, EXECUTE, GET_STATUS";
                 logger.warn(errorMessage);
                 failedExecutions.incrementAndGet();
-                return new org.openhab.core.ai.tool.registry.PromptExecutionResult(false, errorMessage, null);
+                return new PromptExecutionResult(false, errorMessage, null);
             }
 
             // Execute the automation action
@@ -68,13 +70,13 @@ public class AutomationPrompt {
             successfulExecutions.incrementAndGet();
             logger.debug("Automation control prompt executed successfully: {} {} {}", ruleUID, action, parameters);
 
-            return new org.openhab.core.ai.tool.registry.PromptExecutionResult(true, null, result);
+            return new PromptExecutionResult(true, null, result);
 
         } catch (Exception e) {
             String errorMessage = "Error executing automation control prompt: " + e.getMessage();
             logger.error(errorMessage, e);
             failedExecutions.incrementAndGet();
-            return new org.openhab.core.ai.tool.registry.PromptExecutionResult(false, errorMessage, null);
+            return new PromptExecutionResult(false, errorMessage, null);
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
             totalExecutionTimeMs.addAndGet(executionTime);
@@ -122,7 +124,7 @@ public class AutomationPrompt {
      * @return performance metrics as a map
      */
     public Map<String, Object> getPerformanceMetrics() {
-        Map<String, Object> metrics = new java.util.HashMap<>();
+        Map<String, Object> metrics = new HashMap<>();
         metrics.put("totalExecutions", totalExecutions.get());
         metrics.put("successfulExecutions", successfulExecutions.get());
         metrics.put("failedExecutions", failedExecutions.get());
@@ -163,17 +165,17 @@ public class AutomationPrompt {
      * @return the argument schema
      */
     public Map<String, Object> getArgumentSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
 
         // ruleUID argument
-        Map<String, Object> ruleUIDSchema = new java.util.HashMap<>();
+        Map<String, Object> ruleUIDSchema = new HashMap<>();
         ruleUIDSchema.put("type", "string");
         ruleUIDSchema.put("description", "UID of the automation rule");
         ruleUIDSchema.put("required", true);
         schema.put("ruleUID", ruleUIDSchema);
 
         // action argument
-        Map<String, Object> actionSchema = new java.util.HashMap<>();
+        Map<String, Object> actionSchema = new HashMap<>();
         actionSchema.put("type", "string");
         actionSchema.put("description", "Action to perform on the rule (ENABLE, DISABLE, EXECUTE, GET_STATUS)");
         actionSchema.put("required", true);
@@ -181,7 +183,7 @@ public class AutomationPrompt {
         schema.put("action", actionSchema);
 
         // parameters argument
-        Map<String, Object> parametersSchema = new java.util.HashMap<>();
+        Map<String, Object> parametersSchema = new HashMap<>();
         parametersSchema.put("type", "string");
         parametersSchema.put("description", "Optional parameters for the action");
         parametersSchema.put("required", false);

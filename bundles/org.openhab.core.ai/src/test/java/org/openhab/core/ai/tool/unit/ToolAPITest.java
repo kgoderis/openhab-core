@@ -8,6 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openhab.core.ai.tool.api.Tool;
 import org.openhab.core.ai.tool.api.ToolContext;
+import org.openhab.core.ai.tool.api.ToolErrorCode;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
@@ -116,7 +117,7 @@ class ToolAPITest {
     void testToolException() {
         String toolId = "test-tool";
         String message = "Test error message";
-        org.openhab.core.ai.tool.api.ToolErrorCode errorCode = org.openhab.core.ai.tool.api.ToolErrorCode.INVALID_PARAMETER;
+        ToolErrorCode errorCode = ToolErrorCode.INVALID_PARAMETER;
 
         // Test exception with message
         ToolException exception = new ToolException(toolId, message, errorCode);
@@ -218,16 +219,16 @@ class ToolAPITest {
      */
     @Test
     void testToolErrorCode() {
-        org.openhab.core.ai.tool.api.ToolErrorCode[] errorCodes = org.openhab.core.ai.tool.api.ToolErrorCode.values();
+        ToolErrorCode[] errorCodes = ToolErrorCode.values();
 
         assertEquals(6, errorCodes.length);
 
         // Test specific error codes
-        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("INVALID_PARAMETER"));
-        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("SERVICE_UNAVAILABLE"));
-        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("RESOURCE_NOT_FOUND"));
-        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("ACCESS_DENIED"));
-        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("EXECUTION_ERROR"));
-        assertNotNull(org.openhab.core.ai.tool.api.ToolErrorCode.valueOf("TIMEOUT"));
+        assertNotNull(ToolErrorCode.valueOf("INVALID_PARAMETER"));
+        assertNotNull(ToolErrorCode.valueOf("SERVICE_UNAVAILABLE"));
+        assertNotNull(ToolErrorCode.valueOf("RESOURCE_NOT_FOUND"));
+        assertNotNull(ToolErrorCode.valueOf("ACCESS_DENIED"));
+        assertNotNull(ToolErrorCode.valueOf("EXECUTION_ERROR"));
+        assertNotNull(ToolErrorCode.valueOf("TIMEOUT"));
     }
 }

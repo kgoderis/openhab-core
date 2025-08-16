@@ -3,7 +3,9 @@ package org.openhab.core.ai.integration.service;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
 // TODO: Uncomment when channels action classes are implemented
 // import org.openhab.core.ai.action.actions.channels.*;
 
@@ -13,7 +15,7 @@ import org.junit.jupiter.api.Test;
  * TODO: This test is currently disabled because the channels action classes
  * are not yet implemented. Re-enable when the action classes are available.
  */
-@org.junit.jupiter.api.Disabled("Channels action classes not yet implemented")
+@Disabled("Channels action classes not yet implemented")
 class ChannelsActionIntegrationTest extends BaseActionIntegrationTest {
 
     // TODO: Uncomment when channels action classes are implemented

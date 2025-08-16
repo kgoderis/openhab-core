@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
+import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
@@ -368,17 +369,17 @@ public class SystemDiagnosticsAction implements Action {
 
         try {
             // Basic openHAB information
-            diagnostics.put("openHABVersion", org.openhab.core.OpenHAB.getVersion());
-            diagnostics.put("configFolder", org.openhab.core.OpenHAB.getConfigFolder());
-            diagnostics.put("userDataFolder", org.openhab.core.OpenHAB.getUserDataFolder());
+            diagnostics.put("openHABVersion", OpenHAB.getVersion());
+            diagnostics.put("configFolder", OpenHAB.getConfigFolder());
+            diagnostics.put("userDataFolder", OpenHAB.getUserDataFolder());
 
             // Check if config folder exists and is writable
-            File configFolder = new File(org.openhab.core.OpenHAB.getConfigFolder());
+            File configFolder = new File(OpenHAB.getConfigFolder());
             diagnostics.put("configFolderExists", configFolder.exists());
             diagnostics.put("configFolderWritable", configFolder.canWrite());
 
             // Check if user data folder exists and is writable
-            File userDataFolder = new File(org.openhab.core.OpenHAB.getUserDataFolder());
+            File userDataFolder = new File(OpenHAB.getUserDataFolder());
             diagnostics.put("userDataFolderExists", userDataFolder.exists());
             diagnostics.put("userDataFolderWritable", userDataFolder.canWrite());
 

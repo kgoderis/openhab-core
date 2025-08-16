@@ -2,6 +2,7 @@ package org.openhab.core.ai.agent.infrastructure.performance;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -16,9 +17,9 @@ import org.eclipse.jdt.annotation.Nullable;
 @NonNullByDefault
 public class PerformanceHistory {
     private final String agentId;
-    private final List<LatencySnapshot> latencySnapshots = new java.util.ArrayList<>();
-    private final List<ThroughputSnapshot> throughputSnapshots = new java.util.ArrayList<>();
-    private final List<BandwidthSnapshot> bandwidthSnapshots = new java.util.ArrayList<>();
+    private final List<LatencySnapshot> latencySnapshots = new ArrayList<>();
+    private final List<ThroughputSnapshot> throughputSnapshots = new ArrayList<>();
+    private final List<BandwidthSnapshot> bandwidthSnapshots = new ArrayList<>();
 
     public PerformanceHistory(String agentId) {
         this.agentId = agentId;

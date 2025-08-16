@@ -1,8 +1,11 @@
 package org.openhab.core.ai.action.library.items;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -209,7 +212,7 @@ public class UpdateItemAction implements Action {
                     newGroups = groups;
                 } else {
                     // Merge with existing groups
-                    newGroups = new java.util.ArrayList<>(currentItem.getGroupNames());
+                    newGroups = new ArrayList<>(currentItem.getGroupNames());
                     for (String group : groups) {
                         if (!newGroups.contains(group)) {
                             newGroups.add(group);
@@ -226,7 +229,7 @@ public class UpdateItemAction implements Action {
                     newTags = tags;
                 } else {
                     // Merge with existing tags
-                    newTags = new java.util.ArrayList<>(currentItem.getTags());
+                    newTags = new ArrayList<>(currentItem.getTags());
                     for (String tag : tags) {
                         if (!newTags.contains(tag)) {
                             newTags.add(tag);
@@ -234,7 +237,7 @@ public class UpdateItemAction implements Action {
                     }
                 }
             } else {
-                newTags = new java.util.ArrayList<>(currentItem.getTags());
+                newTags = new ArrayList<>(currentItem.getTags());
             }
 
             // Create updated item using ItemBuilder
@@ -242,7 +245,7 @@ public class UpdateItemAction implements Action {
             builder.withLabel(newLabel);
             builder.withCategory(newCategory);
             builder.withGroups(newGroups);
-            builder.withTags(new java.util.HashSet<>(newTags));
+            builder.withTags(new HashSet<>(newTags));
 
             Item updatedItem = builder.build();
 
@@ -299,8 +302,8 @@ public class UpdateItemAction implements Action {
 
             // Track changes
             Map<String, Object> changes = new HashMap<>();
-            changes.put("labelChanged", !java.util.Objects.equals(currentItem.getLabel(), newLabel));
-            changes.put("categoryChanged", !java.util.Objects.equals(currentItem.getCategory(), newCategory));
+            changes.put("labelChanged", !Objects.equals(currentItem.getLabel(), newLabel));
+            changes.put("categoryChanged", !Objects.equals(currentItem.getCategory(), newCategory));
             changes.put("groupsChanged", !currentItem.getGroupNames().equals(newGroups));
             changes.put("tagsChanged", !currentItem.getTags().equals(newTags));
             changes.put("metadataChanged", metadataUpdated > 0);

@@ -57,7 +57,7 @@ final class ProviderHealthState {
         }
     }
 
-    void updateFromHealthCheck(org.openhab.core.ai.tool.monitoring.HealthCheckResult result) {
+    void updateFromHealthCheck(HealthCheckResult result) {
         lastHealthCheck.set(Instant.now());
         if (result.isHealthy() && circuitBreakerState.get() == CircuitBreakerState.OPEN) {
             circuitBreakerState.set(CircuitBreakerState.HALF_OPEN);

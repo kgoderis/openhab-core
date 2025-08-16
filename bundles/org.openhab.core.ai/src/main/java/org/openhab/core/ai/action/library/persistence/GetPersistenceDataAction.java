@@ -2,7 +2,9 @@ package org.openhab.core.ai.action.library.persistence;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +20,9 @@ import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.items.ItemRegistry;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StringType;
 import org.openhab.core.persistence.FilterCriteria;
 import org.openhab.core.persistence.HistoricItem;
 import org.openhab.core.persistence.PersistenceService;
@@ -432,10 +437,10 @@ public class GetPersistenceDataAction implements Action {
             filter.setItemName(itemName);
 
             if (startTime != null) {
-                filter.setBeginDate(startTime.atZone(java.time.ZoneId.systemDefault()));
+                filter.setBeginDate(startTime.atZone(ZoneId.systemDefault()));
             }
             if (endTime != null) {
-                filter.setEndDate(endTime.atZone(java.time.ZoneId.systemDefault()));
+                filter.setEndDate(endTime.atZone(ZoneId.systemDefault()));
             }
 
             // Set ordering to get most recent data first
@@ -457,14 +462,12 @@ public class GetPersistenceDataAction implements Action {
                     dataPoint.put("value", state.toString());
 
                     // Add type-specific value extraction
-                    if (state instanceof org.openhab.core.library.types.DecimalType) {
-                        dataPoint.put("numericValue",
-                                ((org.openhab.core.library.types.DecimalType) state).doubleValue());
-                    } else if (state instanceof org.openhab.core.library.types.StringType) {
-                        dataPoint.put("stringValue", ((org.openhab.core.library.types.StringType) state).toString());
-                    } else if (state instanceof org.openhab.core.library.types.OnOffType) {
-                        dataPoint.put("booleanValue",
-                                ((org.openhab.core.library.types.OnOffType) state) == org.openhab.core.library.types.OnOffType.ON);
+                    if (state instanceof DecimalType) {
+                        dataPoint.put("numericValue", ((DecimalType) state).doubleValue());
+                    } else if (state instanceof StringType) {
+                        dataPoint.put("stringValue", ((StringType) state).toString());
+                    } else if (state instanceof OnOffType) {
+                        dataPoint.put("booleanValue", ((OnOffType) state) == OnOffType.ON);
                     }
                 } else {
                     dataPoint.put("state", "NULL");
@@ -492,7 +495,7 @@ public class GetPersistenceDataAction implements Action {
             if (dataPoints.isEmpty()) {
                 Map<String, Object> fallbackPoint = new HashMap<>();
                 fallbackPoint.put("timestamp", System.currentTimeMillis());
-                fallbackPoint.put("timestampISO", java.time.Instant.now().toString());
+                fallbackPoint.put("timestampISO", Instant.now().toString());
                 fallbackPoint.put("state", "UNKNOWN");
                 fallbackPoint.put("value", "UNKNOWN");
                 fallbackPoint.put("serviceId", serviceId);
@@ -507,7 +510,7 @@ public class GetPersistenceDataAction implements Action {
             // Create error entry
             Map<String, Object> errorPoint = new HashMap<>();
             errorPoint.put("timestamp", System.currentTimeMillis());
-            errorPoint.put("timestampISO", java.time.Instant.now().toString());
+            errorPoint.put("timestampISO", Instant.now().toString());
             errorPoint.put("state", "ERROR");
             errorPoint.put("value", "ERROR");
             errorPoint.put("serviceId", serviceId);
@@ -534,8 +537,8 @@ public class GetPersistenceDataAction implements Action {
         for (Map<String, Object> dataPoint : dataPoints) {
             Long timestamp = (Long) dataPoint.get("timestamp");
             if (timestamp != null) {
-                java.time.ZonedDateTime dateTime = java.time.ZonedDateTime
-                        .ofInstant(java.time.Instant.ofEpochMilli(timestamp), java.time.ZoneId.systemDefault());
+                ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp),
+                        ZoneId.systemDefault());
                 String intervalKey = getIntervalKey(dateTime, interval);
                 groupedData.computeIfAbsent(intervalKey, k -> new ArrayList<>()).add(dataPoint);
             }
@@ -579,18 +582,16 @@ public class GetPersistenceDataAction implements Action {
     /**
      * Get interval key for grouping data
      */
-    private String getIntervalKey(java.time.ZonedDateTime dateTime, String interval) {
+    private String getIntervalKey(ZonedDateTime dateTime, String interval) {
         if (interval.endsWith("h")) {
             int hours = Integer.parseInt(interval.substring(0, interval.length() - 1));
-            return dateTime.truncatedTo(java.time.temporal.ChronoUnit.HOURS)
-                    .plusHours(dateTime.getHour() / hours * hours).toString();
+            return dateTime.truncatedTo(ChronoUnit.HOURS).plusHours(dateTime.getHour() / hours * hours).toString();
         } else if (interval.endsWith("d")) {
             int days = Integer.parseInt(interval.substring(0, interval.length() - 1));
-            return dateTime.truncatedTo(java.time.temporal.ChronoUnit.DAYS)
-                    .plusDays(dateTime.getDayOfYear() / days * days).toString();
+            return dateTime.truncatedTo(ChronoUnit.DAYS).plusDays(dateTime.getDayOfYear() / days * days).toString();
         } else {
             // Default to hourly
-            return dateTime.truncatedTo(java.time.temporal.ChronoUnit.HOURS).toString();
+            return dateTime.truncatedTo(ChronoUnit.HOURS).toString();
         }
     }
 

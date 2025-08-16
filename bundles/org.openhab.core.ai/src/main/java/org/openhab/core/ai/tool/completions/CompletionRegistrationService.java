@@ -71,6 +71,6 @@ public class CompletionRegistrationService {
     /** Get all registered completions. */
     public Map<String, Completion> getAllCompletions() {
         CompletionRegistry registry = completionRegistry;
-        return registry != null ? registry.getAllCompletions() : java.util.Map.of();
+        return registry != null ? registry.getAllCompletions() : Map.of();
     }
 }

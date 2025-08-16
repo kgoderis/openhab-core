@@ -2,6 +2,7 @@ package org.openhab.core.ai.action.library.rules;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -297,7 +298,7 @@ public class CreateRuleAction implements Action {
         // Create RuleBuilder with basic information
         RuleBuilder builder = RuleBuilder.create(ruleUID).withName(name)
                 .withDescription(description != null ? description : "")
-                .withTags(tags != null ? new java.util.HashSet<>(tags) : new java.util.HashSet<>());
+                .withTags(tags != null ? new HashSet<>(tags) : new HashSet<>());
 
         if (templateUID != null) {
             builder.withTemplateUID(templateUID);

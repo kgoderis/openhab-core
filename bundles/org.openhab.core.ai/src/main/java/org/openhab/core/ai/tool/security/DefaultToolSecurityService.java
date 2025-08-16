@@ -2,13 +2,16 @@ package org.openhab.core.ai.tool.security;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -16,6 +19,7 @@ import org.openhab.core.ai.tool.security.api.AccessLogEntry;
 import org.openhab.core.ai.tool.security.api.RateLimitInfo;
 import org.openhab.core.ai.tool.security.api.SecurityStatistics;
 import org.openhab.core.ai.tool.security.api.SpecificationPermissions;
+import org.openhab.core.ai.tool.security.api.ToolSecurityService;
 import org.openhab.core.ai.tool.security.api.UserRole;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
@@ -32,9 +36,9 @@ import io.modelcontextprotocol.server.McpServerFeatures;
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
-@Component(service = org.openhab.core.ai.tool.security.api.ToolSecurityService.class)
+@Component(service = ToolSecurityService.class)
 @NonNullByDefault
-public class DefaultToolSecurityService implements org.openhab.core.ai.tool.security.api.ToolSecurityService {
+public class DefaultToolSecurityService implements ToolSecurityService {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultToolSecurityService.class);
 
@@ -347,7 +351,7 @@ public class DefaultToolSecurityService implements org.openhab.core.ai.tool.secu
     public List<AccessLogEntry> getAccessLog(@Nullable String userId, @Nullable String specificationId) {
         return accessLog.values().stream().filter(entry -> userId == null || entry.getUserId().equals(userId))
                 .filter(entry -> specificationId == null || entry.getSpecificationId().equals(specificationId))
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 
     /**
@@ -548,13 +552,13 @@ public class DefaultToolSecurityService implements org.openhab.core.ai.tool.secu
     }
 
     @Override
-    public java.util.Map<String, SpecificationPermissions> getAllSpecificationPermissions() {
-        return new java.util.HashMap<>(specificationPermissions);
+    public Map<String, SpecificationPermissions> getAllSpecificationPermissions() {
+        return new HashMap<>(specificationPermissions);
     }
 
     @Override
-    public java.util.Map<String, UserRole> getAllUserRoles() {
-        return new java.util.HashMap<>(userRoles);
+    public Map<String, UserRole> getAllUserRoles() {
+        return new HashMap<>(userRoles);
     }
 
     @Override

@@ -1,5 +1,8 @@
 package org.openhab.core.ai.reasoning.results;
 
+import java.time.Instant;
+import java.util.Map;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.reasoning.constraints.ConstraintViolation;
 
@@ -20,8 +23,8 @@ public class OverrideResult {
     }
 
     public static OverrideResult notFound(String message) {
-        return new OverrideResult(false, message, new ConstraintViolation("unknown", "unknown", java.util.Map.of(),
-                "unknown", message, java.time.Instant.now()));
+        return new OverrideResult(false, message,
+                new ConstraintViolation("unknown", "unknown", Map.of(), "unknown", message, Instant.now()));
     }
 
     public OverrideResult(boolean success, String message, ConstraintViolation violation) {

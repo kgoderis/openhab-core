@@ -3,7 +3,9 @@ package org.openhab.core.ai.integration.service;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
 // TODO: Uncomment when analytics action classes are implemented
 // import org.openhab.core.ai.action.actions.analytics.*;
 
@@ -13,7 +15,7 @@ import org.junit.jupiter.api.Test;
  * TODO: This test is currently disabled because the analytics action classes
  * are not yet implemented. Re-enable when the action classes are available.
  */
-@org.junit.jupiter.api.Disabled("Analytics action classes not yet implemented")
+@Disabled("Analytics action classes not yet implemented")
 class AnalyticsActionIntegrationTest extends BaseActionIntegrationTest {
 
     // TODO: Uncomment when analytics action classes are implemented

@@ -15,6 +15,7 @@ package org.openhab.core.ai.tool.adapter;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -217,7 +218,7 @@ class ToolAdapterTest {
             Map<String, Object> schema = new HashMap<>();
             schema.put("type", "object");
             schema.put("properties", Map.of("testParam", Map.of("type", "string", "description", "Test parameter")));
-            schema.put("required", java.util.List.of("testParam"));
+            schema.put("required", List.of("testParam"));
             return schema;
         }
 

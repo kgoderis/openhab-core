@@ -1,5 +1,8 @@
 package org.openhab.core.ai.agent.api;
 
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -7,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.ContextValidationResult;
+import org.openhab.core.ai.action.DefaultContextValidationResult;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,10 +171,9 @@ public class AgentModelContextEnricher {
 
         long currentTime = System.currentTimeMillis();
         temporalContext.put("timestamp", currentTime);
-        temporalContext.put("hourOfDay",
-                java.time.Instant.ofEpochMilli(currentTime).atZone(java.time.ZoneId.systemDefault()).getHour());
+        temporalContext.put("hourOfDay", Instant.ofEpochMilli(currentTime).atZone(ZoneId.systemDefault()).getHour());
         temporalContext.put("dayOfWeek",
-                java.time.Instant.ofEpochMilli(currentTime).atZone(java.time.ZoneId.systemDefault()).getDayOfWeek());
+                Instant.ofEpochMilli(currentTime).atZone(ZoneId.systemDefault()).getDayOfWeek());
         temporalContext.put("isWeekend", isWeekend(currentTime));
         temporalContext.put("isBusinessHours", isBusinessHours(currentTime));
         temporalContext.put("isNightTime", isNightTime(currentTime));
@@ -236,13 +239,13 @@ public class AgentModelContextEnricher {
     }
 
     /**
-     * Validate context completeness and quality.
+     * Validate the agent model context.
      * 
      * @param context The context to validate
      * @return Validation result with issues and recommendations
      */
     public ContextValidationResult validate(AgentModelContext context) {
-        ContextValidationResult result = new ContextValidationResult();
+        DefaultContextValidationResult result = new DefaultContextValidationResult();
 
         // Check required fields
         validateRequiredFields(context, result);
@@ -265,7 +268,7 @@ public class AgentModelContextEnricher {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateRequiredFields(AgentModelContext context, ContextValidationResult result) {
+    private void validateRequiredFields(AgentModelContext context, DefaultContextValidationResult result) {
         if (!context.hasContextData("agentId")) {
             result.addIssue("Missing required field: agentId");
         }
@@ -285,7 +288,7 @@ public class AgentModelContextEnricher {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateDataQuality(AgentModelContext context, ContextValidationResult result) {
+    private void validateDataQuality(AgentModelContext context, DefaultContextValidationResult result) {
         // Check for null or empty values
         for (Map.Entry<String, Object> entry : context.getContextData().entrySet()) {
             if (entry.getValue() == null) {
@@ -300,7 +303,7 @@ public class AgentModelContextEnricher {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateConsistency(AgentModelContext context, ContextValidationResult result) {
+    private void validateConsistency(AgentModelContext context, DefaultContextValidationResult result) {
         String agentType = (String) context.getContextData("agentType");
         String domain = (String) context.getContextData("domain");
 
@@ -318,7 +321,7 @@ public class AgentModelContextEnricher {
      * @param context The context to validate
      * @param result The validation result to update
      */
-    private void validateCompleteness(AgentModelContext context, ContextValidationResult result) {
+    private void validateCompleteness(AgentModelContext context, DefaultContextValidationResult result) {
         // Check if context has minimum required information
         if (!context.hasContextData("capabilities") && !context.hasContextData("skills")) {
             result.addRecommendation("Consider adding capabilities or skills information");
@@ -386,9 +389,8 @@ public class AgentModelContextEnricher {
      * @return True if weekend, false otherwise
      */
     private boolean isWeekend(long timestamp) {
-        java.time.DayOfWeek dayOfWeek = java.time.Instant.ofEpochMilli(timestamp)
-                .atZone(java.time.ZoneId.systemDefault()).getDayOfWeek();
-        return dayOfWeek == java.time.DayOfWeek.SATURDAY || dayOfWeek == java.time.DayOfWeek.SUNDAY;
+        DayOfWeek dayOfWeek = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).getDayOfWeek();
+        return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
     }
 
     /**
@@ -398,7 +400,7 @@ public class AgentModelContextEnricher {
      * @return True if business hours, false otherwise
      */
     private boolean isBusinessHours(long timestamp) {
-        int hour = java.time.Instant.ofEpochMilli(timestamp).atZone(java.time.ZoneId.systemDefault()).getHour();
+        int hour = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).getHour();
         return hour >= 9 && hour <= 17 && !isWeekend(timestamp);
     }
 
@@ -409,7 +411,7 @@ public class AgentModelContextEnricher {
      * @return True if night time, false otherwise
      */
     private boolean isNightTime(long timestamp) {
-        int hour = java.time.Instant.ofEpochMilli(timestamp).atZone(java.time.ZoneId.systemDefault()).getHour();
+        int hour = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).getHour();
         return hour >= 22 || hour <= 6;
     }
 

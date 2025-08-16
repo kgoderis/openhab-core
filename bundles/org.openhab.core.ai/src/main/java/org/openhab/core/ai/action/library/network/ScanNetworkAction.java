@@ -1,7 +1,9 @@
 package org.openhab.core.ai.action.library.network;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -192,7 +194,7 @@ public class ScanNetworkAction implements Action {
 
             // Generate summary
             result.put("summary", generateScanSummary(discoveredHosts, openPorts, hosts.size()));
-            result.put("timestamp", java.time.Instant.now().toString());
+            result.put("timestamp", Instant.now().toString());
 
             long executionTime = System.currentTimeMillis() - startTime;
             return ActionResult.success(result, executionTime);
@@ -298,7 +300,7 @@ public class ScanNetworkAction implements Action {
 
             for (Integer port : ports) {
                 try (Socket socket = new Socket()) {
-                    socket.connect(new java.net.InetSocketAddress(hostIP, port), timeout);
+                    socket.connect(new InetSocketAddress(hostIP, port), timeout);
 
                     Map<String, Object> portInfo = new HashMap<>();
                     portInfo.put("host", hostIP);

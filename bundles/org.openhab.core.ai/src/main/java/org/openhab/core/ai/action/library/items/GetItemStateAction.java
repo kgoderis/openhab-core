@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action.library.items;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,9 @@ import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -185,12 +189,12 @@ public class GetItemStateAction implements Action {
 
                     // Try to get numeric value if applicable
                     try {
-                        if (item.getState() instanceof org.openhab.core.library.types.DecimalType decimalState) {
+                        if (item.getState() instanceof DecimalType decimalState) {
                             stateDetails.put("numericValue", decimalState.doubleValue());
-                        } else if (item.getState() instanceof org.openhab.core.library.types.PercentType percentState) {
+                        } else if (item.getState() instanceof PercentType percentState) {
                             stateDetails.put("percentValue", percentState.intValue());
-                        } else if (item.getState() instanceof org.openhab.core.library.types.OnOffType onOffState) {
-                            stateDetails.put("booleanValue", onOffState == org.openhab.core.library.types.OnOffType.ON);
+                        } else if (item.getState() instanceof OnOffType onOffState) {
+                            stateDetails.put("booleanValue", onOffState == OnOffType.ON);
                         }
                     } catch (Exception e) {
                         // Ignore conversion errors
@@ -293,7 +297,7 @@ public class GetItemStateAction implements Action {
      * Get state history for an item
      */
     private List<Map<String, Object>> getStateHistory(String itemName, String duration, int maxEntries) {
-        List<Map<String, Object>> history = new java.util.ArrayList<>();
+        List<Map<String, Object>> history = new ArrayList<>();
 
         if (persistenceServiceRegistry == null) {
             logger.debug("Persistence service registry not available for item: {}", itemName);

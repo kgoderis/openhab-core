@@ -4,7 +4,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.tool.api.Tool;
@@ -56,16 +59,15 @@ public class PromptManagementTool implements Tool {
         Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
         schema.put("properties", Map.of("operation",
-                Map.of("type", "string", "enum",
-                        java.util.List.of("list", "get", "create", "update", "delete", "execute"), "description",
-                        "The operation to perform on prompts"),
+                Map.of("type", "string", "enum", List.of("list", "get", "create", "update", "delete", "execute"),
+                        "description", "The operation to perform on prompts"),
                 "promptId",
                 Map.of("type", "string", "description",
                         "ID of the specific prompt (required for get, update, delete, execute operations)"),
                 "promptData", Map.of("type", "object", "description", "Prompt data for create/update operations"),
                 "filter", Map.of("type", "object", "description", "Filter criteria for list operations"), "input",
                 Map.of("type", "object", "description", "Input data for execute operation")));
-        schema.put("required", java.util.List.of("operation"));
+        schema.put("required", List.of("operation"));
         return schema;
     }
 
@@ -297,7 +299,7 @@ public class PromptManagementTool implements Tool {
 
             // Generate a unique prompt ID
             String promptId = "prompt-" + System.currentTimeMillis() + "-"
-                    + java.util.UUID.randomUUID().toString().substring(0, 8);
+                    + UUID.randomUUID().toString().substring(0, 8);
 
             // In a real implementation, this would save to a prompt registry or database
             // For now, we'll just log the creation and return success
@@ -466,8 +468,8 @@ public class PromptManagementTool implements Tool {
         }
 
         // Simple regex to find {{variable}} patterns
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{\\{([^}]+)\\}\\}");
-        java.util.regex.Matcher matcher = pattern.matcher(template);
+        Pattern pattern = Pattern.compile("\\{\\{([^}]+)\\}\\}");
+        Matcher matcher = pattern.matcher(template);
 
         while (matcher.find()) {
             String variable = matcher.group(1).trim();
@@ -526,8 +528,8 @@ public class PromptManagementTool implements Tool {
         String result = template;
 
         // Replace {{variable}} patterns with input values
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{\\{([^}]+)\\}\\}");
-        java.util.regex.Matcher matcher = pattern.matcher(template);
+        Pattern pattern = Pattern.compile("\\{\\{([^}]+)\\}\\}");
+        Matcher matcher = pattern.matcher(template);
 
         while (matcher.find()) {
             String variable = matcher.group(1).trim();

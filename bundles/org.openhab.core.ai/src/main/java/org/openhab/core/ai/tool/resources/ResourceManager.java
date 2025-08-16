@@ -7,8 +7,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.model.api.ModelProviderType;
@@ -91,7 +93,7 @@ public class ResourceManager {
      * @return CompletableFuture with the result
      */
     public <T> CompletableFuture<T> submitRequest(String requestId, ModelProviderType provider, int priority,
-            java.util.function.Supplier<T> task) {
+            Supplier<T> task) {
 
         // Check resource availability
         if (!canAcceptRequest(provider)) {
@@ -127,7 +129,7 @@ public class ResourceManager {
             }
         }, executorService).orTimeout(requestTimeout.get().toMillis(), TimeUnit.MILLISECONDS)
                 .whenComplete((result, throwable) -> {
-                    if (throwable instanceof java.util.concurrent.TimeoutException) {
+                    if (throwable instanceof TimeoutException) {
                         totalRequestsTimedOut.incrementAndGet();
                         logger.warn("Request {} timed out after {}ms", requestId, requestTimeout.get().toMillis());
                     }

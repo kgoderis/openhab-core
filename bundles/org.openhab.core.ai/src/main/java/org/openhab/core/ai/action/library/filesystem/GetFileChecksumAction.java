@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -297,7 +298,7 @@ public class GetFileChecksumAction implements Action {
         if ("hex".equals(format)) {
             return bytesToHex(hash);
         } else if ("base64".equals(format)) {
-            return java.util.Base64.getEncoder().encodeToString(hash);
+            return Base64.getEncoder().encodeToString(hash);
         } else {
             throw new IllegalArgumentException("Unsupported format: " + format);
         }

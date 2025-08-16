@@ -3,6 +3,9 @@ package org.openhab.core.ai.tool.error.api;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.tool.error.ErrorInfo;
+import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
+import org.openhab.core.ai.tool.error.RecoveryAction;
 
 /**
  * Error Recovery Service Interface
@@ -45,7 +48,7 @@ public interface ErrorRecoveryService {
      * @param clientId Client identifier (if applicable)
      * @return Recovery action to take
      */
-    org.openhab.core.ai.tool.error.RecoveryAction handleError(String errorType, String errorMessage, String clientId);
+    RecoveryAction handleError(String errorType, String errorMessage, String clientId);
 
     /**
      * Record a successful recovery
@@ -83,14 +86,14 @@ public interface ErrorRecoveryService {
      * 
      * @return Map of error details
      */
-    Map<String, org.openhab.core.ai.tool.error.ErrorInfo> getErrorDetails();
+    Map<String, ErrorInfo> getErrorDetails();
 
     /**
      * Get error recovery statistics
      * 
      * @return Error recovery statistics
      */
-    org.openhab.core.ai.tool.error.ErrorRecoveryStatistics getErrorRecoveryStatistics();
+    ErrorRecoveryStatistics getErrorRecoveryStatistics();
 
     /**
      * Reset error counters for a specific error type

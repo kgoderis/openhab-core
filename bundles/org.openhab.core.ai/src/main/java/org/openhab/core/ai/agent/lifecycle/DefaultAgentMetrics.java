@@ -17,17 +17,17 @@ import org.openhab.core.ai.agent.api.Agent;
  * @since 1.0.0
  */
 @NonNullByDefault
-final class DefaultAgentMetrics implements Agent.AgentMetrics {
+public final class DefaultAgentMetrics implements Agent.AgentMetrics {
     private final String agentId;
     private final List<Long> executionTimes = new CopyOnWriteArrayList<>();
     private int successCount = 0;
     private int failureCount = 0;
 
-    DefaultAgentMetrics(String agentId) {
+    public DefaultAgentMetrics(String agentId) {
         this.agentId = agentId;
     }
 
-    void recordExecution(long time, boolean success) {
+    public void recordExecution(long time, boolean success) {
         executionTimes.add(time);
         if (success) {
             successCount++;

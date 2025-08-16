@@ -1,6 +1,7 @@
 package org.openhab.core.ai.agent.infrastructure.performance;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +27,7 @@ public class MessageLatencyMetrics {
     }
 
     public void recordLatency(String messageType, Duration latency) {
-        latencies.computeIfAbsent(messageType, k -> new java.util.ArrayList<>()).add(latency);
+        latencies.computeIfAbsent(messageType, k -> new ArrayList<>()).add(latency);
         totalMessages.incrementAndGet();
     }
 

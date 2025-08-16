@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.server.ServerConfiguration;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService.ReadyTracker;
 import org.osgi.framework.BundleContext;
@@ -50,8 +51,7 @@ public interface ToolServerManager extends ReadyTracker {
      * @return Created server instance
      * @throws Exception if creation fails
      */
-    ToolServer createServerInstance(String serverId, org.openhab.core.ai.tool.server.ServerConfiguration config)
-            throws Exception;
+    ToolServer createServerInstance(String serverId, ServerConfiguration config) throws Exception;
 
     /**
      * Remove a server instance

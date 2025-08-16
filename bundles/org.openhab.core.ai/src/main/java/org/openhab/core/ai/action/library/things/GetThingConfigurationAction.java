@@ -14,6 +14,7 @@ import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.config.core.ConfigDescriptionRegistry;
+import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.ThingUID;
@@ -275,7 +276,7 @@ public class GetThingConfigurationAction implements Action {
 
             // Channel information
             List<Map<String, Object>> channels = new ArrayList<>();
-            for (org.openhab.core.thing.Channel channel : thing.getChannels()) {
+            for (Channel channel : thing.getChannels()) {
                 Map<String, Object> channelInfo = new HashMap<>();
                 channelInfo.put("uid", channel.getUID().getAsString());
                 channelInfo.put("id", channel.getUID().getId());

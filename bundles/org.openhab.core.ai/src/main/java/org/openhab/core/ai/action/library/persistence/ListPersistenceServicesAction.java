@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -383,7 +384,7 @@ public class ListPersistenceServicesAction implements Action {
 
                 // Basic service information
                 serviceInfo.put("id", service.getId());
-                serviceInfo.put("label", service.getLabel(java.util.Locale.getDefault()));
+                serviceInfo.put("label", service.getLabel(Locale.getDefault()));
                 serviceInfo.put("class", service.getClass().getSimpleName());
 
                 // Service type information
@@ -428,8 +429,7 @@ public class ListPersistenceServicesAction implements Action {
                 }
 
                 // Additional metadata
-                serviceInfo.put("description",
-                        "Persistence service: " + service.getLabel(java.util.Locale.getDefault()));
+                serviceInfo.put("description", "Persistence service: " + service.getLabel(Locale.getDefault()));
                 serviceInfo.put("version", "1.0.0");
                 serviceInfo.put("timestamp", System.currentTimeMillis());
 

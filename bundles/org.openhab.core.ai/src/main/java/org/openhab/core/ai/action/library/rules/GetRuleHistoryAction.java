@@ -1,7 +1,10 @@
 package org.openhab.core.ai.action.library.rules;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,7 +99,7 @@ public class GetRuleHistoryAction implements Action {
                 "Persistence service to use (e.g., 'rrd4j', 'influxdb', 'jdbc')", "default", "rrd4j"));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -288,7 +291,7 @@ public class GetRuleHistoryAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "history", "monitoring")).build();
+                .tags(List.of("rules", "history", "monitoring")).build();
     }
 
     @Override
@@ -478,9 +481,8 @@ public class GetRuleHistoryAction implements Action {
         summary.put("successfulExecutions", successfulExecutions);
         summary.put("failedExecutions", failedExecutions);
         summary.put("averageExecutionTime", totalExecutions > 0 ? totalExecutionTime / totalExecutions : 0);
-        summary.put("lastExecution", lastExecution > 0 ? new java.util.Date(lastExecution).toString() : "Never");
-        summary.put("firstExecution",
-                firstExecution < Long.MAX_VALUE ? new java.util.Date(firstExecution).toString() : "Never");
+        summary.put("lastExecution", lastExecution > 0 ? new Date(lastExecution).toString() : "Never");
+        summary.put("firstExecution", firstExecution < Long.MAX_VALUE ? new Date(firstExecution).toString() : "Never");
 
         // Calculate success rate
         if (totalExecutions > 0) {
@@ -614,7 +616,7 @@ public class GetRuleHistoryAction implements Action {
         } catch (Exception e) {
             // Try to parse as local date time
             try {
-                return java.time.LocalDateTime.parse(timeStr).atZone(java.time.ZoneId.systemDefault());
+                return LocalDateTime.parse(timeStr).atZone(ZoneId.systemDefault());
             } catch (Exception e2) {
                 throw new IllegalArgumentException(
                         "Invalid time format: " + timeStr + ". Use ISO 8601 or relative time (e.g., '24h ago')");

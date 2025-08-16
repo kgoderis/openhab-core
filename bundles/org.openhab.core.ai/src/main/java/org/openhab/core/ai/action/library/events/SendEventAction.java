@@ -1,8 +1,11 @@
 package org.openhab.core.ai.action.library.events;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -19,6 +22,8 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Action for sending custom events to the openHAB EventBus.
@@ -70,10 +75,10 @@ public class SendEventAction implements Action {
 
     @Override
     public Map<String, Object> getParameterSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
 
-        Map<String, Object> properties = new java.util.HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put("topic",
                 Map.of("type", "string", "description", "Event topic (e.g., 'openhab/items/Light/command')"));
         properties.put("payload", Map.of("type", "object", "description", "Event payload data"));
@@ -92,10 +97,10 @@ public class SendEventAction implements Action {
 
     @Override
     public Map<String, Object> getReturnSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
 
-        Map<String, Object> properties = new java.util.HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put("eventId", Map.of("type", "string", "description", "ID of the sent event"));
         properties.put("topic", Map.of("type", "string", "description", "Event topic"));
         properties.put("status", Map.of("type", "string", "description", "Status of the event sending"));
@@ -107,7 +112,7 @@ public class SendEventAction implements Action {
 
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
-        List<String> errors = new java.util.ArrayList<>();
+        List<String> errors = new ArrayList<>();
 
         // Validate topic
         Object topicObj = parameters.get("topic");
@@ -192,7 +197,7 @@ public class SendEventAction implements Action {
 
     @Override
     public Map<String, Object> getCapabilities() {
-        Map<String, Object> capabilities = new java.util.HashMap<>();
+        Map<String, Object> capabilities = new HashMap<>();
         capabilities.put("supportsAsync", true);
         capabilities.put("supportsCustomEvents", true);
         capabilities.put("supportsPriority", true);
@@ -216,7 +221,7 @@ public class SendEventAction implements Action {
     }
 
     private Map<String, Object> sendEvent(Map<String, Object> parameters) {
-        Map<String, Object> result = new java.util.HashMap<>();
+        Map<String, Object> result = new HashMap<>();
         result.put("action", "send_event");
         result.put("timestamp", Instant.now().toString());
 
@@ -229,8 +234,7 @@ public class SendEventAction implements Action {
         String priority = (String) parameters.getOrDefault("priority", "normal");
 
         // Generate event ID
-        String eventId = "ai-event-" + System.currentTimeMillis() + "-"
-                + java.util.UUID.randomUUID().toString().substring(0, 8);
+        String eventId = "ai-event-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
 
         // Send event
         if (eventPublisher != null) {
@@ -289,7 +293,7 @@ public class SendEventAction implements Action {
             // such as ItemEventFactory, ThingEventFactory, etc.
 
             // Create a custom event with the provided data
-            Map<String, Object> eventData = new java.util.HashMap<>();
+            Map<String, Object> eventData = new HashMap<>();
             eventData.put("type", eventType);
             eventData.put("topic", topic);
             eventData.put("payload", payload);
@@ -320,7 +324,7 @@ public class SendEventAction implements Action {
                 public String getPayload() {
                     // Convert payload to JSON string
                     try {
-                        return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(eventData);
+                        return new ObjectMapper().writeValueAsString(eventData);
                     } catch (Exception e) {
                         logger.warn("Failed to serialize event payload", e);
                         return "{}";

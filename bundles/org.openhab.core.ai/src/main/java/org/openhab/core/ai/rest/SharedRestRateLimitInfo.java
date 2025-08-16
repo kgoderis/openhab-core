@@ -1,5 +1,8 @@
 package org.openhab.core.ai.rest;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
@@ -10,5 +13,5 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 final class SharedRestRateLimitInfo {
-    final java.util.List<Long> requests = new java.util.concurrent.CopyOnWriteArrayList<>();
+    final List<Long> requests = new CopyOnWriteArrayList<>();
 }

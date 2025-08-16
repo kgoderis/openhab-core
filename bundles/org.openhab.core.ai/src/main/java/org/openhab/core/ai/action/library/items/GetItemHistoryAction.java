@@ -18,6 +18,9 @@ import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StringType;
 import org.openhab.core.persistence.FilterCriteria;
 import org.openhab.core.persistence.HistoricItem;
 import org.openhab.core.persistence.PersistenceService;
@@ -413,14 +416,12 @@ public class GetItemHistoryAction implements Action {
                         entry.put("stateValue", state.toString());
 
                         // Add additional state details based on type
-                        if (state instanceof org.openhab.core.library.types.DecimalType) {
-                            entry.put("numericValue",
-                                    ((org.openhab.core.library.types.DecimalType) state).doubleValue());
-                        } else if (state instanceof org.openhab.core.library.types.StringType) {
-                            entry.put("stringValue", ((org.openhab.core.library.types.StringType) state).toString());
-                        } else if (state instanceof org.openhab.core.library.types.OnOffType) {
-                            entry.put("booleanValue",
-                                    ((org.openhab.core.library.types.OnOffType) state) == org.openhab.core.library.types.OnOffType.ON);
+                        if (state instanceof DecimalType) {
+                            entry.put("numericValue", ((DecimalType) state).doubleValue());
+                        } else if (state instanceof StringType) {
+                            entry.put("stringValue", ((StringType) state).toString());
+                        } else if (state instanceof OnOffType) {
+                            entry.put("booleanValue", ((OnOffType) state) == OnOffType.ON);
                         }
                     }
                 } else {

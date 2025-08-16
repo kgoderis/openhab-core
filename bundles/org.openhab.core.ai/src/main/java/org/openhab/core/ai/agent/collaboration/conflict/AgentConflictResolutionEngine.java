@@ -11,6 +11,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -328,18 +329,15 @@ public class AgentConflictResolutionEngine {
                 .filter(conflict -> conflict.getDetectedAt().isAfter(cutoffTime)).toList();
 
         // Analyze patterns
-        Map<String, Integer> agentConflictCounts = conflictsInRange.stream()
-                .collect(java.util.stream.Collectors.groupingBy(Conflict::getReportedBy, java.util.stream.Collectors
-                        .collectingAndThen(java.util.stream.Collectors.counting(), Long::intValue)));
+        Map<String, Integer> agentConflictCounts = conflictsInRange.stream().collect(Collectors.groupingBy(
+                Conflict::getReportedBy, Collectors.collectingAndThen(Collectors.counting(), Long::intValue)));
 
         Map<ConflictType, Integer> typeConflictCounts = conflictsInRange.stream()
-                .collect(java.util.stream.Collectors.groupingBy(conflict -> conflict.getAnalysis().getConflictType(),
-                        java.util.stream.Collectors.collectingAndThen(java.util.stream.Collectors.counting(),
-                                Long::intValue)));
+                .collect(Collectors.groupingBy(conflict -> conflict.getAnalysis().getConflictType(),
+                        Collectors.collectingAndThen(Collectors.counting(), Long::intValue)));
 
-        Map<ConflictPriority, Integer> priorityConflictCounts = conflictsInRange.stream()
-                .collect(java.util.stream.Collectors.groupingBy(Conflict::getPriority, java.util.stream.Collectors
-                        .collectingAndThen(java.util.stream.Collectors.counting(), Long::intValue)));
+        Map<ConflictPriority, Integer> priorityConflictCounts = conflictsInRange.stream().collect(Collectors.groupingBy(
+                Conflict::getPriority, Collectors.collectingAndThen(Collectors.counting(), Long::intValue)));
 
         ConflictPatternAnalysis analysis = new ConflictPatternAnalysis(conflictsInRange.size(), agentConflictCounts,
                 typeConflictCounts, priorityConflictCounts, timeRange);

@@ -1,4 +1,4 @@
-package org.openhab.core.ai.model;
+package org.openhab.core.ai.agent.core;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -17,6 +17,9 @@ import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.api.AgentModelStatistics;
 import org.openhab.core.ai.agent.api.HealthState;
 import org.openhab.core.ai.agent.api.ModelHealthStatus;
+import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.ModelResponse;
+import org.openhab.core.ai.model.ModelTrackingService;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.model.api.ModelProviderType;

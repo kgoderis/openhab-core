@@ -16,7 +16,7 @@ import javax.ws.rs.core.Response;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.model.AgentClientSession;
+import org.openhab.core.ai.agent.core.AgentClientSession;
 import org.openhab.core.ai.model.ClientPerformanceMetrics;
 import org.openhab.core.ai.model.ClientUsageInfo;
 import org.openhab.core.ai.model.ModelTrackingService;

@@ -1,5 +1,6 @@
 package org.openhab.core.ai.action.library.items;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,12 +14,14 @@ import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.events.EventPublisher;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.Metadata;
 import org.openhab.core.items.MetadataKey;
 import org.openhab.core.items.MetadataRegistry;
 import org.openhab.core.items.events.ItemCommandEvent;
+import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.items.events.ItemStateEvent;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
@@ -48,7 +51,7 @@ public class BulkItemOperationsAction implements Action {
     private @Nullable MetadataRegistry metadataRegistry;
 
     @Reference
-    private org.openhab.core.events.@Nullable EventPublisher eventPublisher;
+    private @Nullable EventPublisher eventPublisher;
 
     @Override
     public String getActionId() {
@@ -220,7 +223,7 @@ public class BulkItemOperationsAction implements Action {
             }
 
             Map<String, Object> results = new HashMap<>();
-            List<String> errors = new java.util.ArrayList<>();
+            List<String> errors = new ArrayList<>();
             int successfulOperations = 0;
             int failedOperations = 0;
 
@@ -349,8 +352,7 @@ public class BulkItemOperationsAction implements Action {
             State newState = TypeParser.parseState(item.getAcceptedDataTypes(), value);
 
             if (newState != null) {
-                ItemStateEvent stateEvent = (ItemStateEvent) org.openhab.core.items.events.ItemEventFactory
-                        .createStateEvent(itemName, newState);
+                ItemStateEvent stateEvent = (ItemStateEvent) ItemEventFactory.createStateEvent(itemName, newState);
                 eventPublisher.post(stateEvent);
                 result.put("success", true);
                 result.put("previousState", item.getState() != null ? item.getState().toString() : "NULL");
@@ -380,8 +382,8 @@ public class BulkItemOperationsAction implements Action {
             Command newCommand = TypeParser.parseCommand(item.getAcceptedCommandTypes(), value);
 
             if (newCommand != null) {
-                ItemCommandEvent commandEvent = (ItemCommandEvent) org.openhab.core.items.events.ItemEventFactory
-                        .createCommandEvent(itemName, newCommand);
+                ItemCommandEvent commandEvent = (ItemCommandEvent) ItemEventFactory.createCommandEvent(itemName,
+                        newCommand);
                 eventPublisher.post(commandEvent);
                 result.put("success", true);
                 result.put("command", newCommand.toString());

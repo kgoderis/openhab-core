@@ -1,5 +1,7 @@
 package org.openhab.core.ai.agent.collaboration.conflict;
 
+import java.time.Instant;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
@@ -10,7 +12,7 @@ public class ConflictEscalationBuilder {
     String conflictId;
     String escalationReason;
     EscalationLevel escalationLevel;
-    java.time.Instant escalatedAt;
+    Instant escalatedAt;
 
     public ConflictEscalationBuilder conflictId(String conflictId) {
         this.conflictId = conflictId;
@@ -27,7 +29,7 @@ public class ConflictEscalationBuilder {
         return this;
     }
 
-    public ConflictEscalationBuilder escalatedAt(java.time.Instant escalatedAt) {
+    public ConflictEscalationBuilder escalatedAt(Instant escalatedAt) {
         this.escalatedAt = escalatedAt;
         return this;
     }

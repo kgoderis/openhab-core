@@ -1,10 +1,19 @@
 package org.openhab.core.ai.tool.server.http;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
+import org.openhab.core.ai.tool.security.api.SecurityStatistics;
 import org.openhab.core.ai.tool.server.DefaultToolServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 
 /**
  * HTTP handler that serves Prometheus-style metrics for the MCP Tool server.
@@ -18,9 +27,9 @@ import org.openhab.core.ai.tool.server.DefaultToolServer;
  * @since 1.0.0
  */
 @NonNullByDefault
-public final class MetricsHandler implements com.sun.net.httpserver.HttpHandler {
+public final class MetricsHandler implements HttpHandler {
 
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MetricsHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(MetricsHandler.class);
 
     private final DefaultToolServer serverInstance;
     private final long startTime;
@@ -36,7 +45,7 @@ public final class MetricsHandler implements com.sun.net.httpserver.HttpHandler 
     }
 
     @Override
-    public void handle(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+    public void handle(HttpExchange exchange) throws IOException {
         try {
             totalRequests.incrementAndGet();
 
@@ -57,8 +66,7 @@ public final class MetricsHandler implements com.sun.net.httpserver.HttpHandler 
             response.append("mcp_server_healthy ").append(serverInstance.isHealthy() ? 1 : 0).append("\n");
 
             if (serverInstance.isSecurityEnabled()) {
-                org.openhab.core.ai.tool.security.api.SecurityStatistics securityStats = serverInstance
-                        .getSecurityStatistics();
+                SecurityStatistics securityStats = serverInstance.getSecurityStatistics();
                 if (securityStats != null) {
                     response.append("# HELP mcp_security_total_requests Total number of security requests\n");
                     response.append("# TYPE mcp_security_total_requests counter\n");
@@ -76,8 +84,7 @@ public final class MetricsHandler implements com.sun.net.httpserver.HttpHandler 
             }
 
             if (serverInstance.isErrorRecoveryEnabled()) {
-                org.openhab.core.ai.tool.error.ErrorRecoveryStatistics errorStats = serverInstance
-                        .getErrorRecoveryStatistics();
+                ErrorRecoveryStatistics errorStats = serverInstance.getErrorRecoveryStatistics();
                 if (errorStats != null) {
                     response.append("# HELP mcp_errors_total_count Total number of errors\n");
                     response.append("# TYPE mcp_errors_total_count counter\n");
@@ -97,14 +104,14 @@ public final class MetricsHandler implements com.sun.net.httpserver.HttpHandler 
                 }
             }
 
-            byte[] responseBytes = response.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] responseBytes = response.toString().getBytes(StandardCharsets.UTF_8);
             var headers = exchange.getResponseHeaders();
             if (headers != null) {
                 headers.add("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
             }
             exchange.sendResponseHeaders(200, responseBytes.length);
 
-            try (java.io.OutputStream os = exchange.getResponseBody()) {
+            try (OutputStream os = exchange.getResponseBody()) {
                 if (os != null) {
                     os.write(responseBytes);
                 }

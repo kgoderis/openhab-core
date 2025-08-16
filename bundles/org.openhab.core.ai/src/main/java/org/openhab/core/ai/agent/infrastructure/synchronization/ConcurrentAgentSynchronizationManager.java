@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -369,7 +370,7 @@ public class ConcurrentAgentSynchronizationManager implements AgentSynchronizati
                 throw new RuntimeException("Task execution interrupted", e);
             }
         }).orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS).exceptionally(throwable -> {
-            if (throwable instanceof java.util.concurrent.TimeoutException) {
+            if (throwable instanceof TimeoutException) {
                 return new TaskStatusUpdateEvent(task.getId(), new TaskStatus(TaskState.FAILED), task.getContextId(),
                         true, null);
             } else {

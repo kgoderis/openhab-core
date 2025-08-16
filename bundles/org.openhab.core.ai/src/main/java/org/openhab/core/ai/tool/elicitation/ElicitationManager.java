@@ -9,6 +9,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.elicitation.input.ElicitationRequest;
 import org.openhab.core.ai.tool.elicitation.input.ElicitationResult;
+import org.openhab.core.ai.tool.elicitation.input.ElicitationStatus;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -77,8 +78,7 @@ public class ElicitationManager implements ElicitationService {
             // 4. Processing and returning result
 
             // For now, return a mock result indicating pending status
-            ElicitationResult result = new ElicitationResult(request.getId(),
-                    org.openhab.core.ai.tool.elicitation.input.ElicitationStatus.PENDING,
+            ElicitationResult result = new ElicitationResult(request.getId(), ElicitationStatus.PENDING,
                     "Elicitation request requires user input", null, System.currentTimeMillis());
 
             LOGGER.info("Elicitation request created: {} - Status: {}", request.getId(), result.getStatus());
@@ -107,8 +107,7 @@ public class ElicitationManager implements ElicitationService {
             validateResponse(request, response);
 
             // Process response
-            ElicitationResult result = new ElicitationResult(requestId,
-                    org.openhab.core.ai.tool.elicitation.input.ElicitationStatus.COMPLETED,
+            ElicitationResult result = new ElicitationResult(requestId, ElicitationStatus.COMPLETED,
                     "Elicitation request completed successfully", response, System.currentTimeMillis());
 
             // Remove from pending requests
@@ -135,8 +134,7 @@ public class ElicitationManager implements ElicitationService {
             }
 
             // Process cancellation
-            ElicitationResult result = new ElicitationResult(requestId,
-                    org.openhab.core.ai.tool.elicitation.input.ElicitationStatus.CANCELLED, reason, null,
+            ElicitationResult result = new ElicitationResult(requestId, ElicitationStatus.CANCELLED, reason, null,
                     System.currentTimeMillis());
 
             // Remove from pending requests

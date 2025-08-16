@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action.library.rules;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -73,7 +74,7 @@ public class GetRuleConditionsAction implements Action {
                 Map.of("type", "boolean", "description", "Include condition type information", "default", false));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -99,12 +100,12 @@ public class GetRuleConditionsAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String ruleUID = (String) parameters.get("ruleUID");
         if (ruleUID == null || ruleUID.trim().isEmpty()) {
-            return ActionValidationResult.invalid(java.util.List.of("ruleUID is required and cannot be empty"));
+            return ActionValidationResult.invalid(List.of("ruleUID is required and cannot be empty"));
         }
 
         return ActionValidationResult.valid(parameters);
@@ -129,7 +130,7 @@ public class GetRuleConditionsAction implements Action {
                 return ActionResult.success(result, System.currentTimeMillis());
             }
 
-            java.util.List<Map<String, Object>> conditions = rule.getConditions().stream()
+            List<Map<String, Object>> conditions = rule.getConditions().stream()
                     .map(condition -> convertConditionToMap(condition, includeConfiguration, includeEvaluationLogic,
                             includeTypeInfo))
                     .collect(Collectors.toList());
@@ -162,7 +163,7 @@ public class GetRuleConditionsAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "conditions", "automation")).build();
+                .tags(List.of("rules", "conditions", "automation")).build();
     }
 
     @Override
@@ -277,105 +278,105 @@ public class GetRuleConditionsAction implements Action {
     /**
      * Get supported inputs for the condition type.
      */
-    private java.util.List<String> getSupportedInputsForType(String typeUID) {
+    private List<String> getSupportedInputsForType(String typeUID) {
         if (typeUID == null) {
-            return java.util.List.of();
+            return List.of();
         }
 
         // Common openHAB condition inputs
         switch (typeUID) {
             case "core.ItemStateCondition":
-                return java.util.List.of("itemName", "operator", "state");
+                return List.of("itemName", "operator", "state");
             case "core.ItemStateUpdateCondition":
-                return java.util.List.of("itemName", "operator", "state");
+                return List.of("itemName", "operator", "state");
             case "core.ItemCommandCondition":
-                return java.util.List.of("itemName", "command");
+                return List.of("itemName", "command");
             case "core.ThingStatusCondition":
-                return java.util.List.of("thingUID", "status");
+                return List.of("thingUID", "status");
             case "core.TimeOfDayCondition":
-                return java.util.List.of("startTime", "endTime");
+                return List.of("startTime", "endTime");
             case "core.DayOfWeekCondition":
-                return java.util.List.of("days");
+                return List.of("days");
             case "core.SystemStartlevelCondition":
-                return java.util.List.of("startlevel");
+                return List.of("startlevel");
             case "core.ModuleTypeCondition":
-                return java.util.List.of("typeUID");
+                return List.of("typeUID");
             case "core.GenericCompareCondition":
-                return java.util.List.of("left", "operator", "right");
+                return List.of("left", "operator", "right");
             case "core.ScriptCondition":
-                return java.util.List.of("script");
+                return List.of("script");
             default:
-                return java.util.List.of("CustomInput");
+                return List.of("CustomInput");
         }
     }
 
     /**
      * Get required configuration parameters for the condition type.
      */
-    private java.util.List<String> getRequiredConfigurationForType(String typeUID) {
+    private List<String> getRequiredConfigurationForType(String typeUID) {
         if (typeUID == null) {
-            return java.util.List.of();
+            return List.of();
         }
 
         // Common required configuration parameters
         switch (typeUID) {
             case "core.ItemStateCondition":
-                return java.util.List.of("itemName", "operator", "state");
+                return List.of("itemName", "operator", "state");
             case "core.ItemStateUpdateCondition":
-                return java.util.List.of("itemName", "operator", "state");
+                return List.of("itemName", "operator", "state");
             case "core.ItemCommandCondition":
-                return java.util.List.of("itemName", "command");
+                return List.of("itemName", "command");
             case "core.ThingStatusCondition":
-                return java.util.List.of("thingUID", "status");
+                return List.of("thingUID", "status");
             case "core.TimeOfDayCondition":
-                return java.util.List.of("startTime", "endTime");
+                return List.of("startTime", "endTime");
             case "core.DayOfWeekCondition":
-                return java.util.List.of("days");
+                return List.of("days");
             case "core.SystemStartlevelCondition":
-                return java.util.List.of("startlevel");
+                return List.of("startlevel");
             case "core.ModuleTypeCondition":
-                return java.util.List.of("typeUID");
+                return List.of("typeUID");
             case "core.GenericCompareCondition":
-                return java.util.List.of("left", "operator", "right");
+                return List.of("left", "operator", "right");
             case "core.ScriptCondition":
-                return java.util.List.of("script");
+                return List.of("script");
             default:
-                return java.util.List.of();
+                return List.of();
         }
     }
 
     /**
      * Get optional configuration parameters for the condition type.
      */
-    private java.util.List<String> getOptionalConfigurationForType(String typeUID) {
+    private List<String> getOptionalConfigurationForType(String typeUID) {
         if (typeUID == null) {
-            return java.util.List.of();
+            return List.of();
         }
 
         // Common optional configuration parameters
         switch (typeUID) {
             case "core.ItemStateCondition":
-                return java.util.List.of("previousState");
+                return List.of("previousState");
             case "core.ItemStateUpdateCondition":
-                return java.util.List.of("previousState");
+                return List.of("previousState");
             case "core.ItemCommandCondition":
-                return java.util.List.of();
+                return List.of();
             case "core.ThingStatusCondition":
-                return java.util.List.of("previousStatus");
+                return List.of("previousStatus");
             case "core.TimeOfDayCondition":
-                return java.util.List.of();
+                return List.of();
             case "core.DayOfWeekCondition":
-                return java.util.List.of();
+                return List.of();
             case "core.SystemStartlevelCondition":
-                return java.util.List.of();
+                return List.of();
             case "core.ModuleTypeCondition":
-                return java.util.List.of();
+                return List.of();
             case "core.GenericCompareCondition":
-                return java.util.List.of();
+                return List.of();
             case "core.ScriptCondition":
-                return java.util.List.of("scriptType");
+                return List.of("scriptType");
             default:
-                return java.util.List.of();
+                return List.of();
         }
     }
 }

@@ -12,19 +12,22 @@
  */
 package org.openhab.core.ai.reasoning.optimization;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.openhab.core.ai.reasoning.configuration.api.ConfigurationManager;
+import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.error.api.ErrorHandler;
 import org.openhab.core.ai.reasoning.memory.api.MemoryManager;
-import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.security.api.SecurityManager;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -103,15 +106,14 @@ public class AgentModelDecisionOptimizer {
                 }
 
                 // Security validation
-                org.openhab.core.ai.reasoning.api.SecurityRequest securityRequest = new org.openhab.core.ai.reasoning.api.SecurityRequest(
-                        "decision_opt_" + System.currentTimeMillis(), context.getSessionId(), "decision_optimizer",
-                        "DECISION_OPTIMIZATION", "Decision optimization request", "", System.currentTimeMillis());
+                SecurityRequest securityRequest = new SecurityRequest("decision_opt_" + System.currentTimeMillis(),
+                        context.getSessionId(), "decision_optimizer", "DECISION_OPTIMIZATION",
+                        "Decision optimization request", "", System.currentTimeMillis());
 
-                org.openhab.core.ai.reasoning.api.SecurityValidationResult securityResult = securityManager
-                        .validateSecurity(securityRequest).get();
+                SecurityValidationResult securityResult = securityManager.validateSecurity(securityRequest).get();
                 if (!securityResult.isValid()) {
-                    throw new SecurityException("Access denied for decision optimization: "
-                            + java.util.Arrays.stream(securityResult.getIssues())
+                    throw new SecurityException(
+                            "Access denied for decision optimization: " + Arrays.stream(securityResult.getIssues())
                                     .map(org.openhab.core.ai.reasoning.api.SecurityIssue::getDescription).findFirst()
                                     .orElse("Unknown security issue"));
                 }
@@ -133,9 +135,8 @@ public class AgentModelDecisionOptimizer {
                 failedOptimizations.incrementAndGet();
                 String sessionId = context != null ? context.getSessionId() : "unknown";
                 logger.error("Decision optimization failed for session: {}", sessionId, e);
-                org.openhab.core.ai.reasoning.api.ErrorContext errorContext = new org.openhab.core.ai.reasoning.api.ErrorContext(
-                        "AgentModelDecisionOptimizer", "optimizeDecision", sessionId, System.currentTimeMillis(),
-                        new String[] { "Decision optimization failed" });
+                ErrorContext errorContext = new ErrorContext("AgentModelDecisionOptimizer", "optimizeDecision",
+                        sessionId, System.currentTimeMillis(), new String[] { "Decision optimization failed" });
                 errorHandler.handleError(e, errorContext);
                 throw new RuntimeException("Decision optimization failed", e);
             }
@@ -270,7 +271,7 @@ public class AgentModelDecisionOptimizer {
 
         for (int i = 0; i < decisionSteps.size(); i++) {
             ReasoningStep step = decisionSteps.get(i);
-            List<Integer> dependencies = new java.util.ArrayList<>();
+            List<Integer> dependencies = new ArrayList<>();
 
             // Analyze tool call dependencies
             if (step.getToolCalls() != null && !step.getToolCalls().isEmpty()) {
@@ -300,12 +301,10 @@ public class AgentModelDecisionOptimizer {
             final List<org.openhab.core.ai.action.ActionContext> currentToolCalls) {
         // Simple overlap check based on protocol and client ID
         Set<String> previousIdentifiers = previousToolCalls.stream()
-                .map(context -> context.getProtocol() + ":" + context.getClientId())
-                .collect(java.util.stream.Collectors.toSet());
+                .map(context -> context.getProtocol() + ":" + context.getClientId()).collect(Collectors.toSet());
 
         Set<String> currentIdentifiers = currentToolCalls.stream()
-                .map(context -> context.getProtocol() + ":" + context.getClientId())
-                .collect(java.util.stream.Collectors.toSet());
+                .map(context -> context.getProtocol() + ":" + context.getClientId()).collect(Collectors.toSet());
 
         return previousIdentifiers.stream().anyMatch(currentIdentifiers::contains);
     }
@@ -320,7 +319,7 @@ public class AgentModelDecisionOptimizer {
     private List<OptimizationOpportunity> identifyOptimizationOpportunities(final ReasoningContext context,
             final List<ReasoningStep> decisionSteps) {
 
-        List<OptimizationOpportunity> opportunities = new java.util.ArrayList<>();
+        List<OptimizationOpportunity> opportunities = new ArrayList<>();
 
         // Check for parallel execution opportunities
         opportunities.addAll(identifyParallelExecutionOpportunities(decisionSteps));
@@ -392,7 +391,7 @@ public class AgentModelDecisionOptimizer {
     private List<ReasoningStep> removeRedundantSteps(final List<ReasoningStep> decisionSteps,
             final List<Integer> redundantIndices) {
 
-        List<ReasoningStep> optimizedSteps = new java.util.ArrayList<>(decisionSteps);
+        List<ReasoningStep> optimizedSteps = new ArrayList<>(decisionSteps);
 
         // Remove redundant steps in reverse order to maintain indices
         for (int i = redundantIndices.size() - 1; i >= 0; i--) {

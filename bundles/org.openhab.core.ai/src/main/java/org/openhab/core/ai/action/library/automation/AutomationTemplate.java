@@ -12,7 +12,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-class AutomationTemplate {
+public class AutomationTemplate {
     final String templateId;
     final String name;
     final String description;

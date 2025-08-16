@@ -12,6 +12,7 @@ import org.openhab.core.ai.tool.resources.api.ResourceResult;
 import org.openhab.core.ai.tool.resources.api.dto.Resource;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
+import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -280,13 +281,13 @@ public class ThingResourceAdapter extends BaseAdapter implements Adapter<Resourc
             }
 
             // Check current status
-            org.openhab.core.thing.ThingStatus currentStatus = thing.getStatus();
-            if (enabled && currentStatus == org.openhab.core.thing.ThingStatus.ONLINE) {
+            ThingStatus currentStatus = thing.getStatus();
+            if (enabled && currentStatus == ThingStatus.ONLINE) {
                 LOGGER.debug("Thing {} is already online", identifier);
                 return true;
             }
 
-            if (!enabled && currentStatus == org.openhab.core.thing.ThingStatus.OFFLINE) {
+            if (!enabled && currentStatus == ThingStatus.OFFLINE) {
                 LOGGER.debug("Thing {} is already offline", identifier);
                 return true;
             }

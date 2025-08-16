@@ -8,11 +8,13 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.agent.api.AgentModelContext;
 import org.openhab.core.ai.agent.api.AgentModelContextBuilder;
 import org.openhab.core.ai.reasoning.engine.SharedModelReasoningEngine;
+import org.openhab.core.ai.reasoning.enums.TaskType;
 import org.openhab.core.ai.reasoning.prompts.AgentModelPromptBuilder;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * Agent Model Selector for intelligent model selection.
@@ -47,8 +49,7 @@ public class AgentModelSelector {
      * @param context The agent context
      * @return A CompletableFuture containing the selected model
      */
-    public CompletableFuture<ModelSelection> selectModel(org.openhab.core.ai.reasoning.enums.Task task,
-            AgentModelContext context) {
+    public CompletableFuture<ModelSelection> selectModel(Task task, AgentModelContext context) {
         logger.debug("Selecting model for task: {}", task.getTaskId());
 
         return CompletableFuture.supplyAsync(() -> {
@@ -112,8 +113,7 @@ public class AgentModelSelector {
      * @param context The agent context
      * @return Map of model scores
      */
-    private Map<String, ModelScore> evaluateModels(org.openhab.core.ai.reasoning.enums.Task task,
-            AgentModelContext context) {
+    private Map<String, ModelScore> evaluateModels(Task task, AgentModelContext context) {
         Map<String, ModelScore> scores = new ConcurrentHashMap<>();
 
         for (Map.Entry<String, ModelInfo> entry : availableModels.entrySet()) {
@@ -135,8 +135,7 @@ public class AgentModelSelector {
      * @param context The agent context
      * @return The model score
      */
-    private ModelScore evaluateModel(ModelInfo modelInfo, org.openhab.core.ai.reasoning.enums.Task task,
-            AgentModelContext context) {
+    private ModelScore evaluateModel(ModelInfo modelInfo, Task task, AgentModelContext context) {
         double capabilityScore = evaluateCapability(modelInfo, task);
         double performanceScore = evaluatePerformance(modelInfo);
         double availabilityScore = evaluateAvailability(modelInfo);
@@ -158,14 +157,14 @@ public class AgentModelSelector {
      * @param task The task
      * @return The capability score
      */
-    private double evaluateCapability(ModelInfo modelInfo, org.openhab.core.ai.reasoning.enums.Task task) {
+    private double evaluateCapability(ModelInfo modelInfo, Task task) {
         // Check if model supports the required task type
         if (modelInfo.getSupportedTasks().contains(task.getTaskType())) {
             return 1.0;
         }
 
         // Check for partial capability
-        if (modelInfo.getSupportedTasks().contains(org.openhab.core.ai.reasoning.enums.TaskType.GENERAL)) {
+        if (modelInfo.getSupportedTasks().contains(TaskType.GENERAL)) {
             return 0.7;
         }
 
@@ -219,7 +218,7 @@ public class AgentModelSelector {
      * @param task The task
      * @return The cost score (lower cost = higher score)
      */
-    private double evaluateCost(ModelInfo modelInfo, org.openhab.core.ai.reasoning.enums.Task task) {
+    private double evaluateCost(ModelInfo modelInfo, Task task) {
         double estimatedTokens = estimateTokenUsage(task);
         double costPerToken = modelInfo.getCostPerToken();
         double totalCost = estimatedTokens * costPerToken;
@@ -237,8 +236,7 @@ public class AgentModelSelector {
      * @param context The agent context
      * @return The suitability score
      */
-    private double evaluateSuitability(ModelInfo modelInfo, org.openhab.core.ai.reasoning.enums.Task task,
-            AgentModelContext context) {
+    private double evaluateSuitability(ModelInfo modelInfo, Task task, AgentModelContext context) {
         // Check if model is optimized for the agent type
         String agentType = (String) context.getContextData("agentType");
         if (modelInfo.getOptimizedFor().contains(agentType)) {
@@ -288,7 +286,7 @@ public class AgentModelSelector {
      * @param task The task
      * @return Estimated token count
      */
-    private double estimateTokenUsage(org.openhab.core.ai.reasoning.enums.Task task) {
+    private double estimateTokenUsage(Task task) {
         // Simple estimation based on task complexity
         switch (task.getTaskType()) {
             case SIMPLE_QUERY:

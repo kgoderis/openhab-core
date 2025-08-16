@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.prompts.adapter;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,7 +44,7 @@ public class SystemPromptAdapter extends BaseAdapter implements Adapter<Prompt, 
                 new PromptArgument("includeThings", "Include thing status information", false),
                 new PromptArgument("includeRules", "Include rule status information", false),
                 new PromptArgument("format", "Output format (json, xml, text)", false) };
-        return new Prompt(name, description, java.util.List.of(args));
+        return new Prompt(name, description, List.of(args));
     }
 
     @Override

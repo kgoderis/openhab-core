@@ -1,10 +1,12 @@
 package org.openhab.core.ai.tool.prompts.library;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.registry.PromptExecutionResult;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.slf4j.Logger;
@@ -45,7 +47,7 @@ public class ItemControlPrompt {
      * @param arguments the prompt arguments
      * @return the execution result
      */
-    public org.openhab.core.ai.tool.registry.PromptExecutionResult execute(Map<String, Object> arguments) {
+    public PromptExecutionResult execute(Map<String, Object> arguments) {
         totalExecutions.incrementAndGet();
         long startTime = System.currentTimeMillis();
 
@@ -63,7 +65,7 @@ public class ItemControlPrompt {
                 String errorMessage = "Item not found: " + itemName;
                 logger.warn(errorMessage);
                 failedExecutions.incrementAndGet();
-                return new org.openhab.core.ai.tool.registry.PromptExecutionResult(false, errorMessage, null);
+                return new PromptExecutionResult(false, errorMessage, null);
             }
 
             // Validate action
@@ -72,7 +74,7 @@ public class ItemControlPrompt {
                         + ". Valid actions are: ON, OFF, TOGGLE, INCREASE, DECREASE";
                 logger.warn(errorMessage);
                 failedExecutions.incrementAndGet();
-                return new org.openhab.core.ai.tool.registry.PromptExecutionResult(false, errorMessage, null);
+                return new PromptExecutionResult(false, errorMessage, null);
             }
 
             // Execute the action
@@ -81,13 +83,13 @@ public class ItemControlPrompt {
             successfulExecutions.incrementAndGet();
             logger.debug("Item control prompt executed successfully: {} {} {}", itemName, action, value);
 
-            return new org.openhab.core.ai.tool.registry.PromptExecutionResult(true, null, result);
+            return new PromptExecutionResult(true, null, result);
 
         } catch (Exception e) {
             String errorMessage = "Error executing item control prompt: " + e.getMessage();
             logger.error(errorMessage, e);
             failedExecutions.incrementAndGet();
-            return new org.openhab.core.ai.tool.registry.PromptExecutionResult(false, errorMessage, null);
+            return new PromptExecutionResult(false, errorMessage, null);
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
             totalExecutionTimeMs.addAndGet(executionTime);
@@ -135,7 +137,7 @@ public class ItemControlPrompt {
      * @return performance metrics as a map
      */
     public Map<String, Object> getPerformanceMetrics() {
-        Map<String, Object> metrics = new java.util.HashMap<>();
+        Map<String, Object> metrics = new HashMap<>();
         metrics.put("totalExecutions", totalExecutions.get());
         metrics.put("successfulExecutions", successfulExecutions.get());
         metrics.put("failedExecutions", failedExecutions.get());
@@ -176,17 +178,17 @@ public class ItemControlPrompt {
      * @return the argument schema
      */
     public Map<String, Object> getArgumentSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
 
         // itemName argument
-        Map<String, Object> itemNameSchema = new java.util.HashMap<>();
+        Map<String, Object> itemNameSchema = new HashMap<>();
         itemNameSchema.put("type", "string");
         itemNameSchema.put("description", "Name of the openHAB item to control");
         itemNameSchema.put("required", true);
         schema.put("itemName", itemNameSchema);
 
         // action argument
-        Map<String, Object> actionSchema = new java.util.HashMap<>();
+        Map<String, Object> actionSchema = new HashMap<>();
         actionSchema.put("type", "string");
         actionSchema.put("description", "Action to perform (ON, OFF, TOGGLE, INCREASE, DECREASE)");
         actionSchema.put("required", true);
@@ -194,7 +196,7 @@ public class ItemControlPrompt {
         schema.put("action", actionSchema);
 
         // value argument
-        Map<String, Object> valueSchema = new java.util.HashMap<>();
+        Map<String, Object> valueSchema = new HashMap<>();
         valueSchema.put("type", "string");
         valueSchema.put("description", "Optional value for the action (e.g., percentage for dimmers)");
         valueSchema.put("required", false);

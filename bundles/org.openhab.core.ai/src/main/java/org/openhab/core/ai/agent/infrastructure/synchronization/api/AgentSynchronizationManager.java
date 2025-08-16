@@ -5,12 +5,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.agent.infrastructure.synchronization.SynchronizationTaskExecutionStats;
 import org.openhab.core.ai.agent.infrastructure.synchronization.SynchronizationTransactionResult;
 
 import io.a2a.spec.Task;
+import io.a2a.spec.TaskState;
 import io.a2a.spec.TaskStatusUpdateEvent;
 
 /**
@@ -125,14 +128,14 @@ public interface AgentSynchronizationManager {
      * 
      * @return Map of task states
      */
-    Map<String, io.a2a.spec.TaskState> getTaskStates();
+    Map<String, TaskState> getTaskStates();
 
     /**
      * Get resource locks
      * 
      * @return Map of resource locks
      */
-    Map<String, java.util.concurrent.locks.ReentrantLock> getResourceLocks();
+    Map<String, ReentrantLock> getResourceLocks();
 
     /**
      * Get lock owners
@@ -207,7 +210,7 @@ public interface AgentSynchronizationManager {
      * 
      * @return Map of task retry counts
      */
-    Map<String, java.util.concurrent.atomic.AtomicInteger> getTaskRetryCounts();
+    Map<String, AtomicInteger> getTaskRetryCounts();
 
     /**
      * Get task execution history

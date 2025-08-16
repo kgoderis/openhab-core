@@ -1,5 +1,8 @@
 package org.openhab.core.ai.action.library.events;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -65,10 +68,10 @@ public class UnsubscribeEventsAction implements Action {
 
     @Override
     public Map<String, Object> getParameterSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
 
-        Map<String, Object> properties = new java.util.HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put("subscriptionId", Map.of("type", "string", "description", "ID of the subscription to remove"));
         properties.put("clientId",
                 Map.of("type", "string", "description", "MCP client identifier (optional, for validation)"));
@@ -81,10 +84,10 @@ public class UnsubscribeEventsAction implements Action {
 
     @Override
     public Map<String, Object> getReturnSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
 
-        Map<String, Object> properties = new java.util.HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put("subscriptionId", Map.of("type", "string", "description", "ID of the removed subscription"));
         properties.put("status", Map.of("type", "string", "description", "Status of the unsubscription"));
         properties.put("message", Map.of("type", "string", "description", "Result message"));
@@ -96,7 +99,7 @@ public class UnsubscribeEventsAction implements Action {
 
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
-        List<String> errors = new java.util.ArrayList<>();
+        List<String> errors = new ArrayList<>();
 
         // Validate subscriptionId
         Object subscriptionIdObj = parameters.get("subscriptionId");
@@ -154,7 +157,7 @@ public class UnsubscribeEventsAction implements Action {
 
     @Override
     public Map<String, Object> getCapabilities() {
-        Map<String, Object> capabilities = new java.util.HashMap<>();
+        Map<String, Object> capabilities = new HashMap<>();
         capabilities.put("supportsAsync", true);
         capabilities.put("supportsValidation", true);
         capabilities.put("supportsCleanup", true);
@@ -177,9 +180,9 @@ public class UnsubscribeEventsAction implements Action {
     }
 
     private Map<String, Object> unsubscribeFromEvents(Map<String, Object> parameters, ActionContext context) {
-        Map<String, Object> result = new java.util.HashMap<>();
+        Map<String, Object> result = new HashMap<>();
         result.put("action", "unsubscribe_events");
-        result.put("timestamp", java.time.Instant.now().toString());
+        result.put("timestamp", Instant.now().toString());
 
         // Extract parameters
         String subscriptionId = (String) parameters.get("subscriptionId");

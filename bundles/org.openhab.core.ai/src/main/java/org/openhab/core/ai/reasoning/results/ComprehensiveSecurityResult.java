@@ -72,11 +72,11 @@ public class ComprehensiveSecurityResult {
         securityIssues.addAll(issues);
     }
 
-    public void addSecurityIssue(org.openhab.core.ai.reasoning.security.SecurityIssue issue) {
+    public void addSecurityIssue(SecurityIssue issue) {
         securityIssues.add(issue);
     }
 
-    public void addSafetyIssue(org.openhab.core.ai.reasoning.security.SafetyIssue issue) {
+    public void addSafetyIssue(SafetyIssue issue) {
         safetyIssues.add(issue);
     }
 }

@@ -11,7 +11,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-class ModelUsageInfo {
+public class ModelUsageInfo {
     final String agentId;
     final String modelId;
     final int maxDailyUsage;
@@ -21,7 +21,7 @@ class ModelUsageInfo {
     long lastDailyReset;
     long lastHourlyReset;
 
-    ModelUsageInfo(String agentId, String modelId, int maxDailyUsage, int maxHourlyUsage) {
+    public ModelUsageInfo(String agentId, String modelId, int maxDailyUsage, int maxHourlyUsage) {
         this.agentId = agentId;
         this.modelId = modelId;
         this.maxDailyUsage = maxDailyUsage;
@@ -32,17 +32,17 @@ class ModelUsageInfo {
         this.lastHourlyReset = System.currentTimeMillis();
     }
 
-    void incrementUsage() {
+    public void incrementUsage() {
         dailyUsage++;
         hourlyUsage++;
     }
 
-    void resetDailyUsage() {
+    public void resetDailyUsage() {
         dailyUsage = 0;
         lastDailyReset = System.currentTimeMillis();
     }
 
-    void resetHourlyUsage() {
+    public void resetHourlyUsage() {
         hourlyUsage = 0;
         lastHourlyReset = System.currentTimeMillis();
     }

@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
+import reactor.core.publisher.Mono;
 
 /**
  * Adapter for MCP Tools.
@@ -133,7 +134,7 @@ public class ToolAdapter {
      * 
      * @return the tool metadata
      */
-    public org.openhab.core.ai.tool.api.ToolMetadata getMetadata() {
+    public ToolMetadata getMetadata() {
         return tool.getMetadata();
     }
 
@@ -225,7 +226,7 @@ public class ToolAdapter {
 
             // Create the call handler
             return McpServerFeatures.AsyncToolSpecification.builder().tool(mcpTool).callHandler((exchange, toolReq) -> {
-                return reactor.core.publisher.Mono.fromCallable(() -> {
+                return Mono.fromCallable(() -> {
                     try {
                         logger.debug("Executing async tool: {} with arguments: {}", tool.getId(), toolReq.arguments());
 

@@ -1,5 +1,6 @@
 package org.openhab.core.ai.reasoning.decision;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,9 +21,9 @@ final class DecisionAnalysis {
     private List<OptimizationOpportunity> optimizationOpportunities;
 
     DecisionAnalysis() {
-        this.redundantSteps = new java.util.ArrayList<>();
+        this.redundantSteps = new ArrayList<>();
         this.dependencyGraph = new ConcurrentHashMap<>();
-        this.optimizationOpportunities = new java.util.ArrayList<>();
+        this.optimizationOpportunities = new ArrayList<>();
     }
 
     double getAverageComplexity() {

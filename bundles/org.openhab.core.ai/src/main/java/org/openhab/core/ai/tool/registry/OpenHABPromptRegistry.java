@@ -1,6 +1,8 @@
 package org.openhab.core.ai.tool.registry;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -25,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
+import reactor.core.publisher.Mono;
 
 /**
  * OpenHAB-specific implementation of the MCP Prompt Registry.
@@ -267,10 +270,10 @@ public class OpenHABPromptRegistry implements PromptRegistry {
     @Override
     public Map<String, Object>[] getPromptDescriptors() {
         try {
-            var list = new java.util.ArrayList<Map<String, Object>>();
+            var list = new ArrayList<Map<String, Object>>();
             for (var entry : getAllPrompts().entrySet()) {
                 var p = entry.getValue();
-                var args = new java.util.ArrayList<Map<String, Object>>();
+                var args = new ArrayList<Map<String, Object>>();
                 for (var a : p.getArguments()) {
                     args.add(
                             Map.of("name", a.getName(), "description", a.getDescription(), "required", a.isRequired()));
@@ -292,7 +295,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
             LOGGER.debug("Creating sync prompt specifications for {} prompts", prompts.size());
 
             // Create prompt specifications using MCP SDK builders
-            var specs = new java.util.ArrayList<McpServerFeatures.SyncPromptSpecification>();
+            var specs = new ArrayList<McpServerFeatures.SyncPromptSpecification>();
 
             for (var entry : getAllPrompts().entrySet()) {
                 var prompt = entry.getValue();
@@ -301,7 +304,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
                     // Convert internal prompt arguments to MCP format
                     var mcpArguments = prompt.getArguments().stream().map(
                             arg -> new McpSchema.PromptArgument(arg.getName(), arg.getDescription(), arg.isRequired()))
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
 
                     // Create MCP prompt specification using the correct SDK structure
                     var mcpPrompt = new McpSchema.Prompt(prompt.getName(), prompt.getDescription(), mcpArguments);
@@ -312,10 +315,10 @@ public class OpenHABPromptRegistry implements PromptRegistry {
 
                                 // Return a simple prompt result with description and empty messages
                                 // TODO: Implement proper message handling when internal Prompt class supports messages
-                                return new McpSchema.GetPromptResult(prompt.getDescription(), java.util.List.of() // Empty
-                                                                                                                  // messages
-                                                                                                                  // for
-                                                                                                                  // now
+                                return new McpSchema.GetPromptResult(prompt.getDescription(), List.of() // Empty
+                                                                                                        // messages
+                                                                                                        // for
+                                                                                                        // now
                                 );
                             });
 
@@ -342,7 +345,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
             LOGGER.debug("Creating async prompt specifications for {} prompts", prompts.size());
 
             // Create prompt specifications using MCP SDK builders
-            var specs = new java.util.ArrayList<McpServerFeatures.AsyncPromptSpecification>();
+            var specs = new ArrayList<McpServerFeatures.AsyncPromptSpecification>();
 
             for (var entry : getAllPrompts().entrySet()) {
                 var prompt = entry.getValue();
@@ -351,7 +354,7 @@ public class OpenHABPromptRegistry implements PromptRegistry {
                     // Convert internal prompt arguments to MCP format
                     var mcpArguments = prompt.getArguments().stream().map(
                             arg -> new McpSchema.PromptArgument(arg.getName(), arg.getDescription(), arg.isRequired()))
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
 
                     // Create MCP prompt specification using the correct SDK structure
                     var mcpPrompt = new McpSchema.Prompt(prompt.getName(), prompt.getDescription(), mcpArguments);
@@ -360,14 +363,14 @@ public class OpenHABPromptRegistry implements PromptRegistry {
                             (exchange, request) -> {
                                 LOGGER.debug("Handling async prompt for: {}", prompt.getName());
 
-                                return reactor.core.publisher.Mono.fromCallable(() -> {
+                                return Mono.fromCallable(() -> {
                                     // Return a simple prompt result with description and empty messages
                                     // TODO: Implement proper message handling when internal Prompt class supports
                                     // messages
-                                    return new McpSchema.GetPromptResult(prompt.getDescription(), java.util.List.of() // Empty
-                                                                                                                      // messages
-                                                                                                                      // for
-                                                                                                                      // now
+                                    return new McpSchema.GetPromptResult(prompt.getDescription(), List.of() // Empty
+                                                                                                            // messages
+                                                                                                            // for
+                                                                                                            // now
                                     );
                                 });
                             });

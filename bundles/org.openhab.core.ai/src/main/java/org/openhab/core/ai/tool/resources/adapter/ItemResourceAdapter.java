@@ -12,6 +12,12 @@ import org.openhab.core.ai.tool.resources.api.ResourceResult;
 import org.openhab.core.ai.tool.resources.api.dto.Resource;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.OpenClosedType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -298,7 +304,7 @@ public class ItemResourceAdapter extends BaseAdapter implements Adapter<Resource
             }
 
             // Create the appropriate state type based on item type
-            org.openhab.core.types.State newState = createStateFromString(item, state);
+            State newState = createStateFromString(item, state);
             if (newState == null) {
                 LOGGER.warn("Could not create state from string: {} for item: {}", state, identifier);
                 return false;
@@ -358,19 +364,18 @@ public class ItemResourceAdapter extends BaseAdapter implements Adapter<Resource
      * @param stateValue the state value as string
      * @return the state object or null if creation fails
      */
-    private org.openhab.core.types.@Nullable State createStateFromString(Item item, String stateValue) {
+    private @Nullable State createStateFromString(Item item, String stateValue) {
         try {
             String itemType = item.getType();
 
             switch (itemType) {
                 case "Switch":
-                    return "ON".equalsIgnoreCase(stateValue) ? org.openhab.core.library.types.OnOffType.ON
-                            : org.openhab.core.library.types.OnOffType.OFF;
+                    return "ON".equalsIgnoreCase(stateValue) ? OnOffType.ON : OnOffType.OFF;
 
                 case "Dimmer":
                     try {
                         int dimmerValue = Integer.parseInt(stateValue);
-                        return new org.openhab.core.library.types.PercentType(dimmerValue);
+                        return new PercentType(dimmerValue);
                     } catch (NumberFormatException e) {
                         LOGGER.warn("Invalid dimmer value: {}", stateValue);
                         return null;
@@ -379,23 +384,22 @@ public class ItemResourceAdapter extends BaseAdapter implements Adapter<Resource
                 case "Number":
                     try {
                         double numberValue = Double.parseDouble(stateValue);
-                        return new org.openhab.core.library.types.DecimalType(numberValue);
+                        return new DecimalType(numberValue);
                     } catch (NumberFormatException e) {
                         LOGGER.warn("Invalid number value: {}", stateValue);
                         return null;
                     }
 
                 case "String":
-                    return new org.openhab.core.library.types.StringType(stateValue);
+                    return new StringType(stateValue);
 
                 case "Contact":
-                    return "OPEN".equalsIgnoreCase(stateValue) ? org.openhab.core.library.types.OpenClosedType.OPEN
-                            : org.openhab.core.library.types.OpenClosedType.CLOSED;
+                    return "OPEN".equalsIgnoreCase(stateValue) ? OpenClosedType.OPEN : OpenClosedType.CLOSED;
 
                 case "Rollershutter":
                     try {
                         int shutterValue = Integer.parseInt(stateValue);
-                        return new org.openhab.core.library.types.PercentType(shutterValue);
+                        return new PercentType(shutterValue);
                     } catch (NumberFormatException e) {
                         LOGGER.warn("Invalid rollershutter value: {}", stateValue);
                         return null;
@@ -403,7 +407,7 @@ public class ItemResourceAdapter extends BaseAdapter implements Adapter<Resource
 
                 default:
                     // For unknown types, try to create a string state
-                    return new org.openhab.core.library.types.StringType(stateValue);
+                    return new StringType(stateValue);
             }
         } catch (Exception e) {
             LOGGER.error("Error creating state from string: {} for item type: {}", stateValue, item.getType(), e);

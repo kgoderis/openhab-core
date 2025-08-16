@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action.library.rules;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -81,7 +82,7 @@ public class GetRuleAction implements Action {
                 Map.of("type", "boolean", "description", "Include recent execution history", "default", false));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -104,12 +105,12 @@ public class GetRuleAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String ruleUID = (String) parameters.get("ruleUID");
         if (ruleUID == null || ruleUID.trim().isEmpty()) {
-            return ActionValidationResult.invalid(java.util.List.of("ruleUID is required and cannot be empty"));
+            return ActionValidationResult.invalid(List.of("ruleUID is required and cannot be empty"));
         }
 
         return ActionValidationResult.valid(parameters);
@@ -166,7 +167,7 @@ public class GetRuleAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "get", "details")).build();
+                .tags(List.of("rules", "get", "details")).build();
     }
 
     @Override

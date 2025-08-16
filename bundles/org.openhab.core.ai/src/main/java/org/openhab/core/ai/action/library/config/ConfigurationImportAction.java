@@ -29,6 +29,8 @@ import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+
 /**
  * AI Action for importing openHAB configuration files.
  * 
@@ -387,7 +389,7 @@ public class ConfigurationImportAction implements Action {
     private List<ImportFile> parseJsonData(byte[] data) throws ActionException {
         try {
             String jsonString = new String(data);
-            Map<String, Object> json = new com.google.gson.Gson().fromJson(jsonString, Map.class);
+            Map<String, Object> json = new Gson().fromJson(jsonString, Map.class);
 
             List<ImportFile> files = new ArrayList<>();
             @SuppressWarnings("unchecked")
@@ -422,7 +424,7 @@ public class ConfigurationImportAction implements Action {
     private List<ImportFile> parseRawData(byte[] data) throws ActionException {
         try {
             String jsonString = new String(data);
-            List<Map<String, Object>> rawData = new com.google.gson.Gson().fromJson(jsonString, List.class);
+            List<Map<String, Object>> rawData = new Gson().fromJson(jsonString, List.class);
 
             List<ImportFile> files = new ArrayList<>();
             for (Map<String, Object> fileData : rawData) {

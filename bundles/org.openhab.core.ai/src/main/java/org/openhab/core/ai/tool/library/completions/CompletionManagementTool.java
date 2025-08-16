@@ -1,6 +1,7 @@
 package org.openhab.core.ai.tool.library.completions;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -48,22 +49,20 @@ public class CompletionManagementTool implements Tool {
     public Map<String, Object> getInputSchema() {
         Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
-        schema.put("properties",
-                Map.of("operation",
-                        Map.of("type", "string", "enum",
-                                java.util.List.of("list", "get", "create", "update", "delete", "execute"),
-                                "description", "The operation to perform on completions"),
-                        "completionId",
-                        Map.of("type", "string", "description",
-                                "ID of the specific completion (required for get, update, delete, execute operations)"),
-                        "completionData",
-                        Map.of("type", "object", "description", "Completion data for create/update operations"),
-                        "filter", Map.of("type", "object", "description", "Filter criteria for list operations"),
-                        "input", Map.of("type", "object", "description", "Input data for execute operation"), "model",
-                        Map.of("type", "string", "description", "AI model to use for completion"), "temperature",
-                        Map.of("type", "number", "description", "Temperature for completion generation"), "maxTokens",
-                        Map.of("type", "integer", "description", "Maximum tokens for completion")));
-        schema.put("required", java.util.List.of("operation"));
+        schema.put("properties", Map.of("operation",
+                Map.of("type", "string", "enum", List.of("list", "get", "create", "update", "delete", "execute"),
+                        "description", "The operation to perform on completions"),
+                "completionId",
+                Map.of("type", "string", "description",
+                        "ID of the specific completion (required for get, update, delete, execute operations)"),
+                "completionData",
+                Map.of("type", "object", "description", "Completion data for create/update operations"), "filter",
+                Map.of("type", "object", "description", "Filter criteria for list operations"), "input",
+                Map.of("type", "object", "description", "Input data for execute operation"), "model",
+                Map.of("type", "string", "description", "AI model to use for completion"), "temperature",
+                Map.of("type", "number", "description", "Temperature for completion generation"), "maxTokens",
+                Map.of("type", "integer", "description", "Maximum tokens for completion")));
+        schema.put("required", List.of("operation"));
         return schema;
     }
 
@@ -158,7 +157,7 @@ public class CompletionManagementTool implements Tool {
 
         // TODO: Implement actual completion listing logic
         Map<String, Object> result = new HashMap<>();
-        result.put("completions", java.util.List.of());
+        result.put("completions", List.of());
         result.put("total", 0);
         result.put("message", "Completion listing completed successfully");
 

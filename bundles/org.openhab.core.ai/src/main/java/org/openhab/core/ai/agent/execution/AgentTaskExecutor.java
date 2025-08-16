@@ -1,9 +1,13 @@
 package org.openhab.core.ai.agent.execution;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -16,6 +20,8 @@ import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.communication.protocol.AgentProtocolHandler;
 import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
+import org.openhab.core.ai.agent.infrastructure.security.AuthenticationResult;
+import org.openhab.core.ai.agent.infrastructure.security.AuthorizationResult;
 import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManager;
 import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentSynchronizationManager;
 import org.openhab.core.ai.auth.AuthenticationContext;
@@ -301,17 +307,16 @@ public class AgentTaskExecutor implements AgentExecutor {
         });
 
         // Add timeout handling
-        executionFuture.orTimeout(defaultTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
-                .exceptionally(throwable -> {
-                    if (throwable instanceof java.util.concurrent.TimeoutException) {
-                        logger.warn("Task {} timed out after {} ms", taskId, defaultTimeoutMs);
-                        handleTaskTimeout(task, eventQueue);
-                    } else {
-                        logger.error("Task {} failed with exception", taskId, throwable);
-                        handleTaskFailure(task, eventQueue, throwable);
-                    }
-                    return (Void) null;
-                });
+        executionFuture.orTimeout(defaultTimeoutMs, TimeUnit.MILLISECONDS).exceptionally(throwable -> {
+            if (throwable instanceof TimeoutException) {
+                logger.warn("Task {} timed out after {} ms", taskId, defaultTimeoutMs);
+                handleTaskTimeout(task, eventQueue);
+            } else {
+                logger.error("Task {} failed with exception", taskId, throwable);
+                handleTaskFailure(task, eventQueue, throwable);
+            }
+            return (Void) null;
+        });
     }
 
     @NonNullByDefault
@@ -402,7 +407,7 @@ public class AgentTaskExecutor implements AgentExecutor {
             logger.debug("Retrying task {} (attempt {}/{})", taskId, retryCount.get(), maxRetries);
 
             // Schedule retry with delay
-            CompletableFuture.delayedExecutor(retryDelayMs, java.util.concurrent.TimeUnit.MILLISECONDS).execute(() -> {
+            CompletableFuture.delayedExecutor(retryDelayMs, TimeUnit.MILLISECONDS).execute(() -> {
                 try {
                     // Re-authenticate for retry
                     AuthenticationContext authContext = authenticateRequest(
@@ -574,7 +579,21 @@ public class AgentTaskExecutor implements AgentExecutor {
             return null;
         }
 
-        return security.authenticateA2AMessage(message).orElse(null);
+        // Extract agent ID from message metadata or use default
+        String agentId = extractAgentIdFromMessage(message);
+        String credentials = extractCredentialsFromMessage(message);
+
+        try {
+            AuthenticationResult result = security.authenticateAgent(agentId, credentials).get();
+            if (result.isSuccess()) {
+                return new AuthenticationContext(agentId, "a2a", Map.of(), Set.of("a2a:execute"), Instant.now(), null,
+                        "a2a-session-" + System.currentTimeMillis());
+            }
+        } catch (Exception e) {
+            logger.error("Authentication failed for agent: {}", agentId, e);
+        }
+
+        return null;
     }
 
     @NonNullByDefault
@@ -585,7 +604,40 @@ public class AgentTaskExecutor implements AgentExecutor {
             return false;
         }
 
-        return security.hasA2APermission(authContext, "a2a:execute");
+        String agentId = authContext.getPrincipalId();
+        if (agentId == null) {
+            return false;
+        }
+
+        try {
+            AuthorizationResult result = security.authorizeAction(agentId, "execute", "a2a:task").get();
+            return result.isGranted();
+        } catch (Exception e) {
+            logger.error("Authorization failed for agent: {}", agentId, e);
+            return false;
+        }
+    }
+
+    @NonNullByDefault
+    private String extractAgentIdFromMessage(Message message) {
+        if (message.getMetadata() != null && message.getMetadata().containsKey("agentId")) {
+            Object agentIdObj = message.getMetadata().get("agentId");
+            if (agentIdObj instanceof String) {
+                return (String) agentIdObj;
+            }
+        }
+        return "default-agent";
+    }
+
+    @NonNullByDefault
+    private String extractCredentialsFromMessage(Message message) {
+        if (message.getMetadata() != null && message.getMetadata().containsKey("credentials")) {
+            Object credentialsObj = message.getMetadata().get("credentials");
+            if (credentialsObj instanceof String) {
+                return (String) credentialsObj;
+            }
+        }
+        return "";
     }
 
     @NonNullByDefault

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
 
 import org.eclipse.jdt.annotation.Nullable;
@@ -23,12 +24,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.a2a.spec.JSONRPCError;
+import io.a2a.spec.Message;
 import io.a2a.spec.MessageSendParams;
+import io.a2a.spec.Part;
 import io.a2a.spec.StreamingEventKind;
 import io.a2a.spec.Task;
 import io.a2a.spec.TaskState;
 import io.a2a.spec.TaskStatus;
 import io.a2a.spec.TaskStatusUpdateEvent;
+import io.a2a.spec.TextPart;
 
 /**
  * A2A Streaming Manager - Handles streaming event management and real-time task updates.
@@ -94,8 +98,7 @@ public class AgentStreamingManager {
     // Public API Methods
     // ============================================================================
 
-    public java.util.concurrent.Flow.Publisher<StreamingEventKind> handleStreamingMessageSend(MessageSendParams params)
-            throws JSONRPCError {
+    public Flow.Publisher<StreamingEventKind> handleStreamingMessageSend(MessageSendParams params) throws JSONRPCError {
         logger.debug("Processing streaming message send request: {}", params);
 
         // Create streaming publisher
@@ -167,8 +170,7 @@ public class AgentStreamingManager {
         return publisher;
     }
 
-    public java.util.concurrent.Flow.Publisher<StreamingEventKind> resubscribeToTask(String taskId)
-            throws JSONRPCError {
+    public Flow.Publisher<StreamingEventKind> resubscribeToTask(String taskId) throws JSONRPCError {
         logger.debug("Resubscribing to task: {}", taskId);
 
         // Create streaming publisher for resubscription
@@ -230,11 +232,11 @@ public class AgentStreamingManager {
         }
     }
 
-    private String extractTextContent(io.a2a.spec.Message message) {
+    private String extractTextContent(Message message) {
         if (message.getParts() != null) {
             StringBuilder textBuilder = new StringBuilder();
-            for (io.a2a.spec.Part part : message.getParts()) {
-                if (part instanceof io.a2a.spec.TextPart textPart) {
+            for (Part part : message.getParts()) {
+                if (part instanceof TextPart textPart) {
                     textBuilder.append(textPart.getText());
                 }
             }
@@ -243,7 +245,7 @@ public class AgentStreamingManager {
         return "";
     }
 
-    private String extractActionIdFromMessage(io.a2a.spec.Message message) {
+    private String extractActionIdFromMessage(Message message) {
         // Extract action ID from message metadata
         Map<String, Object> metadata = message.getMetadata();
         if (metadata != null && metadata.containsKey("actionId")) {
@@ -262,7 +264,7 @@ public class AgentStreamingManager {
         return "system.info";
     }
 
-    private Map<String, Object> extractParametersFromMessage(io.a2a.spec.Message message) {
+    private Map<String, Object> extractParametersFromMessage(Message message) {
         Map<String, Object> parameters = new HashMap<>();
 
         // Extract parameters from message metadata

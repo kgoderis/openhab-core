@@ -1,5 +1,6 @@
 package org.openhab.core.ai.action.library.addons;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.time.Instant;
@@ -432,7 +433,7 @@ public class UpdateAddonAction implements Action {
             }
 
             // Validate file exists
-            java.io.File file = new java.io.File(filePath);
+            File file = new File(filePath);
             if (!file.exists()) {
                 result.put("error", "Update file not found: " + filePath);
                 return result;

@@ -36,7 +36,7 @@ import org.openhab.core.ai.agent.api.AgentModelStatistics;
 import org.openhab.core.ai.agent.api.HealthState;
 import org.openhab.core.ai.agent.api.ModelHealthStatus;
 import org.openhab.core.ai.agent.api.ModelIntegrationStatistics;
-import org.openhab.core.ai.model.DefaultAgentModelProvider;
+import org.openhab.core.ai.agent.core.DefaultAgentModelProvider;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelClient;
@@ -117,8 +117,8 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
 
     // Model clients and sessions
     private final ConcurrentHashMap<String, ModelClient> modelClients = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, org.openhab.core.ai.reasoning.session.ModelReasoningSession> activeSessions = new ConcurrentHashMap<>();
-    private final LinkedBlockingQueue<org.openhab.core.ai.reasoning.ReasoningRequest> requestQueue = new LinkedBlockingQueue<>();
+    private final ConcurrentHashMap<String, ModelReasoningSession> activeSessions = new ConcurrentHashMap<>();
+    private final LinkedBlockingQueue<ReasoningRequest> requestQueue = new LinkedBlockingQueue<>();
 
     // Threading
     private final ExecutorService reasoningExecutor;
@@ -190,8 +190,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
         }
 
         String requestId = "req-" + requestCounter.incrementAndGet();
-        org.openhab.core.ai.reasoning.ReasoningRequest request = new org.openhab.core.ai.reasoning.ReasoningRequest(
-                requestId, agentId, context, prompt, parameters);
+        ReasoningRequest request = new ReasoningRequest(requestId, agentId, context, prompt, parameters);
 
         logger.debug("Queuing reasoning request {} for agent {}", requestId, agentId);
 
@@ -219,8 +218,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
         }
 
         String sessionId = "session-" + sessionCounter.incrementAndGet();
-        org.openhab.core.ai.reasoning.session.ModelReasoningSession session = new org.openhab.core.ai.reasoning.session.ModelReasoningSession(
-                sessionId, agentId, context);
+        ModelReasoningSession session = new ModelReasoningSession(sessionId, agentId, context);
         activeSessions.put(sessionId, session);
 
         logger.debug("Created reasoning session {} for agent {}", sessionId, agentId);
@@ -276,9 +274,9 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
      * 
      * @return the health status
      */
-    public org.openhab.core.ai.reasoning.ReasoningEngineHealthStatus getReasoningEngineHealthStatus() {
-        return new org.openhab.core.ai.reasoning.ReasoningEngineHealthStatus(!shutdown, activeSessions.size(),
-                requestQueue.size(), reasoningExecutor.isShutdown());
+    public ReasoningEngineHealthStatus getReasoningEngineHealthStatus() {
+        return new ReasoningEngineHealthStatus(!shutdown, activeSessions.size(), requestQueue.size(),
+                reasoningExecutor.isShutdown());
     }
 
     /**
@@ -468,7 +466,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
 
     @Override
     public ModelIntegrationStatistics getOverallStatistics() {
-        return ModelIntegrationStatistics.builder().totalAgents(registeredAgents.size())
+        return new PerformanceMetricsBuilder().totalSessions(totalReasoningSessions.get())
                 .activeAgents(registeredAgents.size()).totalRequests(totalRequests.get())
                 .successfulRequests(successfulRequests.get()).failedRequests(failedRequests.get())
                 .cacheHits(cacheHits.get()).cacheMisses(cacheMisses.get())
@@ -505,18 +503,18 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     }
 
     @Override
-    public org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus getStatus() {
+    public ReasoningEngineStatus getStatus() {
         if (shutdown) {
-            return org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus.SHUTDOWN;
+            return ReasoningEngineStatus.SHUTDOWN;
         }
         if (!isRunning) {
-            return org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus.ERROR;
+            return ReasoningEngineStatus.ERROR;
         }
         ReasoningEngineHealthStatus health = getReasoningEngineHealthStatus();
         if (health.isHealthy()) {
-            return org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus.ACTIVE;
+            return ReasoningEngineStatus.ACTIVE;
         } else {
-            return org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus.DEGRADED;
+            return ReasoningEngineStatus.DEGRADED;
         }
     }
 

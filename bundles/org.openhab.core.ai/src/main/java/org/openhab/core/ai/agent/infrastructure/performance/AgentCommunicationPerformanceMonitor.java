@@ -2,6 +2,7 @@ package org.openhab.core.ai.agent.infrastructure.performance;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -196,7 +197,7 @@ public class AgentCommunicationPerformanceMonitor {
     public CompletableFuture<List<PerformanceOptimizationSuggestion>> getOptimizationSuggestions(String agentId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                List<PerformanceOptimizationSuggestion> suggestions = new java.util.ArrayList<>();
+                List<PerformanceOptimizationSuggestion> suggestions = new ArrayList<>();
 
                 // Analyze latency metrics
                 MessageLatencyMetrics latencyMetrics = this.latencyMetrics.get(agentId);

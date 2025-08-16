@@ -19,6 +19,15 @@ public class AgentModelContext {
         this.metadata = new ConcurrentHashMap<>(metadata);
     }
 
+    /**
+     * Create a new builder for AgentModelContext.
+     *
+     * @return A new AgentModelContextBuilder instance
+     */
+    public static AgentModelContextBuilder builder() {
+        return AgentModelContextBuilder.create();
+    }
+
     public String getContextId() {
         return contextId;
     }

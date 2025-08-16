@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.prompts.adapter;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,7 +44,7 @@ public class ConfigurationPromptAdapter extends BaseAdapter implements Adapter<P
                 new PromptArgument("property", "Property to configure", false),
                 new PromptArgument("value", "Value to set", false),
                 new PromptArgument("confirm", "Confirm the change", false) };
-        return new Prompt(name, description, java.util.List.of(args));
+        return new Prompt(name, description, List.of(args));
     }
 
     @Override

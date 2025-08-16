@@ -1,5 +1,6 @@
 package org.openhab.core.ai.util;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -7,6 +8,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -112,7 +114,7 @@ public final class AIUtils {
             return false;
         }
         try {
-            java.net.URI.create(url).toURL();
+            URI.create(url).toURL();
             return true;
         } catch (Exception e) {
             return false;
@@ -210,7 +212,7 @@ public final class AIUtils {
             return Map.copyOf(map1);
         }
 
-        var merged = new java.util.HashMap<>(map1);
+        var merged = new HashMap<>(map1);
         merged.putAll(map2);
         return Map.copyOf(merged);
     }

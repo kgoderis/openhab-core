@@ -1,5 +1,8 @@
 package org.openhab.core.ai.agent.communication.protocol;
 
+import java.util.List;
+import java.util.concurrent.Flow;
+
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.agent.communication.notifications.AgentPushNotificationManager;
@@ -20,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.a2a.server.requesthandlers.RequestHandler;
+import io.a2a.spec.AgentCard;
 import io.a2a.spec.DeleteTaskPushNotificationConfigParams;
 import io.a2a.spec.EventKind;
 import io.a2a.spec.GetTaskPushNotificationConfigParams;
@@ -225,7 +229,7 @@ public class AgentProtocolHandler implements ReadyTracker, RequestHandler {
         }
     }
 
-    public java.util.List<Task> onListTasks(@Nullable TaskQueryParams params) throws JSONRPCError {
+    public List<Task> onListTasks(@Nullable TaskQueryParams params) throws JSONRPCError {
         logger.debug("Listing tasks with params: {}", params);
 
         if (taskManager != null) {
@@ -236,8 +240,8 @@ public class AgentProtocolHandler implements ReadyTracker, RequestHandler {
     }
 
     @Override
-    public java.util.concurrent.Flow.Publisher<StreamingEventKind> onMessageSendStream(
-            @Nullable MessageSendParams params) throws JSONRPCError {
+    public Flow.Publisher<StreamingEventKind> onMessageSendStream(@Nullable MessageSendParams params)
+            throws JSONRPCError {
         logger.debug("Processing streaming message send request: {}", params);
 
         if (params == null) {
@@ -284,7 +288,7 @@ public class AgentProtocolHandler implements ReadyTracker, RequestHandler {
     }
 
     @Override
-    public java.util.List<TaskPushNotificationConfig> onListTaskPushNotificationConfig(
+    public List<TaskPushNotificationConfig> onListTaskPushNotificationConfig(
             @Nullable ListTaskPushNotificationConfigParams params) throws JSONRPCError {
         logger.debug("Listing task push notification configs for task: {}", params != null ? params.id() : "null");
 
@@ -317,8 +321,7 @@ public class AgentProtocolHandler implements ReadyTracker, RequestHandler {
     }
 
     @Override
-    public java.util.concurrent.Flow.Publisher<StreamingEventKind> onResubscribeToTask(@Nullable TaskIdParams params)
-            throws JSONRPCError {
+    public Flow.Publisher<StreamingEventKind> onResubscribeToTask(@Nullable TaskIdParams params) throws JSONRPCError {
         logger.debug("Resubscribing to task: {}", params != null ? params.id() : "null");
 
         if (params == null) {
@@ -391,7 +394,7 @@ public class AgentProtocolHandler implements ReadyTracker, RequestHandler {
     // Public API Methods
     // ============================================================================
 
-    public io.a2a.spec.AgentCard getAgentCard() {
+    public AgentCard getAgentCard() {
         if (agentCardBuilder != null) {
             return agentCardBuilder.buildAgentCard();
         } else {

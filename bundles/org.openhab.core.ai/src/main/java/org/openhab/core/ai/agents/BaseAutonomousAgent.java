@@ -20,7 +20,9 @@ import org.openhab.core.ai.agent.core.AgentContext;
 import org.openhab.core.ai.agent.core.AgentMetrics;
 import org.openhab.core.ai.agent.core.AgentState;
 import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
+import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
+import org.openhab.core.ai.reasoning.input.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -236,8 +238,7 @@ public abstract class BaseAutonomousAgent {
      * @param parameters the parameters for the skill execution
      * @return CompletableFuture with the skill execution result
      */
-    public CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult> executeSkill(String skillName,
-            Map<String, Object> parameters) {
+    public CompletableFuture<AgentSkillResult> executeSkill(String skillName, Map<String, Object> parameters) {
         long startTime = System.currentTimeMillis();
         String skillId = generateSkillId();
 
@@ -253,8 +254,7 @@ public abstract class BaseAutonomousAgent {
 
                 // Execute the skill via skill manager
                 if (skillManager != null) {
-                    org.openhab.core.ai.agent.api.AgentSkillResult result = skillManager.executeSkill(skillName,
-                            parameters);
+                    AgentSkillResult result = skillManager.executeSkill(skillName, parameters);
                     Duration duration = Duration.ofMillis(System.currentTimeMillis() - startTime);
 
                     // Record metrics
@@ -280,24 +280,22 @@ public abstract class BaseAutonomousAgent {
      * @param skillRequests list of skill execution requests
      * @return CompletableFuture with the composed skill execution result
      */
-    public CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult> executeComposedSkills(
-            List<SkillExecutionRequest> skillRequests) {
+    public CompletableFuture<AgentSkillResult> executeComposedSkills(List<SkillExecutionRequest> skillRequests) {
         long startTime = System.currentTimeMillis();
         String compositionId = generateCompositionId();
 
         logger.debug("Executing composed skills: {} skills", skillRequests.size());
 
-        List<CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult>> futures = new ArrayList<>();
+        List<CompletableFuture<AgentSkillResult>> futures = new ArrayList<>();
 
         for (SkillExecutionRequest request : skillRequests) {
-            CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult> future = executeSkill(
-                    request.getSkillName(), request.getParameters());
+            CompletableFuture<AgentSkillResult> future = executeSkill(request.getSkillName(), request.getParameters());
             futures.add(future);
         }
 
         return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(v -> {
-            List<org.openhab.core.ai.agent.api.AgentSkillResult> results = new ArrayList<>();
-            for (CompletableFuture<org.openhab.core.ai.agent.api.AgentSkillResult> future : futures) {
+            List<AgentSkillResult> results = new ArrayList<>();
+            for (CompletableFuture<AgentSkillResult> future : futures) {
                 try {
                     results.add(future.get());
                 } catch (Exception e) {
@@ -567,8 +565,7 @@ public abstract class BaseAutonomousAgent {
      * @param result the skill result
      * @param duration the execution duration
      */
-    private void recordSkillMetrics(String skillName, org.openhab.core.ai.agent.api.AgentSkillResult result,
-            Duration duration) {
+    private void recordSkillMetrics(String skillName, AgentSkillResult result, Duration duration) {
         totalSkillsExecuted.incrementAndGet();
 
         if (result.isSuccess()) {
@@ -615,9 +612,8 @@ public abstract class BaseAutonomousAgent {
      * @param executionTime the execution time in milliseconds
      * @return the skill error result
      */
-    private org.openhab.core.ai.agent.api.AgentSkillResult createSkillErrorResult(String message, String skillId,
-            long executionTime) {
-        return org.openhab.core.ai.agent.api.AgentSkillResult.failure(message, executionTime);
+    private AgentSkillResult createSkillErrorResult(String message, String skillId, long executionTime) {
+        return AgentSkillResult.failure(message, executionTime);
     }
 
     /**
@@ -628,8 +624,7 @@ public abstract class BaseAutonomousAgent {
      * @param totalExecutionTime the total execution time in milliseconds
      * @return the composed skill result
      */
-    private org.openhab.core.ai.agent.api.AgentSkillResult createComposedSkillResult(
-            List<org.openhab.core.ai.agent.api.AgentSkillResult> results, String compositionId,
+    private AgentSkillResult createComposedSkillResult(List<AgentSkillResult> results, String compositionId,
             long totalExecutionTime) {
         // Aggregate results
         Map<String, Object> aggregatedData = new HashMap<>();
@@ -637,7 +632,7 @@ public abstract class BaseAutonomousAgent {
         StringBuilder errorMessages = new StringBuilder();
 
         for (int i = 0; i < results.size(); i++) {
-            org.openhab.core.ai.agent.api.AgentSkillResult result = results.get(i);
+            AgentSkillResult result = results.get(i);
             Object data = result.getData();
             aggregatedData.put("skill_" + i, data != null ? data : "null");
 
@@ -648,10 +643,9 @@ public abstract class BaseAutonomousAgent {
         }
 
         if (allSuccessful) {
-            return org.openhab.core.ai.agent.api.AgentSkillResult.success(aggregatedData, totalExecutionTime);
+            return AgentSkillResult.success(aggregatedData, totalExecutionTime);
         } else {
-            return org.openhab.core.ai.agent.api.AgentSkillResult.failure(errorMessages.toString(), "COMPOSITION_ERROR",
-                    totalExecutionTime);
+            return AgentSkillResult.failure(errorMessages.toString(), "COMPOSITION_ERROR", totalExecutionTime);
         }
     }
 
@@ -712,7 +706,7 @@ public abstract class BaseAutonomousAgent {
      */
     public AgentMetrics getMetrics() {
         return new AgentMetrics(getAgentId(), state.get(), totalSkillsExecuted.get(), totalSkillsSucceeded.get(),
-                totalSkillsFailed.get(), totalProcessingTime.get(), new ArrayList<>(), java.time.Instant.now());
+                totalSkillsFailed.get(), totalProcessingTime.get(), new ArrayList<>(), Instant.now());
     }
 
     /**

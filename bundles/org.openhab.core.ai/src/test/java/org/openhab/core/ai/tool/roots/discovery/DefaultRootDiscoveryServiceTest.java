@@ -23,6 +23,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openhab.core.ai.tool.resources.api.ResourceContext;
+import org.openhab.core.ai.tool.resources.api.ResourceResult;
+import org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult;
 import org.openhab.core.ai.tool.resources.specification.ResourceSpecification;
 
 /**
@@ -239,7 +242,7 @@ class DefaultRootDiscoveryServiceTest {
         assertTrue(validationResult.isValid());
 
         // Test execution
-        var context = new org.openhab.core.ai.tool.api.ResourceContext();
+        var context = new ResourceContext();
         var result = root.execute(parameters, context);
         assertNotNull(result);
         assertTrue(result.isSuccess());
@@ -266,23 +269,22 @@ class DefaultRootDiscoveryServiceTest {
             }
 
             @Override
-            public org.openhab.core.ai.tool.resources.api.validation.ResourceMetadata getResourceMetadata() {
-                return new org.openhab.core.ai.tool.resources.api.validation.ResourceMetadata("1.0.0", // version
+            public ResourceMetadata getResourceMetadata() {
+                return new ResourceMetadata("1.0.0", // version
                         "openHAB AI", // author
                         Map.of("path", path, "access", access, "type", "root") // properties
                 );
             }
 
             @Override
-            public org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult validateParameters(
-                    Map<String, Object> parameters) {
-                return org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult.success();
+            public ResourceValidationResult validateParameters(Map<String, Object> parameters) {
+                return ResourceValidationResult.success();
             }
 
             @Override
-            public org.openhab.core.ai.tool.api.ResourceResult execute(Map<String, Object> parameters,
-                    org.openhab.core.ai.tool.api.ResourceContext context) {
-                return org.openhab.core.ai.tool.api.ResourceResult.success(
+            public ResourceResult execute(Map<String, Object> parameters,
+                    ResourceContext context) {
+                return ResourceResult.success(
                         Map.of("root", name, "path", path, "access", access), // content
                         0 // executionTimeMs
                 );

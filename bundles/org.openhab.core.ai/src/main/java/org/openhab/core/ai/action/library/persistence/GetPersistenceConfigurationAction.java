@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -535,7 +536,7 @@ public class GetPersistenceConfigurationAction implements Action {
             }
 
             // Basic service information
-            config.put("name", service.getLabel(java.util.Locale.getDefault()));
+            config.put("name", service.getLabel(Locale.getDefault()));
             config.put("type", "persistence");
             config.put("class", service.getClass().getSimpleName());
             config.put("configurable", service instanceof ConfigurableService);
@@ -578,7 +579,7 @@ public class GetPersistenceConfigurationAction implements Action {
             // Documentation
             if (includeDocumentation) {
                 config.put("documentation",
-                        "Persistence service configuration for " + service.getLabel(java.util.Locale.getDefault())
+                        "Persistence service configuration for " + service.getLabel(Locale.getDefault())
                                 + ". This service stores historical data for openHAB items.");
             }
 

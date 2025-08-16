@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -275,7 +276,7 @@ public class ConfigurationSetAction implements Action {
         String backupPath = null;
         if (fileExists && createBackup) {
             String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
-                    .format(Instant.now().atZone(java.time.ZoneId.systemDefault()));
+                    .format(Instant.now().atZone(ZoneId.systemDefault()));
             String backupName = configName + ".backup." + timestamp;
             Path backupFile = typeDir.resolve(backupName);
             Files.copy(configFile, backupFile, StandardCopyOption.REPLACE_EXISTING);

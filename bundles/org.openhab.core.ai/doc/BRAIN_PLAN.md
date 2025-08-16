@@ -10186,3 +10186,914 @@ This comprehensive inventory identifies all Java files containing inner classes,
 All files have been verified to contain the identified inner constructs through automated analysis. Each construct's line numbers and type have been documented for precise extraction targeting.
 
 **Status: Ready for systematic extraction according to priority matrix**
+
+---
+
+## 25. Builder Pattern Integration Action Points
+
+### 25.1 Overview
+
+This section identifies all standalone builder classes in the codebase that need to be integrated back into their host classes following the AI development rules. The builder pattern should be implemented as nested static classes within the host classes, following the established openHAB patterns.
+
+### 25.2 Builder Classes Inventory
+
+Based on the codebase analysis, the following standalone builder classes have been identified:
+
+#### 25.2.1 Configuration Builders
+1. **HttpServerConfigurationBuilder** → `HttpServerConfiguration`
+2. **ServerConfigurationBuilder** → `ServerConfiguration`
+3. **ProtocolConfigurationBuilder** → `ProtocolConfiguration`
+4. **AgentConfigurationBuilder** → `AgentConfiguration`
+5. **AgentModelConfigurationBuilder** → `AgentModelConfiguration`
+6. **AgentServerConfigurationBuilder** → `AgentServerConfiguration`
+
+#### 25.2.2 Model and Parameter Builders
+7. **ModelResponseBuilder** → `ModelResponse`
+8. **ModelParametersBuilder** → `ModelParameters`
+9. **ReasoningContextBuilder** → `ReasoningContext`
+10. **ReasoningStepBuilder** → `ReasoningStep`
+
+#### 25.2.3 Action and Tool Builders
+11. **ActionContextBuilder** → `ActionContext`
+12. **ActionMetadataBuilder** → `ActionMetadata`
+13. **ActionPerformanceMetricsBuilder** → `ActionPerformanceMetrics`
+14. **ActionAnalyticsBuilder** → `ActionAnalytics`
+15. **ActionExecutionEventBuilder** → `ActionExecutionEvent`
+16. **ActionSecurityPolicyBuilder** → `ActionSecurityPolicy`
+17. **ActionVersionInfoBuilder** → `ActionVersionInfo`
+18. **ToolMetadataBuilder** → `ToolMetadata`
+
+#### 25.2.4 Agent and Communication Builders
+19. **AgentModelContextBuilder** → `AgentModelContext`
+20. **AgentModelStatisticsBuilder** → `AgentModelStatistics`
+21. **ModelHealthStatusBuilder** → `ModelHealthStatus`
+22. **ModelIntegrationStatisticsBuilder** → `ModelIntegrationStatistics`
+23. **AgentCardBuilder** → `AgentCard`
+24. **ConversationBuilder** → `Conversation`
+25. **ConversationMessageBuilder** → `ConversationMessage`
+26. **ConversationExportBuilder** → `ConversationExport`
+27. **ExecutionRequestBuilder** → `ExecutionRequest`
+
+#### 25.2.5 Collaboration and Negotiation Builders
+28. **NegotiationSessionBuilder** → `NegotiationSession`
+29. **NegotiationProposalBuilder** → `NegotiationProposal`
+30. **NegotiationTemplateBuilder** → `NegotiationTemplate`
+31. **ConflictBuilder** → `Conflict`
+32. **ConflictEscalationBuilder** → `ConflictEscalation`
+33. **CoordinationSessionBuilder** → `CoordinationSession`
+34. **ConflictResolutionSessionBuilder** → `ConflictResolutionSession`
+35. **SharedContextBuilder** (collaboration) → `SharedContext`
+36. **ContextVersionBuilder** → `ContextVersion`
+37. **ContextOptionsBuilder** → `ContextOptions`
+
+#### 25.2.6 Communication and Event Builders
+38. **MessageOptionsBuilder** → `MessageOptions`
+39. **MessageAcknowledgmentBuilder** → `MessageAcknowledgment`
+40. **AgentEventBuilder** → `AgentEvent`
+41. **EventOptionsBuilder** → `EventOptions`
+42. **EventSubscriptionBuilder** → `EventSubscription`
+
+#### 25.2.7 Performance Metrics Builders
+43. **PerformanceMetricsBuilder** (model) → `PerformanceMetrics`
+44. **PerformanceMetricsBuilder** (reasoning) → `PerformanceMetrics`
+45. **MemoryPerformanceMetricsBuilder** → `MemoryPerformanceMetrics`
+46. **AutonomousPerformanceMetricsBuilder** → `AutonomousPerformanceMetrics`
+47. **ConfigurationPerformanceMetricsBuilder** → `ConfigurationPerformanceMetrics`
+48. **LearningPerformanceMetricsBuilder** → `LearningPerformanceMetrics`
+49. **SafetyPerformanceMetricsBuilder** → `SafetyPerformanceMetrics`
+50. **DelegationPerformanceMetricsBuilder** → `DelegationPerformanceMetrics`
+
+#### 25.2.8 Reasoning Engine Builders
+51. **MultiStepReasoningConfigurationBuilder** → `MultiStepReasoningConfiguration`
+52. **MultiStepReasoningResultBuilder** → `MultiStepReasoningResult`
+
+#### 25.2.9 Stub and Testing Builders
+53. **StubResponseBuilder** → `StubResponse`
+
+### 25.3 Integration Action Points
+
+#### 25.3.1 **Phase 1: Configuration Builders Integration**
+
+**Priority: HIGH** - These are foundational configuration classes used throughout the system.
+
+**Action Point 1.1: HttpServerConfigurationBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/transport/HttpServerConfiguration.java`
+- **Action**: Move `HttpServerConfigurationBuilder` as nested static class
+- **Requirements**:
+  - Add `public static final class Builder` inside `HttpServerConfiguration`
+  - Move all builder methods into nested class
+  - Add `public static Builder builder()` factory method
+  - Add `public Builder toBuilder()` method for modification
+  - Ensure immutability with `private final` fields
+  - Add proper validation in `build()` method
+  - Follow openHAB null safety patterns with `@NonNullByDefault`
+
+**Action Point 1.2: ServerConfigurationBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/tool/server/ServerConfiguration.java`
+- **Action**: Move `ServerConfigurationBuilder` as nested static class
+- **Requirements**: Same as 1.1
+
+**Action Point 1.3: ProtocolConfigurationBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/config/ProtocolConfiguration.java`
+- **Action**: Move `ProtocolConfigurationBuilder` as nested static class
+- **Requirements**: Same as 1.1
+
+**Action Point 1.4: AgentConfigurationBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/reasoning/configuration/AgentConfiguration.java`
+- **Action**: Move `AgentConfigurationBuilder` as nested static class
+- **Requirements**: Same as 1.1
+
+#### 25.3.2 **Phase 2: Model and Parameter Builders Integration**
+
+**Priority: HIGH** - These are core data models used across the system.
+
+**Action Point 2.1: ModelResponseBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/model/ModelResponse.java`
+- **Action**: Move `ModelResponseBuilder` as nested static class
+- **Requirements**:
+  - Add `public static final class Builder` inside `ModelResponse`
+  - Move all builder methods into nested class
+  - Add `public static Builder builder()` factory method
+  - Add `public Builder toBuilder()` method for modification
+  - Ensure immutability with `private final` fields
+  - Add proper validation in `build()` method
+  - Follow openHAB null safety patterns with `@NonNullByDefault`
+
+**Action Point 2.2: ModelParametersBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/model/ModelParameters.java`
+- **Action**: Move `ModelParametersBuilder` as nested static class
+- **Requirements**: Same as 2.1
+
+**Action Point 2.3: ReasoningContextBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/reasoning/api/ReasoningContext.java`
+- **Action**: Move `ReasoningContextBuilder` as nested static class
+- **Requirements**: Same as 2.1
+
+**Action Point 2.4: ReasoningStepBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/reasoning/engine/api/ReasoningStep.java`
+- **Action**: Move `ReasoningStepBuilder` as nested static class
+- **Requirements**: Same as 2.1
+
+#### 25.3.3 **Phase 3: Action and Tool Builders Integration**
+
+**Priority: HIGH** - These are core action framework components.
+
+**Action Point 3.1: ActionContextBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/action/api/ActionContext.java`
+- **Action**: Move `ActionContextBuilder` as nested static class
+- **Requirements**:
+  - Add `public static final class Builder` inside `ActionContext`
+  - Move all builder methods into nested class
+  - Add `public static Builder builder(String correlationId)` factory method
+  - Add `public Builder toBuilder()` method for modification
+  - Ensure immutability with `private final` fields
+  - Add proper validation in `build()` method
+  - Follow openHAB null safety patterns with `@NonNullByDefault`
+
+**Action Point 3.2: ActionMetadataBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/action/api/ActionMetadata.java`
+- **Action**: Move `ActionMetadataBuilder` as nested static class
+- **Requirements**: Same as 3.1
+
+**Action Point 3.3: ActionPerformanceMetricsBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/action/api/ActionPerformanceMetrics.java`
+- **Action**: Move `ActionPerformanceMetricsBuilder` as nested static class
+- **Requirements**: Same as 3.1
+
+**Action Point 3.4: ActionAnalyticsBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/action/ActionAnalytics.java`
+- **Action**: Move `ActionAnalyticsBuilder` as nested static class
+- **Requirements**: Same as 3.1
+
+**Action Point 3.5: ToolMetadataBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/tool/api/ToolMetadata.java`
+- **Action**: Move `ToolMetadataBuilder` as nested static class
+- **Requirements**: Same as 3.1
+
+#### 25.3.4 **Phase 4: Agent and Communication Builders Integration**
+
+**Priority: MEDIUM** - These are agent-specific components.
+
+**Action Point 4.1: AgentModelContextBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/agent/api/AgentModelContext.java`
+- **Action**: Move `AgentModelContextBuilder` as nested static class
+- **Requirements**:
+  - Add `public static final class Builder` inside `AgentModelContext`
+  - Move all builder methods into nested class
+  - Add `public static Builder builder()` factory method
+  - Add `public Builder toBuilder()` method for modification
+  - Ensure immutability with `private final` fields
+  - Add proper validation in `build()` method
+  - Follow openHAB null safety patterns with `@NonNullByDefault`
+
+**Action Point 4.2: AgentModelStatisticsBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/agent/api/AgentModelStatistics.java`
+- **Action**: Move `AgentModelStatisticsBuilder` as nested static class
+- **Requirements**: Same as 4.1
+
+**Action Point 4.3: ConversationBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/agent/communication/conversation/Conversation.java`
+- **Action**: Move `ConversationBuilder` as nested static class
+- **Requirements**: Same as 4.1
+
+**Action Point 4.4: ConversationMessageBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/agent/communication/conversation/ConversationMessage.java`
+- **Action**: Move `ConversationMessageBuilder` as nested static class
+- **Requirements**: Same as 4.1
+
+#### 25.3.5 **Phase 5: Collaboration and Negotiation Builders Integration**
+
+**Priority: MEDIUM** - These are collaboration-specific components.
+
+**Action Point 5.1: NegotiationSessionBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationSession.java`
+- **Action**: Move `NegotiationSessionBuilder` as nested static class
+- **Requirements**:
+  - Add `public static final class Builder` inside `NegotiationSession`
+  - Move all builder methods into nested class
+  - Add `public static Builder builder()` factory method
+  - Add `public Builder toBuilder()` method for modification
+  - Ensure immutability with `private final` fields
+  - Add proper validation in `build()` method
+  - Follow openHAB null safety patterns with `@NonNullByDefault`
+
+**Action Point 5.2: NegotiationProposalBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationProposal.java`
+- **Action**: Move `NegotiationProposalBuilder` as nested static class
+- **Requirements**: Same as 5.1
+
+**Action Point 5.3: NegotiationTemplateBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationTemplate.java`
+- **Action**: Move `NegotiationTemplateBuilder` as nested static class
+- **Requirements**: Same as 5.1
+
+#### 25.3.6 **Phase 6: Performance Metrics Builders Integration**
+
+**Priority: LOW** - These are monitoring components.
+
+**Action Point 6.1: PerformanceMetricsBuilder Integration (Model)**
+- **File**: `src/main/java/org/openhab/core/ai/model/PerformanceMetrics.java`
+- **Action**: Move `PerformanceMetricsBuilder` as nested static class
+- **Requirements**:
+  - Add `public static final class Builder` inside `PerformanceMetrics`
+  - Move all builder methods into nested class
+  - Add `public static Builder builder()` factory method
+  - Add `public Builder toBuilder()` method for modification
+  - Ensure immutability with `private final` fields
+  - Add proper validation in `build()` method
+  - Follow openHAB null safety patterns with `@NonNullByDefault`
+
+**Action Point 6.2: MemoryPerformanceMetricsBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/reasoning/memory/MemoryPerformanceMetrics.java`
+- **Action**: Move `MemoryPerformanceMetricsBuilder` as nested static class
+- **Requirements**: Same as 6.1
+
+**Action Point 6.3: AutonomousPerformanceMetricsBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/reasoning/metrics/AutonomousPerformanceMetrics.java`
+- **Action**: Move `AutonomousPerformanceMetricsBuilder` as nested static class
+- **Requirements**: Same as 6.1
+
+#### 25.3.7 **Phase 7: Reasoning Engine Builders Integration**
+
+**Priority: HIGH** - These are core reasoning components.
+
+**Action Point 7.1: MultiStepReasoningConfigurationBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/reasoning/engine/api/MultiStepReasoningConfiguration.java`
+- **Action**: Move `MultiStepReasoningConfigurationBuilder` as nested static class
+- **Requirements**:
+  - Add `public static final class Builder` inside `MultiStepReasoningConfiguration`
+  - Move all builder methods into nested class
+  - Add `public static Builder builder()` factory method
+  - Add `public Builder toBuilder()` method for modification
+  - Ensure immutability with `private final` fields
+  - Add proper validation in `build()` method
+  - Follow openHAB null safety patterns with `@NonNullByDefault`
+
+**Action Point 7.2: MultiStepReasoningResultBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/reasoning/engine/api/MultiStepReasoningResult.java`
+- **Action**: Move `MultiStepReasoningResultBuilder` as nested static class
+- **Requirements**: Same as 7.1
+
+#### 25.3.8 **Phase 8: Stub and Testing Builders Integration**
+
+**Priority: LOW** - These are testing components.
+
+**Action Point 8.1: StubResponseBuilder Integration**
+- **File**: `src/main/java/org/openhab/core/ai/stub/StubResponse.java`
+- **Action**: Move `StubResponseBuilder` as nested static class
+- **Requirements**:
+  - Add `public static final class Builder` inside `StubResponse`
+  - Move all builder methods into nested class
+  - Add `public static Builder builder()` factory method
+  - Add `public Builder toBuilder()` method for modification
+  - Ensure immutability with `private final` fields
+  - Add proper validation in `build()` method
+  - Follow openHAB null safety patterns with `@NonNullByDefault`
+
+### 25.4 Implementation Guidelines
+
+#### 25.4.1 **Builder Pattern Best Practices**
+
+For each integration, follow these guidelines:
+
+1. **Immutability-first**
+   - Make built types immutable: `private final` fields, `private` constructor, no setters
+   - Return defensive, unmodifiable copies for collections (`List.copyOf(...)`, `Set.copyOf(...)`)
+
+2. **Null-safety**
+   - Annotate all classes with `@NonNullByDefault`
+   - Use `@Nullable` for optional fields and builder parameters only
+   - Validate non-null/required inputs in `build()` and fail fast with precise messages
+
+3. **Structure and naming**
+   - Use a nested `public static final class Builder` inside the built type
+   - Provide factories: `public static Builder builder(RequiredA a, RequiredB b)` or `builder()` with `withRequiredX(...)`
+   - Use `withX(...)` fluent setters; each returns `this`
+
+4. **Required vs optional**
+   - Capture required fields early (factory or builder constructor) and re-validate in `build()`
+   - Avoid encoding "required" as nullable; prefer types that enforce presence
+
+5. **Validation**
+   - Validate ranges, formats, and cross-field constraints in `build()`
+   - Throw `IllegalArgumentException` with actionable messages; use `ValidationUtils` where applicable
+
+6. **Collections**
+   - Accept collections in the builder; normalize and copy in `build()`
+   - Store as unmodifiable; never expose internal mutables
+
+7. **Copy/modify ergonomics**
+   - Provide `toBuilder()` or `builder(existing)` to support small mutations without exposing mutability
+
+8. **Thread-safety**
+   - Builders are not thread-safe (document as such); built objects are thread-safe by immutability
+
+9. **Equality and debugging**
+   - Implement `equals`, `hashCode`, and `toString` on the built type (not on the builder)
+
+10. **Usage discipline**
+    - Treat builders as single-use; keep `build()` side-effect free (construct, validate, copy)
+
+#### 25.4.2 **Example Implementation**
+
+```java
+@NonNullByDefault
+public final class ExampleConfig {
+    private final String name;
+    private final int maxRetries;
+    private final List<String> fallbackOptions;
+    private final @Nullable String description;
+
+    private ExampleConfig(Builder b) {
+        this.name = b.name;
+        this.maxRetries = b.maxRetries;
+        this.fallbackOptions = List.copyOf(b.fallbackOptions);
+        this.description = b.description;
+    }
+
+    public static Builder builder(String name) {
+        return new Builder(name);
+    }
+
+    public Builder toBuilder() {
+        return new Builder(this);
+    }
+
+    public static final class Builder {
+        private String name;
+        private int maxRetries = 3;
+        private List<String> fallbackOptions = List.of();
+        private @Nullable String description;
+
+        public Builder(String name) {
+            this.name = Objects.requireNonNull(name, "name");
+        }
+
+        public Builder(ExampleConfig source) {
+            this.name = source.name;
+            this.maxRetries = source.maxRetries;
+            this.fallbackOptions = source.fallbackOptions;
+            this.description = source.description;
+        }
+
+        public Builder withMaxRetries(int maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder withFallbackOptions(List<String> fallbackOptions) {
+            this.fallbackOptions = Objects.requireNonNull(fallbackOptions, "fallbackOptions");
+            return this;
+        }
+
+        public Builder withDescription(@Nullable String description) {
+            this.description = description;
+            return this;
+        }
+
+        public ExampleConfig build() {
+            if (name.isBlank()) {
+                throw new IllegalArgumentException("name must not be blank");
+            }
+            if (maxRetries < 0) {
+                throw new IllegalArgumentException("maxRetries must be >= 0");
+            }
+            return new ExampleConfig(this);
+        }
+    }
+}
+```
+
+### 25.5 Testing Requirements
+
+For each integration, create comprehensive unit tests:
+
+1. **Builder Tests**
+   - Test all builder methods
+   - Test validation in `build()` method
+   - Test `toBuilder()` method
+   - Test immutability of built objects
+
+2. **Validation Tests**
+   - Test required field validation
+   - Test range validation
+   - Test format validation
+   - Test cross-field constraint validation
+
+3. **Collection Tests**
+   - Test collection copying and immutability
+   - Test null collection handling
+   - Test empty collection handling
+
+4. **Null Safety Tests**
+   - Test nullable field handling
+   - Test required field null handling
+   - Test builder parameter null handling
+
+### 25.6 Migration Strategy
+
+1. **Phase 1-3**: Complete high-priority integrations first (Configuration, Model, Action builders)
+2. **Phase 4-5**: Complete medium-priority integrations (Agent, Collaboration builders)
+3. **Phase 6-8**: Complete low-priority integrations (Performance, Stub builders)
+
+For each phase:
+1. Create the nested builder class in the host class
+2. Update all references to use the new nested builder
+3. Delete the standalone builder class
+4. Update imports and dependencies
+5. Run comprehensive tests
+6. Update documentation
+
+### 25.7 Success Criteria
+
+- [ ] All 53 builder classes integrated as nested static classes
+- [ ] All builder classes follow openHAB null safety patterns
+- [ ] All builder classes implement proper validation
+- [ ] All builder classes are immutable
+- [ ] All builder classes have comprehensive unit tests
+- [ ] No compilation errors after integration
+- [ ] All existing functionality preserved
+- [ ] Documentation updated to reflect new structure
+
+---
+
+## 26. Code Consolidation and Duplicate Elimination
+
+### 26.1 Overview
+
+This section provides a comprehensive plan for consolidating duplicate classes and eliminating code redundancy across the openHAB AI bundle. The consolidation effort aims to improve code maintainability, reduce bundle size, and establish consistent patterns throughout the codebase.
+
+### 26.2 Consolidation Goals
+
+1. **Eliminate Code Duplication**: Remove ~30% of duplicate code
+2. **Improve Maintainability**: Single source of truth for common patterns
+3. **Enhance Type Safety**: Unified interfaces and hierarchies
+4. **Standardize APIs**: Consistent patterns across the codebase
+5. **Reduce Bundle Size**: Smaller, more focused bundles
+6. **Simplify Testing**: Consolidated test suites
+
+### 26.3 Duplicate Class Analysis
+
+#### 26.3.1 Response Classes - Critical Priority
+
+**Identified Duplicates:**
+- `ModelResponse` (model package)
+- `ToolResponse` (tool/server/api package) 
+- `AgentResponse` (agent/infrastructure/synchronization package)
+- `MessageResponse` (agent/lifecycle package)
+- `StubResponse` (stub package)
+
+**Consolidation Strategy:**
+Create unified response hierarchy in `org.openhab.core.ai.common.response`:
+
+```java
+// Base response interface
+public interface Response<T> {
+    String getId();
+    boolean isSuccess();
+    @Nullable T getData();
+    @Nullable String getErrorMessage();
+    long getTimestamp();
+}
+
+// Protocol-specific implementations
+public class ModelResponse implements Response<String> { /* LLM responses */ }
+public class ToolResponse implements Response<Object> { /* MCP tool responses */ }
+public class AgentResponse implements Response<Object> { /* Agent responses */ }
+public class MessageResponse implements Response<String> { /* Simple messages */ }
+```
+
+**Action Items:**
+- [ ] Create `Response<T>` interface in `org.openhab.core.ai.common.response`
+- [ ] Refactor existing response classes to implement the interface
+- [ ] Update all imports across the codebase
+- [ ] Create comprehensive unit tests for the new hierarchy
+- [ ] Update documentation to reflect new response patterns
+
+#### 26.3.2 Context Classes - High Priority
+
+**Identified Duplicates:**
+- `ActionContext` (action/api package)
+- `ToolContext` (tool/api package)
+- `AgentContext` (agent/core package)
+- `PromptContext` (tool/prompts/api package)
+- `CompletionContext` (tool/completions/api package)
+- `ResourceContext` (tool/resources/api package)
+- `ReasoningContext` (reasoning/api package)
+- `DecisionContext` (reasoning/decision package)
+- `SessionContext` (reasoning/session package)
+- `ErrorContext` (reasoning/error/api package)
+- `AuthenticationContext` (auth package)
+
+**Consolidation Strategy:**
+Create unified context hierarchy in `org.openhab.core.ai.common.context`:
+
+```java
+// Base context interface
+public interface Context {
+    String getCorrelationId();
+    long getTimestamp();
+    Map<String, Object> getProperties();
+}
+
+// Domain-specific contexts
+public class ExecutionContext implements Context { /* Base for Action/Tool contexts */ }
+public class AgentExecutionContext extends ExecutionContext { /* Agent-specific */ }
+public class ToolExecutionContext extends ExecutionContext { /* Tool-specific */ }
+public class AuthenticationContext implements Context { /* Keep separate for security */ }
+```
+
+**Action Items:**
+- [ ] Create `Context` interface in `org.openhab.core.ai.common.context`
+- [ ] Create `ExecutionContext` base class
+- [ ] Refactor domain-specific contexts to extend base classes
+- [ ] Update all context references across the codebase
+- [ ] Create comprehensive unit tests for context hierarchy
+- [ ] Update documentation for context patterns
+
+#### 26.3.3 Manager Classes - Medium Priority
+
+**Identified Duplicates:**
+- `ToolErrorRecoveryManager` (tool/manager AND tool/error packages) - **EXACT DUPLICATE**
+- `ToolLoggingManager` (tool/manager AND tool/logging packages) - **EXACT DUPLICATE**
+- `ProgressTrackingManager` (tool/progress package)
+- `DefaultProgressTrackingService` (tool/progress package) - **Similar functionality**
+- `RootDiscoveryManager` (tool/roots package)
+- `DefaultRootDiscoveryService` (tool/roots/discovery package) - **Similar functionality**
+
+**Consolidation Strategy:**
+- Remove exact duplicates in `tool/manager` package
+- Consolidate similar managers into single implementations
+- Create base manager interfaces for common patterns
+
+**Action Items:**
+- [ ] Remove duplicate `ToolErrorRecoveryManager` from `tool/manager` package
+- [ ] Remove duplicate `ToolLoggingManager` from `tool/manager` package
+- [ ] Consolidate `ProgressTrackingManager` and `DefaultProgressTrackingService`
+- [ ] Consolidate `RootDiscoveryManager` and `DefaultRootDiscoveryService`
+- [ ] Create base manager interfaces for common patterns
+- [ ] Update all imports to use consolidated implementations
+
+#### 26.3.4 Service Classes - Medium Priority
+
+**Identified Duplicates:**
+- `DefaultProgressTrackingService` vs `ProgressTrackingManager` - **Same interface, different implementations**
+- `DefaultRootDiscoveryService` vs `RootDiscoveryManager` - **Same interface, different implementations**
+- `DefaultValidationService` vs `ValidationService` - **Interface/implementation pattern**
+- `DefaultNotificationService` vs `NotificationService` - **Interface/implementation pattern**
+
+**Consolidation Strategy:**
+- Keep one implementation per service interface
+- Remove redundant implementations
+- Standardize naming: `Default[ServiceName]` for implementations
+
+**Action Items:**
+- [ ] Audit all service interface/implementation pairs
+- [ ] Remove redundant service implementations
+- [ ] Standardize service naming conventions
+- [ ] Update OSGi service registrations
+- [ ] Update all service references
+
+#### 26.3.5 SharedContext Classes - High Priority
+
+**Identified Duplicates:**
+- `SharedContext` (agent/collaboration/coordination package)
+- `SharedContext` (agent/collaboration/context package) - **Different implementations**
+- `SharedContextBuilder` (both packages) - **Different implementations**
+
+**Consolidation Strategy:**
+- Merge into single `SharedContext` class in `org.openhab.core.ai.agent.collaboration`
+- Combine functionality from both implementations
+- Create unified builder pattern
+
+**Action Items:**
+- [ ] Analyze both `SharedContext` implementations
+- [ ] Create unified `SharedContext` class combining both functionalities
+- [ ] Create unified `SharedContextBuilder` class
+- [ ] Update all references to use unified implementation
+- [ ] Remove duplicate implementations
+- [ ] Create comprehensive unit tests for unified implementation
+
+#### 26.3.6 Security Manager Classes - Medium Priority
+
+**Identified Duplicates:**
+- `ToolSecurityManager` (tool/manager package)
+- `SecurityManager` (tool/security package)
+- `AgentSecurityManager` (agent/lifecycle package)
+- `DefaultAgentSecurityManager` (agent/infrastructure/security package)
+- `AgentModelSecurityManager` (reasoning/security package)
+- `MessageSecurityManager` (agent/communication/messaging package)
+
+**Consolidation Strategy:**
+Create unified security hierarchy in `org.openhab.core.ai.common.security`:
+
+```java
+public interface SecurityManager {
+    boolean authenticate(String principal, String credentials);
+    boolean authorize(String principal, String resource, String action);
+    void audit(String principal, String action, String resource);
+}
+
+// Domain-specific implementations
+public class ToolSecurityManager implements SecurityManager { /* Tool-specific */ }
+public class AgentSecurityManager implements SecurityManager { /* Agent-specific */ }
+public class MessageSecurityManager implements SecurityManager { /* Message-specific */ }
+```
+
+**Action Items:**
+- [ ] Create `SecurityManager` interface in `org.openhab.core.ai.common.security`
+- [ ] Refactor existing security managers to implement the interface
+- [ ] Consolidate common security functionality
+- [ ] Update all security manager references
+- [ ] Create comprehensive security tests
+- [ ] Update security documentation
+
+#### 26.3.7 Builder Classes - Low Priority
+
+**Identified Duplicates:**
+- 50+ Builder classes with similar patterns
+- Multiple `PerformanceMetricsBuilder` classes in different packages
+- Multiple `ConfigurationBuilder` classes
+
+**Consolidation Strategy:**
+- Create base builder interfaces for common patterns
+- Standardize builder naming conventions
+- Keep domain-specific builders but ensure consistent patterns
+
+**Action Items:**
+- [ ] Audit all builder classes for common patterns
+- [ ] Create base builder interfaces for common patterns
+- [ ] Standardize builder naming conventions
+- [ ] Update builder implementations to use base interfaces
+- [ ] Create builder pattern documentation
+
+#### 26.3.8 Configuration Classes - Low Priority
+
+**Identified Duplicates:**
+- `HttpServerConfiguration` (transport package)
+- `ServerConfiguration` (tool/server package)
+- `AgentServerConfiguration` (agent/lifecycle package)
+- Multiple configuration builders
+
+**Consolidation Strategy:**
+- Create base configuration interfaces
+- Keep domain-specific configurations but ensure consistent patterns
+- Standardize configuration builder patterns
+
+**Action Items:**
+- [ ] Audit all configuration classes for common patterns
+- [ ] Create base configuration interfaces
+- [ ] Standardize configuration patterns
+- [ ] Update configuration implementations
+- [ ] Create configuration documentation
+
+### 26.4 Implementation Phases
+
+#### Phase 1: Critical Duplicates (Week 1-2)
+**Priority: Immediate**
+- [ ] Remove exact duplicates: `ToolErrorRecoveryManager`, `ToolLoggingManager`
+- [ ] Consolidate Response classes: Create unified response hierarchy
+- [ ] Consolidate SharedContext classes: Merge into single implementation
+
+**Success Criteria:**
+- [ ] All exact duplicates removed
+- [ ] Response hierarchy implemented and tested
+- [ ] SharedContext unified and tested
+- [ ] No compilation errors
+- [ ] All existing functionality preserved
+
+#### Phase 2: High Impact Consolidations (Week 3-4)
+**Priority: High**
+- [ ] Consolidate Context classes: Create unified context hierarchy
+- [ ] Consolidate Security Manager classes: Create unified security hierarchy
+- [ ] Consolidate similar Service/Manager pairs: Remove redundant implementations
+
+**Success Criteria:**
+- [ ] Context hierarchy implemented and tested
+- [ ] Security hierarchy implemented and tested
+- [ ] Service/Manager consolidation completed
+- [ ] All imports updated
+- [ ] Comprehensive tests passing
+
+#### Phase 3: Pattern Standardization (Week 5-6)
+**Priority: Medium**
+- [ ] Standardize Builder patterns: Create base builder interfaces
+- [ ] Standardize Configuration patterns: Create base configuration interfaces
+- [ ] Review and standardize naming conventions: Ensure consistent patterns
+
+**Success Criteria:**
+- [ ] Builder patterns standardized
+- [ ] Configuration patterns standardized
+- [ ] Naming conventions documented
+- [ ] All patterns consistent across codebase
+
+### 26.5 Migration Guidelines
+
+#### 26.5.1 Code Migration Process
+
+1. **Create New Consolidated Classes**
+   - Create new classes in appropriate packages
+   - Implement comprehensive functionality
+   - Add comprehensive javadoc
+   - Follow openHAB coding standards
+
+2. **Update Imports Gradually**
+   - Update imports in one package at a time
+   - Ensure backward compatibility during transition
+   - Use deprecation annotations for old classes
+
+3. **Deprecate Old Classes**
+   - Add `@Deprecated` annotations to old classes
+   - Add migration guides in javadoc
+   - Provide clear migration instructions
+
+4. **Remove Deprecated Classes**
+   - Remove deprecated classes after migration period
+   - Update all remaining references
+   - Clean up unused imports
+
+5. **Update Documentation**
+   - Update technical documentation
+   - Update API documentation
+   - Update migration guides
+
+#### 26.5.2 Testing Requirements
+
+For each consolidation:
+
+1. **Unit Tests**
+   - Test all new consolidated classes
+   - Test all deprecated classes still work
+   - Test migration paths
+   - Test edge cases and error conditions
+
+2. **Integration Tests**
+   - Test integration with existing systems
+   - Test OSGi service registrations
+   - Test protocol compatibility
+   - Test performance impact
+
+3. **Migration Tests**
+   - Test migration from old to new classes
+   - Test backward compatibility
+   - Test deprecation warnings
+   - Test removal of deprecated classes
+
+#### 26.5.3 Documentation Requirements
+
+1. **Migration Guides**
+   - Step-by-step migration instructions
+   - Code examples for common migrations
+   - Troubleshooting guides
+   - Performance impact documentation
+
+2. **API Documentation**
+   - Updated javadoc for all new classes
+   - Deprecation notices in old classes
+   - Migration examples
+   - Best practices documentation
+
+3. **Architecture Documentation**
+   - Updated architecture diagrams
+   - Package structure documentation
+   - Dependency documentation
+   - Integration documentation
+
+### 26.6 Quality Assurance
+
+#### 26.6.1 Code Quality Checks
+
+- [ ] All new classes follow openHAB coding standards
+- [ ] All new classes have comprehensive javadoc
+- [ ] All new classes have unit tests
+- [ ] All new classes follow null safety patterns
+- [ ] All new classes are immutable where appropriate
+- [ ] All new classes have proper equals/hashCode/toString methods
+
+#### 26.6.2 Performance Validation
+
+- [ ] No performance regression in consolidated classes
+- [ ] Memory usage remains stable or improves
+- [ ] Startup time remains stable or improves
+- [ ] Bundle size reduction achieved
+- [ ] No memory leaks introduced
+
+#### 26.6.3 Compatibility Validation
+
+- [ ] All existing functionality preserved
+- [ ] All existing APIs remain compatible
+- [ ] All existing tests pass
+- [ ] All existing integrations work
+- [ ] No breaking changes introduced
+
+### 26.7 Success Metrics
+
+#### 26.7.1 Quantitative Metrics
+
+- [ ] 30% reduction in duplicate code
+- [ ] 20% reduction in bundle size
+- [ ] 50% reduction in similar class patterns
+- [ ] 100% test coverage for new consolidated classes
+- [ ] 0 compilation errors after consolidation
+
+#### 26.7.2 Qualitative Metrics
+
+- [ ] Improved code maintainability
+- [ ] Consistent API patterns across codebase
+- [ ] Better type safety through unified interfaces
+- [ ] Simplified testing through consolidated test suites
+- [ ] Clearer architecture through unified hierarchies
+
+### 26.8 Risk Mitigation
+
+#### 26.8.1 Technical Risks
+
+1. **Breaking Changes**
+   - **Risk**: Introduction of breaking changes during consolidation
+   - **Mitigation**: Comprehensive testing, gradual migration, backward compatibility
+
+2. **Performance Regression**
+   - **Risk**: Performance degradation from consolidation
+   - **Mitigation**: Performance testing, profiling, optimization
+
+3. **Integration Issues**
+   - **Risk**: Issues with existing integrations
+   - **Mitigation**: Integration testing, gradual rollout, rollback plan
+
+#### 26.8.2 Process Risks
+
+1. **Scope Creep**
+   - **Risk**: Consolidation effort expanding beyond planned scope
+   - **Mitigation**: Clear scope definition, phase-based approach, regular reviews
+
+2. **Resource Constraints**
+   - **Risk**: Insufficient resources for consolidation effort
+   - **Mitigation**: Prioritized approach, incremental delivery, resource planning
+
+3. **Timeline Delays**
+   - **Risk**: Consolidation taking longer than planned
+   - **Mitigation**: Realistic timelines, buffer time, regular progress tracking
+
+### 26.9 Maintenance and Evolution
+
+#### 26.9.1 Ongoing Maintenance
+
+- [ ] Regular audits for new duplicate patterns
+- [ ] Continuous improvement of consolidated patterns
+- [ ] Documentation updates as patterns evolve
+- [ ] Performance monitoring of consolidated classes
+- [ ] User feedback collection and incorporation
+
+#### 26.9.2 Future Evolution
+
+- [ ] Plan for future consolidation opportunities
+- [ ] Establish patterns for preventing future duplication
+- [ ] Create guidelines for new class creation
+- [ ] Establish review process for new patterns
+- [ ] Plan for architectural evolution
+
+### 26.10 Conclusion
+
+This consolidation effort will significantly improve the openHAB AI bundle codebase by eliminating duplicate code, establishing consistent patterns, and improving maintainability. The phased approach ensures minimal disruption while achieving maximum benefit. Success will be measured through both quantitative metrics (code reduction, performance improvement) and qualitative improvements (maintainability, consistency, type safety).
+
+The consolidation effort aligns with the overall BRAIN plan by creating a cleaner, more maintainable foundation for the intelligent openHAB system. This foundation will support the development of advanced AI capabilities, autonomous reasoning, and learning systems outlined in the broader BRAIN architecture.

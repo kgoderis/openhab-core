@@ -6,6 +6,7 @@ import java.lang.management.RuntimeMXBean;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.api.Tool;
 import org.openhab.core.ai.tool.api.ToolContext;
+import org.openhab.core.ai.tool.api.ToolErrorCode;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
@@ -132,8 +134,7 @@ public class KarafManagementTool implements Tool {
         long startTime = System.currentTimeMillis();
 
         if (bundleContext == null) {
-            throw new ToolException(TOOL_ID, "Bundle context not available",
-                    org.openhab.core.ai.tool.api.ToolErrorCode.SERVICE_UNAVAILABLE);
+            throw new ToolException(TOOL_ID, "Bundle context not available", ToolErrorCode.SERVICE_UNAVAILABLE);
         }
 
         try {
@@ -155,7 +156,7 @@ public class KarafManagementTool implements Tool {
                 case "bundle_services" -> getBundleServices(parameters);
                 case "bundle_dependencies" -> getBundleDependencies(parameters);
                 default -> throw new ToolException(TOOL_ID, "Unknown operation: " + operation,
-                        org.openhab.core.ai.tool.api.ToolErrorCode.INVALID_PARAMETER);
+                        ToolErrorCode.INVALID_PARAMETER);
             };
 
             long executionTime = System.currentTimeMillis() - startTime;
@@ -164,7 +165,7 @@ public class KarafManagementTool implements Tool {
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
             throw new ToolException(TOOL_ID, "Karaf management operation failed: " + e.getMessage(), e,
-                    org.openhab.core.ai.tool.api.ToolErrorCode.EXECUTION_ERROR);
+                    ToolErrorCode.EXECUTION_ERROR);
         }
     }
 
@@ -555,7 +556,7 @@ public class KarafManagementTool implements Tool {
         }
 
         Map<String, Object> headers = new HashMap<>();
-        java.util.Enumeration<String> keys = bundle.getHeaders().keys();
+        Enumeration<String> keys = bundle.getHeaders().keys();
         while (keys.hasMoreElements()) {
             String key = keys.nextElement();
             headers.put(key, bundle.getHeaders().get(key));

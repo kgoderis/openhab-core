@@ -1,6 +1,7 @@
 package org.openhab.core.ai.reasoning.engine.api;
 
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -78,7 +79,7 @@ public interface ReasoningPlanStep {
      * 
      * @return Step metadata
      */
-    default java.util.Map<String, Object> getMetadata() {
-        return java.util.Map.of();
+    default Map<String, Object> getMetadata() {
+        return Map.of();
     }
 }

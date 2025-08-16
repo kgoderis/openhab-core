@@ -1,5 +1,6 @@
 package org.openhab.core.ai.action.library.items;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -176,7 +177,7 @@ public class DeleteItemAction implements Action {
                 return ActionResult.success(result, System.currentTimeMillis() - executionStartTime);
             }
 
-            List<String> warnings = new java.util.ArrayList<>();
+            List<String> warnings = new ArrayList<>();
 
             // Check for potential issues
             if (!item.getGroupNames().isEmpty()) {

@@ -1,5 +1,6 @@
 package org.openhab.core.ai.agent.api;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -113,7 +114,7 @@ public interface Agent {
      * 
      * @return agent configuration as a map
      */
-    java.util.Map<String, Object> getConfiguration();
+    Map<String, Object> getConfiguration();
 
     /**
      * Update agent configuration
@@ -121,5 +122,5 @@ public interface Agent {
      * @param configuration the new configuration
      * @return true if the configuration was updated successfully
      */
-    boolean updateConfiguration(java.util.Map<String, Object> configuration);
+    boolean updateConfiguration(Map<String, Object> configuration);
 }

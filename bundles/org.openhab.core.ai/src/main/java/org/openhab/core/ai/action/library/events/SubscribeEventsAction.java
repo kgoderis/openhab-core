@@ -1,5 +1,8 @@
 package org.openhab.core.ai.action.library.events;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -67,10 +70,10 @@ public class SubscribeEventsAction implements Action {
 
     @Override
     public Map<String, Object> getParameterSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
 
-        Map<String, Object> properties = new java.util.HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put("eventTypes", Map.of("type", "array", "description", "List of event types to subscribe to",
                 "items", Map.of("type", "string")));
         properties.put("filters", Map.of("type", "object", "description",
@@ -86,10 +89,10 @@ public class SubscribeEventsAction implements Action {
 
     @Override
     public Map<String, Object> getReturnSchema() {
-        Map<String, Object> schema = new java.util.HashMap<>();
+        Map<String, Object> schema = new HashMap<>();
         schema.put("type", "object");
 
-        Map<String, Object> properties = new java.util.HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put("subscriptionId", Map.of("type", "string", "description", "Unique subscription identifier"));
         properties.put("sseUrl", Map.of("type", "string", "description", "SSE endpoint URL for receiving events"));
         properties.put("eventTypes", Map.of("type", "array", "description", "List of subscribed event types"));
@@ -103,7 +106,7 @@ public class SubscribeEventsAction implements Action {
 
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
-        List<String> errors = new java.util.ArrayList<>();
+        List<String> errors = new ArrayList<>();
 
         // Validate eventTypes
         Object eventTypesObj = parameters.get("eventTypes");
@@ -181,7 +184,7 @@ public class SubscribeEventsAction implements Action {
 
     @Override
     public Map<String, Object> getCapabilities() {
-        Map<String, Object> capabilities = new java.util.HashMap<>();
+        Map<String, Object> capabilities = new HashMap<>();
         capabilities.put("supportsAsync", true);
         capabilities.put("supportsFiltering", true);
         capabilities.put("supportsSSE", true);
@@ -206,9 +209,9 @@ public class SubscribeEventsAction implements Action {
     }
 
     private Map<String, Object> subscribeToEvents(Map<String, Object> parameters, ActionContext context) {
-        Map<String, Object> result = new java.util.HashMap<>();
+        Map<String, Object> result = new HashMap<>();
         result.put("action", "subscribe_events");
-        result.put("timestamp", java.time.Instant.now().toString());
+        result.put("timestamp", Instant.now().toString());
 
         // Extract parameters
         @SuppressWarnings("unchecked")

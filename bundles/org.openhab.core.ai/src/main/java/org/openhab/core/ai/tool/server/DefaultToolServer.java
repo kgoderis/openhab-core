@@ -1,12 +1,18 @@
 package org.openhab.core.ai.tool.server;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.error.DefaultErrorRecoveryService;
+import org.openhab.core.ai.tool.error.ErrorInfo;
+import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.security.DefaultToolSecurityService;
+import org.openhab.core.ai.tool.security.api.SecurityStatistics;
+import org.openhab.core.ai.tool.server.api.ToolServer;
+import org.openhab.core.ai.tool.server.api.ToolServerState;
 import org.openhab.core.ai.tool.server.api.TransportType;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
@@ -33,7 +39,7 @@ import io.modelcontextprotocol.spec.McpServerTransportProvider;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.ToolServer {
+public class DefaultToolServer implements ToolServer {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultToolServer.class);
 
@@ -42,8 +48,7 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
     private final ObjectMapper objectMapper;
     private final @Nullable BundleContext bundleContext;
     private final ToolRegistry toolRegistry;
-    private final AtomicReference<org.openhab.core.ai.tool.server.api.ToolServerState> state = new AtomicReference<>(
-            org.openhab.core.ai.tool.server.api.ToolServerState.STOPPED);
+    private final AtomicReference<ToolServerState> state = new AtomicReference<>(ToolServerState.STOPPED);
 
     // MCP server using the official SDK
     private volatile @Nullable McpServerTransportProvider mcpTransport;
@@ -112,8 +117,7 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
     public void start() throws Exception {
         logger.info("Starting MCP Tool server: {}", serverId);
 
-        if (!state.compareAndSet(org.openhab.core.ai.tool.server.api.ToolServerState.STOPPED,
-                org.openhab.core.ai.tool.server.api.ToolServerState.STARTING)) {
+        if (!state.compareAndSet(ToolServerState.STOPPED, ToolServerState.STARTING)) {
             throw new IllegalStateException("Server is not in STOPPED state: " + state.get());
         }
 
@@ -125,11 +129,11 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
             startMCPServer();
 
             // Update state
-            state.set(org.openhab.core.ai.tool.server.api.ToolServerState.RUNNING);
+            state.set(ToolServerState.RUNNING);
             logger.info("MCP Tool server started successfully: {}", serverId);
 
         } catch (Exception e) {
-            state.set(org.openhab.core.ai.tool.server.api.ToolServerState.ERROR);
+            state.set(ToolServerState.ERROR);
             logger.error("Failed to start MCP Tool server: {}", serverId, e);
             throw e;
         }
@@ -143,8 +147,7 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
     public void stop() throws Exception {
         logger.info("Stopping MCP Tool server: {}", serverId);
 
-        if (!state.compareAndSet(org.openhab.core.ai.tool.server.api.ToolServerState.RUNNING,
-                org.openhab.core.ai.tool.server.api.ToolServerState.STOPPING)) {
+        if (!state.compareAndSet(ToolServerState.RUNNING, ToolServerState.STOPPING)) {
             logger.warn("Server is not in RUNNING state: {}", state.get());
             return;
         }
@@ -154,11 +157,11 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
             stopMCPServer();
 
             // Update state
-            state.set(org.openhab.core.ai.tool.server.api.ToolServerState.STOPPED);
+            state.set(ToolServerState.STOPPED);
             logger.info("MCP Tool server stopped successfully: {}", serverId);
 
         } catch (Exception e) {
-            state.set(org.openhab.core.ai.tool.server.api.ToolServerState.ERROR);
+            state.set(ToolServerState.ERROR);
             logger.error("Failed to stop MCP Tool server: {}", serverId, e);
             throw e;
         }
@@ -188,7 +191,7 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
      * @return the current server state
      */
     @Override
-    public org.openhab.core.ai.tool.server.api.ToolServerState getState() {
+    public ToolServerState getState() {
         return state.get();
     }
 
@@ -198,7 +201,7 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
      * @return true if the server is running
      */
     public boolean isRunning() {
-        return state.get() == org.openhab.core.ai.tool.server.api.ToolServerState.RUNNING;
+        return state.get() == ToolServerState.RUNNING;
     }
 
     /**
@@ -206,7 +209,7 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
      * 
      * @return security statistics or null if security manager is not available
      */
-    public org.openhab.core.ai.tool.security.api.@Nullable SecurityStatistics getSecurityStatistics() {
+    public @Nullable SecurityStatistics getSecurityStatistics() {
         DefaultToolSecurityService manager = securityManager;
         return manager != null ? manager.getSecurityStatistics() : null;
     }
@@ -216,7 +219,7 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
      * 
      * @return error recovery statistics or null if error recovery manager is not available
      */
-    public org.openhab.core.ai.tool.error.@Nullable ErrorRecoveryStatistics getErrorRecoveryStatistics() {
+    public @Nullable ErrorRecoveryStatistics getErrorRecoveryStatistics() {
         DefaultErrorRecoveryService manager = errorRecoveryManager;
         return manager != null ? manager.getErrorRecoveryStatistics() : null;
     }
@@ -226,7 +229,7 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
      * 
      * @return detailed error information or null if error recovery manager is not available
      */
-    public java.util.@Nullable Map<String, org.openhab.core.ai.tool.error.ErrorInfo> getErrorDetails() {
+    public @Nullable Map<String, ErrorInfo> getErrorDetails() {
         DefaultErrorRecoveryService manager = errorRecoveryManager;
         return manager != null ? manager.getErrorDetails() : null;
     }
@@ -257,9 +260,9 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
      * @return true if the server is healthy
      */
     public boolean isHealthy() {
-        org.openhab.core.ai.tool.server.api.ToolServerState currentState = state.get();
+        ToolServerState currentState = state.get();
 
-        if (currentState != org.openhab.core.ai.tool.server.api.ToolServerState.RUNNING) {
+        if (currentState != ToolServerState.RUNNING) {
             return false;
         }
 
@@ -293,10 +296,10 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
      * @return transport health information
      */
     @Override
-    public org.openhab.core.ai.tool.server.TransportHealthInfo getTransportHealth() {
+    public TransportHealthInfo getTransportHealth() {
         long uptime = System.currentTimeMillis() - transportStartTime;
-        return new org.openhab.core.ai.tool.server.TransportHealthInfo(currentTransportType, transportHealthy,
-                transportStartTime, lastTransportError, uptime);
+        return new TransportHealthInfo(currentTransportType, transportHealthy, transportStartTime, lastTransportError,
+                uptime);
     }
 
     /**
@@ -309,11 +312,11 @@ public class DefaultToolServer implements org.openhab.core.ai.tool.server.api.To
      * 
      * @return transport statistics
      */
-    public org.openhab.core.ai.tool.server.TransportStatistics getTransportStatistics() {
+    public TransportStatistics getTransportStatistics() {
         long uptime = System.currentTimeMillis() - transportStartTime;
         String transportClass = mcpTransport != null ? mcpTransport.getClass().getSimpleName() : "None";
-        return new org.openhab.core.ai.tool.server.TransportStatistics(currentTransportType, transportStartTime, uptime,
-                transportHealthy, lastTransportError, transportClass, configuration.getTransportType());
+        return new TransportStatistics(currentTransportType, transportStartTime, uptime, transportHealthy,
+                lastTransportError, transportClass, configuration.getTransportType());
     }
 
     /**

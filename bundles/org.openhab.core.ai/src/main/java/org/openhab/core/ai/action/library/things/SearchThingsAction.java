@@ -1,5 +1,6 @@
 package org.openhab.core.ai.action.library.things;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -170,7 +171,7 @@ public class SearchThingsAction implements Action {
             result.put("searchCriteria", searchCriteria);
 
             // Get all things
-            List<Thing> allThings = new java.util.ArrayList<>(thingRegistry.getAll());
+            List<Thing> allThings = new ArrayList<>(thingRegistry.getAll());
             result.put("totalCount", allThings.size());
 
             // Apply filters

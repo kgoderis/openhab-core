@@ -1,5 +1,6 @@
 package org.openhab.core.ai.action.library.things;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -205,7 +206,7 @@ public class DeleteThingAction implements Action {
             }
 
             // Get child Things if this is a bridge and removeChildThings is enabled
-            List<String> deletedChildThings = new java.util.ArrayList<>();
+            List<String> deletedChildThings = new ArrayList<>();
             if (removeChildThings && thing.getBridgeUID() == null) {
                 // This might be a bridge, check for child Things
                 for (Thing childThing : thingRegistry.getAll()) {

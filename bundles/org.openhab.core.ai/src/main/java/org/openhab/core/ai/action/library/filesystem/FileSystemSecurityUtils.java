@@ -1,5 +1,6 @@
 package org.openhab.core.ai.action.library.filesystem;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -123,8 +124,7 @@ public class FileSystemSecurityUtils {
 
         try {
             Path filePath = Paths.get(path);
-            return java.nio.file.Files.exists(filePath)
-                    && (java.nio.file.Files.isReadable(filePath) || java.nio.file.Files.isDirectory(filePath));
+            return Files.exists(filePath) && (Files.isReadable(filePath) || Files.isDirectory(filePath));
         } catch (Exception e) {
             logger.warn("Error checking path accessibility for {}: {}", path, e.getMessage());
             return false;

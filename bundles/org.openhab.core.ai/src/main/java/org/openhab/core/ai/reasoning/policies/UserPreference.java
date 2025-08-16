@@ -15,7 +15,7 @@ public class UserPreference {
         this.agentId = agentId;
     }
 
-    public void learnFromEvent(org.openhab.core.ai.reasoning.events.AutonomousEvent event) {
+    public void learnFromEvent(AutonomousEvent event) {
         String eventType = event.getType();
         preferences.put("last_" + eventType + "_timestamp", event.getTimestamp());
         preferences.put(eventType + "_count", ((Integer) preferences.getOrDefault(eventType + "_count", 0)) + 1);

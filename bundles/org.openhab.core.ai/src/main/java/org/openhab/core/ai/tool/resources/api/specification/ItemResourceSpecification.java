@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.api.SpecificationType;
 import org.openhab.core.ai.tool.resources.adapter.ItemResourceAdapter;
 import org.openhab.core.ai.tool.resources.api.ResourceContext;
 import org.openhab.core.ai.tool.resources.api.ResourceResult;
@@ -42,8 +43,8 @@ public class ItemResourceSpecification extends ResourceSpecification {
     }
 
     @Override
-    public org.openhab.core.ai.tool.api.SpecificationType getType() {
-        return org.openhab.core.ai.tool.api.SpecificationType.RESOURCE;
+    public SpecificationType getType() {
+        return SpecificationType.RESOURCE;
     }
 
     @Override

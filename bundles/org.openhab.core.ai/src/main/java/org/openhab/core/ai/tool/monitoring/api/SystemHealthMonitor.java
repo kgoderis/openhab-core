@@ -8,6 +8,8 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.tool.monitoring.HealthCheckResult;
+import org.openhab.core.ai.tool.monitoring.PerformanceAlert;
+import org.openhab.core.ai.tool.monitoring.PerformanceOptimization;
 
 /**
  * System Health Monitor Interface
@@ -82,8 +84,7 @@ public interface SystemHealthMonitor {
      * @param provider the provider to check
      * @return health check result
      */
-    CompletableFuture<org.openhab.core.ai.tool.monitoring.HealthCheckResult> performHealthCheck(
-            ModelProviderType provider);
+    CompletableFuture<HealthCheckResult> performHealthCheck(ModelProviderType provider);
 
     /**
      * Perform a health check for a service
@@ -99,7 +100,7 @@ public interface SystemHealthMonitor {
      * @param serviceName the service name
      * @return service health metrics
      */
-    org.openhab.core.ai.tool.monitoring.ServiceHealthMetrics getServiceHealthMetrics(String serviceName);
+    ServiceHealthMetrics getServiceHealthMetrics(String serviceName);
 
     /**
      * Force recovery for a provider
@@ -193,7 +194,7 @@ public interface SystemHealthMonitor {
      * @param specificationId the specification ID
      * @return specification performance metrics
      */
-    org.openhab.core.ai.tool.monitoring.SpecificationPerformanceMetrics getSpecificationMetrics(String specificationId);
+    SpecificationPerformanceMetrics getSpecificationMetrics(String specificationId);
 
     /**
      * Get all specification metrics
@@ -208,7 +209,7 @@ public interface SystemHealthMonitor {
      * @param specificationId the specification ID
      * @return list of performance alerts
      */
-    List<org.openhab.core.ai.tool.monitoring.PerformanceAlert> getSpecificationAlerts(String specificationId);
+    List<PerformanceAlert> getSpecificationAlerts(String specificationId);
 
     /**
      * Get specification optimizations
@@ -216,15 +217,14 @@ public interface SystemHealthMonitor {
      * @param specificationId the specification ID
      * @return list of performance optimizations
      */
-    List<org.openhab.core.ai.tool.monitoring.PerformanceOptimization> getSpecificationOptimizations(
-            String specificationId);
+    List<PerformanceOptimization> getSpecificationOptimizations(String specificationId);
 
     /**
      * Get system health status
      * 
      * @return system health status
      */
-    org.openhab.core.ai.tool.monitoring.SystemHealthStatus getSystemHealthStatus();
+    SystemHealthStatus getSystemHealthStatus();
 
     /**
      * Get provider health metrics
@@ -232,7 +232,7 @@ public interface SystemHealthMonitor {
      * @param provider the provider
      * @return provider health metrics
      */
-    org.openhab.core.ai.tool.monitoring.ProviderHealthMetrics getProviderHealthMetrics(ModelProviderType provider);
+    ProviderHealthMetrics getProviderHealthMetrics(ModelProviderType provider);
 
     /**
      * Check if monitoring is enabled

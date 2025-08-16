@@ -8,6 +8,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.resources.api.dto.Resource;
 import org.openhab.core.ai.tool.resources.api.specification.ResourceSpecification;
 
+import io.modelcontextprotocol.server.McpServerFeatures;
+
 /**
  * Registry API for MCP resource specifications and resources.
  */
@@ -31,9 +33,9 @@ public interface ResourceRegistry {
 
     Object[] getAsyncResourceSpecifications();
 
-    io.modelcontextprotocol.server.McpServerFeatures.SyncResourceSpecification[] getMcpSyncResourceSpecifications();
+    McpServerFeatures.SyncResourceSpecification[] getMcpSyncResourceSpecifications();
 
-    io.modelcontextprotocol.server.McpServerFeatures.AsyncResourceSpecification[] getMcpAsyncResourceSpecifications();
+    McpServerFeatures.AsyncResourceSpecification[] getMcpAsyncResourceSpecifications();
 
     // Resource registration and lookup
     @Nullable

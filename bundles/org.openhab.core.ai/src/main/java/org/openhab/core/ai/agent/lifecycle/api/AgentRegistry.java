@@ -15,9 +15,13 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.api.Agent;
 import org.openhab.core.ai.agent.api.AgentStatus;
 import org.openhab.core.ai.agent.lifecycle.AgentCommunicationProtocol;
+import org.openhab.core.ai.agent.lifecycle.AgentMessage;
 import org.openhab.core.ai.agent.lifecycle.AgentRegistrationResult;
 import org.openhab.core.ai.agent.lifecycle.AgentSecurityContext;
 import org.openhab.core.ai.agent.lifecycle.AgentValidationResult;
+import org.openhab.core.ai.agent.lifecycle.DefaultAgentMetrics;
+import org.openhab.core.ai.agent.lifecycle.MessageHandler;
+import org.openhab.core.ai.agent.lifecycle.MessageStatus;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -537,9 +541,4 @@ public class AgentRegistry {
             }
         }
     }
-
-    /**
-     * Implementation of AgentMetrics interface.
-     */
-    // Extracted: see package-private class DefaultAgentMetrics
 }

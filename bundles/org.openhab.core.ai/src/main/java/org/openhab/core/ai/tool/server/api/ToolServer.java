@@ -9,6 +9,9 @@ import org.openhab.core.ai.tool.error.ErrorInfo;
 import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.security.DefaultToolSecurityService;
 import org.openhab.core.ai.tool.security.api.SecurityStatistics;
+import org.openhab.core.ai.tool.server.ServerConfiguration;
+import org.openhab.core.ai.tool.server.TransportHealthInfo;
+import org.openhab.core.ai.tool.server.TransportStatistics;
 
 /**
  * Tool Server Interface (consolidated MCP server API)
@@ -24,7 +27,7 @@ public interface ToolServer {
 
     String getServerId();
 
-    org.openhab.core.ai.tool.server.ServerConfiguration getConfiguration();
+    ServerConfiguration getConfiguration();
 
     ToolServerState getState();
 
@@ -45,9 +48,9 @@ public interface ToolServer {
 
     boolean isHealthy();
 
-    org.openhab.core.ai.tool.server.TransportHealthInfo getTransportHealth();
+    TransportHealthInfo getTransportHealth();
 
-    org.openhab.core.ai.tool.server.TransportStatistics getTransportStatistics();
+    TransportStatistics getTransportStatistics();
 
     void setSecurityManager(DefaultToolSecurityService securityManager);
 

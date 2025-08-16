@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 @NonNullByDefault
-class SecurityViolationPattern {
+public class SecurityViolationPattern {
     private final String principalId;
     private final String violationType;
     private final String protocol;

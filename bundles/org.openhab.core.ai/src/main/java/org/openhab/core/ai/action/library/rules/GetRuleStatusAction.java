@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action.library.rules;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -77,7 +78,7 @@ public class GetRuleStatusAction implements Action {
                 Map.of("type", "boolean", "description", "Include dependency status", "default", false));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -101,12 +102,12 @@ public class GetRuleStatusAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String ruleUID = (String) parameters.get("ruleUID");
         if (ruleUID == null || ruleUID.trim().isEmpty()) {
-            return ActionValidationResult.invalid(java.util.List.of("ruleUID is required and cannot be empty"));
+            return ActionValidationResult.invalid(List.of("ruleUID is required and cannot be empty"));
         }
 
         return ActionValidationResult.valid(parameters);
@@ -162,7 +163,7 @@ public class GetRuleStatusAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "status", "monitoring")).build();
+                .tags(List.of("rules", "status", "monitoring")).build();
     }
 
     @Override
@@ -239,15 +240,15 @@ public class GetRuleStatusAction implements Action {
             errorInfo.put("lastError", "Not available");
             errorInfo.put("errorCount", "Not available");
             errorInfo.put("errorRate", "Not available");
-            errorInfo.put("commonErrors", java.util.List.of());
+            errorInfo.put("commonErrors", List.of());
             status.put("errorDetails", errorInfo);
         }
 
         // Dependencies (stub)
         if (includeDependencies) {
             Map<String, Object> dependencyInfo = new HashMap<>();
-            dependencyInfo.put("dependentRules", java.util.List.of());
-            dependencyInfo.put("dependencies", java.util.List.of());
+            dependencyInfo.put("dependentRules", List.of());
+            dependencyInfo.put("dependencies", List.of());
             dependencyInfo.put("dependencyStatus", "Not available");
             status.put("dependencies", dependencyInfo);
         }
@@ -255,9 +256,8 @@ public class GetRuleStatusAction implements Action {
         // Health assessment
         Map<String, Object> healthInfo = new HashMap<>();
         healthInfo.put("overallHealth", "UNKNOWN");
-        healthInfo.put("issues", java.util.List.of("Status information limited in stub implementation"));
-        healthInfo.put("recommendations",
-                java.util.List.of("Implement full status monitoring for detailed information"));
+        healthInfo.put("issues", List.of("Status information limited in stub implementation"));
+        healthInfo.put("recommendations", List.of("Implement full status monitoring for detailed information"));
         status.put("health", healthInfo);
 
         return status;

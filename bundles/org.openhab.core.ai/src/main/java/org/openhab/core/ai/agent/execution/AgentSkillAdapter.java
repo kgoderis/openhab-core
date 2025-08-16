@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.a2a.spec.Message;
+import io.a2a.spec.Part;
+import io.a2a.spec.TextPart;
 
 /**
  * Protocol Adaptation and Action Bridging.
@@ -193,8 +195,8 @@ public class AgentSkillAdapter {
     private String extractTextContent(Message message) {
         StringBuilder content = new StringBuilder();
 
-        for (io.a2a.spec.Part<?> part : message.getParts()) {
-            if (part instanceof io.a2a.spec.TextPart textPart) {
+        for (Part<?> part : message.getParts()) {
+            if (part instanceof TextPart textPart) {
                 if (content.length() > 0) {
                     content.append(" ");
                 }

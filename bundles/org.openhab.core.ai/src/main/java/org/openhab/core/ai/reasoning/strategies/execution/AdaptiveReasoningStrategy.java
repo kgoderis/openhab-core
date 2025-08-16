@@ -23,9 +23,9 @@ import org.openhab.core.ai.reasoning.strategies.api.ReasoningStrategy;
  */
 @NonNullByDefault
 public class AdaptiveReasoningStrategy implements ReasoningStrategy {
-    private final org.openhab.core.ai.reasoning.engine.ReasoningOrchestrationService service;
+    private final ReasoningOrchestrationService service;
 
-    public AdaptiveReasoningStrategy(org.openhab.core.ai.reasoning.engine.ReasoningOrchestrationService service) {
+    public AdaptiveReasoningStrategy(ReasoningOrchestrationService service) {
         this.service = service;
     }
 

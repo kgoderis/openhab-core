@@ -1,7 +1,11 @@
 package org.openhab.core.ai.rest;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.ws.rs.core.MediaType;
@@ -311,7 +315,7 @@ public final class RestSecurityFramework {
      * Generate a secure session ID
      */
     private static String generateSessionId() {
-        return java.util.UUID.randomUUID().toString().replace("-", "");
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     // SessionInfo extracted to top-level: org.openhab.core.ai.rest.SessionInfo
@@ -363,10 +367,10 @@ public final class RestSecurityFramework {
 
             // Check for test configuration file
             String configFile = System.getProperty("ai.security.config", "ai-security.properties");
-            java.io.File file = new java.io.File(configFile);
+            File file = new File(configFile);
             if (file.exists()) {
-                try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
-                    java.util.Properties props = new java.util.Properties();
+                try (FileInputStream fis = new FileInputStream(file)) {
+                    Properties props = new Properties();
                     props.load(fis);
                     String testMode = props.getProperty("security.test.mode");
                     if ("true".equalsIgnoreCase(testMode)) {

@@ -1,5 +1,6 @@
 package org.openhab.core.ai.reasoning.events;
 
+import java.io.File;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -59,8 +60,8 @@ public class AutonomousEventProcessor {
     // Event processing
     private final Map<String, EventPattern> eventPatterns = new ConcurrentHashMap<>();
     private final Map<String, UserPreference> userPreferences = new ConcurrentHashMap<>();
-    private final Map<String, org.openhab.core.ai.reasoning.constraints.SafetyConstraint> safetyConstraints = new ConcurrentHashMap<>();
-    private final List<org.openhab.core.ai.reasoning.actions.AutonomousAction> pendingActions = new ArrayList<>();
+    private final Map<String, SafetyConstraint> safetyConstraints = new ConcurrentHashMap<>();
+    private final List<AutonomousAction> pendingActions = new ArrayList<>();
 
     // Performance monitoring
     private final AtomicLong totalEventsProcessed = new AtomicLong(0);
@@ -252,14 +253,14 @@ public class AutonomousEventProcessor {
         // For now, we'll use default values and log the loading process
         try {
             String configDir = System.getProperty("openhab.userdata") + "/ai/autonomous";
-            java.io.File dir = new java.io.File(configDir);
+            File dir = new File(configDir);
             if (!dir.exists()) {
                 dir.mkdirs();
                 logger.debug("Created autonomous processor config directory: {}", configDir);
             }
 
             // Load configuration files if they exist
-            java.io.File configFile = new java.io.File(dir, "processor-config.json");
+            File configFile = new File(dir, "processor-config.json");
             if (configFile.exists()) {
                 // TODO: Implement JSON configuration loading
                 logger.debug("Found configuration file, loading settings...");
@@ -304,7 +305,7 @@ public class AutonomousEventProcessor {
         // In a real implementation, this would save to persistent storage
         try {
             String stateDir = System.getProperty("openhab.userdata") + "/ai/autonomous/state";
-            java.io.File dir = new java.io.File(stateDir);
+            File dir = new File(stateDir);
             if (!dir.exists()) {
                 dir.mkdirs();
             }

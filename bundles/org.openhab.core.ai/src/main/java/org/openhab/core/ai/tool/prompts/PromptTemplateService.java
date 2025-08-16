@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.prompts;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -56,10 +57,10 @@ public class PromptTemplateService {
         try {
             // Basic templates; extend as needed
             templates.put("system_status", new Prompt("System Status", "Report overall system status",
-                    java.util.List.of(new PromptArgument("format", "Output format", false))));
+                    List.of(new PromptArgument("format", "Output format", false))));
             templates.put("item_control",
                     new Prompt("Item Control", "Control an item",
-                            java.util.List.of(new PromptArgument("itemName", "Name of the item", true),
+                            List.of(new PromptArgument("itemName", "Name of the item", true),
                                     new PromptArgument("command", "Command to send", true))));
             logger.info("Initialized {} prompt templates", templates.size());
         } catch (Exception e) {
@@ -71,7 +72,7 @@ public class PromptTemplateService {
         totalTemplateRequests.incrementAndGet();
         long start = System.currentTimeMillis();
         try {
-            return java.util.Map.copyOf(templates);
+            return Map.copyOf(templates);
         } finally {
             totalTemplateCompletions.incrementAndGet();
             totalTemplateTime.addAndGet(System.currentTimeMillis() - start);

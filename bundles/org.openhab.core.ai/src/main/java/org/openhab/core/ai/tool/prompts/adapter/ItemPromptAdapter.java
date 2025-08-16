@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.prompts.adapter;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -61,7 +62,7 @@ public class ItemPromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         PromptArgument[] args = new PromptArgument[] { new PromptArgument("itemName", "Name of the item", true),
                 new PromptArgument("promptType", "Type of prompt", false),
                 new PromptArgument("includeMetadata", "Include item metadata", false) };
-        return new Prompt(name, description, java.util.List.of(args));
+        return new Prompt(name, description, List.of(args));
     }
 
     @Override

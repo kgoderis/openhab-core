@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.api.AgentModelContext;
 
 /**
  * Cache entry wrapper with expiration and last-access tracking.
@@ -13,34 +14,34 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-final class CacheEntry {
-    private final org.openhab.core.ai.agent.api.AgentModelContext context;
+public final class CacheEntry {
+    private final AgentModelContext context;
     private final Instant expirationTime;
     private volatile Instant lastAccess;
 
-    CacheEntry(org.openhab.core.ai.agent.api.AgentModelContext context, Duration expiration) {
+    public CacheEntry(AgentModelContext context, Duration expiration) {
         this.context = context;
         this.expirationTime = Instant.now().plus(expiration);
         this.lastAccess = Instant.now();
     }
 
-    org.openhab.core.ai.agent.api.AgentModelContext getContext() {
+    public AgentModelContext getContext() {
         return context;
     }
 
-    Instant getExpirationTime() {
+    public Instant getExpirationTime() {
         return expirationTime;
     }
 
-    Instant getLastAccess() {
+    public Instant getLastAccess() {
         return lastAccess;
     }
 
-    void updateLastAccess() {
+    public void updateLastAccess() {
         this.lastAccess = Instant.now();
     }
 
-    boolean isExpired() {
+    public boolean isExpired() {
         return Instant.now().isAfter(expirationTime);
     }
 }

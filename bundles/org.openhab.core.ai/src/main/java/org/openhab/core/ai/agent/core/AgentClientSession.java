@@ -1,4 +1,4 @@
-package org.openhab.core.ai.model;
+package org.openhab.core.ai.agent.core;
 
 import java.time.Duration;
 import java.time.Instant;

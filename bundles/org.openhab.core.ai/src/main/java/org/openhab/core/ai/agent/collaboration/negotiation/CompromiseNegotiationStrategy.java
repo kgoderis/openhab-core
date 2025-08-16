@@ -1,5 +1,7 @@
 package org.openhab.core.ai.agent.collaboration.negotiation;
 
+import java.util.Map;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.agent.collaboration.negotiation.api.NegotiationStrategy;
 
@@ -22,7 +24,7 @@ public class CompromiseNegotiationStrategy implements NegotiationStrategy {
     @Override
     public NegotiationOutcome evaluateProposal(NegotiationSession session, NegotiationProposal proposal) {
         if (session.getProposals().size() >= 2) {
-            return NegotiationOutcome.agreement(java.util.Map.of("agreement", "compromise"));
+            return NegotiationOutcome.agreement(Map.of("agreement", "compromise"));
         }
         return NegotiationOutcome.noAgreement("Need at least 2 proposals for compromise");
     }

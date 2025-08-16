@@ -28,6 +28,8 @@ import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+
 /**
  * AI Action for backing up openHAB addon configurations through real OSGi bundle configuration management.
  * 
@@ -532,7 +534,7 @@ public class BackupAddonConfigurationAction implements Action {
                 metadata.put("includeMetadata", includeMetadata);
                 metadata.put("compressionLevel", compressionLevel);
 
-                String metadataJson = new com.google.gson.Gson().toJson(metadata);
+                String metadataJson = new Gson().toJson(metadata);
                 zos.write(metadataJson.getBytes());
                 zos.closeEntry();
             }
@@ -550,7 +552,7 @@ public class BackupAddonConfigurationAction implements Action {
                 bundleState.put("location", bundle.getLocation());
                 bundleState.put("lastModified", bundle.getLastModified());
 
-                String stateJson = new com.google.gson.Gson().toJson(bundleState);
+                String stateJson = new Gson().toJson(bundleState);
                 zos.write(stateJson.getBytes());
                 zos.closeEntry();
             }

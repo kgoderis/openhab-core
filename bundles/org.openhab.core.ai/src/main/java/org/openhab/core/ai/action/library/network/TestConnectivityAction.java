@@ -1,7 +1,9 @@
 package org.openhab.core.ai.action.library.network;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -186,7 +188,7 @@ public class TestConnectivityAction implements Action {
             result.put("summary", generateSummary(hostTests, portTests,
                     includeDNS ? (List<Map<String, Object>>) result.get("dnsTests") : List.of()));
             result.put("overallStatus", determineOverallStatus(hostTests, portTests));
-            result.put("timestamp", java.time.Instant.now().toString());
+            result.put("timestamp", Instant.now().toString());
 
             long executionTime = System.currentTimeMillis() - startTime;
             return ActionResult.success(result, executionTime);
@@ -273,7 +275,7 @@ public class TestConnectivityAction implements Action {
 
                 try (Socket socket = new Socket()) {
                     long startTime = System.currentTimeMillis();
-                    socket.connect(new java.net.InetSocketAddress(host, port), timeout);
+                    socket.connect(new InetSocketAddress(host, port), timeout);
                     long endTime = System.currentTimeMillis();
 
                     testResult.put("reachable", true);

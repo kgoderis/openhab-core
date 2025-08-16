@@ -2,7 +2,9 @@ package org.openhab.core.ai.integration.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
 // TODO: Uncomment when rules action classes are implemented
 // import org.openhab.core.ai.action.actions.rules.*;
 
@@ -12,7 +14,7 @@ import org.junit.jupiter.api.Test;
  * TODO: This test is currently disabled because the rules action classes
  * are not yet implemented. Re-enable when the action classes are available.
  */
-@org.junit.jupiter.api.Disabled("Rules action classes not yet implemented")
+@Disabled("Rules action classes not yet implemented")
 class RulesActionIntegrationTest extends BaseActionIntegrationTest {
 
     @Test

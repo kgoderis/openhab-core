@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action.library.items;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -16,6 +17,7 @@ import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemBuilder;
 import org.openhab.core.items.ItemBuilderFactory;
+import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.Metadata;
 import org.openhab.core.items.MetadataKey;
@@ -149,7 +151,7 @@ public class CreateItemAction implements Action {
         try {
             itemRegistry.getItem(itemName);
             return ActionValidationResult.invalid(List.of("Item already exists: " + itemName));
-        } catch (org.openhab.core.items.ItemNotFoundException e) {
+        } catch (ItemNotFoundException e) {
             // Item doesn't exist, which is what we want
         } catch (Exception e) {
             return ActionValidationResult.invalid(List.of("Error checking item existence: " + e.getMessage()));
@@ -210,7 +212,7 @@ public class CreateItemAction implements Action {
             }
 
             if (tags != null && !tags.isEmpty()) {
-                builder.withTags(new java.util.HashSet<>(tags));
+                builder.withTags(new HashSet<>(tags));
             }
 
             Item item = builder.build();

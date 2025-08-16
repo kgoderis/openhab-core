@@ -1,5 +1,6 @@
 package org.openhab.core.ai.action.library.items;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -179,9 +180,9 @@ public class SetItemTagsAction implements Action {
                 return ActionResult.success(result, System.currentTimeMillis() - executionStartTime);
             }
 
-            List<String> tagsSet = new java.util.ArrayList<>();
-            List<String> tagsRemoved = new java.util.ArrayList<>();
-            List<String> overwritten = new java.util.ArrayList<>();
+            List<String> tagsSet = new ArrayList<>();
+            List<String> tagsRemoved = new ArrayList<>();
+            List<String> overwritten = new ArrayList<>();
             Map<String, Object> tagsSetDetails = new HashMap<>();
 
             // Get existing tags for this item

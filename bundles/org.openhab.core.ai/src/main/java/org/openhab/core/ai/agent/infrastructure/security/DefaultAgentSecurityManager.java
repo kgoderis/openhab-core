@@ -1,11 +1,15 @@
 package org.openhab.core.ai.agent.infrastructure.security;
 
 import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.Signature;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -511,7 +515,7 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
             }
 
             // Convert to base64 for safe transmission
-            return java.util.Base64.getEncoder().encodeToString(encryptedBytes);
+            return Base64.getEncoder().encodeToString(encryptedBytes);
         } catch (Exception e) {
             logger.error("Error encrypting content: {}", e.getMessage());
             throw new RuntimeException("Encryption failed", e);
@@ -521,7 +525,7 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     private String decryptContent(String encryptedContent, PrivateKey privateKey) {
         try {
             // Decode from base64
-            byte[] encryptedBytes = java.util.Base64.getDecoder().decode(encryptedContent);
+            byte[] encryptedBytes = Base64.getDecoder().decode(encryptedContent);
             byte[] keyBytes = privateKey.getEncoded();
 
             // Simple decryption using XOR with the private key
@@ -545,12 +549,12 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
                 throw new RuntimeException("No key pair found for agent: " + agentId);
             }
 
-            java.security.Signature signature = java.security.Signature.getInstance("SHA256withRSA");
+            Signature signature = Signature.getInstance("SHA256withRSA");
             signature.initSign(agentKeyPair.getPrivate());
             signature.update(content.getBytes());
 
             byte[] signatureBytes = signature.sign();
-            return java.util.Base64.getEncoder().encodeToString(signatureBytes);
+            return Base64.getEncoder().encodeToString(signatureBytes);
         } catch (Exception e) {
             logger.error("Error signing content: {}", e.getMessage());
             throw new RuntimeException("Signing failed", e);
@@ -566,11 +570,11 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
                 return false;
             }
 
-            java.security.Signature sig = java.security.Signature.getInstance("SHA256withRSA");
+            Signature sig = Signature.getInstance("SHA256withRSA");
             sig.initVerify(agentKeyPair.getPublic());
             sig.update(content.getBytes());
 
-            byte[] signatureBytes = java.util.Base64.getDecoder().decode(signature);
+            byte[] signatureBytes = Base64.getDecoder().decode(signature);
             return sig.verify(signatureBytes);
         } catch (Exception e) {
             logger.error("Error verifying signature: {}", e.getMessage());
@@ -599,15 +603,14 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
         try {
             // Generate a JWT-like token with agent information
             // In a real implementation, this would use proper JWT libraries
-            String header = java.util.Base64.getEncoder()
-                    .encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes());
-            String payload = java.util.Base64.getEncoder()
+            String header = Base64.getEncoder().encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes());
+            String payload = Base64.getEncoder()
                     .encodeToString(String
                             .format("{\"agentId\":\"%s\",\"exp\":%d}", agentId, System.currentTimeMillis() + 3600000)
                             .getBytes());
 
             // Create a simple signature
-            String signature = java.util.Base64.getEncoder()
+            String signature = Base64.getEncoder()
                     .encodeToString((agentId + "_" + System.currentTimeMillis()).getBytes());
 
             return header + "." + payload + "." + signature;
@@ -644,8 +647,8 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     private KeyPair generateKeyPair() {
         try {
             // Generate RSA key pair
-            java.security.KeyPairGenerator keyGen = java.security.KeyPairGenerator.getInstance("RSA");
-            keyGen.initialize(2048, new java.security.SecureRandom());
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+            keyGen.initialize(2048, new SecureRandom());
             return keyGen.generateKeyPair();
         } catch (Exception e) {
             logger.error("Error generating key pair: {}", e.getMessage());

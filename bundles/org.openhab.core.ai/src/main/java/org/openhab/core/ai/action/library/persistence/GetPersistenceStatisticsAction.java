@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -597,7 +598,7 @@ public class GetPersistenceStatisticsAction implements Action {
             }
 
             // Basic service information
-            stats.put("name", service.getLabel(java.util.Locale.getDefault()));
+            stats.put("name", service.getLabel(Locale.getDefault()));
             stats.put("status", "active");
             stats.put("type", service instanceof QueryablePersistenceService ? "queryable" : "basic");
             stats.put("class", service.getClass().getSimpleName());

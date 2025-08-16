@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
-@Component(service = org.openhab.core.ai.tool.monitoring.api.SystemHealthMonitor.class)
+@Component(service = SystemHealthMonitor.class)
 @NonNullByDefault
 public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
@@ -193,16 +193,14 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return CompletableFuture with health check result
      */
     @Override
-    public CompletableFuture<org.openhab.core.ai.tool.monitoring.HealthCheckResult> performServiceHealthCheck(
-            String serviceName) {
+    public CompletableFuture<HealthCheckResult> performServiceHealthCheck(String serviceName) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // TODO: Implement actual service health check logic
                 boolean isHealthy = performServiceHealthCheckLogic(serviceName);
                 long responseTime = measureServiceHealthCheckResponseTime(serviceName);
 
-                org.openhab.core.ai.tool.monitoring.HealthCheckResult result = new org.openhab.core.ai.tool.monitoring.HealthCheckResult(
-                        serviceName, isHealthy, responseTime, null);
+                HealthCheckResult result = new HealthCheckResult(serviceName, isHealthy, responseTime, null);
 
                 // Update health state
                 ServiceHealthState state = getOrCreateServiceState(serviceName);
@@ -211,7 +209,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
                 return result;
             } catch (Exception e) {
                 logger.error("Service health check failed for {}", serviceName, e);
-                return new org.openhab.core.ai.tool.monitoring.HealthCheckResult(serviceName, false, 0, e);
+                return new HealthCheckResult(serviceName, false, 0, e);
             }
         });
     }
@@ -223,8 +221,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return provider health metrics
      */
     @Override
-    public org.openhab.core.ai.tool.monitoring.ProviderHealthMetrics getProviderHealthMetrics(
-            ModelProviderType provider) {
+    public ProviderHealthMetrics getProviderHealthMetrics(ModelProviderType provider) {
         ProviderHealthState state = getOrCreateProviderState(provider);
         return state.getHealthMetrics();
     }
@@ -236,7 +233,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return service health metrics
      */
     @Override
-    public org.openhab.core.ai.tool.monitoring.ServiceHealthMetrics getServiceHealthMetrics(String serviceName) {
+    public ServiceHealthMetrics getServiceHealthMetrics(String serviceName) {
         ServiceHealthState state = getOrCreateServiceState(serviceName);
         return state.getHealthMetrics();
     }
@@ -247,7 +244,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return system health status
      */
     @Override
-    public org.openhab.core.ai.tool.monitoring.SystemHealthStatus getSystemHealthStatus() {
+    public SystemHealthStatus getSystemHealthStatus() {
         Map<ModelProviderType, ProviderHealthMetrics> providerMetrics = new ConcurrentHashMap<>();
         Map<String, ServiceHealthMetrics> serviceMetrics = new ConcurrentHashMap<>();
 
@@ -261,7 +258,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
             serviceMetrics.put(serviceName, getServiceHealthMetrics(serviceName));
         }
 
-        return new org.openhab.core.ai.tool.monitoring.SystemHealthStatus(providerMetrics, serviceMetrics);
+        return new SystemHealthStatus(providerMetrics, serviceMetrics);
     }
 
     /**
@@ -379,13 +376,12 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return performance metrics
      */
     @Override
-    public org.openhab.core.ai.tool.monitoring.SpecificationPerformanceMetrics getSpecificationMetrics(
-            String specificationId) {
+    public SpecificationPerformanceMetrics getSpecificationMetrics(String specificationId) {
         SpecificationPerformanceMetrics m = specificationMetrics.getOrDefault(specificationId,
                 new SpecificationPerformanceMetrics(specificationId, 0, 0, 0, 0, 0.0, 0.0, 0, Instant.now()));
-        return new org.openhab.core.ai.tool.monitoring.SpecificationPerformanceMetrics(m.specificationId(),
-                m.totalRequests(), m.successfulRequests(), m.failedRequests(), m.totalResponseTime(),
-                m.averageResponseTime(), m.successRate(), (int) calculateThroughput(specificationId), m.lastUpdated());
+        return new SpecificationPerformanceMetrics(m.specificationId(), m.totalRequests(), m.successfulRequests(),
+                m.failedRequests(), m.totalResponseTime(), m.averageResponseTime(), m.successRate(),
+                (int) calculateThroughput(specificationId), m.lastUpdated());
     }
 
     /**
@@ -394,13 +390,12 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return map of specification ID to performance metrics
      */
     @Override
-    public Map<String, org.openhab.core.ai.tool.monitoring.SpecificationPerformanceMetrics> getAllSpecificationMetrics() {
-        return specificationMetrics.values().stream()
-                .collect(Collectors.toMap(SpecificationPerformanceMetrics::specificationId,
-                        m -> new org.openhab.core.ai.tool.monitoring.SpecificationPerformanceMetrics(
-                                m.specificationId(), m.totalRequests(), m.successfulRequests(), m.failedRequests(),
-                                m.totalResponseTime(), m.averageResponseTime(), m.successRate(),
-                                (int) calculateThroughput(m.specificationId()), m.lastUpdated())));
+    public Map<String, SpecificationPerformanceMetrics> getAllSpecificationMetrics() {
+        return specificationMetrics.values().stream().collect(Collectors.toMap(
+                SpecificationPerformanceMetrics::specificationId,
+                m -> new SpecificationPerformanceMetrics(m.specificationId(), m.totalRequests(), m.successfulRequests(),
+                        m.failedRequests(), m.totalResponseTime(), m.averageResponseTime(), m.successRate(),
+                        (int) calculateThroughput(m.specificationId()), m.lastUpdated())));
     }
 
     /**
@@ -410,10 +405,10 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return list of performance alerts
      */
     @Override
-    public List<org.openhab.core.ai.tool.monitoring.PerformanceAlert> getSpecificationAlerts(String specificationId) {
+    public List<PerformanceAlert> getSpecificationAlerts(String specificationId) {
         return performanceAlerts.values().stream().filter(alert -> alert.specificationId().equals(specificationId))
-                .map(a -> new org.openhab.core.ai.tool.monitoring.PerformanceAlert(a.alertId(), a.specificationId(),
-                        a.type(), a.message(), a.severity(), a.timestamp()))
+                .map(a -> new PerformanceAlert(a.alertId(), a.specificationId(), a.type(), a.message(), a.severity(),
+                        a.timestamp()))
                 .collect(Collectors.toList());
     }
 
@@ -424,11 +419,10 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return list of performance optimizations
      */
     @Override
-    public List<org.openhab.core.ai.tool.monitoring.PerformanceOptimization> getSpecificationOptimizations(
-            String specificationId) {
+    public List<PerformanceOptimization> getSpecificationOptimizations(String specificationId) {
         return performanceOptimizations.values().stream().filter(opt -> opt.specificationId().equals(specificationId))
-                .map(o -> new org.openhab.core.ai.tool.monitoring.PerformanceOptimization(o.optimizationId(),
-                        o.specificationId(), o.type(), o.description(), o.impact(), o.timestamp()))
+                .map(o -> new PerformanceOptimization(o.optimizationId(), o.specificationId(), o.type(),
+                        o.description(), o.impact(), o.timestamp()))
                 .collect(Collectors.toList());
     }
 

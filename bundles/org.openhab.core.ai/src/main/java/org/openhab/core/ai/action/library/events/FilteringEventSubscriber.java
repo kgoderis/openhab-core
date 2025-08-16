@@ -7,6 +7,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.events.Event;
 import org.openhab.core.events.EventSubscriber;
+import org.openhab.core.items.events.ItemEvent;
 
 /**
  * Filtering event subscriber that forwards events to SSE endpoints.
@@ -67,7 +68,7 @@ public class FilteringEventSubscriber implements EventSubscriber {
                     }
                     break;
                 case "itemName":
-                    if (event instanceof org.openhab.core.items.events.ItemEvent itemEvent) {
+                    if (event instanceof ItemEvent itemEvent) {
                         if (!itemEvent.getItemName().contains(value)) {
                             return false;
                         }

@@ -67,7 +67,7 @@ public class McpProtocolIntegrationResource implements RESTResource {
                 serverInfo.put("healthy", server.isHealthy());
 
                 // Get transport statistics
-                org.openhab.core.ai.tool.server.TransportStatistics transportStats = server.getTransportStatistics();
+                TransportStatistics transportStats = server.getTransportStatistics();
                 serverInfo.put("transport_type",
                         transportStats.getCurrentType() != null ? transportStats.getCurrentType().toString()
                                 : "unknown");
@@ -99,7 +99,7 @@ public class McpProtocolIntegrationResource implements RESTResource {
         Map<String, Object> transports = new HashMap<>();
         if (serverManager != null) {
             serverManager.getAllServerInstances().forEach((id, server) -> {
-                org.openhab.core.ai.tool.server.TransportStatistics transportStats = server.getTransportStatistics();
+                TransportStatistics transportStats = server.getTransportStatistics();
                 if (transportStats.getCurrentType() != null) {
                     Map<String, Object> transportInfo = new HashMap<>();
                     transportInfo.put("status", server.isRunning() ? "available" : "unavailable");

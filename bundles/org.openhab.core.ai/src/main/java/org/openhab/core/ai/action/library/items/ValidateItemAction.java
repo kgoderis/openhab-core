@@ -1,5 +1,6 @@
 package org.openhab.core.ai.action.library.items;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -155,8 +156,8 @@ public class ValidateItemAction implements Action {
             result.put("timestamp", System.currentTimeMillis());
 
             Map<String, Object> validationResults = new HashMap<>();
-            List<String> issues = new java.util.ArrayList<>();
-            List<String> recommendations = new java.util.ArrayList<>();
+            List<String> issues = new ArrayList<>();
+            List<String> recommendations = new ArrayList<>();
             int overallScore = 100; // Start with perfect score
 
             // Basic item validation

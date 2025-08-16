@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -334,7 +335,7 @@ public class CleanupLogsAction implements Action {
                 // Check file age
                 try {
                     LocalDateTime fileDate = LocalDateTime.ofInstant(Files.getLastModifiedTime(path).toInstant(),
-                            java.time.ZoneId.systemDefault());
+                            ZoneId.systemDefault());
                     return fileDate.isBefore(cutoffDate);
                 } catch (IOException e) {
                     return false;

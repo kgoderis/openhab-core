@@ -1,6 +1,7 @@
 package org.openhab.core.ai.agent.collaboration.conflict;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,7 +31,7 @@ public class DefaultConflictLearningModel implements ConflictLearningModel {
     }
 
     @Override
-    public void train(java.util.List<Conflict> trainingData) {
+    public void train(List<Conflict> trainingData) {
         trained.set(true);
     }
 

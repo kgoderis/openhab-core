@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -295,7 +297,7 @@ public class AgentConfigurationManager {
             }
 
             try (InputStream input = new FileInputStream(file)) {
-                java.util.Properties props = new java.util.Properties();
+                Properties props = new Properties();
                 props.load(input);
 
                 Map<String, Object> config = new HashMap<>();
@@ -330,7 +332,7 @@ public class AgentConfigurationManager {
             }
 
             Configuration config = admin.getConfiguration("org.openhab.core.ai.a2a", null);
-            Dictionary<String, Object> properties = new java.util.Hashtable<>();
+            Dictionary<String, Object> properties = new Hashtable<>();
 
             for (Map.Entry<String, Object> entry : configuration.entrySet()) {
                 properties.put(entry.getKey(), entry.getValue());

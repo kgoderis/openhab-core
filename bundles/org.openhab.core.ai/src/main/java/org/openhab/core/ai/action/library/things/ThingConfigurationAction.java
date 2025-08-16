@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.ai.action.api.Action;
@@ -565,7 +566,7 @@ public class ThingConfigurationAction implements Action {
         for (String key : newConfig.keySet()) {
             Object oldValue = oldConfig.get(key);
             Object newValue = newConfig.get(key);
-            if (!java.util.Objects.equals(oldValue, newValue)) {
+            if (!Objects.equals(oldValue, newValue)) {
                 changed.add(key);
             }
         }
@@ -575,11 +576,10 @@ public class ThingConfigurationAction implements Action {
 
     private boolean isRestartRequired(String thingUID, Map<String, Object> oldConfig, Map<String, Object> newConfig) {
         // Simulate restart requirement logic
-        if (thingUID.contains("mqtt") && !java.util.Objects.equals(oldConfig.get("host"), newConfig.get("host"))) {
+        if (thingUID.contains("mqtt") && !Objects.equals(oldConfig.get("host"), newConfig.get("host"))) {
             return true;
         }
-        if (thingUID.contains("hue")
-                && !java.util.Objects.equals(oldConfig.get("ipAddress"), newConfig.get("ipAddress"))) {
+        if (thingUID.contains("hue") && !Objects.equals(oldConfig.get("ipAddress"), newConfig.get("ipAddress"))) {
             return true;
         }
         return false;

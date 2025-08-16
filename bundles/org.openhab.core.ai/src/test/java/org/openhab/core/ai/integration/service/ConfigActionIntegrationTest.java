@@ -2,7 +2,9 @@ package org.openhab.core.ai.integration.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
 // TODO: Uncomment when config action classes are implemented
 // import org.openhab.core.ai.action.actions.config.*;
 
@@ -12,7 +14,7 @@ import org.junit.jupiter.api.Test;
  * TODO: This test is currently disabled because the config action classes
  * are not yet implemented. Re-enable when the action classes are available.
  */
-@org.junit.jupiter.api.Disabled("Config action classes not yet implemented")
+@Disabled("Config action classes not yet implemented")
 class ConfigActionIntegrationTest extends BaseActionIntegrationTest {
 
     @Test

@@ -70,6 +70,6 @@ public class PromptRegistrationService {
     /** Get all registered prompts. */
     public Map<String, Prompt> getAllPrompts() {
         PromptRegistry registry = promptRegistry;
-        return registry != null ? registry.getAllPrompts() : java.util.Map.of();
+        return registry != null ? registry.getAllPrompts() : Map.of();
     }
 }

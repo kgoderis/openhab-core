@@ -1,6 +1,8 @@
 package org.openhab.core.ai.action.library.rules;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -66,9 +68,8 @@ public class BulkRuleOperationsAction implements Action {
         schema.put("type", "object");
 
         Map<String, Object> properties = new HashMap<>();
-        properties.put("operation",
-                Map.of("type", "string", "enum", java.util.List.of("enable", "disable", "delete", "validate"),
-                        "description", "Type of bulk operation to perform"));
+        properties.put("operation", Map.of("type", "string", "enum", List.of("enable", "disable", "delete", "validate"),
+                "description", "Type of bulk operation to perform"));
         properties.put("ruleUIDs", Map.of("type", "array", "items", Map.of("type", "string"), "description",
                 "List of rule UIDs to operate on"));
         properties.put("query",
@@ -82,7 +83,7 @@ public class BulkRuleOperationsAction implements Action {
                 "Simulate operations without actually executing them", "default", false));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("operation"));
+        schema.put("required", List.of("operation"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -111,28 +112,28 @@ public class BulkRuleOperationsAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String operation = (String) parameters.get("operation");
         if (operation == null || operation.trim().isEmpty()) {
-            return ActionValidationResult.invalid(java.util.List.of("operation is required"));
+            return ActionValidationResult.invalid(List.of("operation is required"));
         }
 
-        java.util.List<String> validOperations = java.util.List.of("enable", "disable", "delete", "validate");
+        List<String> validOperations = List.of("enable", "disable", "delete", "validate");
         if (!validOperations.contains(operation)) {
             return ActionValidationResult
-                    .invalid(java.util.List.of("operation must be one of: " + String.join(", ", validOperations)));
+                    .invalid(List.of("operation must be one of: " + String.join(", ", validOperations)));
         }
 
         @SuppressWarnings("unchecked")
-        java.util.List<String> ruleUIDs = (java.util.List<String>) parameters.get("ruleUIDs");
+        List<String> ruleUIDs = (List<String>) parameters.get("ruleUIDs");
         String query = (String) parameters.get("query");
         String tag = (String) parameters.get("tag");
 
         if ((ruleUIDs == null || ruleUIDs.isEmpty()) && (query == null || query.trim().isEmpty())
                 && (tag == null || tag.trim().isEmpty())) {
-            return ActionValidationResult.invalid(java.util.List.of("Either ruleUIDs, query, or tag must be provided"));
+            return ActionValidationResult.invalid(List.of("Either ruleUIDs, query, or tag must be provided"));
         }
 
         return ActionValidationResult.valid(parameters);
@@ -143,7 +144,7 @@ public class BulkRuleOperationsAction implements Action {
         try {
             String operation = (String) parameters.get("operation");
             @SuppressWarnings("unchecked")
-            java.util.List<String> ruleUIDs = (java.util.List<String>) parameters.get("ruleUIDs");
+            List<String> ruleUIDs = (List<String>) parameters.get("ruleUIDs");
             String query = (String) parameters.get("query");
             String tag = (String) parameters.get("tag");
             boolean continueOnError = (Boolean) parameters.getOrDefault("continueOnError", true);
@@ -153,7 +154,7 @@ public class BulkRuleOperationsAction implements Action {
             logger.debug("Performing bulk operation: {} on rules", operation);
 
             // Determine which rules to operate on
-            java.util.List<String> targetRuleUIDs = determineTargetRules(ruleUIDs, query, tag);
+            List<String> targetRuleUIDs = determineTargetRules(ruleUIDs, query, tag);
 
             if (targetRuleUIDs.isEmpty()) {
                 Map<String, Object> result = new HashMap<>();
@@ -194,7 +195,7 @@ public class BulkRuleOperationsAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "bulk", "operations")).build();
+                .tags(List.of("rules", "bulk", "operations")).build();
     }
 
     @Override
@@ -220,13 +221,13 @@ public class BulkRuleOperationsAction implements Action {
         return ruleRegistry != null;
     }
 
-    private java.util.List<String> determineTargetRules(java.util.List<String> ruleUIDs, String query, String tag) {
+    private List<String> determineTargetRules(List<String> ruleUIDs, String query, String tag) {
         if (ruleUIDs != null && !ruleUIDs.isEmpty()) {
             return ruleUIDs;
         }
 
-        java.util.List<String> targetUIDs = new java.util.ArrayList<>();
-        java.util.List<Rule> allRules = new java.util.ArrayList<>(ruleRegistry.getAll());
+        List<String> targetUIDs = new ArrayList<>();
+        List<Rule> allRules = new ArrayList<>(ruleRegistry.getAll());
 
         for (Rule rule : allRules) {
             boolean include = true;
@@ -250,10 +251,10 @@ public class BulkRuleOperationsAction implements Action {
         return targetUIDs;
     }
 
-    private Map<String, Object> performBulkOperation(String operation, java.util.List<String> ruleUIDs,
-            boolean continueOnError, boolean validateBeforeExecute, boolean dryRun) {
+    private Map<String, Object> performBulkOperation(String operation, List<String> ruleUIDs, boolean continueOnError,
+            boolean validateBeforeExecute, boolean dryRun) {
         Map<String, Object> result = new HashMap<>();
-        java.util.List<Map<String, Object>> individualResults = new java.util.ArrayList<>();
+        List<Map<String, Object>> individualResults = new ArrayList<>();
         int successfulOperations = 0;
         int failedOperations = 0;
         for (String ruleUID : ruleUIDs) {

@@ -2,6 +2,7 @@ package org.openhab.core.ai.events;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -362,7 +363,7 @@ public class EventLogCorrelationEngine {
 
         try {
             // Convert log timestamp to Instant for comparison
-            Instant logTimestamp = logEntry.getTimestamp().atZone(java.time.ZoneId.systemDefault()).toInstant();
+            Instant logTimestamp = logEntry.getTimestamp().atZone(ZoneId.systemDefault()).toInstant();
             Duration timeDifference = Duration.between(eventInfo.getTimestamp(), logTimestamp).abs();
 
             // Calculate confidence based on time difference

@@ -21,9 +21,9 @@ import org.openhab.core.ai.reasoning.strategies.api.ReasoningStrategy;
  */
 @NonNullByDefault
 public class ParallelReasoningStrategy implements ReasoningStrategy {
-    private final org.openhab.core.ai.reasoning.engine.ReasoningOrchestrationService service;
+    private final ReasoningOrchestrationService service;
 
-    public ParallelReasoningStrategy(org.openhab.core.ai.reasoning.engine.ReasoningOrchestrationService service) {
+    public ParallelReasoningStrategy(ReasoningOrchestrationService service) {
         this.service = service;
     }
 

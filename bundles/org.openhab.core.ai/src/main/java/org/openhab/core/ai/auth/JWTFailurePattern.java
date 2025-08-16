@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 @NonNullByDefault
-class JWTFailurePattern {
+public class JWTFailurePattern {
     private final String tokenPrefix;
     private final String reason;
     private final AtomicLong failureCount = new AtomicLong(0);

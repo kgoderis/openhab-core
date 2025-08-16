@@ -3,9 +3,11 @@ package org.openhab.core.ai.agent.integration;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 // TODO: Uncomment when agent classes are implemented
 // import org.openhab.core.ai.agent.*;
 
@@ -15,7 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * TODO: This test is currently disabled because the agent classes
  * are not yet implemented. Re-enable when the agent classes are available.
  */
-@org.junit.jupiter.api.Disabled("Agent classes not yet implemented")
+@Disabled("Agent classes not yet implemented")
 @ExtendWith(MockitoExtension.class)
 class A2AAgentDiscoveryIntegrationTest {
 

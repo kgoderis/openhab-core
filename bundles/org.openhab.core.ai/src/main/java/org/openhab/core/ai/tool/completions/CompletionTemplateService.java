@@ -48,7 +48,7 @@ public class CompletionTemplateService {
         totalTemplateRequests.incrementAndGet();
         long start = System.currentTimeMillis();
         try {
-            return java.util.Map.copyOf(templates);
+            return Map.copyOf(templates);
         } finally {
             totalTemplateCompletions.incrementAndGet();
             totalTemplateTime.addAndGet(System.currentTimeMillis() - start);

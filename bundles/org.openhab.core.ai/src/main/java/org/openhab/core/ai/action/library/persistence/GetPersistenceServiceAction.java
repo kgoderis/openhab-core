@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -518,9 +519,8 @@ public class GetPersistenceServiceAction implements Action {
 
             // Basic service information
             service.put("serviceId", serviceId);
-            service.put("name", persistenceService.getLabel(java.util.Locale.getDefault()));
-            service.put("description",
-                    "Persistence service: " + persistenceService.getLabel(java.util.Locale.getDefault()));
+            service.put("name", persistenceService.getLabel(Locale.getDefault()));
+            service.put("description", "Persistence service: " + persistenceService.getLabel(Locale.getDefault()));
             service.put("type", persistenceService instanceof QueryablePersistenceService ? "queryable" : "basic");
             service.put("status", "ACTIVE");
             service.put("version", "1.0.0");

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
+import reactor.core.publisher.Mono;
 
 /**
  * Completion Adapter Bridge for MCP SDK integration
@@ -104,7 +105,7 @@ public class CompletionAdapterBridge {
                     mcpPromptReference, (exchange, request) -> {
                         logger.debug("Handling async completion for: {}", internalSpec.getId());
 
-                        return reactor.core.publisher.Mono.fromCallable(() -> {
+                        return Mono.fromCallable(() -> {
                             try {
                                 // Get suggestions from internal specification
                                 Map<String, Object> suggestionsConfig = internalSpec.getSuggestionsConfig();

@@ -1,6 +1,7 @@
 package org.openhab.core.ai.rest;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -131,7 +132,7 @@ public final class SharedRestInfrastructure {
     }
 
     // Rate limiting utilities
-    private static final Map<String, SharedRestRateLimitInfo> rateLimitStore = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, SharedRestRateLimitInfo> rateLimitStore = new ConcurrentHashMap<>();
 
     public static boolean isRateLimited(String clientId, int maxRequests, int windowSeconds) {
         if (clientId == null || clientId.trim().isEmpty()) {

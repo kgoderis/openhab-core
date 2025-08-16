@@ -489,15 +489,13 @@ public class A2ATestClient {
         String requestJson = objectMapper.writeValueAsString(request);
 
         // Create HTTP client and request
-        java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
-        java.net.http.HttpRequest httpRequest = java.net.http.HttpRequest.newBuilder()
-                .uri(java.net.URI.create(realAgentEndpoint)).header("Content-Type", "application/json")
-                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(requestJson))
-                .timeout(java.time.Duration.ofSeconds(30)).build();
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest httpRequest = HttpRequest.newBuilder().uri(URI.create(realAgentEndpoint))
+                .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(requestJson))
+                .timeout(Duration.ofSeconds(30)).build();
 
         // Send request
-        java.net.http.HttpResponse<String> response = client.send(httpRequest,
-                java.net.http.HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
         // Parse response
         if (response.statusCode() == 200) {

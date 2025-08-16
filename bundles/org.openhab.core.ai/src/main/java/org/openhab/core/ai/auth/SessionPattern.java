@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 @NonNullByDefault
-class SessionPattern {
+public class SessionPattern {
     private final String principalId;
     private final String sessionId;
     private final AtomicLong creationCount = new AtomicLong(0);

@@ -2,12 +2,15 @@ package org.openhab.core.ai.action;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -353,7 +356,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      */
     @Override
     public Map<String, Object> getPerformanceMetrics() {
-        Map<String, Object> metrics = new java.util.HashMap<>();
+        Map<String, Object> metrics = new HashMap<>();
         ActionExecutionPerformanceMetrics perfMetrics = new ActionExecutionPerformanceMetrics(
                 totalActionExecutions.get(), successfulActionExecutions.get(), failedActionExecutions.get(),
                 totalExecutionTime.get(), totalRetryAttempts.get(), actionResultCache.size());
@@ -429,14 +432,13 @@ public class DefaultActionExecutionService implements ActionExecutionService {
             String actionName = (String) context.getProtocolContext().get("action");
             logger.debug("Creating future for action: {}", actionName);
             return executeAction(context, providerType);
-        }).collect(java.util.stream.Collectors.toList());
+        }).collect(Collectors.toList());
 
         logger.debug("Created {} futures for parallel execution", futures.size());
 
         return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(v -> {
             logger.debug("All futures completed, collecting results");
-            List<ActionResult> results = futures.stream().map(CompletableFuture::join)
-                    .collect(java.util.stream.Collectors.toList());
+            List<ActionResult> results = futures.stream().map(CompletableFuture::join).collect(Collectors.toList());
             logger.debug("Collected {} results", results.size());
             return results;
         });
@@ -445,7 +447,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     @Override
     public CompletableFuture<List<ActionResult>> executeActionsSequential(List<ActionContext> actionContexts,
             ModelProviderType providerType) {
-        CompletableFuture<List<ActionResult>> result = CompletableFuture.completedFuture(new java.util.ArrayList<>());
+        CompletableFuture<List<ActionResult>> result = CompletableFuture.completedFuture(new ArrayList<>());
         for (ActionContext context : actionContexts) {
             result = result.thenCompose(results -> executeAction(context, providerType).thenApply(actionResult -> {
                 results.add(actionResult);
@@ -457,7 +459,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
 
     @Override
     public Map<String, Object> getExecutionStatistics() {
-        Map<String, Object> stats = new java.util.HashMap<>();
+        Map<String, Object> stats = new HashMap<>();
         stats.put("totalExecutions", totalActionExecutions.get());
         stats.put("successfulExecutions", successfulActionExecutions.get());
         stats.put("failedExecutions", failedActionExecutions.get());

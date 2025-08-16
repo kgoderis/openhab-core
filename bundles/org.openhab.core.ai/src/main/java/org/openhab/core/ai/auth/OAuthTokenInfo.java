@@ -6,7 +6,7 @@ import java.util.Set;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 @NonNullByDefault
-class OAuthTokenInfo {
+public class OAuthTokenInfo {
     private final String subject;
     private final String clientId;
     private final String issuer;

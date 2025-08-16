@@ -20,6 +20,7 @@ import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.events.ItemCommandEvent;
 import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.items.events.ItemStateEvent;
+import org.openhab.core.library.types.StringType;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.TypeParser;
@@ -193,7 +194,7 @@ public class SetItemStateAction implements Action {
                     Command tempCommand = TypeParser.parseCommand(item.getAcceptedCommandTypes(), stateValue);
                     if (tempCommand == null) {
                         // If parsing fails, create a string command
-                        tempCommand = org.openhab.core.library.types.StringType.valueOf(stateValue);
+                        tempCommand = StringType.valueOf(stateValue);
                     }
                     newCommand = tempCommand;
                     newState = null;
@@ -203,7 +204,7 @@ public class SetItemStateAction implements Action {
                     State tempState = TypeParser.parseState(item.getAcceptedDataTypes(), stateValue);
                     if (tempState == null) {
                         // If parsing fails, create a string state
-                        tempState = org.openhab.core.library.types.StringType.valueOf(stateValue);
+                        tempState = StringType.valueOf(stateValue);
                     }
                     newState = tempState;
                     newCommand = null;

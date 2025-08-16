@@ -13,6 +13,7 @@ import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.items.GroupItem;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
@@ -171,7 +172,7 @@ public class GetItemTypeAction implements Action {
                 typeDetails.put("label", label);
 
                 // Group information if applicable
-                if (item instanceof org.openhab.core.items.GroupItem groupItem) {
+                if (item instanceof GroupItem groupItem) {
                     typeDetails.put("isGroup", true);
                     String baseItemType = "";
                     if (groupItem.getBaseItem() != null) {

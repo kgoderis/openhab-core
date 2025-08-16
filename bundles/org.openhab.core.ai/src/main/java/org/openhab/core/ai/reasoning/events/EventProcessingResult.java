@@ -19,7 +19,7 @@ public class EventProcessingResult {
 
     private final boolean success;
     private final String message;
-    private final List<org.openhab.core.ai.reasoning.actions.AutonomousAction> actions;
+    private final List<AutonomousAction> actions;
 
     private EventProcessingResult(boolean success, String message, List<AutonomousAction> actions) {
         this.success = success;

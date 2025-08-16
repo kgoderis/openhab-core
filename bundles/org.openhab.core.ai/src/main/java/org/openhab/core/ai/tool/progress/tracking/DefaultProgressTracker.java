@@ -85,7 +85,7 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
                     getOperationMetadata(operationId));
         }
         // Return a default placeholder when the operation is not found to respect non-null contract
-        return new ProgressInfo(operationId, 0, 0, "PENDING", "", System.currentTimeMillis(), java.util.Map.of());
+        return new ProgressInfo(operationId, 0, 0, "PENDING", "", System.currentTimeMillis(), Map.of());
     }
 
     @Override

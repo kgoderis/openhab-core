@@ -76,9 +76,8 @@ public class SecurityValidationResult {
         this.rateLimitValid = valid;
     }
 
-    public void addSecurityIssue(org.openhab.core.ai.reasoning.security.SecurityIssueType issueType,
-            String description) {
-        securityIssues.add(new org.openhab.core.ai.reasoning.security.SecurityIssue(issueType, description));
+    public void addSecurityIssue(SecurityIssueType issueType, String description) {
+        securityIssues.add(new SecurityIssue(issueType, description));
     }
 
     public boolean isValid() {

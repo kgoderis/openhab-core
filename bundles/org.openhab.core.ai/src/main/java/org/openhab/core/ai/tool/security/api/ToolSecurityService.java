@@ -2,6 +2,7 @@ package org.openhab.core.ai.tool.security.api;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -234,12 +235,12 @@ public interface ToolSecurityService {
      * 
      * @return Map of specification permissions
      */
-    java.util.Map<String, SpecificationPermissions> getAllSpecificationPermissions();
+    Map<String, SpecificationPermissions> getAllSpecificationPermissions();
 
     /**
      * Get all user roles
      * 
      * @return Map of user roles
      */
-    java.util.Map<String, UserRole> getAllUserRoles();
+    Map<String, UserRole> getAllUserRoles();
 }

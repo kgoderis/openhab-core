@@ -1,7 +1,11 @@
 package org.openhab.core.ai.auth;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -10,6 +14,9 @@ import java.util.UUID;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * OAuth 2.1 authentication provider for MCP protocol.
@@ -206,8 +213,8 @@ public class OAuth21AuthenticationProvider implements AuthenticationProvider {
 
             // Parse header to check algorithm
             try {
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                com.fasterxml.jackson.databind.JsonNode header = mapper.readTree(headerJson);
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode header = mapper.readTree(headerJson);
 
                 String alg = header.get("alg").asText();
                 if (!"RS256".equals(alg) && !"HS256".equals(alg)) {
@@ -228,8 +235,8 @@ public class OAuth21AuthenticationProvider implements AuthenticationProvider {
 
             // Parse payload
             try {
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                com.fasterxml.jackson.databind.JsonNode payload = mapper.readTree(payloadJson);
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode payload = mapper.readTree(payloadJson);
 
                 // Check expiration
                 long exp = payload.get("exp").asLong();
@@ -256,10 +263,10 @@ public class OAuth21AuthenticationProvider implements AuthenticationProvider {
                 String sub = payload.get("sub").asText();
 
                 // Extract scopes
-                Set<String> scopes = new java.util.HashSet<>();
+                Set<String> scopes = new HashSet<>();
                 if (payload.has("scope")) {
                     String scopeStr = payload.get("scope").asText();
-                    scopes.addAll(java.util.Arrays.asList(scopeStr.split(" ")));
+                    scopes.addAll(Arrays.asList(scopeStr.split(" ")));
                 }
 
                 // Create token info
@@ -295,8 +302,8 @@ public class OAuth21AuthenticationProvider implements AuthenticationProvider {
             padded = padded.replace('-', '+').replace('_', '/');
 
             // Decode
-            byte[] decoded = java.util.Base64.getDecoder().decode(padded);
-            return new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
+            byte[] decoded = Base64.getDecoder().decode(padded);
+            return new String(decoded, StandardCharsets.UTF_8);
         } catch (Exception e) {
             logger.warn("Failed to decode Base64URL string", e);
             return null;

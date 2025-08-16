@@ -21,9 +21,9 @@ import org.openhab.core.ai.reasoning.strategies.api.ReasoningStrategy;
  */
 @NonNullByDefault
 public class SequentialReasoningStrategy implements ReasoningStrategy {
-    private final org.openhab.core.ai.reasoning.engine.ReasoningOrchestrationService service;
+    private final ReasoningOrchestrationService service;
 
-    public SequentialReasoningStrategy(org.openhab.core.ai.reasoning.engine.ReasoningOrchestrationService service) {
+    public SequentialReasoningStrategy(ReasoningOrchestrationService service) {
         this.service = service;
     }
 

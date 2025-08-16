@@ -37,12 +37,15 @@ import org.slf4j.LoggerFactory;
 import io.a2a.server.tasks.TaskStore;
 import io.a2a.spec.EventKind;
 import io.a2a.spec.JSONRPCError;
+import io.a2a.spec.Message;
 import io.a2a.spec.MessageSendParams;
+import io.a2a.spec.Part;
 import io.a2a.spec.Task;
 import io.a2a.spec.TaskQueryParams;
 import io.a2a.spec.TaskState;
 import io.a2a.spec.TaskStatus;
 import io.a2a.spec.TaskStatusUpdateEvent;
+import io.a2a.spec.TextPart;
 
 /**
  * Task Orchestration and Lifecycle Management.
@@ -874,7 +877,7 @@ public class AgentTaskManager {
         }
     }
 
-    private String extractSkillIdFromMessage(io.a2a.spec.Message message) {
+    private String extractSkillIdFromMessage(Message message) {
         String content = extractTextContent(message);
         if (content != null && content.contains(" ")) {
             return content.split(" ")[0];
@@ -882,11 +885,11 @@ public class AgentTaskManager {
         return "default";
     }
 
-    private String extractTextContent(io.a2a.spec.Message message) {
+    private String extractTextContent(Message message) {
         if (message.getParts() != null) {
             StringBuilder textBuilder = new StringBuilder();
-            for (io.a2a.spec.Part<?> part : message.getParts()) {
-                if (part instanceof io.a2a.spec.TextPart textPart) {
+            for (Part<?> part : message.getParts()) {
+                if (part instanceof TextPart textPart) {
                     textBuilder.append(textPart.getText());
                 }
             }
@@ -895,7 +898,7 @@ public class AgentTaskManager {
         return "";
     }
 
-    private String extractActionIdFromMessage(io.a2a.spec.Message message) {
+    private String extractActionIdFromMessage(Message message) {
         // Extract action ID from message metadata
         Map<String, Object> metadata = message.getMetadata();
         if (metadata != null && metadata.containsKey("actionId")) {
@@ -914,7 +917,7 @@ public class AgentTaskManager {
         return "system.info";
     }
 
-    private Map<String, Object> extractParametersFromMessage(io.a2a.spec.Message message) {
+    private Map<String, Object> extractParametersFromMessage(Message message) {
         Map<String, Object> parameters = new HashMap<>();
 
         // Extract parameters from message metadata
@@ -1517,7 +1520,7 @@ public class AgentTaskManager {
      * @param message the A2A message to analyze
      * @return the detected message type
      */
-    private MessageType detectMessageType(io.a2a.spec.Message message) {
+    private MessageType detectMessageType(Message message) {
         String content = extractTextContent(message);
         Map<String, Object> metadata = message.getMetadata();
 
@@ -1898,7 +1901,7 @@ public class AgentTaskManager {
      * @param message the A2A message to convert
      * @return the A2A SDK Task
      */
-    private Task convertMessageToTask(io.a2a.spec.Message message) {
+    private Task convertMessageToTask(Message message) {
         // Generate unique task ID and context ID
         String taskId = "task_" + System.currentTimeMillis() + "_" + System.nanoTime();
         String contextId = "context_" + System.currentTimeMillis();
@@ -1939,7 +1942,7 @@ public class AgentTaskManager {
      * @param message the A2A message
      * @return the skill ID
      */
-    private String extractSkillId(io.a2a.spec.Message message) {
+    private String extractSkillId(Message message) {
         // First check metadata for explicit skill ID
         if (message.getMetadata() != null && message.getMetadata().containsKey("skillId")) {
             Object skillIdObj = message.getMetadata().get("skillId");
@@ -1968,14 +1971,14 @@ public class AgentTaskManager {
      * @param message the A2A message
      * @return the parameters map
      */
-    private Map<String, Object> extractParameters(io.a2a.spec.Message message) {
+    private Map<String, Object> extractParameters(Message message) {
         Map<String, Object> parameters = new HashMap<>();
 
         // Extract from message parts
         if (message.getParts() != null) {
-            for (io.a2a.spec.Part<?> part : message.getParts()) {
-                if (part instanceof io.a2a.spec.TextPart) {
-                    String text = ((io.a2a.spec.TextPart) part).getText();
+            for (Part<?> part : message.getParts()) {
+                if (part instanceof TextPart) {
+                    String text = ((TextPart) part).getText();
                     if (text != null && !text.trim().isEmpty()) {
                         // Try to parse as JSON or key-value pairs
                         try {

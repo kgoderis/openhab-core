@@ -8,6 +8,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.sampling.models.DefaultSamplingRequest;
 import org.openhab.core.ai.tool.sampling.models.SamplingRequest;
+import org.openhab.core.ai.tool.sampling.models.SamplingStatus;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -79,7 +80,7 @@ public class DefaultSamplingService implements SamplingService {
 
             // Create sampling request
             SamplingRequest request = new DefaultSamplingRequest(generateRequestId(), modelName, message,
-                    includeContext, org.openhab.core.ai.tool.sampling.models.SamplingStatus.PENDING);
+                    includeContext, SamplingStatus.PENDING);
 
             // Store pending request
             pendingRequests.put(request.getId(), request);
@@ -141,7 +142,7 @@ public class DefaultSamplingService implements SamplingService {
             }
 
             // Update request status
-            request.setStatus(org.openhab.core.ai.tool.sampling.models.SamplingStatus.APPROVED);
+            request.setStatus(SamplingStatus.APPROVED);
             approvedRequests.put(requestId, request);
 
             // Update counters
@@ -169,7 +170,7 @@ public class DefaultSamplingService implements SamplingService {
             }
 
             // Update request status and reason
-            request.setStatus(org.openhab.core.ai.tool.sampling.models.SamplingStatus.REJECTED);
+            request.setStatus(SamplingStatus.REJECTED);
             request.setRejectionReason(reason);
             rejectedRequests.put(requestId, request);
 

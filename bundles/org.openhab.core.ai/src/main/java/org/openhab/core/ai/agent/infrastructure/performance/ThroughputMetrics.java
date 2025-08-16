@@ -1,5 +1,6 @@
 package org.openhab.core.ai.agent.infrastructure.performance;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -14,7 +15,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class ThroughputMetrics {
     private final String agentId;
-    private final List<Long> throughputSamples = new java.util.ArrayList<>();
+    private final List<Long> throughputSamples = new ArrayList<>();
     private final AtomicLong totalMessages = new AtomicLong(0);
 
     public ThroughputMetrics(String agentId) {

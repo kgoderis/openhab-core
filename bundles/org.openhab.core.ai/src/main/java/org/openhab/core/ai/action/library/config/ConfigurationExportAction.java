@@ -29,6 +29,8 @@ import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+
 /**
  * AI Action for exporting openHAB configuration files.
  * 
@@ -240,7 +242,7 @@ public class ConfigurationExportAction implements Action {
 
             case "json":
                 Map<String, Object> jsonData = createJsonExport(filesToExport);
-                exportData = new com.google.gson.Gson().toJson(jsonData);
+                exportData = new Gson().toJson(jsonData);
 
                 if (outputPath != null) {
                     Path exportPath = Paths.get(outputPath);
@@ -252,7 +254,7 @@ public class ConfigurationExportAction implements Action {
 
             case "raw":
                 List<Map<String, Object>> rawData = createRawExport(filesToExport);
-                exportData = new com.google.gson.Gson().toJson(rawData);
+                exportData = new Gson().toJson(rawData);
 
                 if (outputPath != null) {
                     Path exportPath = Paths.get(outputPath);

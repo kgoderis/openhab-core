@@ -11,11 +11,13 @@ import org.openhab.core.ai.tool.api.Tool;
 import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolResult;
 import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
+import reactor.core.publisher.Mono;
 
 /**
  * Enhanced MCP Tool Utilities.
@@ -87,7 +89,7 @@ public class ToolUtils {
                             long executionTime = System.currentTimeMillis() - startTime;
 
                             // Log performance metrics
-                            org.openhab.core.ai.tool.util.helpers.ToolUtils.optimizeToolPerformance(toolId,
+                            ToolUtils.optimizeToolPerformance(toolId,
                                     executionTime);
 
                             if (result.isSuccess()) {
@@ -150,7 +152,7 @@ public class ToolUtils {
             McpServerFeatures.AsyncToolSpecification spec = McpServerFeatures.AsyncToolSpecification.builder()
                     .tool(mcpTool).callHandler((exchange, toolReq) -> {
                         // Implement actual async tool execution logic
-                        return reactor.core.publisher.Mono.fromCallable(() -> {
+                        return Mono.fromCallable(() -> {
                             try {
                                 LOGGER.debug("Executing async tool: {}", toolId);
 
@@ -179,7 +181,7 @@ public class ToolUtils {
                                 long executionTime = System.currentTimeMillis() - startTime;
 
                                 // Log performance metrics
-                                org.openhab.core.ai.tool.util.helpers.ToolUtils.optimizeToolPerformance(toolId,
+                                ToolUtils.optimizeToolPerformance(toolId,
                                         executionTime);
 
                                 if (result.isSuccess()) {

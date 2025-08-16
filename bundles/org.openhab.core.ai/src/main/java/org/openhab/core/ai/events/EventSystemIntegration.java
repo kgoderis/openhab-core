@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.library.events.EventSubscriptionRegistry;
-import org.openhab.core.ai.reasoning.MultiStepReasoningEngine;
+import org.openhab.core.ai.reasoning.engine.MultiStepReasoningEngine;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 import org.openhab.core.events.Event;

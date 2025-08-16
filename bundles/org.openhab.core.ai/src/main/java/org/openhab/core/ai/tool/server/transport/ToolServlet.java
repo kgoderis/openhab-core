@@ -11,6 +11,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
+import org.openhab.core.ai.tool.api.Tool;
+import org.openhab.core.ai.tool.api.ToolContext;
+import org.openhab.core.ai.tool.api.ToolException;
+import org.openhab.core.ai.tool.api.ToolResult;
 import org.openhab.core.ai.tool.completions.CompletionSuggestionService;
 import org.openhab.core.ai.tool.completions.api.CompletionContext;
 import org.openhab.core.ai.tool.completions.api.CompletionResult;
@@ -19,10 +23,14 @@ import org.openhab.core.ai.tool.prompts.PromptRegistrationService;
 import org.openhab.core.ai.tool.prompts.api.PromptContext;
 import org.openhab.core.ai.tool.prompts.api.PromptRegistry;
 import org.openhab.core.ai.tool.prompts.api.PromptResult;
+import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.resources.ResourceReadingService;
 import org.openhab.core.ai.tool.resources.ResourceTemplateService;
+import org.openhab.core.ai.tool.resources.api.ResourceContext;
 import org.openhab.core.ai.tool.resources.api.ResourceRegistry;
+import org.openhab.core.ai.tool.resources.api.ResourceResult;
+import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -549,10 +557,10 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
             if (registry != null) {
                 try {
                     // Get all tools from registry
-                    Map<String, org.openhab.core.ai.tool.api.Tool> tools = registry.getAllTools();
+                    Map<String, Tool> tools = registry.getAllTools();
 
-                    for (Map.Entry<String, org.openhab.core.ai.tool.api.Tool> entry : tools.entrySet()) {
-                        org.openhab.core.ai.tool.api.Tool tool = entry.getValue();
+                    for (Map.Entry<String, Tool> entry : tools.entrySet()) {
+                        Tool tool = entry.getValue();
                         Map<String, Object> toolInfo = new HashMap<>();
                         toolInfo.put("id", entry.getKey());
                         toolInfo.put("name", tool.getName());
@@ -622,15 +630,14 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
             }
 
             // Get the tool from registry
-            org.openhab.core.ai.tool.api.Tool tool = registry.getTool(toolId);
+            Tool tool = registry.getTool(toolId);
             if (tool == null) {
                 sendMcpErrorResponse(response, "Tool not found: " + toolId, HttpServletResponse.SC_NOT_FOUND);
                 return;
             }
 
             // Validate parameters
-            org.openhab.core.ai.tool.validation.api.ToolValidationResult validationResult = tool
-                    .validateParameters(parameters);
+            ToolValidationResult validationResult = tool.validateParameters(parameters);
             if (!validationResult.isValid()) {
                 sendMcpErrorResponse(response, "Invalid parameters: " + validationResult.getMessage(),
                         HttpServletResponse.SC_BAD_REQUEST);
@@ -639,8 +646,8 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
 
             // Execute the tool
             try {
-                org.openhab.core.ai.tool.api.ToolContext context = new org.openhab.core.ai.tool.api.ToolContext();
-                org.openhab.core.ai.tool.api.ToolResult result = tool.execute(parameters, context);
+                ToolContext context = new ToolContext();
+                ToolResult result = tool.execute(parameters, context);
 
                 Map<String, Object> responseData = new HashMap<>();
                 responseData.put("result", result.getContent());
@@ -657,7 +664,7 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
                 response.getWriter().write(objectMapper.writeValueAsString(responseData));
 
                 logger.debug("Tool {} executed successfully", toolId);
-            } catch (org.openhab.core.ai.tool.api.ToolException e) {
+            } catch (ToolException e) {
                 logger.error("Tool execution failed for tool: {}", toolId, e);
                 sendMcpErrorResponse(response, "Tool execution failed: " + e.getMessage(),
                         HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -696,7 +703,7 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
             Object[] asyncSpecs = registry.getAsyncResourceSpecifications();
 
             // Create response with resource information
-            Map<String, Object> responseData = new java.util.HashMap<>();
+            Map<String, Object> responseData = new HashMap<>();
             responseData.put("syncResources", syncSpecs);
             responseData.put("asyncResources", asyncSpecs);
             responseData.put("totalResources", syncSpecs.length + asyncSpecs.length);
@@ -748,17 +755,16 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
             }
 
             // Create resource context
-            org.openhab.core.ai.tool.resources.api.ResourceContext context = new org.openhab.core.ai.tool.resources.api.ResourceContext();
+            ResourceContext context = new ResourceContext();
             context.setProperty("requestId", "mcp-request-" + System.currentTimeMillis());
             context.setProperty("protocol", "mcp");
             context.setProperty("timestamp", System.currentTimeMillis());
 
             // Read the resource
-            org.openhab.core.ai.tool.resources.api.ResourceResult result = readingService.readResource(resourceId,
-                    parameters, context);
+            ResourceResult result = readingService.readResource(resourceId, parameters, context);
 
             // Create response
-            Map<String, Object> responseData = new java.util.HashMap<>();
+            Map<String, Object> responseData = new HashMap<>();
             responseData.put("success", result.isSuccess());
             responseData.put("content", result.getContent());
             responseData.put("executionTimeMs", result.getExecutionTimeMs());
@@ -798,16 +804,16 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
             }
 
             // Create resource context
-            org.openhab.core.ai.tool.resources.api.ResourceContext context = new org.openhab.core.ai.tool.resources.api.ResourceContext();
+            ResourceContext context = new ResourceContext();
             context.setProperty("requestId", "mcp-request-" + System.currentTimeMillis());
             context.setProperty("protocol", "mcp");
             context.setProperty("timestamp", System.currentTimeMillis());
 
             // List templates
-            org.openhab.core.ai.tool.resources.api.ResourceResult result = templateService.listTemplates(context);
+            ResourceResult result = templateService.listTemplates(context);
 
             // Create response
-            Map<String, Object> responseData = new java.util.HashMap<>();
+            Map<String, Object> responseData = new HashMap<>();
             responseData.put("success", result.isSuccess());
             responseData.put("data", result.getContent());
             responseData.put("executionTimeMs", result.getExecutionTimeMs());
@@ -863,17 +869,16 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
             }
 
             // Create resource context
-            org.openhab.core.ai.tool.resources.api.ResourceContext context = new org.openhab.core.ai.tool.resources.api.ResourceContext();
+            ResourceContext context = new ResourceContext();
             context.setProperty("requestId", "mcp-request-" + System.currentTimeMillis());
             context.setProperty("protocol", "mcp");
             context.setProperty("timestamp", System.currentTimeMillis());
 
             // Subscribe to the resource
-            org.openhab.core.ai.tool.resources.api.ResourceResult result = readingService
-                    .subscribeToResource(resourceId, parameters, context);
+            ResourceResult result = readingService.subscribeToResource(resourceId, parameters, context);
 
             // Create response
-            Map<String, Object> responseData = new java.util.HashMap<>();
+            Map<String, Object> responseData = new HashMap<>();
             responseData.put("success", result.isSuccess());
             responseData.put("subscription", result.getContent());
             responseData.put("executionTimeMs", result.getExecutionTimeMs());
@@ -983,7 +988,7 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
             }
             Map<String, Object>[] descriptors = registry.getPromptDescriptors();
 
-            Map<String, Object> responseData = new java.util.HashMap<>();
+            Map<String, Object> responseData = new HashMap<>();
             responseData.put("prompts", descriptors);
             responseData.put("count", descriptors.length);
             responseData.put("protocol", "mcp");
@@ -1020,8 +1025,7 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
             String name = (String) requestData.get("name");
             String operation = (String) requestData.getOrDefault("operation", "get");
             @SuppressWarnings("unchecked")
-            Map<String, Object> parameters = (Map<String, Object>) requestData.getOrDefault("parameters",
-                    java.util.Map.of());
+            Map<String, Object> parameters = (Map<String, Object>) requestData.getOrDefault("parameters", Map.of());
 
             if (name == null || name.trim().isEmpty()) {
                 sendMcpErrorResponse(response, "Prompt name is required", HttpServletResponse.SC_BAD_REQUEST);
@@ -1051,7 +1055,7 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
                     result = exec.executeSystemPrompt(name, operation, parameters, context);
                 }
 
-                Map<String, Object> responseData = new java.util.HashMap<>();
+                Map<String, Object> responseData = new HashMap<>();
                 responseData.put("success", result.isSuccess());
                 responseData.put("content", result.getContent());
                 responseData.put("executionTimeMs", result.getExecutionTimeMs());
@@ -1074,13 +1078,13 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
                         HttpServletResponse.SC_SERVICE_UNAVAILABLE);
                 return;
             }
-            org.openhab.core.ai.tool.prompts.api.dto.Prompt prompt = registry.getPrompt(name);
+            Prompt prompt = registry.getPrompt(name);
             if (prompt == null) {
                 sendMcpErrorResponse(response, "Prompt not found: " + name, HttpServletResponse.SC_NOT_FOUND);
                 return;
             }
 
-            Map<String, Object> responseData = new java.util.HashMap<>();
+            Map<String, Object> responseData = new HashMap<>();
             responseData.put("prompt", prompt);
             responseData.put("protocol", "mcp");
 
@@ -1117,8 +1121,7 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
 
             String operation = (String) requestData.getOrDefault("operation", "complete");
             @SuppressWarnings("unchecked")
-            Map<String, Object> parameters = (Map<String, Object>) requestData.getOrDefault("parameters",
-                    java.util.Map.of());
+            Map<String, Object> parameters = (Map<String, Object>) requestData.getOrDefault("parameters", Map.of());
 
             CompletionContext context = new CompletionContext();
             context.setProperty("requestId", "mcp-request-" + System.currentTimeMillis());
@@ -1141,7 +1144,7 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
                 result = sugg.suggestCommands(key, operation, parameters, context);
             }
 
-            Map<String, Object> responseData = new java.util.HashMap<>();
+            Map<String, Object> responseData = new HashMap<>();
             responseData.put("success", result.isSuccess());
             responseData.put("completions", result.getSuggestions());
             responseData.put("total", result.getTotal());

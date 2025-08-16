@@ -10,13 +10,13 @@ import org.openhab.core.ai.tool.roots.discovery.Root;
  * @since 1.0.0
  */
 @NonNullByDefault
-class DefaultRoot implements Root {
+public class DefaultRoot implements Root {
     private final String id;
     private final String path;
     private final String description;
     private final boolean readOnly;
 
-    DefaultRoot(String id, String path, String description, boolean readOnly) {
+    public DefaultRoot(String id, String path, String description, boolean readOnly) {
         this.id = id;
         this.path = path;
         this.description = description;

@@ -13,6 +13,5 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 @FunctionalInterface
 public interface ValidationRule {
-    List<String> validate(org.openhab.core.ai.reasoning.results.DecisionResult decision,
-            org.openhab.core.ai.reasoning.decision.DecisionContext context);
+    List<String> validate(DecisionResult decision, DecisionContext context);
 }

@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.zip.ZipEntry;
@@ -25,6 +26,7 @@ import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.config.core.ConfigurableService;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
+import org.openhab.core.persistence.QueryablePersistenceService;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -536,7 +538,7 @@ public class BackupPersistenceAction implements Action {
             configContent.append("# Configuration backup for ").append(serviceId).append("\n");
             configContent.append("# Created: ").append(Instant.now()).append("\n");
             configContent.append("# Service: ").append(service.getClass().getSimpleName()).append("\n");
-            configContent.append("# Label: ").append(service.getLabel(java.util.Locale.getDefault())).append("\n");
+            configContent.append("# Label: ").append(service.getLabel(Locale.getDefault())).append("\n");
             configContent.append("enabled=true\n");
             configContent.append("strategy=everyChange\n");
 
@@ -584,12 +586,11 @@ public class BackupPersistenceAction implements Action {
             metadataContent += "  \"serviceId\": \"" + serviceId + "\",\n";
             metadataContent += "  \"serviceClass\": \"" + service.getClass().getSimpleName() + "\",\n";
             String serviceLabel = "";
-            if (service.getLabel(java.util.Locale.getDefault()) != null) {
-                serviceLabel = service.getLabel(java.util.Locale.getDefault());
+            if (service.getLabel(Locale.getDefault()) != null) {
+                serviceLabel = service.getLabel(Locale.getDefault());
             }
             metadataContent += "  \"label\": \"" + serviceLabel + "\",\n";
-            metadataContent += "  \"queryable\": "
-                    + (service instanceof org.openhab.core.persistence.QueryablePersistenceService) + ",\n";
+            metadataContent += "  \"queryable\": " + (service instanceof QueryablePersistenceService) + ",\n";
             metadataContent += "  \"configurable\": " + (service instanceof ConfigurableService) + ",\n";
             metadataContent += "  \"backupTimestamp\": \"" + Instant.now() + "\",\n";
             metadataContent += "  \"backupType\": \"metadata\"\n";

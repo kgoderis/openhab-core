@@ -1,7 +1,9 @@
 package org.openhab.core.ai.tool.compliance;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -192,7 +194,7 @@ public class ComplianceTestResult {
 
     // ===== CACHING SUPPORT =====
 
-    private static final java.util.concurrent.ConcurrentHashMap<String, ComplianceTestResult> cache = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, ComplianceTestResult> cache = new ConcurrentHashMap<>();
     private static final long CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
     private final long cacheTimestamp = System.currentTimeMillis();
 
@@ -235,7 +237,7 @@ public class ComplianceTestResult {
      * @return cache statistics
      */
     public static Map<String, Object> getCacheStats() {
-        Map<String, Object> stats = new java.util.HashMap<>();
+        Map<String, Object> stats = new HashMap<>();
         stats.put("size", cache.size());
         stats.put("ttlMs", CACHE_TTL_MS);
         return stats;
@@ -249,7 +251,7 @@ public class ComplianceTestResult {
      * @return serializable map representation
      */
     public Map<String, Object> toMap() {
-        Map<String, Object> map = new java.util.HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("testId", testId);
         map.put("category", category);
         map.put("description", description);

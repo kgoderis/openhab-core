@@ -1,6 +1,8 @@
 package org.openhab.core.ai.action.library.rules;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -10,8 +12,10 @@ import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.automation.Condition;
 import org.openhab.core.automation.Rule;
 import org.openhab.core.automation.RuleRegistry;
+import org.openhab.core.automation.Trigger;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -77,7 +81,7 @@ public class ValidateRuleAction implements Action {
                 Map.of("type", "boolean", "description", "Include improvement suggestions", "default", true));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -109,12 +113,12 @@ public class ValidateRuleAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String ruleUID = (String) parameters.get("ruleUID");
         if (ruleUID == null || ruleUID.trim().isEmpty()) {
-            return ActionValidationResult.invalid(java.util.List.of("ruleUID is required and cannot be empty"));
+            return ActionValidationResult.invalid(List.of("ruleUID is required and cannot be empty"));
         }
 
         return ActionValidationResult.valid(parameters);
@@ -175,7 +179,7 @@ public class ValidateRuleAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "validate", "quality")).build();
+                .tags(List.of("rules", "validate", "quality")).build();
     }
 
     @Override
@@ -208,9 +212,9 @@ public class ValidateRuleAction implements Action {
         // Initialize validation results
         boolean overallValid = true;
         int overallScore = 100;
-        java.util.List<Map<String, Object>> issues = new java.util.ArrayList<>();
-        java.util.List<Map<String, Object>> warnings = new java.util.ArrayList<>();
-        java.util.List<String> suggestions = new java.util.ArrayList<>();
+        List<Map<String, Object>> issues = new ArrayList<>();
+        List<Map<String, Object>> warnings = new ArrayList<>();
+        List<String> suggestions = new ArrayList<>();
 
         // 1. Basic rule structure validation
         if (rule.getUID() == null || rule.getUID().trim().isEmpty()) {
@@ -248,7 +252,7 @@ public class ValidateRuleAction implements Action {
                 issues.add(issue);
             } else {
                 // Validate each trigger
-                for (org.openhab.core.automation.Trigger trigger : rule.getTriggers()) {
+                for (Trigger trigger : rule.getTriggers()) {
                     if (trigger.getId() == null || trigger.getId().trim().isEmpty()) {
                         overallValid = false;
                         overallScore -= 10;
@@ -319,7 +323,7 @@ public class ValidateRuleAction implements Action {
 
         // 4. Condition validation
         if (validateConditions && rule.getConditions() != null && !rule.getConditions().isEmpty()) {
-            for (org.openhab.core.automation.Condition condition : rule.getConditions()) {
+            for (Condition condition : rule.getConditions()) {
                 if (condition.getId() == null || condition.getId().trim().isEmpty()) {
                     overallValid = false;
                     overallScore -= 5;

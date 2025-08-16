@@ -9,6 +9,7 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.model.api.ModelClient;
+import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.engine.MultiStepReasoningEngine;
 
@@ -53,8 +54,7 @@ public interface IntelligentAgent {
      * @param reasoningContext the reasoning context
      * @return the reasoning result
      */
-    CompletableFuture<org.openhab.core.ai.reasoning.api.MultiStepReasoningResult> reason(
-            ReasoningContext reasoningContext);
+    CompletableFuture<MultiStepReasoningResult> reason(ReasoningContext reasoningContext);
 
     /**
      * Learn from action results

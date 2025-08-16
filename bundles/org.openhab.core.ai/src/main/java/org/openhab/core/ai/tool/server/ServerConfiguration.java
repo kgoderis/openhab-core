@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.tool.server.api.TransportType;
 
 /**
  * Configuration for MCP server.
@@ -20,7 +21,7 @@ public class ServerConfiguration {
     private final String serverId;
     private final String serverName;
     private final String serverVersion;
-    private final org.openhab.core.ai.tool.server.api.TransportType transportType;
+    private final TransportType transportType;
     private final String baseUrl;
     private final String messageEndpoint;
     private final String sseEndpoint;
@@ -205,7 +206,7 @@ public class ServerConfiguration {
      * 
      * @return Transport type
      */
-    public org.openhab.core.ai.tool.server.api.TransportType getTransportType() {
+    public TransportType getTransportType() {
         return transportType;
     }
 

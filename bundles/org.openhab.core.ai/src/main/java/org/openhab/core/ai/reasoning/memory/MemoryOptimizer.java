@@ -33,11 +33,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public final class MemoryOptimizer {
 
-    private final org.openhab.core.ai.reasoning.memory.AgentMemory agentMemory;
-    private final org.openhab.core.ai.reasoning.memory.MemoryCache memoryCache;
+    private final AgentMemory agentMemory;
+    private final MemoryCache memoryCache;
 
-    public MemoryOptimizer(org.openhab.core.ai.reasoning.memory.AgentMemory agentMemory,
-            org.openhab.core.ai.reasoning.memory.MemoryCache memoryCache) {
+    public MemoryOptimizer(AgentMemory agentMemory, MemoryCache memoryCache) {
         this.agentMemory = agentMemory;
         this.memoryCache = memoryCache;
     }

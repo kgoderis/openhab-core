@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.api.AgentOwnership;
 
 /**
  * Agent Ownership Resolver - Defines the contract for resolving agent ownership
@@ -31,7 +32,7 @@ public interface AgentOwnershipResolver {
      * @param agentId the agent ID
      * @return ownership information
      */
-    org.openhab.core.ai.agent.api.AgentOwnership determineOwnership(String agentId);
+    AgentOwnership determineOwnership(String agentId);
 
     /**
      * Get all owners for an agent
@@ -99,7 +100,7 @@ public interface AgentOwnershipResolver {
      * @param agentId the agent ID
      * @param ownership the ownership information
      */
-    void cacheOwnership(String agentId, org.openhab.core.ai.agent.api.AgentOwnership ownership);
+    void cacheOwnership(String agentId, AgentOwnership ownership);
 
     /**
      * Get cached ownership

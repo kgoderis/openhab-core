@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action.library.rules;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -72,7 +73,7 @@ public class GetRuleActionsAction implements Action {
                 Map.of("type", "boolean", "description", "Include action type information", "default", false));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -98,12 +99,12 @@ public class GetRuleActionsAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String ruleUID = (String) parameters.get("ruleUID");
         if (ruleUID == null || ruleUID.trim().isEmpty()) {
-            return ActionValidationResult.invalid(java.util.List.of("ruleUID is required and cannot be empty"));
+            return ActionValidationResult.invalid(List.of("ruleUID is required and cannot be empty"));
         }
 
         return ActionValidationResult.valid(parameters);
@@ -128,10 +129,8 @@ public class GetRuleActionsAction implements Action {
                 return ActionResult.success(result, System.currentTimeMillis());
             }
 
-            java.util.List<Map<String, Object>> actions = rule.getActions().stream()
-                    .map(action -> convertActionToMap(action, includeConfiguration, includeExecutionDetails,
-                            includeTypeInfo))
-                    .collect(Collectors.toList());
+            List<Map<String, Object>> actions = rule.getActions().stream().map(action -> convertActionToMap(action,
+                    includeConfiguration, includeExecutionDetails, includeTypeInfo)).collect(Collectors.toList());
 
             Map<String, Object> result = new HashMap<>();
             result.put("success", true);
@@ -161,7 +160,7 @@ public class GetRuleActionsAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "actions", "automation")).build();
+                .tags(List.of("rules", "actions", "automation")).build();
     }
 
     @Override
@@ -294,159 +293,159 @@ public class GetRuleActionsAction implements Action {
     /**
      * Get supported inputs for the action type.
      */
-    private java.util.List<String> getSupportedInputsForType(String typeUID) {
+    private List<String> getSupportedInputsForType(String typeUID) {
         if (typeUID == null) {
-            return java.util.List.of();
+            return List.of();
         }
 
         // Common openHAB action inputs
         switch (typeUID) {
             case "core.ItemCommandAction":
-                return java.util.List.of("itemName", "command");
+                return List.of("itemName", "command");
             case "core.ItemStateUpdateAction":
-                return java.util.List.of("itemName", "state");
+                return List.of("itemName", "state");
             case "core.ThingActionAction":
-                return java.util.List.of("thingUID", "actionName", "parameters");
+                return List.of("thingUID", "actionName", "parameters");
             case "core.NotificationAction":
-                return java.util.List.of("message", "title", "priority");
+                return List.of("message", "title", "priority");
             case "core.SystemCommandAction":
-                return java.util.List.of("command", "arguments");
+                return List.of("command", "arguments");
             case "core.ScriptAction":
-                return java.util.List.of("script", "scriptType");
+                return List.of("script", "scriptType");
             case "core.MediaAction":
-                return java.util.List.of("itemName", "command", "volume");
+                return List.of("itemName", "command", "volume");
             case "core.AudioAction":
-                return java.util.List.of("sink", "command", "volume");
+                return List.of("sink", "command", "volume");
             case "core.VoiceAction":
-                return java.util.List.of("command", "text");
+                return List.of("command", "text");
             case "core.HTTPAction":
-                return java.util.List.of("url", "method", "headers", "body");
+                return List.of("url", "method", "headers", "body");
             case "core.EmailAction":
-                return java.util.List.of("to", "subject", "message");
+                return List.of("to", "subject", "message");
             case "core.PushAction":
-                return java.util.List.of("message", "title", "priority");
+                return List.of("message", "title", "priority");
             case "core.TelegramAction":
-                return java.util.List.of("chatId", "message");
+                return List.of("chatId", "message");
             case "core.SlackAction":
-                return java.util.List.of("channel", "message");
+                return List.of("channel", "message");
             case "core.DiscordAction":
-                return java.util.List.of("channel", "message");
+                return List.of("channel", "message");
             case "core.MQTTAction":
-                return java.util.List.of("topic", "message", "retain");
+                return List.of("topic", "message", "retain");
             case "core.CloudNotificationAction":
-                return java.util.List.of("message", "title", "priority");
+                return List.of("message", "title", "priority");
             case "core.TransformationAction":
-                return java.util.List.of("input", "transformation", "output");
+                return List.of("input", "transformation", "output");
             case "core.FilterAction":
-                return java.util.List.of("input", "condition", "output");
+                return List.of("input", "condition", "output");
             default:
-                return java.util.List.of("CustomInput");
+                return List.of("CustomInput");
         }
     }
 
     /**
      * Get required configuration parameters for the action type.
      */
-    private java.util.List<String> getRequiredConfigurationForType(String typeUID) {
+    private List<String> getRequiredConfigurationForType(String typeUID) {
         if (typeUID == null) {
-            return java.util.List.of();
+            return List.of();
         }
 
         // Common required configuration parameters
         switch (typeUID) {
             case "core.ItemCommandAction":
-                return java.util.List.of("itemName", "command");
+                return List.of("itemName", "command");
             case "core.ItemStateUpdateAction":
-                return java.util.List.of("itemName", "state");
+                return List.of("itemName", "state");
             case "core.ThingActionAction":
-                return java.util.List.of("thingUID", "actionName");
+                return List.of("thingUID", "actionName");
             case "core.NotificationAction":
-                return java.util.List.of("message");
+                return List.of("message");
             case "core.SystemCommandAction":
-                return java.util.List.of("command");
+                return List.of("command");
             case "core.ScriptAction":
-                return java.util.List.of("script");
+                return List.of("script");
             case "core.MediaAction":
-                return java.util.List.of("itemName", "command");
+                return List.of("itemName", "command");
             case "core.AudioAction":
-                return java.util.List.of("sink", "command");
+                return List.of("sink", "command");
             case "core.VoiceAction":
-                return java.util.List.of("command");
+                return List.of("command");
             case "core.HTTPAction":
-                return java.util.List.of("url");
+                return List.of("url");
             case "core.EmailAction":
-                return java.util.List.of("to", "subject", "message");
+                return List.of("to", "subject", "message");
             case "core.PushAction":
-                return java.util.List.of("message");
+                return List.of("message");
             case "core.TelegramAction":
-                return java.util.List.of("chatId", "message");
+                return List.of("chatId", "message");
             case "core.SlackAction":
-                return java.util.List.of("channel", "message");
+                return List.of("channel", "message");
             case "core.DiscordAction":
-                return java.util.List.of("channel", "message");
+                return List.of("channel", "message");
             case "core.MQTTAction":
-                return java.util.List.of("topic", "message");
+                return List.of("topic", "message");
             case "core.CloudNotificationAction":
-                return java.util.List.of("message");
+                return List.of("message");
             case "core.TransformationAction":
-                return java.util.List.of("input", "transformation");
+                return List.of("input", "transformation");
             case "core.FilterAction":
-                return java.util.List.of("input", "condition");
+                return List.of("input", "condition");
             default:
-                return java.util.List.of();
+                return List.of();
         }
     }
 
     /**
      * Get optional configuration parameters for the action type.
      */
-    private java.util.List<String> getOptionalConfigurationForType(String typeUID) {
+    private List<String> getOptionalConfigurationForType(String typeUID) {
         if (typeUID == null) {
-            return java.util.List.of();
+            return List.of();
         }
 
         // Common optional configuration parameters
         switch (typeUID) {
             case "core.ItemCommandAction":
-                return java.util.List.of();
+                return List.of();
             case "core.ItemStateUpdateAction":
-                return java.util.List.of();
+                return List.of();
             case "core.ThingActionAction":
-                return java.util.List.of("parameters");
+                return List.of("parameters");
             case "core.NotificationAction":
-                return java.util.List.of("title", "priority");
+                return List.of("title", "priority");
             case "core.SystemCommandAction":
-                return java.util.List.of("arguments");
+                return List.of("arguments");
             case "core.ScriptAction":
-                return java.util.List.of("scriptType");
+                return List.of("scriptType");
             case "core.MediaAction":
-                return java.util.List.of("volume");
+                return List.of("volume");
             case "core.AudioAction":
-                return java.util.List.of("volume");
+                return List.of("volume");
             case "core.VoiceAction":
-                return java.util.List.of("text");
+                return List.of("text");
             case "core.HTTPAction":
-                return java.util.List.of("method", "headers", "body");
+                return List.of("method", "headers", "body");
             case "core.EmailAction":
-                return java.util.List.of("from", "cc", "bcc");
+                return List.of("from", "cc", "bcc");
             case "core.PushAction":
-                return java.util.List.of("title", "priority");
+                return List.of("title", "priority");
             case "core.TelegramAction":
-                return java.util.List.of();
+                return List.of();
             case "core.SlackAction":
-                return java.util.List.of();
+                return List.of();
             case "core.DiscordAction":
-                return java.util.List.of();
+                return List.of();
             case "core.MQTTAction":
-                return java.util.List.of("retain");
+                return List.of("retain");
             case "core.CloudNotificationAction":
-                return java.util.List.of("title", "priority");
+                return List.of("title", "priority");
             case "core.TransformationAction":
-                return java.util.List.of("output");
+                return List.of("output");
             case "core.FilterAction":
-                return java.util.List.of("output");
+                return List.of("output");
             default:
-                return java.util.List.of();
+                return List.of();
         }
     }
 }

@@ -1,5 +1,6 @@
 package org.openhab.core.ai.action.library.network;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -171,7 +172,7 @@ public class GetNetworkRoutesAction implements Action {
 
             // Generate summary
             result.put("summary", generateRouteSummary(result));
-            result.put("timestamp", java.time.Instant.now().toString());
+            result.put("timestamp", Instant.now().toString());
 
             long executionTime = System.currentTimeMillis() - startTime;
             return ActionResult.success(result, executionTime);

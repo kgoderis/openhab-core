@@ -11,7 +11,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-class BackendServer {
+public class BackendServer {
     private final String url;
     private final AtomicLong requestCount = new AtomicLong(0);
     private final AtomicLong errorCount = new AtomicLong(0);
@@ -19,7 +19,7 @@ class BackendServer {
     private volatile boolean healthy = true;
     volatile long lastHealthCheck = 0;
 
-    BackendServer(String url) {
+    public BackendServer(String url) {
         this.url = url;
     }
 

@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.agent.transport.api.AgentTransport;
@@ -466,7 +467,7 @@ public class AgentTransportFactory {
      */
     private Set<TransportType> getAvailableTransportTypes() {
         return transportProviders.values().stream().flatMap(provider -> provider.getSupportedTransportTypes().stream())
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
     }
 
     /**

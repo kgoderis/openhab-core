@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -467,7 +468,7 @@ public class CleanupPersistenceAction implements Action {
                 itemsProcessed = serviceItems.size();
 
                 // Calculate cutoff time based on maxAge
-                java.time.ZonedDateTime cutoffTime = calculateCutoffTime(maxAge);
+                ZonedDateTime cutoffTime = calculateCutoffTime(maxAge);
 
                 for (String itemName : serviceItems) {
                     if (itemExists(itemName)) {
@@ -737,18 +738,18 @@ public class CleanupPersistenceAction implements Action {
         }
     }
 
-    private java.time.ZonedDateTime calculateCutoffTime(String maxAge) {
+    private ZonedDateTime calculateCutoffTime(String maxAge) {
         try {
             if (maxAge == null || maxAge.isEmpty()) {
-                return java.time.ZonedDateTime.now().minusDays(30); // Default 30 days
+                return ZonedDateTime.now().minusDays(30); // Default 30 days
             }
 
             // Parse maxAge string (e.g., "30d", "1y", "6m")
             Duration duration = parseDuration(maxAge);
-            return java.time.ZonedDateTime.now().minus(duration);
+            return ZonedDateTime.now().minus(duration);
         } catch (Exception e) {
             logger.warn("Error parsing maxAge '{}', using default 30 days", maxAge);
-            return java.time.ZonedDateTime.now().minusDays(30);
+            return ZonedDateTime.now().minusDays(30);
         }
     }
 
@@ -770,8 +771,7 @@ public class CleanupPersistenceAction implements Action {
         }
     }
 
-    private boolean checkForOldData(QueryablePersistenceService service, String itemName,
-            java.time.ZonedDateTime cutoffTime) {
+    private boolean checkForOldData(QueryablePersistenceService service, String itemName, ZonedDateTime cutoffTime) {
         // Simulated check for old data
         // In real implementation, this would query the service for data older than cutoffTime
         return Math.random() > 0.7; // 30% chance of having old data

@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -393,7 +394,7 @@ class DefaultActionExecutionServiceTest {
 
     private ActionContext createTestActionContext(String actionName, Map<String, Object> parameters,
             String correlationId) {
-        Map<String, Object> protocolContext = new java.util.HashMap<>();
+        Map<String, Object> protocolContext = new HashMap<>();
         protocolContext.put("action", actionName);
         return ActionContext.builder().correlationId(correlationId).protocol("test-protocol")
                 .protocolContext(protocolContext).build();

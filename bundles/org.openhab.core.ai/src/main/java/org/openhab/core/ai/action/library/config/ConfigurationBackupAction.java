@@ -29,6 +29,8 @@ import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+
 /**
  * AI Action for creating backups of openHAB configuration files.
  * 
@@ -369,7 +371,7 @@ public class ConfigurationBackupAction implements Action {
                 metadata.put("totalSize", files.stream().mapToLong(f -> f.size).sum());
                 metadata.put("filesByType", getFilesByType(files));
 
-                String metadataJson = new com.google.gson.Gson().toJson(metadata);
+                String metadataJson = new Gson().toJson(metadata);
                 zos.write(metadataJson.getBytes());
                 zos.closeEntry();
             }
@@ -407,7 +409,7 @@ public class ConfigurationBackupAction implements Action {
             metadata.put("totalSize", files.stream().mapToLong(f -> f.size).sum());
             metadata.put("filesByType", getFilesByType(files));
 
-            String metadataJson = new com.google.gson.Gson().toJson(metadata);
+            String metadataJson = new Gson().toJson(metadata);
             Files.write(backupDestination.resolve("backup-metadata.json"), metadataJson.getBytes());
         }
     }

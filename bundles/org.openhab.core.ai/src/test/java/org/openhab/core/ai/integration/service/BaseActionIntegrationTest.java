@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -46,6 +47,16 @@ import org.openhab.core.library.items.PlayerItem;
 import org.openhab.core.library.items.RollershutterItem;
 import org.openhab.core.library.items.StringItem;
 import org.openhab.core.library.items.SwitchItem;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.HSBType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.OpenClosedType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.PlayPauseType;
+import org.openhab.core.library.types.PointType;
+import org.openhab.core.library.types.RawType;
+import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.ThingRegistry;
 import org.openhab.core.thing.type.ThingTypeRegistry;
 
@@ -183,21 +194,21 @@ public abstract class BaseActionIntegrationTest {
             when(itemRegistry.get("TestCall")).thenReturn(testCall);
 
             // Set some initial states - using proper State objects
-            testSwitch.setState(org.openhab.core.library.types.OnOffType.OFF);
-            testNumber.setState(new org.openhab.core.library.types.DecimalType(42));
-            testString.setState(new org.openhab.core.library.types.StringType("Hello World"));
-            testContact.setState(org.openhab.core.library.types.OpenClosedType.OPEN);
-            testDimmer.setState(new org.openhab.core.library.types.PercentType(50));
-            testColor.setState(new org.openhab.core.library.types.HSBType("255,255,255"));
-            testRoller.setState(new org.openhab.core.library.types.PercentType(50));
-            testDateTime.setState(new org.openhab.core.library.types.DateTimeType("2024-01-01T12:00:00"));
-            testLocation.setState(new org.openhab.core.library.types.PointType("40.7128,-74.0060"));
-            testPlayer.setState(org.openhab.core.library.types.PlayPauseType.PLAY);
-            testImage.setState(new org.openhab.core.library.types.RawType(
+            testSwitch.setState(OnOffType.OFF);
+            testNumber.setState(new DecimalType(42));
+            testString.setState(new StringType("Hello World"));
+            testContact.setState(OpenClosedType.OPEN);
+            testDimmer.setState(new PercentType(50));
+            testColor.setState(new HSBType("255,255,255"));
+            testRoller.setState(new PercentType(50));
+            testDateTime.setState(new DateTimeType("2024-01-01T12:00:00"));
+            testLocation.setState(new PointType("40.7128,-74.0060"));
+            testPlayer.setState(PlayPauseType.PLAY);
+            testImage.setState(new RawType(
                     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
                             .getBytes(),
                     "image/png"));
-            testCall.setState(new org.openhab.core.library.types.StringType("INCOMING"));
+            testCall.setState(new StringType("INCOMING"));
 
         } catch (Exception e) {
             System.err.println("Failed to create test items: " + e.getMessage());
@@ -283,7 +294,7 @@ public abstract class BaseActionIntegrationTest {
         assertTrue(data.containsKey(key), "Result should contain key: " + key);
 
         @SuppressWarnings("unchecked")
-        java.util.List<?> list = (java.util.List<?>) data.get(key);
+        List<?> list = (List<?>) data.get(key);
         assertNotNull(list, "Value for key '" + key + "' should be a list");
         assertEquals(expectedSize, list.size(), "List size should match");
     }

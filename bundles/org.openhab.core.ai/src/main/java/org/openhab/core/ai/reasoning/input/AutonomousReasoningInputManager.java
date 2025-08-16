@@ -16,7 +16,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.events.EventSystemIntegration;
+import org.openhab.core.ai.events.LogEntry;
 import org.openhab.core.ai.events.LogIngestionPipeline;
+import org.openhab.core.ai.events.LogLevel;
 import org.openhab.core.ai.reasoning.events.AutonomousEventProcessor;
 import org.openhab.core.ai.reasoning.validation.InputValidationResult;
 import org.osgi.service.component.annotations.Activate;
@@ -369,11 +371,11 @@ public class AutonomousReasoningInputManager {
 
         // Add correlation context if available
         if (logIngestionPipeline != null) {
-            List<org.openhab.core.ai.events.LogEntry> recentLogs = logIngestionPipeline.getRecentLogs(10);
+            List<LogEntry> recentLogs = logIngestionPipeline.getRecentLogs(10);
             if (!recentLogs.isEmpty()) {
                 enrichedContext.put("recentLogs", recentLogs.size());
-                enrichedContext.put("hasRecentErrors", recentLogs.stream()
-                        .anyMatch(log -> log.getLevel() == org.openhab.core.ai.events.LogLevel.ERROR));
+                enrichedContext.put("hasRecentErrors",
+                        recentLogs.stream().anyMatch(log -> log.getLevel() == LogLevel.ERROR));
             }
         }
 

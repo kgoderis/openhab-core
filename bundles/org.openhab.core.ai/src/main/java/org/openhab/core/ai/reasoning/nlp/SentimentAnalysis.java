@@ -13,22 +13,21 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class SentimentAnalysis {
 
-    private final org.openhab.core.ai.reasoning.enums.SentimentType sentiment;
-    private final org.openhab.core.ai.reasoning.enums.EmotionType emotion;
+    private final SentimentType sentiment;
+    private final EmotionType emotion;
     private final double confidence;
 
-    public SentimentAnalysis(org.openhab.core.ai.reasoning.enums.SentimentType sentiment,
-            org.openhab.core.ai.reasoning.enums.EmotionType emotion, double confidence) {
+    public SentimentAnalysis(SentimentType sentiment, EmotionType emotion, double confidence) {
         this.sentiment = sentiment;
         this.emotion = emotion;
         this.confidence = confidence;
     }
 
-    public org.openhab.core.ai.reasoning.enums.SentimentType getSentiment() {
+    public SentimentType getSentiment() {
         return sentiment;
     }
 
-    public org.openhab.core.ai.reasoning.enums.EmotionType getEmotion() {
+    public EmotionType getEmotion() {
         return emotion;
     }
 

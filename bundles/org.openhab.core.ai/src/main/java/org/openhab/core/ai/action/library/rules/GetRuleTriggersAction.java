@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action.library.rules;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -73,7 +74,7 @@ public class GetRuleTriggersAction implements Action {
                 Map.of("type", "boolean", "description", "Include trigger type information", "default", false));
 
         schema.put("properties", properties);
-        schema.put("required", java.util.List.of("ruleUID"));
+        schema.put("required", List.of("ruleUID"));
         schema.put("additionalProperties", false);
         return schema;
     }
@@ -99,12 +100,12 @@ public class GetRuleTriggersAction implements Action {
     @Override
     public ActionValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ActionValidationResult.invalid(java.util.List.of("Parameters cannot be null"));
+            return ActionValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         String ruleUID = (String) parameters.get("ruleUID");
         if (ruleUID == null || ruleUID.trim().isEmpty()) {
-            return ActionValidationResult.invalid(java.util.List.of("ruleUID is required and cannot be empty"));
+            return ActionValidationResult.invalid(List.of("ruleUID is required and cannot be empty"));
         }
 
         return ActionValidationResult.valid(parameters);
@@ -129,7 +130,7 @@ public class GetRuleTriggersAction implements Action {
                 return ActionResult.success(result, System.currentTimeMillis());
             }
 
-            java.util.List<Map<String, Object>> triggers = rule.getTriggers().stream()
+            List<Map<String, Object>> triggers = rule.getTriggers().stream()
                     .map(trigger -> convertTriggerToMap(trigger, includeConfiguration, includeStatus, includeTypeInfo))
                     .collect(Collectors.toList());
 
@@ -161,7 +162,7 @@ public class GetRuleTriggersAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder().version(getVersion()).author("openHAB").description(getDescription())
-                .tags(java.util.List.of("rules", "triggers", "automation")).build();
+                .tags(List.of("rules", "triggers", "automation")).build();
     }
 
     @Override
@@ -275,105 +276,105 @@ public class GetRuleTriggersAction implements Action {
     /**
      * Get supported events for the trigger type.
      */
-    private java.util.List<String> getSupportedEventsForType(String typeUID) {
+    private List<String> getSupportedEventsForType(String typeUID) {
         if (typeUID == null) {
-            return java.util.List.of();
+            return List.of();
         }
 
         // Common openHAB trigger events
         switch (typeUID) {
             case "core.ItemStateChangeTrigger":
-                return java.util.List.of("ItemStateChangedEvent");
+                return List.of("ItemStateChangedEvent");
             case "core.ItemStateUpdateTrigger":
-                return java.util.List.of("ItemStateUpdatedEvent");
+                return List.of("ItemStateUpdatedEvent");
             case "core.ItemCommandTrigger":
-                return java.util.List.of("ItemCommandEvent");
+                return List.of("ItemCommandEvent");
             case "core.ChannelEventTrigger":
-                return java.util.List.of("ChannelTriggeredEvent");
+                return List.of("ChannelTriggeredEvent");
             case "core.ThingStatusChangeTrigger":
-                return java.util.List.of("ThingStatusChangedEvent");
+                return List.of("ThingStatusChangedEvent");
             case "core.ThingStatusUpdateTrigger":
-                return java.util.List.of("ThingStatusUpdatedEvent");
+                return List.of("ThingStatusUpdatedEvent");
             case "core.SystemStartlevelTrigger":
-                return java.util.List.of("SystemStartlevelChangedEvent");
+                return List.of("SystemStartlevelChangedEvent");
             case "core.TimeOfDayTrigger":
-                return java.util.List.of("TimeOfDayEvent");
+                return List.of("TimeOfDayEvent");
             case "core.GenericCronTrigger":
-                return java.util.List.of("CronTriggeredEvent");
+                return List.of("CronTriggeredEvent");
             case "core.DateTimeTrigger":
-                return java.util.List.of("DateTimeTriggeredEvent");
+                return List.of("DateTimeTriggeredEvent");
             default:
-                return java.util.List.of("CustomEvent");
+                return List.of("CustomEvent");
         }
     }
 
     /**
      * Get required configuration parameters for the trigger type.
      */
-    private java.util.List<String> getRequiredConfigurationForType(String typeUID) {
+    private List<String> getRequiredConfigurationForType(String typeUID) {
         if (typeUID == null) {
-            return java.util.List.of();
+            return List.of();
         }
 
         // Common required configuration parameters
         switch (typeUID) {
             case "core.ItemStateChangeTrigger":
-                return java.util.List.of("itemName");
+                return List.of("itemName");
             case "core.ItemStateUpdateTrigger":
-                return java.util.List.of("itemName");
+                return List.of("itemName");
             case "core.ItemCommandTrigger":
-                return java.util.List.of("itemName");
+                return List.of("itemName");
             case "core.ChannelEventTrigger":
-                return java.util.List.of("channelUID");
+                return List.of("channelUID");
             case "core.ThingStatusChangeTrigger":
-                return java.util.List.of("thingUID");
+                return List.of("thingUID");
             case "core.ThingStatusUpdateTrigger":
-                return java.util.List.of("thingUID");
+                return List.of("thingUID");
             case "core.SystemStartlevelTrigger":
-                return java.util.List.of("startlevel");
+                return List.of("startlevel");
             case "core.TimeOfDayTrigger":
-                return java.util.List.of("time");
+                return List.of("time");
             case "core.GenericCronTrigger":
-                return java.util.List.of("cronExpression");
+                return List.of("cronExpression");
             case "core.DateTimeTrigger":
-                return java.util.List.of("dateTime");
+                return List.of("dateTime");
             default:
-                return java.util.List.of();
+                return List.of();
         }
     }
 
     /**
      * Get optional configuration parameters for the trigger type.
      */
-    private java.util.List<String> getOptionalConfigurationForType(String typeUID) {
+    private List<String> getOptionalConfigurationForType(String typeUID) {
         if (typeUID == null) {
-            return java.util.List.of();
+            return List.of();
         }
 
         // Common optional configuration parameters
         switch (typeUID) {
             case "core.ItemStateChangeTrigger":
-                return java.util.List.of("previousState", "state");
+                return List.of("previousState", "state");
             case "core.ItemStateUpdateTrigger":
-                return java.util.List.of("state");
+                return List.of("state");
             case "core.ItemCommandTrigger":
-                return java.util.List.of("command");
+                return List.of("command");
             case "core.ChannelEventTrigger":
-                return java.util.List.of("event");
+                return List.of("event");
             case "core.ThingStatusChangeTrigger":
-                return java.util.List.of("previousStatus", "status");
+                return List.of("previousStatus", "status");
             case "core.ThingStatusUpdateTrigger":
-                return java.util.List.of("status");
+                return List.of("status");
             case "core.SystemStartlevelTrigger":
-                return java.util.List.of();
+                return List.of();
             case "core.TimeOfDayTrigger":
-                return java.util.List.of();
+                return List.of();
             case "core.GenericCronTrigger":
-                return java.util.List.of();
+                return List.of();
             case "core.DateTimeTrigger":
-                return java.util.List.of();
+                return List.of();
             default:
-                return java.util.List.of();
+                return List.of();
         }
     }
 }

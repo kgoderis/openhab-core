@@ -3,6 +3,7 @@ package org.openhab.core.ai.action.library.persistence;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +19,9 @@ import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.items.ItemRegistry;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StringType;
 import org.openhab.core.persistence.FilterCriteria;
 import org.openhab.core.persistence.HistoricItem;
 import org.openhab.core.persistence.PersistenceService;
@@ -419,13 +423,12 @@ public class QueryPersistenceAction implements Action {
                     record.put("value", state.toString());
 
                     // Add type-specific value extraction
-                    if (state instanceof org.openhab.core.library.types.DecimalType) {
-                        record.put("numericValue", ((org.openhab.core.library.types.DecimalType) state).doubleValue());
-                    } else if (state instanceof org.openhab.core.library.types.StringType) {
-                        record.put("stringValue", ((org.openhab.core.library.types.StringType) state).toString());
-                    } else if (state instanceof org.openhab.core.library.types.OnOffType) {
-                        record.put("booleanValue",
-                                ((org.openhab.core.library.types.OnOffType) state) == org.openhab.core.library.types.OnOffType.ON);
+                    if (state instanceof DecimalType) {
+                        record.put("numericValue", ((DecimalType) state).doubleValue());
+                    } else if (state instanceof StringType) {
+                        record.put("stringValue", ((StringType) state).toString());
+                    } else if (state instanceof OnOffType) {
+                        record.put("booleanValue", ((OnOffType) state) == OnOffType.ON);
                     }
                 } else {
                     record.put("state", "NULL");
@@ -553,15 +556,13 @@ public class QueryPersistenceAction implements Action {
     private String getPeriodKey(ZonedDateTime dateTime, String period) {
         if (period.endsWith("h")) {
             int hours = Integer.parseInt(period.substring(0, period.length() - 1));
-            return dateTime.truncatedTo(java.time.temporal.ChronoUnit.HOURS)
-                    .plusHours(dateTime.getHour() / hours * hours).toString();
+            return dateTime.truncatedTo(ChronoUnit.HOURS).plusHours(dateTime.getHour() / hours * hours).toString();
         } else if (period.endsWith("d")) {
             int days = Integer.parseInt(period.substring(0, period.length() - 1));
-            return dateTime.truncatedTo(java.time.temporal.ChronoUnit.DAYS)
-                    .plusDays(dateTime.getDayOfYear() / days * days).toString();
+            return dateTime.truncatedTo(ChronoUnit.DAYS).plusDays(dateTime.getDayOfYear() / days * days).toString();
         } else {
             // Default to hourly
-            return dateTime.truncatedTo(java.time.temporal.ChronoUnit.HOURS).toString();
+            return dateTime.truncatedTo(ChronoUnit.HOURS).toString();
         }
     }
 
