@@ -17,11 +17,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,7 +194,7 @@ public class ReadFileAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing ReadFileAction with context: {}", context.getProtocol());
 
         try {
@@ -314,7 +314,7 @@ public class ReadFileAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -326,11 +326,11 @@ public class ReadFileAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Reads file contents within the openHAB root folder with security validation")
-                .tags(List.of("filesystem", "read", "file", "content", "security"))
-                .documentation("Provides secure file reading capabilities for openHAB files")
-                .examples(List.of("Read entire file: {\"path\": \"conf/services/addons.cfg\"}",
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Reads file contents within the openHAB root folder with security validation")
+                .withTags(List.of("filesystem", "read", "file", "content", "security"))
+                .withDocumentation("Provides secure file reading capabilities for openHAB files")
+                .withExamples(List.of("Read entire file: {\"path\": \"conf/services/addons.cfg\"}",
                         "Read with encoding: {\"path\": \"conf/services/addons.cfg\", \"encoding\": \"UTF-8\"}",
                         "Read with line numbers: {\"path\": \"conf/services/addons.cfg\", \"lineNumbers\": true}",
                         "Read specific lines: {\"path\": \"conf/services/addons.cfg\", \"startLine\": 10, \"endLine\": 20}"))
@@ -344,7 +344,7 @@ public class ReadFileAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ReadFileAction initialized for protocol: {}", context.getProtocol());
     }
 

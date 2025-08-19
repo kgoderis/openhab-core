@@ -13,11 +13,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -147,7 +147,7 @@ public class GetLogStatisticsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing get log statistics action with parameters: {}", parameters);
 
@@ -261,7 +261,7 @@ public class GetLogStatisticsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -273,12 +273,12 @@ public class GetLogStatisticsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Generates comprehensive statistics and analysis of log files")
-                .tags(List.of("monitoring", "logging", "statistics", "analysis"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Generates comprehensive statistics and analysis of log files")
+                .withTags(List.of("monitoring", "logging", "statistics", "analysis"))
+                .withDocumentation(
                         "Provides detailed analysis of log files including error rates, patterns, trends, and performance metrics")
-                .examples(List.of("{\"timeRange\": \"24h\"} - Get statistics for the last 24 hours",
+                .withExamples(List.of("{\"timeRange\": \"24h\"} - Get statistics for the last 24 hours",
                         "{\"logFiles\": [\"openhab.log\", \"events.log\"], \"includeErrorAnalysis\": true} - Analyze multiple files with error focus",
                         "{\"timeRange\": \"7d\", \"maxTopErrors\": 20} - Get top 20 errors for the last week"))
                 .build();
@@ -291,7 +291,7 @@ public class GetLogStatisticsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("GetLogStatisticsAction initialized for protocol: {}", context.getProtocol());
     }
 
@@ -387,7 +387,7 @@ public class GetLogStatisticsAction implements Action {
         // Extract hour from timestamp
         if (line.length() > 13) {
             String timePart = line.substring(11, 13);
-            if (timePart.matches("\\d{2}")) {
+            if (timePart.matches("d{2}")) {
                 return timePart;
             }
         }

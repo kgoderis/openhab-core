@@ -2,9 +2,12 @@ package org.openhab.core.ai.model;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.response.ModelResponseBuilder;
+import org.openhab.core.ai.common.response.Response;
 
 /**
  * Represents a response from an LLM provider.
@@ -13,7 +16,7 @@ import org.eclipse.jdt.annotation.Nullable;
  * @since 4.0.0
  */
 @NonNullByDefault
-public class ModelResponse {
+public class ModelResponse implements Response<String> {
 
     private final String content;
     private final String modelName;
@@ -30,19 +33,21 @@ public class ModelResponse {
 
     // Constructor using inner Builder removed; use ModelResponseBuilder instead
 
-    /* package */ ModelResponse(ModelResponseBuilder builder) {
-        this.content = builder.content;
-        this.modelName = builder.modelName;
-        this.providerType = builder.providerType;
-        this.timestamp = builder.timestamp;
-        this.promptTokens = builder.promptTokens;
-        this.completionTokens = builder.completionTokens;
-        this.totalTokens = builder.totalTokens;
-        this.cost = builder.cost;
-        this.responseTimeMs = builder.responseTimeMs;
-        this.metadata = builder.metadata;
-        this.finishReason = builder.finishReason;
-        this.errorMessage = builder.errorMessage;
+    public ModelResponse(String content, String modelName, String providerType, long timestamp, int promptTokens,
+            int completionTokens, int totalTokens, double cost, long responseTimeMs, Map<String, Object> metadata,
+            @Nullable String finishReason, @Nullable String errorMessage) {
+        this.content = content;
+        this.modelName = modelName;
+        this.providerType = providerType;
+        this.timestamp = Instant.ofEpochMilli(timestamp);
+        this.promptTokens = promptTokens;
+        this.completionTokens = completionTokens;
+        this.totalTokens = totalTokens;
+        this.cost = cost;
+        this.responseTimeMs = responseTimeMs;
+        this.metadata = metadata;
+        this.finishReason = finishReason;
+        this.errorMessage = errorMessage;
     }
 
     /**
@@ -75,10 +80,31 @@ public class ModelResponse {
     /**
      * Gets the timestamp when this response was generated.
      * 
-     * @return The timestamp
+     * @return The timestamp as Instant
      */
-    public Instant getTimestamp() {
+    public Instant getTimestampInstant() {
         return timestamp;
+    }
+
+    // Response interface implementation
+    @Override
+    public String getId() {
+        return UUID.randomUUID().toString();
+    }
+
+    @Override
+    public boolean isSuccess() {
+        return errorMessage == null;
+    }
+
+    @Override
+    public String getData() {
+        return content;
+    }
+
+    @Override
+    public long getTimestamp() {
+        return timestamp.toEpochMilli();
     }
 
     /**

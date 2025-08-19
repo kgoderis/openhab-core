@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.context.ExecutionContext;
 
 /**
  * Unified interface for actions that can be executed by both MCP and A2A protocols.
@@ -88,7 +89,7 @@ public interface Action {
      * @return the action result
      * @throws ActionException if execution fails
      */
-    ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException;
+    ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException;
 
     /**
      * Execute the action asynchronously.
@@ -98,7 +99,7 @@ public interface Action {
      * @param context the execution context
      * @return a CompletableFuture with the action result
      */
-    CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context);
+    CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context);
 
     // ===== METADATA =====
 
@@ -124,7 +125,7 @@ public interface Action {
      * 
      * @param context the initialization context
      */
-    void initialize(ActionContext context);
+    void initialize(ExecutionContext context);
 
     /**
      * Clean up resources when the action is no longer needed.

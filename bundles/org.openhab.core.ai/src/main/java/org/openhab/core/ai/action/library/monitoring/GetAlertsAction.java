@@ -8,11 +8,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,7 +140,7 @@ public class GetAlertsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing get alerts action with parameters: {}", parameters);
 
@@ -190,7 +190,7 @@ public class GetAlertsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -202,12 +202,12 @@ public class GetAlertsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieves and manages alerts and notifications for monitoring")
-                .tags(List.of("monitoring", "alerts", "notifications", "system-health"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieves and manages alerts and notifications for monitoring")
+                .withTags(List.of("monitoring", "alerts", "notifications", "system-health"))
+                .withDocumentation(
                         "Provides comprehensive alert management including current alerts, history, configuration, and alert actions")
-                .examples(List.of("{\"action\": \"get_alerts\", \"severity\": \"HIGH\"} - Get high severity alerts",
+                .withExamples(List.of("{\"action\": \"get_alerts\", \"severity\": \"HIGH\"} - Get high severity alerts",
                         "{\"action\": \"get_alert_history\", \"timeRange\": \"7d\"} - Get alert history for last week",
                         "{\"action\": \"acknowledge_alert\", \"alertId\": \"alert-123\"} - Acknowledge specific alert"))
                 .build();
@@ -220,7 +220,7 @@ public class GetAlertsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("GetAlertsAction initialized for protocol: {}", context.getProtocol());
     }
 

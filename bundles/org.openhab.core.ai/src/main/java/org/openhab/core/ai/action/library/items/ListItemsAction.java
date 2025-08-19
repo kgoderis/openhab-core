@@ -12,11 +12,11 @@ import java.util.stream.Collectors;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.Metadata;
@@ -176,7 +176,7 @@ public class ListItemsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -213,7 +213,7 @@ public class ListItemsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -225,12 +225,12 @@ public class ListItemsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("List openHAB items with comprehensive filtering and metadata options")
-                .tags(List.of("items", "list", "filter", "metadata", "sorting"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("List openHAB items with comprehensive filtering and metadata options")
+                .withTags(List.of("items", "list", "filter", "metadata", "sorting"))
+                .withDocumentation(
                         "Lists openHAB Items with comprehensive filtering, sorting, and metadata options including state, type, tags, groups, and channel links")
-                .examples(List.of("List all items: {}", "List only switches: {\"type\": \"Switch\"}",
+                .withExamples(List.of("List all items: {}", "List only switches: {\"type\": \"Switch\"}",
                         "List items with 'light' in name: {\"tag\": \"light\"}",
                         "List items with metadata: {\"includeMetadata\": true}",
                         "List items with channel links: {\"includeChannelLinks\": true}",
@@ -246,7 +246,7 @@ public class ListItemsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ListItemsAction initialized for protocol: {}", context.getProtocol());
     }
 

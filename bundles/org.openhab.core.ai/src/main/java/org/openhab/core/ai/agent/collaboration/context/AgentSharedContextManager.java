@@ -14,6 +14,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.collaboration.ContextOptions;
+import org.openhab.core.ai.agent.collaboration.ContextVersion;
+import org.openhab.core.ai.agent.collaboration.SharedContext;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;

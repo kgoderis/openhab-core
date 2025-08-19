@@ -6,11 +6,11 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.ContextValidationResult;
 import org.openhab.core.ai.action.DefaultContextValidationResult;
+import org.openhab.core.ai.common.context.AgentModelContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,212 +30,328 @@ public class AgentModelContextEnricher {
     private static final Logger logger = LoggerFactory.getLogger(AgentModelContextEnricher.class);
 
     /**
-     * Enrich an agent model context with additional information.
+     * Enrich an agent model context with additional data.
      * 
-     * @param context The original context to enrich
-     * @return The enriched context
+     * @param context the context to enrich
+     * @return enriched context
      */
     public AgentModelContext enrich(AgentModelContext context) {
-        logger.debug("Enriching context: {}", context.getContextId());
+        if (context == null) {
+            logger.warn("Cannot enrich null context");
+            return null;
+        }
 
-        Map<String, Object> enrichedData = new ConcurrentHashMap<>(context.getContextData());
-        Map<String, Object> enrichedMetadata = new ConcurrentHashMap<>(context.getMetadata());
+        try {
+            // Get existing context data
+            Map<String, Object> existingData = context.getAllValues();
+            Map<String, Object> enrichedData = new HashMap<>(existingData);
 
-        // Enrich with domain-specific information
-        enrichDomainContext(enrichedData, context);
+            // Add enrichment data
+            enrichedData.put("enriched", true);
+            enrichedData.put("enrichmentTimestamp", Instant.now().toString());
+            enrichedData.put("enrichmentSource", "AgentModelContextEnricher");
 
-        // Enrich with temporal context
-        enrichTemporalContext(enrichedData, context);
+            // Create enriched context using builder
+            return AgentModelContext.builder().withContextId(context.getContextId()).withValue("enriched", true)
+                    .withValue("enrichmentTimestamp", Instant.now().toString())
+                    .withValue("enrichmentSource", "AgentModelContextEnricher").build();
 
-        // Enrich with spatial context
-        enrichSpatialContext(enrichedData, context);
-
-        // Enrich with user context
-        enrichUserContext(enrichedData, context);
-
-        // Enrich with system context
-        enrichSystemContext(enrichedData, context);
-
-        // Add enrichment metadata
-        enrichedMetadata.put("enriched", true);
-        enrichedMetadata.put("enrichmentTimestamp", System.currentTimeMillis());
-
-        return new AgentModelContext(context.getContextId(), enrichedData, enrichedMetadata);
-    }
-
-    /**
-     * Enrich context with domain-specific information.
-     * 
-     * @param enrichedData The enriched data map
-     * @param originalContext The original context
-     */
-    private void enrichDomainContext(Map<String, Object> enrichedData, AgentModelContext originalContext) {
-        String agentType = (String) originalContext.getContextData("agentType");
-        if (agentType != null) {
-            switch (agentType.toLowerCase()) {
-                case "energy":
-                    enrichEnergyContext(enrichedData, originalContext);
-                    break;
-                case "security":
-                    enrichSecurityContext(enrichedData, originalContext);
-                    break;
-                case "comfort":
-                    enrichComfortContext(enrichedData, originalContext);
-                    break;
-                default:
-                    logger.debug("Unknown agent type for enrichment: {}", agentType);
-            }
+        } catch (Exception e) {
+            logger.error("Error enriching context: {}", e.getMessage(), e);
+            return context; // Return original context on error
         }
     }
 
     /**
-     * Enrich energy agent context.
+     * Enrich context with user preferences.
      * 
-     * @param enrichedData The enriched data map
-     * @param originalContext The original context
+     * @param context the context to enrich
+     * @param userPreferences user preferences to add
+     * @return enriched context
      */
-    private void enrichEnergyContext(Map<String, Object> enrichedData, AgentModelContext originalContext) {
-        Map<String, Object> energyContext = new ConcurrentHashMap<>();
+    public AgentModelContext enrichWithUserPreferences(AgentModelContext context, Map<String, Object> userPreferences) {
+        if (context == null || userPreferences == null) {
+            logger.warn("Cannot enrich context with null user preferences");
+            return context;
+        }
 
-        // Add energy-specific capabilities
-        energyContext.put("energyMonitoring", true);
-        energyContext.put("loadOptimization", true);
-        energyContext.put("demandResponse", true);
-        energyContext.put("renewableIntegration", true);
+        try {
+            // Check if context already has user preferences
+            if (context.hasValue("userPreferences")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> existingPreferences = (Map<String, Object>) context.getValue("userPreferences");
+                Map<String, Object> mergedPreferences = new HashMap<>(existingPreferences);
+                mergedPreferences.putAll(userPreferences);
 
-        // Add energy domain knowledge
-        energyContext.put("peakHours", "14:00-18:00");
-        energyContext.put("offPeakHours", "22:00-06:00");
-        energyContext.put("energyUnits", "kWh");
-        energyContext.put("costOptimization", true);
+                return AgentModelContext.builder().withContextId(context.getContextId())
+                        .withUserPreferences(mergedPreferences).build();
+            } else {
+                return AgentModelContext.builder().withContextId(context.getContextId())
+                        .withUserPreferences(userPreferences).build();
+            }
 
-        enrichedData.put("domainContext", energyContext);
+        } catch (Exception e) {
+            logger.error("Error enriching context with user preferences: {}", e.getMessage(), e);
+            return context;
+        }
     }
 
     /**
-     * Enrich security agent context.
+     * Enrich context with environmental data.
      * 
-     * @param enrichedData The enriched data map
-     * @param originalContext The original context
+     * @param context the context to enrich
+     * @param environment environmental data to add
+     * @return enriched context
      */
-    private void enrichSecurityContext(Map<String, Object> enrichedData, AgentModelContext originalContext) {
-        Map<String, Object> securityContext = new ConcurrentHashMap<>();
+    public AgentModelContext enrichWithEnvironment(AgentModelContext context, Map<String, Object> environment) {
+        if (context == null || environment == null) {
+            logger.warn("Cannot enrich context with null environment data");
+            return context;
+        }
 
-        // Add security-specific capabilities
-        securityContext.put("intrusionDetection", true);
-        securityContext.put("accessControl", true);
-        securityContext.put("surveillance", true);
-        securityContext.put("alarmManagement", true);
+        try {
+            // Check if context already has environment data
+            if (context.hasValue("environment")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> existingEnvironment = (Map<String, Object>) context.getValue("environment");
+                Map<String, Object> mergedEnvironment = new HashMap<>(existingEnvironment);
+                mergedEnvironment.putAll(environment);
 
-        // Add security domain knowledge
-        securityContext.put("securityLevels", "LOW,MEDIUM,HIGH,CRITICAL");
-        securityContext.put("responseTime", "immediate");
-        securityContext.put("notificationChannels", "email,sms,push");
-        securityContext.put("emergencyContacts", true);
+                return AgentModelContext.builder().withContextId(context.getContextId())
+                        .withEnvironment(mergedEnvironment).build();
+            } else {
+                return AgentModelContext.builder().withContextId(context.getContextId()).withEnvironment(environment)
+                        .build();
+            }
 
-        enrichedData.put("domainContext", securityContext);
+        } catch (Exception e) {
+            logger.error("Error enriching context with environment data: {}", e.getMessage(), e);
+            return context;
+        }
     }
 
     /**
-     * Enrich comfort agent context.
+     * Enrich context with reasoning parameters.
      * 
-     * @param enrichedData The enriched data map
-     * @param originalContext The original context
+     * @param context the context to enrich
+     * @param reasoning reasoning parameters to add
+     * @return enriched context
      */
-    private void enrichComfortContext(Map<String, Object> enrichedData, AgentModelContext originalContext) {
-        Map<String, Object> comfortContext = new ConcurrentHashMap<>();
+    public AgentModelContext enrichWithReasoning(AgentModelContext context, Map<String, Object> reasoning) {
+        if (context == null || reasoning == null) {
+            logger.warn("Cannot enrich context with null reasoning data");
+            return context;
+        }
 
-        // Add comfort-specific capabilities
-        comfortContext.put("temperatureControl", true);
-        comfortContext.put("humidityControl", true);
-        comfortContext.put("lightingControl", true);
-        comfortContext.put("airQualityControl", true);
+        try {
+            // Check if context already has reasoning data
+            if (context.hasValue("reasoning")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> existingReasoning = (Map<String, Object>) context.getValue("reasoning");
+                Map<String, Object> mergedReasoning = new HashMap<>(existingReasoning);
+                mergedReasoning.putAll(reasoning);
 
-        // Add comfort domain knowledge
-        comfortContext.put("comfortZones", "living,bedroom,kitchen,bathroom");
-        comfortContext.put("temperatureRange", "18-24°C");
-        comfortContext.put("humidityRange", "40-60%");
-        comfortContext.put("lightingLevels", "dim,normal,bright");
+                return AgentModelContext.builder().withContextId(context.getContextId()).withReasoning(mergedReasoning)
+                        .build();
+            } else {
+                return AgentModelContext.builder().withContextId(context.getContextId()).withReasoning(reasoning)
+                        .build();
+            }
 
-        enrichedData.put("domainContext", comfortContext);
+        } catch (Exception e) {
+            logger.error("Error enriching context with reasoning data: {}", e.getMessage(), e);
+            return context;
+        }
     }
 
     /**
-     * Enrich context with temporal information.
+     * Enrich context with current state.
      * 
-     * @param enrichedData The enriched data map
-     * @param originalContext The original context
+     * @param context the context to enrich
+     * @param currentState current state to add
+     * @return enriched context
      */
-    private void enrichTemporalContext(Map<String, Object> enrichedData, AgentModelContext originalContext) {
-        Map<String, Object> temporalContext = new ConcurrentHashMap<>();
+    public AgentModelContext enrichWithCurrentState(AgentModelContext context, Map<String, Object> currentState) {
+        if (context == null || currentState == null) {
+            logger.warn("Cannot enrich context with null current state");
+            return context;
+        }
 
-        long currentTime = System.currentTimeMillis();
-        temporalContext.put("timestamp", currentTime);
-        temporalContext.put("hourOfDay", Instant.ofEpochMilli(currentTime).atZone(ZoneId.systemDefault()).getHour());
-        temporalContext.put("dayOfWeek",
-                Instant.ofEpochMilli(currentTime).atZone(ZoneId.systemDefault()).getDayOfWeek());
-        temporalContext.put("isWeekend", isWeekend(currentTime));
-        temporalContext.put("isBusinessHours", isBusinessHours(currentTime));
-        temporalContext.put("isNightTime", isNightTime(currentTime));
+        try {
+            // Check if context already has current state
+            if (context.hasValue("currentState")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> existingState = (Map<String, Object>) context.getValue("currentState");
+                Map<String, Object> mergedState = new HashMap<>(existingState);
+                mergedState.putAll(currentState);
 
-        enrichedData.put("temporalContext", temporalContext);
+                return AgentModelContext.builder().withContextId(context.getContextId()).withCurrentState(mergedState)
+                        .build();
+            } else {
+                return AgentModelContext.builder().withContextId(context.getContextId()).withCurrentState(currentState)
+                        .build();
+            }
+
+        } catch (Exception e) {
+            logger.error("Error enriching context with current state: {}", e.getMessage(), e);
+            return context;
+        }
     }
 
     /**
-     * Enrich context with spatial information.
+     * Enrich context with capabilities.
      * 
-     * @param enrichedData The enriched data map
-     * @param originalContext The original context
+     * @param context the context to enrich
+     * @param capabilities capabilities to add
+     * @return enriched context
      */
-    private void enrichSpatialContext(Map<String, Object> enrichedData, AgentModelContext originalContext) {
-        Map<String, Object> spatialContext = new ConcurrentHashMap<>();
+    public AgentModelContext enrichWithCapabilities(AgentModelContext context, Map<String, String> capabilities) {
+        if (context == null || capabilities == null) {
+            logger.warn("Cannot enrich context with null capabilities");
+            return context;
+        }
 
-        // Add spatial context information
-        spatialContext.put("location", "home");
-        spatialContext.put("rooms", "living,bedroom,kitchen,bathroom,office");
-        spatialContext.put("zones", "indoor,outdoor");
-        spatialContext.put("floorPlan", true);
-        spatialContext.put("roomMapping", true);
+        try {
+            // Check if context already has capabilities
+            if (context.hasValue("capabilities")) {
+                @SuppressWarnings("unchecked")
+                Map<String, String> existingCapabilities = (Map<String, String>) context.getValue("capabilities");
+                Map<String, String> mergedCapabilities = new HashMap<>(existingCapabilities);
+                mergedCapabilities.putAll(capabilities);
 
-        enrichedData.put("spatialContext", spatialContext);
+                return AgentModelContext.builder().withContextId(context.getContextId())
+                        .withCapabilities(mergedCapabilities).build();
+            } else {
+                return AgentModelContext.builder().withContextId(context.getContextId()).withCapabilities(capabilities)
+                        .build();
+            }
+
+        } catch (Exception e) {
+            logger.error("Error enriching context with capabilities: {}", e.getMessage(), e);
+            return context;
+        }
     }
 
     /**
-     * Enrich context with user information.
+     * Enrich context with skills.
      * 
-     * @param enrichedData The enriched data map
-     * @param originalContext The original context
+     * @param context the context to enrich
+     * @param skills skills to add
+     * @return enriched context
      */
-    private void enrichUserContext(Map<String, Object> enrichedData, AgentModelContext originalContext) {
-        Map<String, Object> userContext = new ConcurrentHashMap<>();
+    public AgentModelContext enrichWithSkills(AgentModelContext context, Map<String, String> skills) {
+        if (context == null || skills == null) {
+            logger.warn("Cannot enrich context with null skills");
+            return context;
+        }
 
-        // Add user context information
-        userContext.put("userPresence", "unknown");
-        userContext.put("userActivity", "unknown");
-        userContext.put("userPreferences", originalContext.getContextData("userPreferences"));
-        userContext.put("userSchedule", true);
-        userContext.put("userHistory", originalContext.getContextData("history"));
+        try {
+            // Check if context already has skills
+            if (context.hasValue("skills")) {
+                @SuppressWarnings("unchecked")
+                Map<String, String> existingSkills = (Map<String, String>) context.getValue("skills");
+                Map<String, String> mergedSkills = new HashMap<>(existingSkills);
+                mergedSkills.putAll(skills);
 
-        enrichedData.put("userContext", userContext);
+                return AgentModelContext.builder().withContextId(context.getContextId()).withSkills(mergedSkills)
+                        .build();
+            } else {
+                return AgentModelContext.builder().withContextId(context.getContextId()).withSkills(skills).build();
+            }
+
+        } catch (Exception e) {
+            logger.error("Error enriching context with skills: {}", e.getMessage(), e);
+            return context;
+        }
     }
 
     /**
-     * Enrich context with system information.
+     * Enrich context with history.
      * 
-     * @param enrichedData The enriched data map
-     * @param originalContext The original context
+     * @param context the context to enrich
+     * @param history history data to add
+     * @return enriched context
      */
-    private void enrichSystemContext(Map<String, Object> enrichedData, AgentModelContext originalContext) {
-        Map<String, Object> systemContext = new ConcurrentHashMap<>();
+    public AgentModelContext enrichWithHistory(AgentModelContext context, Object history) {
+        if (context == null) {
+            logger.warn("Cannot enrich null context with history");
+            return null;
+        }
 
-        // Add system context information
-        systemContext.put("systemStatus", "operational");
-        systemContext.put("availableResources", true);
-        systemContext.put("networkConnectivity", true);
-        systemContext.put("dataAccess", true);
-        systemContext.put("currentState", originalContext.getContextData("currentState"));
+        try {
+            return AgentModelContext.builder().withContextId(context.getContextId()).withHistory(history).build();
 
-        enrichedData.put("systemContext", systemContext);
+        } catch (Exception e) {
+            logger.error("Error enriching context with history: {}", e.getMessage(), e);
+            return context;
+        }
+    }
+
+    /**
+     * Enrich context with specialization.
+     * 
+     * @param context the context to enrich
+     * @param specialization specialization to add
+     * @return enriched context
+     */
+    public AgentModelContext enrichWithSpecialization(AgentModelContext context, String specialization) {
+        if (context == null || specialization == null) {
+            logger.warn("Cannot enrich context with null specialization");
+            return context;
+        }
+
+        try {
+            return AgentModelContext.builder().withContextId(context.getContextId()).withSpecialization(specialization)
+                    .build();
+
+        } catch (Exception e) {
+            logger.error("Error enriching context with specialization: {}", e.getMessage(), e);
+            return context;
+        }
+    }
+
+    /**
+     * Enrich context with priority.
+     * 
+     * @param context the context to enrich
+     * @param priority priority to add
+     * @return enriched context
+     */
+    public AgentModelContext enrichWithPriority(AgentModelContext context, String priority) {
+        if (context == null || priority == null) {
+            logger.warn("Cannot enrich context with null priority");
+            return context;
+        }
+
+        try {
+            return AgentModelContext.builder().withContextId(context.getContextId()).withPriority(priority).build();
+
+        } catch (Exception e) {
+            logger.error("Error enriching context with priority: {}", e.getMessage(), e);
+            return context;
+        }
+    }
+
+    /**
+     * Enrich context with source information.
+     * 
+     * @param context the context to enrich
+     * @param source source information to add
+     * @return enriched context
+     */
+    public AgentModelContext enrichWithSource(AgentModelContext context, String source) {
+        if (context == null || source == null) {
+            logger.warn("Cannot enrich context with null source");
+            return context;
+        }
+
+        try {
+            return AgentModelContext.builder().withContextId(context.getContextId()).withSource(source).build();
+
+        } catch (Exception e) {
+            logger.error("Error enriching context with source: {}", e.getMessage(), e);
+            return context;
+        }
     }
 
     /**
@@ -269,15 +385,15 @@ public class AgentModelContextEnricher {
      * @param result The validation result to update
      */
     private void validateRequiredFields(AgentModelContext context, DefaultContextValidationResult result) {
-        if (!context.hasContextData("agentId")) {
+        if (!context.hasValue("agentId")) {
             result.addIssue("Missing required field: agentId");
         }
 
-        if (!context.hasContextData("agentType")) {
+        if (!context.hasValue("agentType")) {
             result.addIssue("Missing required field: agentType");
         }
 
-        if (!context.hasContextData("domain")) {
+        if (!context.hasValue("domain")) {
             result.addIssue("Missing required field: domain");
         }
     }
@@ -290,7 +406,7 @@ public class AgentModelContextEnricher {
      */
     private void validateDataQuality(AgentModelContext context, DefaultContextValidationResult result) {
         // Check for null or empty values
-        for (Map.Entry<String, Object> entry : context.getContextData().entrySet()) {
+        for (Map.Entry<String, Object> entry : context.getAllValues().entrySet()) {
             if (entry.getValue() == null) {
                 result.addIssue("Null value found for field: " + entry.getKey());
             }
@@ -304,8 +420,8 @@ public class AgentModelContextEnricher {
      * @param result The validation result to update
      */
     private void validateConsistency(AgentModelContext context, DefaultContextValidationResult result) {
-        String agentType = (String) context.getContextData("agentType");
-        String domain = (String) context.getContextData("domain");
+        String agentType = (String) context.getValue("agentType");
+        String domain = (String) context.getValue("domain");
 
         if (agentType != null && domain != null) {
             // Check if agent type and domain are consistent
@@ -323,11 +439,11 @@ public class AgentModelContextEnricher {
      */
     private void validateCompleteness(AgentModelContext context, DefaultContextValidationResult result) {
         // Check if context has minimum required information
-        if (!context.hasContextData("capabilities") && !context.hasContextData("skills")) {
+        if (!context.hasValue("capabilities") && !context.hasValue("skills")) {
             result.addRecommendation("Consider adding capabilities or skills information");
         }
 
-        if (!context.hasContextData("currentState")) {
+        if (!context.hasValue("currentState")) {
             result.addRecommendation("Consider adding current state information");
         }
     }

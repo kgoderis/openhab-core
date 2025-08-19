@@ -15,11 +15,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -184,7 +184,7 @@ public class WriteFileAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing WriteFileAction with context: {}", context.getProtocol());
 
         try {
@@ -306,7 +306,7 @@ public class WriteFileAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -318,11 +318,11 @@ public class WriteFileAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Writes file contents within the openHAB root folder with security validation")
-                .tags(List.of("filesystem", "write", "file", "content", "security"))
-                .documentation("Provides secure file writing capabilities for openHAB files")
-                .examples(List.of("Write new file: {\"path\": \"conf/test.txt\", \"content\": \"Hello World\"}",
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Writes file contents within the openHAB root folder with security validation")
+                .withTags(List.of("filesystem", "write", "file", "content", "security"))
+                .withDocumentation("Provides secure file writing capabilities for openHAB files")
+                .withExamples(List.of("Write new file: {\"path\": \"conf/test.txt\", \"content\": \"Hello World\"}",
                         "Append to file: {\"path\": \"conf/log.txt\", \"content\": \"New log entry\", \"mode\": \"append\"}",
                         "Create with backup: {\"path\": \"conf/config.cfg\", \"content\": \"new config\", \"createBackup\": true}",
                         "Create directories: {\"path\": \"conf/newdir/test.txt\", \"content\": \"test\", \"createDirectories\": true}"))
@@ -336,7 +336,7 @@ public class WriteFileAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("WriteFileAction initialized for protocol: {}", context.getProtocol());
     }
 

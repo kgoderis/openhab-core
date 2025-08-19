@@ -14,11 +14,11 @@ import java.util.regex.Pattern;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +108,7 @@ public class GetLogConfigurationAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing get log configuration action with parameters: {}", parameters);
 
@@ -159,7 +159,7 @@ public class GetLogConfigurationAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -171,12 +171,12 @@ public class GetLogConfigurationAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieves the current logging configuration for openHAB")
-                .tags(List.of("monitoring", "logging", "configuration"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieves the current logging configuration for openHAB")
+                .withTags(List.of("monitoring", "logging", "configuration"))
+                .withDocumentation(
                         "Provides detailed information about logging configuration including appenders, loggers, and settings")
-                .examples(List.of("{} - Get complete logging configuration",
+                .withExamples(List.of("{} - Get complete logging configuration",
                         "{\"includeAppenders\": false} - Get configuration without appenders",
                         "{\"filterLogger\": \"org.openhab\"} - Get only openHAB-related loggers"))
                 .build();
@@ -189,7 +189,7 @@ public class GetLogConfigurationAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("GetLogConfigurationAction initialized for protocol: {}", context.getProtocol());
     }
 
@@ -212,7 +212,7 @@ public class GetLogConfigurationAction implements Action {
 
         try {
             List<String> lines = Files.readAllLines(configFile);
-            Pattern appenderPattern = Pattern.compile("<appender\\s+name=\"([^\"]+)\"\\s+class=\"([^\"]+)\"");
+            Pattern appenderPattern = Pattern.compile("<appenders+name=\"([^\"]+)\"s+class=\"([^\"]+)\"");
             Pattern filePattern = Pattern.compile("<file>([^<]+)</file>");
             Pattern levelPattern = Pattern.compile("<level>([^<]+)</level>");
 
@@ -251,7 +251,7 @@ public class GetLogConfigurationAction implements Action {
 
         try {
             List<String> lines = Files.readAllLines(configFile);
-            Pattern loggerPattern = Pattern.compile("<logger\\s+name=\"([^\"]+)\"\\s+level=\"([^\"]+)\"");
+            Pattern loggerPattern = Pattern.compile("<loggers+name=\"([^\"]+)\"s+level=\"([^\"]+)\"");
             Pattern additivityPattern = Pattern.compile("additivity=\"([^\"]+)\"");
 
             for (String line : lines) {

@@ -16,8 +16,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
-import org.openhab.core.ai.model.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
 import org.openhab.core.ai.model.ModelResponse;
@@ -111,8 +111,8 @@ public class AzureOpenAIClient implements ModelClient {
                 long responseTime = System.currentTimeMillis() - startTime;
                 trackMetrics(responseTime, true, null);
 
-                return ModelResponse.builder().content(responseContent).modelName(config.getModelName())
-                        .providerType(ModelProviderType.AZURE.name()).build();
+                return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
+                        .withProviderType(ModelProviderType.AZURE.name()).build();
 
             } catch (Exception e) {
                 // Track error metrics
@@ -162,8 +162,8 @@ public class AzureOpenAIClient implements ModelClient {
                     }
                 }
 
-                ModelResponse llmResponse = ModelResponse.builder().content(responseContent.toString())
-                        .modelName(config.getModelName()).providerType(ModelProviderType.AZURE.name()).build();
+                ModelResponse llmResponse = ModelResponse.builder().withContent(responseContent.toString())
+                        .withModelName(config.getModelName()).withProviderType(ModelProviderType.AZURE.name()).build();
 
                 // Track success metrics
                 long responseTime = System.currentTimeMillis() - startTime;
@@ -208,11 +208,20 @@ public class AzureOpenAIClient implements ModelClient {
             double successRate = totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get()
                     : 0.0;
 
-            return new ModelHealthStatus(available, Instant.now(), avgResponseTime, successRate, errorCount.get(),
-                    lastError.get(), lastErrorTime.get());
+            return ModelHealthStatus.builder().withId("azure-openai-client")
+                    .withOverallHealth(
+                            available ? ModelHealthStatus.HealthState.HEALTHY : ModelHealthStatus.HealthState.UNHEALTHY)
+                    .withPrimaryModelAvailable(available).withResponseTimeMs(avgResponseTime)
+                    .withErrorRate(100.0 - successRate).withTotalRequests(totalRequests.get())
+                    .withFailedRequests(errorCount.get()).withLastError(lastError.get())
+                    .withLastHealthCheck(Instant.now()).withLastFailedRequest(lastErrorTime.get()).build();
         } catch (Exception e) {
-            return new ModelHealthStatus(false, Instant.now(), -1, 0.0, errorCount.get() + 1,
-                    e.getMessage() != null ? e.getMessage() : "Unknown error", Instant.now());
+            return ModelHealthStatus.builder().withId("azure-openai-client")
+                    .withOverallHealth(ModelHealthStatus.HealthState.UNHEALTHY).withPrimaryModelAvailable(false)
+                    .withResponseTimeMs(-1).withErrorRate(100.0).withTotalRequests(totalRequests.get())
+                    .withFailedRequests(errorCount.get() + 1)
+                    .withLastError(e.getMessage() != null ? e.getMessage() : "Unknown error")
+                    .withLastHealthCheck(Instant.now()).withLastFailedRequest(Instant.now()).build();
         }
     }
 

@@ -16,11 +16,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.persistence.PersistenceService;
@@ -168,7 +168,7 @@ public class CleanupPersistenceAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing CleanupPersistenceAction with context: {}", context.getProtocol());
 
         long startTime = System.currentTimeMillis();
@@ -193,7 +193,7 @@ public class CleanupPersistenceAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -205,13 +205,13 @@ public class CleanupPersistenceAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().author("openHAB")
-                .description("Performs cleanup operations on persistence services").version("1.0.0")
-                .tags(List.of("persistence", "cleanup", "maintenance")).build();
+        return ActionMetadata.builder().withAuthor("openHAB")
+                .withDescription("Performs cleanup operations on persistence services").withVersion("1.0.0")
+                .withTags(List.of("persistence", "cleanup", "maintenance")).build();
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("CleanupPersistenceAction initialized with context: {}", context.getProtocol());
     }
 

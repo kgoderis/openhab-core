@@ -6,8 +6,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
-import org.openhab.core.ai.tool.security.api.SecurityStatistics;
 import org.openhab.core.ai.tool.server.DefaultToolServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +66,7 @@ public final class MetricsHandler implements HttpHandler {
             response.append("mcp_server_healthy ").append(serverInstance.isHealthy() ? 1 : 0).append("\n");
 
             if (serverInstance.isSecurityEnabled()) {
-                SecurityStatistics securityStats = serverInstance.getSecurityStatistics();
+                ToolSecurityStatistics securityStats = serverInstance.getSecurityStatistics();
                 if (securityStats != null) {
                     response.append("# HELP mcp_security_total_requests Total number of security requests\n");
                     response.append("# TYPE mcp_security_total_requests counter\n");

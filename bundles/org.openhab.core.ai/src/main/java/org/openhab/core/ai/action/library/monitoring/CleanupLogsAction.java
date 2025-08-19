@@ -17,11 +17,11 @@ import java.util.stream.Stream;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,7 +164,7 @@ public class CleanupLogsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing cleanup logs action with parameters: {}", parameters);
 
@@ -257,7 +257,7 @@ public class CleanupLogsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -269,11 +269,11 @@ public class CleanupLogsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Cleans up old log files to prevent disk space issues")
-                .tags(List.of("monitoring", "logging", "maintenance", "cleanup"))
-                .documentation("Removes old log files based on age, size, and count limits to maintain disk space")
-                .examples(List.of(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Cleans up old log files to prevent disk space issues")
+                .withTags(List.of("monitoring", "logging", "maintenance", "cleanup"))
+                .withDocumentation("Removes old log files based on age, size, and count limits to maintain disk space")
+                .withExamples(List.of(
                         "{\"maxAge\": 7, \"dryRun\": true} - Show what would be deleted (files older than 7 days)",
                         "{\"maxSize\": \"500MB\", \"maxFiles\": 50} - Keep only 50 files or 500MB total",
                         "{\"maxAge\": 30, \"includeCompressed\": false} - Delete files older than 30 days, keep compressed files"))
@@ -287,7 +287,7 @@ public class CleanupLogsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("CleanupLogsAction initialized for protocol: {}", context.getProtocol());
     }
 
@@ -379,8 +379,7 @@ public class CleanupLogsAction implements Action {
 
     private boolean isRotatedFile(String fileName) {
         // Check if file appears to be a rotated log file
-        return fileName.matches(".*\\.\\d{4}-\\d{2}-\\d{2}.*") || fileName.matches(".*\\.\\d+$")
-                || fileName.contains(".backup.");
+        return fileName.matches(".*.d{4}-d{2}-d{2}.*") || fileName.matches(".*.d+$") || fileName.contains(".backup.");
     }
 
     private void createBackup(Path logsDir) throws IOException {
@@ -398,11 +397,11 @@ public class CleanupLogsAction implements Action {
     }
 
     private boolean isValidSizeFormat(String size) {
-        return size.matches("\\d+\\s*(B|KB|MB|GB|TB)");
+        return size.matches("d+s*(B|KB|MB|GB|TB)");
     }
 
     private long parseSize(String size) {
-        size = size.toUpperCase().replaceAll("\\s+", "");
+        size = size.toUpperCase().replaceAll("s+", "");
         long multiplier = 1;
 
         if (size.endsWith("KB")) {

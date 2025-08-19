@@ -4,8 +4,8 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.context.ToolContext;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolResult;
 
 /**

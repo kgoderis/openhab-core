@@ -9,14 +9,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.api.AgentModelContext;
-import org.openhab.core.ai.agent.api.AgentModelContextBuilder;
 import org.openhab.core.ai.auth.AuditLogger;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.openhab.core.ai.auth.RoleBasedAccessControl;
+import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.context.AgentModelContext.AgentModelContextBuilder;
 import org.openhab.core.ai.reasoning.engine.SharedModelReasoningEngine;
 import org.openhab.core.ai.reasoning.model.ModelRequest;
+import org.openhab.core.ai.reasoning.model.ModelUsageInfo;
 import org.openhab.core.ai.reasoning.prompts.AgentModelPromptBuilder;
 import org.openhab.core.ai.reasoning.security.api.SecurityIssue;
 import org.openhab.core.ai.reasoning.security.api.SecurityIssueType;
@@ -699,25 +700,25 @@ public class AgentModelSecurityManager {
         // PII Patterns
         List<String> piiPatterns = List.of(
                 // Social Security Numbers (US)
-                "\\b\\d{3}-\\d{2}-\\d{4}\\b", "\\b\\d{9}\\b",
+                "bd{3}-d{2}-d{4}b", "bd{9}b",
 
                 // Credit Card Numbers
-                "\\b\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}\\b", "\\b\\d{4}\\s\\d{4}\\s\\d{4}\\s\\d{4}\\b",
+                "bd{4}[s-]?d{4}[s-]?d{4}[s-]?d{4}b", "bd{4}sd{4}sd{4}sd{4}b",
 
                 // Email addresses
-                "\\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}\\b",
+                "b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}b",
 
                 // Phone numbers (US)
-                "\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b", "\\b\\(\\d{3}\\)\\s?\\d{3}[-.]?\\d{4}\\b",
+                "bd{3}[-.]?d{3}[-.]?d{4}b", "b(d{3})s?d{3}[-.]?d{4}b",
 
                 // IP addresses
-                "\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b",
+                "bd{1,3}.d{1,3}.d{1,3}.d{1,3}b",
 
                 // MAC addresses
-                "\\b([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})\\b",
+                "b([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})b",
 
                 // Date of birth patterns
-                "\\b\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}\\b", "\\b\\d{4}[/-]\\d{1,2}[/-]\\d{1,2}\\b");
+                "bd{1,2}[/-]d{1,2}[/-]d{2,4}b", "bd{4}[/-]d{1,2}[/-]d{1,2}b");
 
         // Check for PII patterns
         for (String pattern : piiPatterns) {
@@ -748,16 +749,16 @@ public class AgentModelSecurityManager {
         // Check for credential patterns
         List<String> credentialPatterns = List.of(
                 // API keys (long alphanumeric strings)
-                "\\b[a-zA-Z0-9]{32,}\\b",
+                "b[a-zA-Z0-9]{32,}b",
 
                 // JWT tokens (three parts separated by dots)
-                "\\b[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\b",
+                "b[a-zA-Z0-9_-]+.[a-zA-Z0-9_-]+.[a-zA-Z0-9_-]+b",
 
                 // Base64 encoded strings
-                "\\b[a-zA-Z0-9+/]{20,}={0,2}\\b",
+                "b[a-zA-Z0-9+/]{20,}={0,2}b",
 
                 // Hex strings (likely keys)
-                "\\b[a-fA-F0-9]{32,}\\b");
+                "b[a-fA-F0-9]{32,}b");
 
         // Check for credential patterns
         for (String pattern : credentialPatterns) {
@@ -787,19 +788,19 @@ public class AgentModelSecurityManager {
         // Inappropriate content patterns
         List<String> inappropriatePatterns = List.of(
                 // Hate speech patterns
-                "\\b(hate|hatred|bigot|bigotry|racist|racism|sexist|sexism|homophobic|transphobic)\\b",
+                "b(hate|hatred|bigot|bigotry|racist|racism|sexist|sexism|homophobic|transphobic)b",
 
                 // Violence patterns
-                "\\b(kill|murder|assassinate|bomb|explode|terrorist|terrorism|violence|violent)\\b",
+                "b(kill|murder|assassinate|bomb|explode|terrorist|terrorism|violence|violent)b",
 
                 // Harassment patterns
-                "\\b(stalk|harass|bully|intimidate|threaten|blackmail|extort)\\b",
+                "b(stalk|harass|bully|intimidate|threaten|blackmail|extort)b",
 
                 // Illegal activities
-                "\\b(drug|heroin|cocaine|meth|illegal|contraband|smuggle|traffic)\\b",
+                "b(drug|heroin|cocaine|meth|illegal|contraband|smuggle|traffic)b",
 
                 // Self-harm patterns
-                "\\b(suicide|self-harm|cutting|overdose|end\\s+life)\\b");
+                "b(suicide|self-harm|cutting|overdose|ends+life)b");
 
         // Check for inappropriate patterns
         for (String pattern : inappropriatePatterns) {
@@ -870,22 +871,22 @@ public class AgentModelSecurityManager {
         // Malicious content patterns
         List<String> maliciousPatterns = List.of(
                 // Code injection patterns
-                "\\b(eval|exec|system|shell|command|script|javascript|vbscript|expression)\\b",
+                "b(eval|exec|system|shell|command|script|javascript|vbscript|expression)b",
 
                 // SQL injection patterns
-                "\\b(union|select|insert|update|delete|drop|create|alter|table|database)\\b",
+                "b(union|select|insert|update|delete|drop|create|alter|table|database)b",
 
                 // XSS patterns
-                "\\b<script\\b|\\b<iframe\\b|\\b<object\\b|\\b<embed\\b|\\bonload\\b|\\bonerror\\b",
+                "b<scriptb|b<iframeb|b<objectb|b<embedb|bonloadb|bonerrorb",
 
                 // Command injection patterns
-                "\\b(cmd|powershell|bash|sh|python|perl|ruby|php|java|node)\\b",
+                "b(cmd|powershell|bash|sh|python|perl|ruby|php|java|node)b",
 
                 // File system access patterns
-                "\\b(file://|ftp://|http://|https://|\\\\|/etc/|/var/|/tmp/|/home/)\\b",
+                "b(file://|ftp://|http://|https://||/etc/|/var/|/tmp/|/home/)b",
 
                 // Registry access patterns (Windows)
-                "\\b(regedit|registry|hkey_|hkcu|hklm|hkcr)\\b");
+                "b(regedit|registry|hkey_|hkcu|hklm|hkcr)b");
 
         // Check for malicious patterns
         for (String pattern : maliciousPatterns) {
@@ -926,9 +927,9 @@ public class AgentModelSecurityManager {
         }
 
         // Check for suspicious URL patterns
-        List<String> suspiciousUrlPatterns = List.of("\\bhttps?://[^\\s]*\\.(exe|bat|cmd|ps1|sh|py|pl|rb|php|js)\\b",
-                "\\bftp://[^\\s]*\\.(exe|bat|cmd|ps1|sh|py|pl|rb|php|js)\\b",
-                "\\bfile://[^\\s]*\\.(exe|bat|cmd|ps1|sh|py|pl|rb|php|js)\\b");
+        List<String> suspiciousUrlPatterns = List.of("bhttps?://[^s]*.(exe|bat|cmd|ps1|sh|py|pl|rb|php|js)b",
+                "bftp://[^s]*.(exe|bat|cmd|ps1|sh|py|pl|rb|php|js)b",
+                "bfile://[^s]*.(exe|bat|cmd|ps1|sh|py|pl|rb|php|js)b");
 
         // Check for suspicious URL patterns
         for (String pattern : suspiciousUrlPatterns) {
@@ -958,25 +959,24 @@ public class AgentModelSecurityManager {
         // Prompt injection patterns
         List<String> injectionPatterns = List.of(
                 // Role manipulation patterns
-                "\\b(ignore|forget|disregard|skip|bypass|override|replace)\\s+(previous|prior|above|earlier|last)\\s+(instructions|prompts|messages|rules|guidelines)\\b",
-                "\\b(pretend|act|behave|respond)\\s+(as|like)\\s+(a|an)\\s+\\w+\\b",
-                "\\b(you\\s+are|you're|you\\s+should\\s+be|become)\\s+(a|an)\\s+\\w+\\b",
+                "b(ignore|forget|disregard|skip|bypass|override|replace)s+(previous|prior|above|earlier|last)s+(instructions|prompts|messages|rules|guidelines)b",
+                "b(pretend|act|behave|respond)s+(as|like)s+(a|an)s+w+b",
+                "b(yous+are|you're|yous+shoulds+be|become)s+(a|an)s+w+b",
 
                 // System prompt injection patterns
-                "\\bsystem:\\s*\\b", "\\bassistant:\\s*\\b", "\\buser:\\s*\\b", "\\bhuman:\\s*\\b", "\\bai:\\s*\\b",
-                "\\bbot:\\s*\\b",
+                "bsystem:s*b", "bassistant:s*b", "buser:s*b", "bhuman:s*b", "bai:s*b", "bbot:s*b",
 
                 // Instruction override patterns
-                "\\b(new|different|updated|corrected|revised)\\s+(instructions|prompt|rules|guidelines)\\b",
-                "\\b(ignore|forget|disregard)\\s+(all|everything|what)\\s+(was|has)\\s+(said|told|instructed)\\b",
+                "b(new|different|updated|corrected|revised)s+(instructions|prompt|rules|guidelines)b",
+                "b(ignore|forget|disregard)s+(all|everything|what)s+(was|has)s+(said|told|instructed)b",
 
                 // Context manipulation patterns
-                "\\b(this|that|the)\\s+(is|was|will\\s+be)\\s+(a|an)\\s+(test|game|simulation|roleplay|exercise)\\b",
-                "\\b(imagine|suppose|assume|pretend)\\s+(that|you|this)\\b",
+                "b(this|that|the)s+(is|was|wills+be)s+(a|an)s+(test|game|simulation|roleplay|exercise)b",
+                "b(imagine|suppose|assume|pretend)s+(that|you|this)b",
 
                 // Output format manipulation
-                "\\b(output|respond|answer|reply)\\s+(in|as|with)\\s+\\w+\\b",
-                "\\b(format|structure)\\s+(your|the)\\s+(response|answer|output)\\b");
+                "b(output|respond|answer|reply)s+(in|as|with)s+w+b",
+                "b(format|structure)s+(your|the)s+(response|answer|output)b");
 
         // Check for injection patterns
         for (String pattern : injectionPatterns) {
@@ -1015,7 +1015,7 @@ public class AgentModelSecurityManager {
         }
 
         // Check for suspicious repetition patterns (common in prompt injection)
-        String[] words = lowerContent.split("\\s+");
+        String[] words = lowerContent.split("s+");
         Map<String, Integer> wordCount = new HashMap<>();
 
         for (String word : words) {
@@ -1167,26 +1167,26 @@ public class AgentModelSecurityManager {
             long currentTime = System.currentTimeMillis();
 
             // Check if we need to reset the daily window
-            if (currentTime - usageInfo.lastDailyReset > 86400000) { // 24 hours
+            if (currentTime - usageInfo.getLastDailyReset() > 86400000) { // 24 hours
                 usageInfo.resetDailyUsage();
             }
 
             // Check if we need to reset the hourly window
-            if (currentTime - usageInfo.lastHourlyReset > 3600000) { // 1 hour
+            if (currentTime - usageInfo.getLastHourlyReset() > 3600000) { // 1 hour
                 usageInfo.resetHourlyUsage();
             }
 
             // Check daily usage limit
-            if (usageInfo.dailyUsage >= usageInfo.maxDailyUsage) {
+            if (usageInfo.getDailyUsage() >= usageInfo.getMaxDailyUsage()) {
                 logger.warn("Daily usage limit exceeded for agent: {} on model: {} (limit: {}, current: {})", agentId,
-                        modelId, usageInfo.maxDailyUsage, usageInfo.dailyUsage);
+                        modelId, usageInfo.getMaxDailyUsage(), usageInfo.getDailyUsage());
                 return true;
             }
 
             // Check hourly usage limit
-            if (usageInfo.hourlyUsage >= usageInfo.maxHourlyUsage) {
+            if (usageInfo.getHourlyUsage() >= usageInfo.getMaxHourlyUsage()) {
                 logger.warn("Hourly usage limit exceeded for agent: {} on model: {} (limit: {}, current: {})", agentId,
-                        modelId, usageInfo.maxHourlyUsage, usageInfo.hourlyUsage);
+                        modelId, usageInfo.getMaxHourlyUsage(), usageInfo.getHourlyUsage());
                 return true;
             }
 

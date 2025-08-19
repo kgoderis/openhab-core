@@ -5,9 +5,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.api.IntelligentToolClient;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 
 /**

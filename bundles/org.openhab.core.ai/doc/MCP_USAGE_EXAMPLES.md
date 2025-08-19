@@ -307,7 +307,7 @@ public class CustomItemTool implements MCPTool {
     public McpSchema.ToolSpecification getSpecification() {
         return McpSchema.ToolSpecification.builder()
             .name(getName())
-            .description(getDescription())
+            .withDescription(getDescription())
             .inputSchema(McpSchema.JsonSchema.builder()
                 .type("object")
                 .properties(Map.of(
@@ -368,7 +368,7 @@ McpServerFeatures.SyncToolSpecification[] specs = toolRegistry.getToolSpecificat
 System.out.println("Registered " + specs.length + " tools:");
 
 for (McpServerFeatures.SyncToolSpecification spec : specs) {
-    System.out.println("  - " + spec.name() + ": " + spec.description());
+    System.out.println("  - " + spec.name() + ": " + spec.withDescription());
 }
 ```
 

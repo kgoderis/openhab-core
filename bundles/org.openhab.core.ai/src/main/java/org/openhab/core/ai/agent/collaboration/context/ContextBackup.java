@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.collaboration.ContextVersion;
+import org.openhab.core.ai.agent.collaboration.SharedContext;
 
 /**
  * Backup snapshot for a context.

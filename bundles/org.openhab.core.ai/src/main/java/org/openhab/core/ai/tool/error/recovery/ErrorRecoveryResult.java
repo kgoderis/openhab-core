@@ -169,7 +169,7 @@ public class ErrorRecoveryResult {
         json.append("{");
         json.append("\"recovered\":").append(recovered).append(",");
         json.append("\"status\":\"").append(status).append("\",");
-        json.append("\"message\":\"").append(message.replace("\"", "\\\"")).append("\",");
+        json.append("\"message\":\"").append(message.replace("\"", "\"")).append("\",");
         json.append("\"timestamp\":").append(timestamp);
 
         if (!details.isEmpty()) {

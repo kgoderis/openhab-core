@@ -9,11 +9,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
@@ -135,7 +135,7 @@ public class ValidateItemAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
 
         try {
@@ -327,7 +327,7 @@ public class ValidateItemAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -339,12 +339,12 @@ public class ValidateItemAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Validate openHAB items and their configuration")
-                .tags(List.of("items", "validation", "configuration", "binding", "quality"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Validate openHAB items and their configuration")
+                .withTags(List.of("items", "validation", "configuration", "binding", "quality"))
+                .withDocumentation(
                         "Validates openHAB items including configuration, binding status, and item integrity. Provides scoring and recommendations for improvement.")
-                .examples(List.of("Basic validation: {\"itemName\": \"LivingRoom_Light\"}",
+                .withExamples(List.of("Basic validation: {\"itemName\": \"LivingRoom_Light\"}",
                         "Full validation: {\"itemName\": \"LivingRoom_Light\", \"validateBinding\": true, \"validateConfiguration\": true, \"validateState\": true}",
                         "With recommendations: {\"itemName\": \"LivingRoom_Light\", \"includeRecommendations\": true}"))
                 .build();
@@ -365,7 +365,7 @@ public class ValidateItemAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         // No initialization needed
     }
 

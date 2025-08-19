@@ -337,6 +337,6 @@ public class ToolUtils {
         }
 
         // Basic semantic versioning validation
-        return version.matches("^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$");
+        return version.matches("^d+.d+.d+(-[a-zA-Z0-9.-]+)?(+[a-zA-Z0-9.-]+)?$");
     }
 }

@@ -27,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.metrics.ActionPerformanceMetrics;
 import org.osgi.framework.BundleContext;
 
 /**
@@ -121,10 +122,10 @@ class ActionRegistryTest {
 
         // Then
         ActionPerformanceMetrics overallMetrics = actionRegistry.getOverallPerformanceMetrics();
-        assertEquals(1, overallMetrics.getTotalExecutions(), "Should record total executions");
-        assertEquals(1, overallMetrics.getSuccessfulExecutions(), "Should record successful executions");
-        assertEquals(0, overallMetrics.getFailedExecutions(), "Should not record failed executions");
-        assertEquals(100, overallMetrics.getTotalExecutionTimeMs(), "Should record execution time");
+        assertEquals(1, overallMetrics.getTotalOperations(), "Should record total executions");
+        assertEquals(1, overallMetrics.getSuccessfulOperations(), "Should record successful executions");
+        assertEquals(0, overallMetrics.getFailedOperations(), "Should not record failed executions");
+        assertEquals(100, overallMetrics.getTotalProcessingTime(), "Should record execution time");
     }
 
     @Test
@@ -189,7 +190,7 @@ class ActionRegistryTest {
     void testVersioning() {
         // Given
         String actionId = "test-action";
-        ActionVersionInfo versionInfo = ActionVersionInfo.builder().actionId(actionId).version("1.0.0")
+        ActionVersionInfo versionInfo = ActionVersionInfo.builder().actionId(actionId).withVersion("1.0.0")
                 .compatibleVersions(Set.of("1.0.0", "1.1.0")).deprecated(false).build();
 
         // When

@@ -11,15 +11,16 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.configuration.MultiStepReasoningConfiguration;
+import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.context.ReasoningContext;
+import org.openhab.core.ai.common.metrics.ReasoningPerformanceMetrics;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.ModelResponseActionParser;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
-import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningConfiguration;
 import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.osgi.service.component.annotations.Activate;
@@ -136,7 +137,7 @@ public class MultiStepReasoningEngine {
 
                 // Process actions if any
                 if (step.getToolCalls() != null && !step.getToolCalls().isEmpty()) {
-                    for (ActionContext action : step.getToolCalls()) {
+                    for (ExecutionContext action : step.getToolCalls()) {
                         ActionResult executedAction = executeAction(action, context);
                         actions.add(executedAction);
                         totalActions.incrementAndGet();
@@ -209,15 +210,14 @@ public class MultiStepReasoningEngine {
 
         // Parse reasoning and actions
         String reasoning = extractReasoning(response);
-        List<ActionContext> actions = parseResponseActions(response);
+        List<ExecutionContext> actions = parseResponseActions(response);
         double confidence = calculateStepConfidence(reasoning, actions);
 
         // Check if reasoning is complete
         boolean isComplete = isReasoningComplete(reasoning, actions);
 
-        return ReasoningStep.builder().sessionId(sessionId).stepNumber(stepNumber).reasoning(reasoning)
-                .toolCalls(actions).confidence(confidence).isComplete(isComplete).startTime(stepStartTime)
-                .endTime(Instant.now()).build();
+        return ReasoningStep.builder().withStepId(sessionId).withDescription(reasoning).withErrorMessage(null)
+                .withSuccess(isComplete).build();
     }
 
     /**
@@ -292,8 +292,9 @@ public class MultiStepReasoningEngine {
             throw new IllegalStateException("LLM client not available");
         }
 
-        ModelParameters parameters = ModelParameters.builder().maxTokens(configuration.getMaxTokensPerStep())
-                .temperature(configuration.getTemperature()).timeoutMs((int) configuration.getStepTimeoutMs()).build();
+        ModelParameters parameters = ModelParameters.builder().withMaxTokens(configuration.getMaxTokensPerStep())
+                .withTemperature(configuration.getTemperature()).withTimeoutMs((int) configuration.getStepTimeoutMs())
+                .build();
 
         return client.complete(prompt, parameters).join();
     }
@@ -311,7 +312,7 @@ public class MultiStepReasoningEngine {
     /**
      * Parse actions from LLM response
      */
-    private List<ActionContext> parseResponseActions(ModelResponse response) {
+    private List<ExecutionContext> parseResponseActions(ModelResponse response) {
         ModelResponseActionParser parser = actionCallParser;
         if (parser == null) {
             logger.warn("ActionCallParser not available, returning empty action list");
@@ -326,7 +327,7 @@ public class MultiStepReasoningEngine {
     /**
      * Execute an action
      */
-    private ActionResult executeAction(ActionContext action, ReasoningContext context) {
+    private ActionResult executeAction(ExecutionContext action, ReasoningContext context) {
         Instant startTime = Instant.now();
 
         try {
@@ -346,7 +347,7 @@ public class MultiStepReasoningEngine {
     /**
      * Execute an action using ActionRegistry
      */
-    private ActionResult executeActionInternal(ActionContext action) {
+    private ActionResult executeActionInternal(ExecutionContext action) {
         ActionRegistry registry = actionRegistry;
         if (registry == null) {
             throw new IllegalStateException("ActionRegistry not available");
@@ -369,7 +370,7 @@ public class MultiStepReasoningEngine {
     /**
      * Check if reasoning is complete based on reasoning and actions
      */
-    private boolean isReasoningComplete(String reasoning, List<ActionContext> actions) {
+    private boolean isReasoningComplete(String reasoning, List<ExecutionContext> actions) {
         return reasoning.toLowerCase().contains("conclusion") || reasoning.toLowerCase().contains("final answer")
                 || reasoning.toLowerCase().contains("reasoning complete");
     }
@@ -377,7 +378,7 @@ public class MultiStepReasoningEngine {
     /**
      * Calculate confidence for a step
      */
-    private double calculateStepConfidence(String reasoning, List<ActionContext> actions) {
+    private double calculateStepConfidence(String reasoning, List<ExecutionContext> actions) {
         double confidence = 0.5; // Base confidence
 
         // Increase confidence based on reasoning quality
@@ -388,7 +389,7 @@ public class MultiStepReasoningEngine {
         if (reasoning.contains("therefore"))
             confidence += 0.1;
 
-        // For now, we don't have success/failure info in ActionContext
+        // For now, we don't have success/failure info in ExecutionContext
         // This would need to be enhanced when action execution is implemented
         // confidence -= failedActions * 0.1;
 
@@ -417,7 +418,7 @@ public class MultiStepReasoningEngine {
 
         if (step.getToolCalls() != null && !step.getToolCalls().isEmpty()) {
             accumulated.append("\n\nActions:\n");
-            for (ActionContext action : step.getToolCalls()) {
+            for (ExecutionContext action : step.getToolCalls()) {
                 accumulated.append("- ").append(action.getCorrelationId()).append(": ");
                 accumulated.append("Context available");
                 accumulated.append("\n");
@@ -447,9 +448,8 @@ public class MultiStepReasoningEngine {
      * Create error step
      */
     private ReasoningStep createErrorStep(String sessionId, int stepNumber, Exception error) {
-        return ReasoningStep.builder().sessionId(sessionId).stepNumber(stepNumber)
-                .reasoning("Error occurred: " + error.getMessage()).confidence(0.0).isComplete(false)
-                .error(error.getMessage()).startTime(Instant.now()).endTime(Instant.now()).build();
+        return ReasoningStep.builder().withStepId(sessionId).withDescription("Error occurred: " + error.getMessage())
+                .withErrorMessage(error.getMessage()).withSuccess(false).build();
     }
 
     /**
@@ -477,11 +477,13 @@ public class MultiStepReasoningEngine {
     /**
      * Get performance metrics
      */
-    public PerformanceMetrics getPerformanceMetrics() {
-        return new PerformanceMetricsBuilder().totalSessions(totalReasoningSessions.get())
-                .successfulSessions(successfulReasoningSessions.get()).failedSessions(failedReasoningSessions.get())
-                .totalSteps(totalReasoningSteps.get()).totalActions(totalActions.get())
-                .averageSessionDuration(calculateAverageSessionDuration()).build();
+    public ReasoningPerformanceMetrics getPerformanceMetrics() {
+        return new ReasoningPerformanceMetrics(totalReasoningSessions.get(), successfulReasoningSessions.get(),
+                failedReasoningSessions.get(), totalReasoningSteps.get(), totalActions.get(),
+                calculateAverageSessionDuration(), 0, // totalProcessingTime - not tracked in this implementation
+                0.0, // averageResponseTime - not tracked in this implementation
+                null // lastOperationTime - not tracked in this implementation
+        );
     }
 
     /**

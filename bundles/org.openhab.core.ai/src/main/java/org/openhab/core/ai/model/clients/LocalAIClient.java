@@ -17,8 +17,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
-import org.openhab.core.ai.model.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
 import org.openhab.core.ai.model.ModelResponse;
@@ -122,8 +122,8 @@ public class LocalAIClient implements ModelClient {
                     }
                 }
 
-                return ModelResponse.builder().content(responseContent).modelName(config.getModelName())
-                        .providerType(ModelProviderType.LOCALAI.name()).build();
+                return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
+                        .withProviderType(ModelProviderType.LOCALAI.name()).build();
 
             } catch (Exception e) {
                 logger.error("Error completing LocalAI request", e);
@@ -206,8 +206,9 @@ public class LocalAIClient implements ModelClient {
                 }
 
                 String finalContent = contentBuilder.toString();
-                ModelResponse llmResponse = ModelResponse.builder().content(finalContent)
-                        .modelName(config.getModelName()).providerType(ModelProviderType.LOCALAI.name()).build();
+                ModelResponse llmResponse = ModelResponse.builder().withContent(finalContent)
+                        .withModelName(config.getModelName()).withProviderType(ModelProviderType.LOCALAI.name())
+                        .build();
 
                 handler.onComplete(llmResponse);
                 return llmResponse;
@@ -240,11 +241,18 @@ public class LocalAIClient implements ModelClient {
     public ModelHealthStatus getHealthStatus() {
         try {
             boolean available = isAvailable();
-            Instant now = Instant.now();
-            return new ModelHealthStatus(available, now, available ? 100L : 0L, available ? 1.0 : 0.0, 0, null, null);
+            return ModelHealthStatus.builder().withId("localai-client")
+                    .withOverallHealth(
+                            available ? ModelHealthStatus.HealthState.HEALTHY : ModelHealthStatus.HealthState.UNHEALTHY)
+                    .withPrimaryModelAvailable(available).withResponseTimeMs(available ? 100L : 0L)
+                    .withErrorRate(available ? 0.0 : 100.0).withTotalRequests(0).withFailedRequests(0)
+                    .withLastHealthCheck(Instant.now()).build();
         } catch (Exception e) {
-            Instant now = Instant.now();
-            return new ModelHealthStatus(false, now, 0L, 0.0, 1, e.getMessage(), now);
+            return ModelHealthStatus.builder().withId("localai-client")
+                    .withOverallHealth(ModelHealthStatus.HealthState.UNHEALTHY).withPrimaryModelAvailable(false)
+                    .withResponseTimeMs(0L).withErrorRate(100.0).withTotalRequests(0).withFailedRequests(1)
+                    .withLastError(e.getMessage()).withLastHealthCheck(Instant.now())
+                    .withLastFailedRequest(Instant.now()).build();
         }
     }
 

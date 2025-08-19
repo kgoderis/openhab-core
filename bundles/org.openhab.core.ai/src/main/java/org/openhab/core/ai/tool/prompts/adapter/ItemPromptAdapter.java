@@ -12,6 +12,7 @@ import org.openhab.core.ai.tool.prompts.api.PromptContext;
 import org.openhab.core.ai.tool.prompts.api.PromptResult;
 import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
 import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
+import org.openhab.core.ai.tool.prompts.cache.CachedPromptData;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.slf4j.Logger;
@@ -37,17 +38,6 @@ public class ItemPromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
     private final ItemRegistry itemRegistry;
     private final Map<String, CachedPromptData> promptCache = new ConcurrentHashMap<>();
 
-    private static final class CachedPromptData {
-        final String itemName;
-        final String promptType;
-        volatile @Nullable String cachedContent;
-
-        CachedPromptData(String itemName, String promptType) {
-            this.itemName = itemName;
-            this.promptType = promptType;
-        }
-    }
-
     public ItemPromptAdapter(ItemRegistry itemRegistry) {
         super(DEFAULT_REFRESH_INTERVAL_MS);
         this.itemRegistry = itemRegistry;
@@ -71,11 +61,11 @@ public class ItemPromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         if (data == null) {
             return null;
         }
-        if (data.cachedContent == null || needsRefresh()) {
-            data.cachedContent = buildPromptContent(data.itemName, data.promptType);
+        if (data.getCachedContent() == null || needsRefresh()) {
+            data.setCachedContent(buildPromptContent(data.getEntityId(), data.getPromptType()));
             updateRefreshTime();
         }
-        return data.cachedContent;
+        return data.getCachedContent();
     }
 
     @Override
@@ -111,7 +101,7 @@ public class ItemPromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
     public void refresh(String identifier, PromptContext context) {
         CachedPromptData data = getOrCreateCachedData(identifier, context);
         if (data != null) {
-            data.cachedContent = null;
+            data.setCachedContent(null);
             updateRefreshTime();
         }
     }
@@ -131,37 +121,49 @@ public class ItemPromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         return "openhab://prompts/items/{itemName}";
     }
 
-    @Override
     public void close() {
         cleanup();
     }
 
-    private @Nullable CachedPromptData getOrCreateCachedData(String itemName, PromptContext context) {
-        String typeFromContext = (String) context.getProperty("promptType");
-        final String promptType = typeFromContext == null ? "status" : typeFromContext;
-        final String cacheKey = itemName + "|" + promptType;
-        return promptCache.computeIfAbsent(cacheKey, k -> new CachedPromptData(itemName, promptType));
+    private @Nullable CachedPromptData getOrCreateCachedData(String identifier, PromptContext context) {
+        return promptCache.computeIfAbsent(identifier, key -> {
+            String typeFromContext = (String) context.getProperty("promptType");
+            String promptType = typeFromContext == null ? "status" : typeFromContext;
+            return new CachedPromptData(identifier, promptType);
+        });
     }
 
     private String buildPromptContent(String itemName, String promptType) {
         Item item = itemRegistry.get(itemName);
         if (item == null) {
-            return "Item '" + itemName + "' not found";
+            return "Item not found: " + itemName;
         }
-        switch (promptType) {
-            case "status":
-                return "Status of " + itemName + ": state=" + item.getState() + ", type="
-                        + item.getClass().getSimpleName();
-            case "control":
-                return "Control prompt for " + itemName + ". Arguments: command, confirm(optional)";
-            case "config":
-                return "Config prompt for " + itemName + ". Arguments: operation(get|set|update), property, value";
-            case "discovery":
-                return "Discovery prompt: list items with filters (type, tag, group)";
-            case "creation":
-                return "Creation prompt: create item with type, name, label, category, groups";
-            default:
-                return "Prompt for " + itemName + " (" + promptType + ")";
+
+        StringBuilder content = new StringBuilder();
+        content.append("Item: ").append(item.getName()).append(" (").append(item.getType()).append(")\n");
+        content.append("Label: ").append(item.getLabel() != null ? item.getLabel() : "").append("\n");
+
+        switch (promptType.toLowerCase()) {
+            case "state":
+                content.append("Current State: ").append(item.getState()).append("\n");
+                content.append("State Type: ").append(item.getState().getClass().getSimpleName()).append("\n");
+                break;
+            case "commands":
+                content.append("Accepted Commands:\n");
+                item.getAcceptedCommandTypes().forEach(commandType -> {
+                    content.append("  - ").append(commandType.getSimpleName()).append("\n");
+                });
+                break;
+            case "metadata":
+                content.append("Category: ").append(item.getCategory() != null ? item.getCategory() : "").append("\n");
+                content.append("Groups: ").append(item.getGroupNames()).append("\n");
+                break;
+            default: // status
+                content.append("Category: ").append(item.getCategory() != null ? item.getCategory() : "").append("\n");
+                content.append("Groups: ").append(item.getGroupNames()).append("\n");
+                break;
         }
+
+        return content.toString();
     }
 }

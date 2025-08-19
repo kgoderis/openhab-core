@@ -5,8 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.adapter.BaseAdapter;
-import org.openhab.core.ai.tool.api.Adapter;
+import org.openhab.core.ai.common.adapter.ResourceAdapter;
 import org.openhab.core.ai.tool.resources.api.ResourceContext;
 import org.openhab.core.ai.tool.resources.api.ResourceResult;
 import org.openhab.core.ai.tool.resources.api.dto.Resource;
@@ -15,17 +14,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Consolidated Resource Adapter for openHAB configurations.
+ * Resource Adapter for openHAB configurations using the unified adapter hierarchy.
  * 
- * This adapter combines the functionality of both the old Adapter and Proxy classes,
- * providing MCP resource access to openHAB configurations with caching and lifecycle management.
+ * This adapter provides MCP resource access to openHAB configurations with caching and lifecycle management.
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
-public class ConfigurationResourceAdapter extends BaseAdapter
-        implements Adapter<Resource, ResourceContext, ResourceResult> {
+public class ConfigurationResourceAdapter extends ResourceAdapter<Resource, ResourceContext, ResourceResult> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigurationResourceAdapter.class);
 
@@ -229,6 +226,34 @@ public class ConfigurationResourceAdapter extends BaseAdapter
     @Override
     public String getUriPattern() {
         return URI_PATTERN;
+    }
+
+    @Override
+    public @Nullable ResourceResult adapt(Resource source, ResourceContext context) {
+        // For resource adapters, we typically don't adapt existing resources
+        // but rather create new ones or execute operations
+        return null;
+    }
+
+    @Override
+    public boolean canAdapt(Resource source) {
+        // Check if this adapter can handle the given resource
+        return source != null && "openhab-configuration".equals(source.getMetadata().get("type"));
+    }
+
+    @Override
+    public Class<Resource> getSourceType() {
+        return Resource.class;
+    }
+
+    @Override
+    public Class<ResourceResult> getResultType() {
+        return ResourceResult.class;
+    }
+
+    @Override
+    protected void doRefresh(String identifier, ResourceContext context) {
+        refresh(identifier, context);
     }
 
     @Override

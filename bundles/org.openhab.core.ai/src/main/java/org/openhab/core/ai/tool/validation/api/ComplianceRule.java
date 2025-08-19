@@ -15,6 +15,7 @@ package org.openhab.core.ai.tool.validation.api;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 
 /**
  * Compliance rule contract for validating tools and configurations against
@@ -33,5 +34,5 @@ public interface ComplianceRule {
 
     boolean isMandatory();
 
-    ValidationResult validate(Map<String, Object> subject);
+    ToolValidationResult validate(Map<String, Object> subject);
 }

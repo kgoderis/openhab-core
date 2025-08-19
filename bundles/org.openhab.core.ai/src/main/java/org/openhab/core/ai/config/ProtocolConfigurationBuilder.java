@@ -4,9 +4,16 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.builder.AbstractBuilder;
 
+/**
+ * Builder for {@link ProtocolConfiguration}.
+ *
+ * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
+ */
 @NonNullByDefault
-public class ProtocolConfigurationBuilder {
+public class ProtocolConfigurationBuilder extends AbstractBuilder<ProtocolConfiguration> {
     private final String protocolName;
     private boolean enabled = true;
     private @Nullable String endpoint;
@@ -49,8 +56,27 @@ public class ProtocolConfigurationBuilder {
         return this;
     }
 
+    @Override
     public ProtocolConfiguration build() {
         return new ProtocolConfiguration(protocolName, enabled, endpoint, authenticationConfig, protocolSpecificConfig,
                 timeoutSeconds, retryAttempts);
+    }
+
+    @Override
+    protected void validate() {
+        validateRequiredString(protocolName, "protocolName");
+        validatePositive(timeoutSeconds, "timeoutSeconds");
+        validateNonNegative(retryAttempts, "retryAttempts");
+    }
+
+    @Override
+    protected void doReset() {
+        // Note: protocolName is final, so we don't reset it
+        enabled = true;
+        endpoint = null;
+        authenticationConfig = Map.of();
+        protocolSpecificConfig = Map.of();
+        timeoutSeconds = 30;
+        retryAttempts = 3;
     }
 }

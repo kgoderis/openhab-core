@@ -13,11 +13,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,7 +142,7 @@ public class DeleteFileAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing DeleteFileAction with context: {}", context.getProtocol());
 
         try {
@@ -311,7 +311,7 @@ public class DeleteFileAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -323,11 +323,12 @@ public class DeleteFileAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Deletes files and directories within the openHAB root folder with security validation")
-                .tags(List.of("filesystem", "delete", "file", "directory", "security"))
-                .documentation("Provides secure file deletion capabilities for openHAB files")
-                .examples(List.of("Delete file: {\"path\": \"conf/test.txt\"}",
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription(
+                        "Deletes files and directories within the openHAB root folder with security validation")
+                .withTags(List.of("filesystem", "delete", "file", "directory", "security"))
+                .withDocumentation("Provides secure file deletion capabilities for openHAB files")
+                .withExamples(List.of("Delete file: {\"path\": \"conf/test.txt\"}",
                         "Delete directory: {\"path\": \"conf/temp\", \"recursive\": true}",
                         "Delete with backup: {\"path\": \"conf/config.cfg\", \"createBackup\": true}",
                         "Force delete: {\"path\": \"conf/readonly.txt\", \"force\": true}"))
@@ -341,7 +342,7 @@ public class DeleteFileAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("DeleteFileAction initialized for protocol: {}", context.getProtocol());
     }
 

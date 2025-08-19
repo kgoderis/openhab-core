@@ -12,11 +12,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -150,7 +150,7 @@ public class SubscribeEventsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         try {
             logger.debug("Executing SubscribeEventsAction with parameters: {}", parameters);
 
@@ -167,7 +167,7 @@ public class SubscribeEventsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -179,7 +179,7 @@ public class SubscribeEventsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().description(DESCRIPTION).version(VERSION).build();
+        return ActionMetadata.builder().withDescription(DESCRIPTION).withVersion(VERSION).build();
     }
 
     @Override
@@ -194,7 +194,7 @@ public class SubscribeEventsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("Initializing SubscribeEventsAction for protocol: {}", context.getProtocol());
     }
 
@@ -208,7 +208,7 @@ public class SubscribeEventsAction implements Action {
         return eventSubscriptionRegistry != null;
     }
 
-    private Map<String, Object> subscribeToEvents(Map<String, Object> parameters, ActionContext context) {
+    private Map<String, Object> subscribeToEvents(Map<String, Object> parameters, ExecutionContext context) {
         Map<String, Object> result = new HashMap<>();
         result.put("action", "subscribe_events");
         result.put("timestamp", Instant.now().toString());

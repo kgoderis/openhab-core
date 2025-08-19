@@ -227,9 +227,9 @@ public class MyCustomAction implements Action {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder()
-            .version(getVersion())
-            .author("Your Name")
-            .description("Description of the action")
+            .withVersion(getVersion())
+            .withAuthor("Your Name")
+            .withDescription("Description of the action")
             .build();
     }
     

@@ -3,16 +3,17 @@ package org.openhab.core.ai.tool.unit;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolErrorCode;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 
 /**
  * Test class for the new Tool API classes with Tool* prefix naming convention.
@@ -27,20 +28,34 @@ class ToolAPITest {
      */
     @Test
     void testToolContext() {
-        ToolContext context = new ToolContext();
+        Map<String, Object> values = new HashMap<>();
+        values.put("testKey", "testValue");
+        values.put("number", 42);
+        values.put("boolean", true);
 
-        // Test setting and getting properties
-        context.setProperty("testKey", "testValue");
-        assertEquals("testValue", context.getProperty("testKey"));
+        ToolContext context = new ToolContext("test-context", "test-tool", "Test Tool", "1.0.0", "test-client",
+                "test-session", values, null);
+
+        // Test getting properties
+        assertEquals("testValue", context.getValue("testKey"));
+        assertEquals("testValue", context.getValue("testKey", String.class));
 
         // Test null property
-        assertNull(context.getProperty("nonexistentKey"));
+        assertNull(context.getValue("nonexistentKey"));
 
         // Test multiple properties
-        context.setProperty("number", 42);
-        context.setProperty("boolean", true);
-        assertEquals(42, context.getProperty("number"));
-        assertEquals(true, context.getProperty("boolean"));
+        assertEquals(42, context.getValue("number"));
+        assertEquals(42, context.getValue("number", Integer.class));
+        assertEquals(true, context.getValue("boolean"));
+        assertEquals(true, context.getValue("boolean", Boolean.class));
+
+        // Test context properties
+        assertEquals("test-context", context.getContextId());
+        assertEquals("test-tool", context.getToolId());
+        assertEquals("Test Tool", context.getToolName());
+        assertEquals("1.0.0", context.getToolVersion());
+        assertEquals("test-client", context.getClientId());
+        assertEquals("test-session", context.getSessionId());
     }
 
     /**
@@ -51,13 +66,13 @@ class ToolAPITest {
         // Test valid result
         ToolValidationResult validResult = ToolValidationResult.valid();
         assertTrue(validResult.isValid());
-        assertNull(validResult.getMessage());
+        assertTrue(validResult.getErrors().isEmpty());
 
         // Test invalid result
         String errorMessage = "Parameter validation failed";
-        ToolValidationResult invalidResult = ToolValidationResult.invalid(errorMessage);
+        ToolValidationResult invalidResult = ToolValidationResult.invalid(List.of(errorMessage));
         assertFalse(invalidResult.isValid());
-        assertEquals(errorMessage, invalidResult.getMessage());
+        assertEquals(List.of(errorMessage), invalidResult.getErrors());
     }
 
     /**
@@ -96,8 +111,8 @@ class ToolAPITest {
     @Test
     void testToolMetadata() {
         // Test builder pattern
-        ToolMetadata metadata = ToolMetadata.builder().version("2.0.0").author("Test Author")
-                .description("Test tool description").build();
+        ToolMetadata metadata = ToolMetadata.builder().withVersion("2.0.0").withAuthor("Test Author")
+                .withDescription("Test tool description").build();
 
         assertEquals("2.0.0", metadata.getVersion());
         assertEquals("Test Author", metadata.getAuthor());
@@ -184,7 +199,8 @@ class ToolAPITest {
 
             @Override
             public ToolMetadata getMetadata() {
-                return ToolMetadata.builder().version("1.0.0").author("Test Author").description("Test tool").build();
+                return ToolMetadata.builder().withVersion("1.0.0").withAuthor("Test Author")
+                        .withDescription("Test tool").build();
             }
         };
 
@@ -199,7 +215,8 @@ class ToolAPITest {
         ToolValidationResult validation = testTool.validateParameters(new HashMap<>());
         assertTrue(validation.isValid());
 
-        ToolContext context = new ToolContext();
+        ToolContext context = new ToolContext("test-context", "test-tool", "Test Tool", "1.0.0", null, null, null,
+                null);
         ToolResult result;
         try {
             result = testTool.execute(new HashMap<>(), context);

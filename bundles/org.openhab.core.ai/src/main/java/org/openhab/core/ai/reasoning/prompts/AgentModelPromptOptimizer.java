@@ -148,7 +148,7 @@ public class AgentModelPromptOptimizer {
         }
 
         // Simple token estimation (words + punctuation)
-        String[] words = promptText.split("\\s+");
+        String[] words = promptText.split("s+");
         int wordTokens = words.length;
 
         // Count punctuation tokens
@@ -181,7 +181,7 @@ public class AgentModelPromptOptimizer {
         }
 
         // Try to truncate at sentence boundaries
-        String[] sentences = promptText.split("(?<=[.!?])\\s+");
+        String[] sentences = promptText.split("(?<=[.!?])s+");
         StringBuilder truncated = new StringBuilder();
 
         for (String sentence : sentences) {
@@ -197,7 +197,7 @@ public class AgentModelPromptOptimizer {
 
         // If still too long, truncate at word boundaries
         if (truncated.length() == 0) {
-            String[] words = promptText.split("\\s+");
+            String[] words = promptText.split("s+");
             for (String word : words) {
                 if (truncated.length() + word.length() + 1 <= MAX_PROMPT_LENGTH) {
                     if (truncated.length() > 0) {
@@ -226,11 +226,11 @@ public class AgentModelPromptOptimizer {
         }
 
         // Remove redundant words and phrases
-        String reduced = promptText.replaceAll("\\b(very|really|quite|extremely)\\b", "")
-                .replaceAll("\\b(in order to|so as to)\\b", "to")
-                .replaceAll("\\b(due to the fact that|because of the fact that)\\b", "because")
-                .replaceAll("\\b(at this point in time)\\b", "now").replaceAll("\\b(in the event that)\\b", "if")
-                .replaceAll("\\b(prior to)\\b", "before").replaceAll("\\b(subsequent to)\\b", "after");
+        String reduced = promptText.replaceAll("b(very|really|quite|extremely)b", "")
+                .replaceAll("b(in order to|so as to)b", "to")
+                .replaceAll("b(due to the fact that|because of the fact that)b", "because")
+                .replaceAll("b(at this point in time)b", "now").replaceAll("b(in the event that)b", "if")
+                .replaceAll("b(prior to)b", "before").replaceAll("b(subsequent to)b", "after");
 
         // If still too many tokens, truncate
         if (estimateTokens(reduced) > MAX_TOKENS) {
@@ -248,10 +248,10 @@ public class AgentModelPromptOptimizer {
      */
     private String optimizeContent(String promptText) {
         // Remove excessive whitespace
-        String optimized = promptText.replaceAll("\\s+", " ").trim();
+        String optimized = promptText.replaceAll("s+", " ").trim();
 
         // Ensure proper sentence structure
-        optimized = optimized.replaceAll("\\s+([.!?])", "$1");
+        optimized = optimized.replaceAll("s+([.!?])", "$1");
 
         // Add line breaks for better readability
         optimized = optimized.replaceAll("(System:|Task:|Expected Output:|Examples:|Constraints:)", "\n$1");
@@ -321,7 +321,7 @@ public class AgentModelPromptOptimizer {
         }
 
         // Check for sensitive information patterns
-        Pattern sensitivePattern = Pattern.compile("\\b(password|secret|key|token)\\b", Pattern.CASE_INSENSITIVE);
+        Pattern sensitivePattern = Pattern.compile("b(password|secret|key|token)b", Pattern.CASE_INSENSITIVE);
         if (sensitivePattern.matcher(text).find()) {
             result.addWarning("Potential sensitive information in prompt");
         }
@@ -344,7 +344,7 @@ public class AgentModelPromptOptimizer {
             result.addWarning("Prompt missing expected output specification");
         }
 
-        if (text.split("\\n").length < 3) {
+        if (text.split("n").length < 3) {
             result.addWarning("Prompt structure could be improved with better formatting");
         }
     }

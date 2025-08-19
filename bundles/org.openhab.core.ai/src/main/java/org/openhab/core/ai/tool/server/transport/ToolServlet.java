@@ -11,8 +11,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolResult;
 import org.openhab.core.ai.tool.completions.CompletionSuggestionService;
@@ -30,7 +31,6 @@ import org.openhab.core.ai.tool.resources.ResourceTemplateService;
 import org.openhab.core.ai.tool.resources.api.ResourceContext;
 import org.openhab.core.ai.tool.resources.api.ResourceRegistry;
 import org.openhab.core.ai.tool.resources.api.ResourceResult;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -272,8 +272,6 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
     @Override
     protected void doGet(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response)
             throws ServletException, IOException {
-        String requestURI = request.getRequestURI();
-
         // Handle MCP protocol endpoints
         if (handleMcpProtocolEndpoints(request, response, "GET")) {
             return;
@@ -290,8 +288,6 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
     @Override
     protected void doPost(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response)
             throws ServletException, IOException {
-        String requestURI = request.getRequestURI();
-
         // Handle MCP protocol endpoints
         if (handleMcpProtocolEndpoints(request, response, "POST")) {
             return;
@@ -639,14 +635,15 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
             // Validate parameters
             ToolValidationResult validationResult = tool.validateParameters(parameters);
             if (!validationResult.isValid()) {
-                sendMcpErrorResponse(response, "Invalid parameters: " + validationResult.getMessage(),
+                sendMcpErrorResponse(response, "Invalid parameters: " + validationResult.getErrors(),
                         HttpServletResponse.SC_BAD_REQUEST);
                 return;
             }
 
             // Execute the tool
             try {
-                ToolContext context = new ToolContext();
+                ToolContext context = new ToolContext("servlet-tool-" + System.currentTimeMillis(), toolId,
+                        tool.getName(), tool.getMetadata().getVersion(), null, null, parameters, null);
                 ToolResult result = tool.execute(parameters, context);
 
                 Map<String, Object> responseData = new HashMap<>();

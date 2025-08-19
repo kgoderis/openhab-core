@@ -13,7 +13,6 @@
 package org.openhab.core.ai.reasoning.optimization;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,12 +22,22 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.openhab.core.ai.reasoning.configuration.api.ConfigurationManager;
+import org.openhab.core.ai.reasoning.decision.DecisionAnalysis;
+import org.openhab.core.ai.reasoning.decision.DecisionPattern;
+import org.openhab.core.ai.reasoning.decision.OptimizationOpportunity;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
+import org.openhab.core.ai.reasoning.error.api.ErrorContext;
 import org.openhab.core.ai.reasoning.error.api.ErrorHandler;
 import org.openhab.core.ai.reasoning.memory.api.MemoryManager;
+import org.openhab.core.ai.reasoning.security.api.SecurityIssue;
 import org.openhab.core.ai.reasoning.security.api.SecurityManager;
+import org.openhab.core.ai.reasoning.security.api.SecurityRequest;
+import org.openhab.core.ai.reasoning.security.api.SecurityValidationResult;
+import org.openhab.core.ai.reasoning.strategies.EarlyTerminationStrategy;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -113,9 +122,8 @@ public class AgentModelDecisionOptimizer {
                 SecurityValidationResult securityResult = securityManager.validateSecurity(securityRequest).get();
                 if (!securityResult.isValid()) {
                     throw new SecurityException(
-                            "Access denied for decision optimization: " + Arrays.stream(securityResult.getIssues())
-                                    .map(org.openhab.core.ai.reasoning.api.SecurityIssue::getDescription).findFirst()
-                                    .orElse("Unknown security issue"));
+                            "Access denied for decision optimization: " + securityResult.getSecurityIssues().stream()
+                                    .map(SecurityIssue::getDescription).findFirst().orElse("Unknown security issue"));
                 }
 
                 // Analyze decision patterns
@@ -297,8 +305,8 @@ public class AgentModelDecisionOptimizer {
      * @param currentToolCalls The tool calls from a current step
      * @return True if there are overlapping elements
      */
-    private boolean hasOverlappingToolCalls(final List<org.openhab.core.ai.action.ActionContext> previousToolCalls,
-            final List<org.openhab.core.ai.action.ActionContext> currentToolCalls) {
+    private boolean hasOverlappingToolCalls(final List<ExecutionContext> previousToolCalls,
+            final List<ExecutionContext> currentToolCalls) {
         // Simple overlap check based on protocol and client ID
         Set<String> previousIdentifiers = previousToolCalls.stream()
                 .map(context -> context.getProtocol() + ":" + context.getClientId()).collect(Collectors.toSet());

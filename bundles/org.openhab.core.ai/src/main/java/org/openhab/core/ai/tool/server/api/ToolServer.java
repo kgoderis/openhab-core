@@ -4,11 +4,11 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.error.DefaultErrorRecoveryService;
 import org.openhab.core.ai.tool.error.ErrorInfo;
 import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.security.DefaultToolSecurityService;
-import org.openhab.core.ai.tool.security.api.SecurityStatistics;
 import org.openhab.core.ai.tool.server.ServerConfiguration;
 import org.openhab.core.ai.tool.server.TransportHealthInfo;
 import org.openhab.core.ai.tool.server.TransportStatistics;
@@ -34,7 +34,7 @@ public interface ToolServer {
     boolean isRunning();
 
     @Nullable
-    SecurityStatistics getSecurityStatistics();
+    ToolSecurityStatistics getSecurityStatistics();
 
     @Nullable
     ErrorRecoveryStatistics getErrorRecoveryStatistics();

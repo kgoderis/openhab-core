@@ -3,6 +3,8 @@ package org.openhab.core.ai.reasoning.validation;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.reasoning.decision.DecisionContext;
+import org.openhab.core.ai.reasoning.results.DecisionResult;
 
 /**
  * Validation Rule interface extracted from AgentModelDecisionValidator.

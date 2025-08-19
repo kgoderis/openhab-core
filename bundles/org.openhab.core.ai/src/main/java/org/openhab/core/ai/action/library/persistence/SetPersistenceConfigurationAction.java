@@ -10,11 +10,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.config.core.ConfigurableService;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
@@ -149,7 +149,7 @@ public class SetPersistenceConfigurationAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing SetPersistenceConfigurationAction with context: {}", context.getProtocol());
 
         long startTime = System.currentTimeMillis();
@@ -175,7 +175,7 @@ public class SetPersistenceConfigurationAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -187,12 +187,13 @@ public class SetPersistenceConfigurationAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().author("openHAB").description("Updates configuration for persistence services")
-                .version("1.0.0").tags(List.of("persistence", "configuration", "services")).build();
+        return ActionMetadata.builder().withAuthor("openHAB")
+                .withDescription("Updates configuration for persistence services").withVersion("1.0.0")
+                .withTags(List.of("persistence", "configuration", "services")).build();
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("SetPersistenceConfigurationAction initialized with context: {}", context.getProtocol());
     }
 
@@ -345,7 +346,7 @@ public class SetPersistenceConfigurationAction implements Action {
 
         if (configuration.containsKey("maxSize")) {
             Object maxSize = configuration.get("maxSize");
-            if (!(maxSize instanceof String) || !((String) maxSize).matches("\\d+[KMG]B")) {
+            if (!(maxSize instanceof String) || !((String) maxSize).matches("d+[KMG]B")) {
                 errors.add("maxSize must be a valid size specification (e.g., 100MB, 1GB)");
             }
         }

@@ -8,11 +8,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
@@ -128,7 +128,7 @@ public class GetItemTagsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
 
         try {
@@ -227,7 +227,7 @@ public class GetItemTagsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -239,12 +239,12 @@ public class GetItemTagsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieve tag information for openHAB items")
-                .tags(List.of("items", "tags", "metadata", "properties"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieve tag information for openHAB items")
+                .withTags(List.of("items", "tags", "metadata", "properties"))
+                .withDocumentation(
                         "Retrieves tag information for openHAB items including tag names, values, and properties. Tags are derived from metadata namespaces.")
-                .examples(List.of("Get all tags: {\"itemName\": \"LivingRoom_Light\"}",
+                .withExamples(List.of("Get all tags: {\"itemName\": \"LivingRoom_Light\"}",
                         "Get tags with details: {\"itemName\": \"LivingRoom_Light\", \"includeTagDetails\": true}",
                         "Get tags with properties: {\"itemName\": \"LivingRoom_Light\", \"includeTagProperties\": true}",
                         "Filter by namespace: {\"itemName\": \"LivingRoom_Light\", \"filterByNamespace\": \"semantics\"}"))
@@ -265,7 +265,7 @@ public class GetItemTagsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         // No initialization needed
     }
 

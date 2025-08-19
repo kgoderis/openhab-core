@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.validation.api.ValidationResult;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 
 /**
  * Information about operation progress.
@@ -138,7 +138,7 @@ public class ProgressInfo {
      * 
      * @return validation result
      */
-    public ValidationResult validate() {
+    public ToolValidationResult validate() {
         List<String> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
 
@@ -174,7 +174,7 @@ public class ProgressInfo {
 
         boolean isValid = errors.isEmpty();
         Map<String, Object> details = Map.of("errors", errors, "warnings", warnings);
-        return new ValidationResult(isValid, errors, warnings, details);
+        return new ToolValidationResult(isValid, errors, warnings, details, null);
     }
 
     /**

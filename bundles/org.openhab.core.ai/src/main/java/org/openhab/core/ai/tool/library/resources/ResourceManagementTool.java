@@ -7,8 +7,10 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
+import org.openhab.core.ai.tool.api.SpecificationType;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
 import org.openhab.core.ai.tool.resources.api.ResourceContext;
@@ -18,8 +20,6 @@ import org.openhab.core.ai.tool.resources.api.dto.Resource;
 import org.openhab.core.ai.tool.resources.api.specification.ResourceSpecification;
 import org.openhab.core.ai.tool.resources.api.validation.ResourceMetadata;
 import org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
-import org.openhab.core.ai.util.ValidationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,49 +90,43 @@ public class ResourceManagementTool implements Tool {
 
     @Override
     public ToolMetadata getMetadata() {
-        return ToolMetadata.builder().version("1.0.0").author("Karel Goderis")
-                .description("Resource management tool for MCP resources").build();
+        return ToolMetadata.builder().withVersion("1.0.0").withAuthor("Karel Goderis")
+                .withDescription("Resource management tool for MCP resources").build();
     }
 
     @Override
     public ToolValidationResult validateParameters(Map<String, Object> parameters) {
-        try {
-            // Validate parameters are not null
-            ValidationUtils.requireNonNull(parameters, "Parameters");
-
-            // Validate action parameter
-            String action = (String) parameters.get("action");
-            if (action == null || action.trim().isEmpty()) {
-                return ToolValidationResult.invalid("Action parameter is required");
-            }
-
-            // Validate action value
-            if (!"discover".equals(action) && !"register".equals(action) && !"unregister".equals(action)
-                    && !"list".equals(action)) {
-                return ToolValidationResult.invalid(
-                        "Invalid action: " + action + ". Must be one of: discover, register, unregister, list");
-            }
-
-            // Validate resourceType for specific actions
-            if ("register".equals(action) || "unregister".equals(action)) {
-                String resourceType = (String) parameters.get("resourceType");
-                if (resourceType == null || resourceType.trim().isEmpty()) {
-                    return ToolValidationResult.invalid("ResourceType parameter is required for " + action + " action");
-                }
-            }
-
-            // Validate parameters object
-            Object parametersObj = parameters.get("parameters");
-            if (parametersObj != null && !(parametersObj instanceof Map)) {
-                return ToolValidationResult.invalid("Parameters must be an object");
-            }
-
-            return ToolValidationResult.valid();
-
-        } catch (Exception e) {
-            LOGGER.error("Parameter validation failed", e);
-            return ToolValidationResult.invalid("Parameter validation error: " + e.getMessage());
+        if (parameters == null || parameters.isEmpty()) {
+            return ToolValidationResult.invalid(List.of("Parameters cannot be null or empty"));
         }
+
+        String operation = (String) parameters.get("operation");
+        if (operation == null || operation.trim().isEmpty()) {
+            return ToolValidationResult.invalid(List.of("Operation is required"));
+        }
+
+        switch (operation) {
+            case "get":
+            case "update":
+            case "delete":
+                if (parameters.get("resourceId") == null) {
+                    return ToolValidationResult
+                            .invalid(List.of("Resource ID is required for " + operation + " operation"));
+                }
+                break;
+            case "create":
+                if (parameters.get("resourceData") == null) {
+                    return ToolValidationResult.invalid(List.of("Resource data is required for create operation"));
+                }
+                break;
+            case "list":
+                // No additional validation needed
+                break;
+            default:
+                return ToolValidationResult.invalid(List.of("Invalid operation: " + operation));
+        }
+
+        return ToolValidationResult.valid();
     }
 
     @Override

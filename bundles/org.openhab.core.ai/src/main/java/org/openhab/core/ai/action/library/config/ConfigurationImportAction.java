@@ -20,11 +20,11 @@ import java.util.zip.ZipInputStream;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,7 +168,7 @@ public class ConfigurationImportAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -201,7 +201,7 @@ public class ConfigurationImportAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -213,12 +213,12 @@ public class ConfigurationImportAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Provides comprehensive configuration import capabilities for openHAB")
-                .tags(List.of("import", "configuration", "restore", "migration"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Provides comprehensive configuration import capabilities for openHAB")
+                .withTags(List.of("import", "configuration", "restore", "migration"))
+                .withDocumentation(
                         "Imports openHAB configuration files from various formats with validation and backup options")
-                .examples(List.of(
+                .withExamples(List.of(
                         "Import from ZIP file: {\"source\": \"file\", \"format\": \"zip\", \"sourcePath\": \"/backups/config.zip\"}",
                         "Import from data: {\"source\": \"data\", \"format\": \"json\", \"sourceData\": \"base64data...\"}",
                         "Import with backup: {\"source\": \"file\", \"format\": \"zip\", \"sourcePath\": \"/backups/config.zip\", \"createBackup\": true}"))
@@ -232,7 +232,7 @@ public class ConfigurationImportAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ConfigurationImportAction initialized for protocol: {}", context.getProtocol());
     }
 

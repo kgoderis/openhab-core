@@ -14,11 +14,11 @@ import java.util.stream.Stream;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,7 +139,7 @@ public class ConfigurationGetAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing configuration get action with parameters: {}", parameters);
 
@@ -181,7 +181,7 @@ public class ConfigurationGetAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         // Validate parameters synchronously and complete future exceptionally for validation errors
         ActionValidationResult validation = validateParameters(parameters);
         if (!validation.isValid()) {
@@ -218,12 +218,12 @@ public class ConfigurationGetAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieves openHAB configuration files and their content")
-                .tags(List.of("config", "configuration", "files", "content", "metadata"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieves openHAB configuration files and their content")
+                .withTags(List.of("config", "configuration", "files", "content", "metadata"))
+                .withDocumentation(
                         "Retrieves openHAB configuration values from files, including items, things, rules, scripts, and system configurations")
-                .examples(List.of("{\"configType\": \"items\"} - Get all item configuration files",
+                .withExamples(List.of("{\"configType\": \"items\"} - Get all item configuration files",
                         "{\"configType\": \"things\", \"configName\": \"zwave\"} - Get Z-Wave thing configurations",
                         "{\"configType\": \"all\", \"includeContent\": false} - Get all configurations without content",
                         "{\"configType\": \"rules\", \"includeMetadata\": true} - Get rule configurations with metadata"))
@@ -236,7 +236,7 @@ public class ConfigurationGetAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ConfigurationGetAction initialized for protocol: {}", context.getProtocol());
     }
 

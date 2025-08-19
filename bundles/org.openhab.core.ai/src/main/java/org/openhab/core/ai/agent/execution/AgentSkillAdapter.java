@@ -7,10 +7,10 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.execution.api.AgentSkillException;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +30,7 @@ import io.a2a.spec.TextPart;
  * <ul>
  * <li><strong>Protocol Adaptation:</strong> Adapts A2A protocol to Action execution</li>
  * <li><strong>Parameter Extraction:</strong> Extracts parameters from A2A Message objects</li>
- * <li><strong>Context Creation:</strong> Creates ActionContext from A2A Message</li>
+ * <li><strong>Context Creation:</strong> Creates ExecutionContext from A2A Message</li>
  * <li><strong>Result Conversion:</strong> Converts Action results to AgentSkillResult</li>
  * <li><strong>Error Adaptation:</strong> Adapts Action errors to skill errors</li>
  * <li><strong>Protocol Bridging:</strong> Bridges A2A protocol to Action protocol</li>
@@ -42,7 +42,7 @@ import io.a2a.spec.TextPart;
  * <ul>
  * <li>Adapts A2A protocol to Action execution via {@link #execute(Message)}</li>
  * <li>Extracts parameters from A2A Message objects</li>
- * <li>Creates ActionContext from A2A Message</li>
+ * <li>Creates ExecutionContext from A2A Message</li>
  * <li>Converts Action results to AgentSkillResult format</li>
  * <li>Adapts Action errors to skill errors</li>
  * <li>Bridges A2A protocol to Action protocol</li>
@@ -128,7 +128,7 @@ public class AgentSkillAdapter {
             Map<String, Object> parameters = extractParameters(sdkMessage);
 
             // Create Action context from Agent SDK message
-            ActionContext aiContext = createActionContext(sdkMessage);
+            ExecutionContext aiContext = createActionContext(sdkMessage);
 
             // Execute the Action asynchronously
             CompletableFuture<ActionResult> future = action.executeAsync(parameters, aiContext);
@@ -213,7 +213,7 @@ public class AgentSkillAdapter {
      * @param sdkMessage the Agent SDK message
      * @return the Action context
      */
-    private ActionContext createActionContext(Message sdkMessage) {
+    private ExecutionContext createActionContext(Message sdkMessage) {
         // Extract information from message metadata
         Map<String, Object> metadata = sdkMessage.getMetadata();
         String senderId = (String) metadata.get("senderId");
@@ -222,10 +222,10 @@ public class AgentSkillAdapter {
         String correlationId = (String) metadata.get("correlationId");
 
         // Create context with Agent-specific information
-        return ActionContext.builder().protocol("a2a").clientId(senderId != null ? senderId : "a2a-client")
-                .sessionId("a2a-session-" + System.currentTimeMillis())
-                .correlationId(correlationId != null ? correlationId : "msg-" + System.currentTimeMillis())
-                .priority(priority != null ? priority : "normal").build();
+        return ExecutionContext.builder().withProtocol("a2a").withClientId(senderId != null ? senderId : "a2a-client")
+                .withSessionId("a2a-session-" + System.currentTimeMillis())
+                .withCorrelationId(correlationId != null ? correlationId : "msg-" + System.currentTimeMillis())
+                .withPriority(priority != null ? priority : "normal").build();
     }
 
     /**

@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.api.Agent;
+import org.openhab.core.ai.agent.api.AgentMetrics;
 import org.openhab.core.ai.agent.api.AgentStatus;
 import org.openhab.core.ai.agent.lifecycle.AgentCommunicationProtocol;
 import org.openhab.core.ai.agent.lifecycle.AgentMessage;
@@ -49,7 +50,7 @@ public class AgentRegistry {
     // Agent status
     private final Map<String, AgentStatus> agentStatus = new ConcurrentHashMap<>();
     // Agent metrics
-    private final Map<String, Agent.AgentMetrics> agentMetrics = new ConcurrentHashMap<>();
+    private final Map<String, AgentMetrics> agentMetrics = new ConcurrentHashMap<>();
 
     // Security and access control
     private final Map<String, AgentSecurityContext> agentSecurityContexts = new ConcurrentHashMap<>();
@@ -293,7 +294,7 @@ public class AgentRegistry {
     /**
      * Get metrics for an agent with access control.
      */
-    public Agent.@Nullable AgentMetrics getAgentMetrics(String agentId, String requestingUserId) {
+    public AgentMetrics getAgentMetrics(String agentId, String requestingUserId) {
         if (!hasPermission(requestingUserId, agentId, "read")) {
             return null;
         }

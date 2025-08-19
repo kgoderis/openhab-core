@@ -13,11 +13,11 @@ import java.util.stream.Stream;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,7 +120,7 @@ public class ConfigurationValidationAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -148,7 +148,7 @@ public class ConfigurationValidationAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -160,12 +160,12 @@ public class ConfigurationValidationAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Provides comprehensive configuration validation for openHAB")
-                .tags(List.of("validation", "configuration", "syntax", "best-practices"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Provides comprehensive configuration validation for openHAB")
+                .withTags(List.of("validation", "configuration", "syntax", "best-practices"))
+                .withDocumentation(
                         "Validates openHAB configuration files for syntax errors, cross-references, and best practices")
-                .examples(List.of(
+                .withExamples(List.of(
                         "Validate all configuration files: {\"validationType\": \"all\", \"configType\": \"all\"}",
                         "Validate specific file: {\"configName\": \"items.conf\", \"validationType\": \"syntax\"}",
                         "Validate content: {\"content\": \"Group Test\", \"configType\": \"items\", \"validationType\": \"all\"}"))
@@ -179,7 +179,7 @@ public class ConfigurationValidationAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ConfigurationValidationAction initialized for protocol: {}", context.getProtocol());
     }
 
@@ -533,7 +533,7 @@ public class ConfigurationValidationAction implements Action {
         int thingIndex = line.indexOf("Thing");
         if (thingIndex != -1) {
             String afterThing = line.substring(thingIndex + 5).trim();
-            String[] parts = afterThing.split("\\s+");
+            String[] parts = afterThing.split("s+");
             if (parts.length > 0) {
                 return parts[0];
             }

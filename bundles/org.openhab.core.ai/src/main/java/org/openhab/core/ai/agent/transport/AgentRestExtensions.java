@@ -12,6 +12,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.transport.response.AgentInfo;
 import org.openhab.core.ai.rest.SharedRestInfrastructure;
 import org.openhab.core.io.rest.RESTConstants;
 import org.openhab.core.io.rest.RESTResource;
@@ -46,7 +47,7 @@ public class AgentRestExtensions implements RESTResource {
             return SharedRestInfrastructure.applyStandardHeaders(Response.status(Response.Status.NOT_MODIFIED))
                     .tag(etag).build();
         }
-        return SharedRestInfrastructure.applyStandardHeaders(Response.ok(new Info("ok", "ai extensions ready")))
+        return SharedRestInfrastructure.applyStandardHeaders(Response.ok(new AgentInfo("ok", "ai extensions ready")))
                 .tag(etag).type(MediaType.APPLICATION_JSON_TYPE).build();
     }
 
@@ -85,23 +86,5 @@ public class AgentRestExtensions implements RESTResource {
         Map<String, Object> metrics = Map.of("requests_total", 0, "requests_per_second", 0.0, "average_response_time",
                 0.0, "error_rate", 0.0, "active_connections", 0);
         return SharedRestInfrastructure.okJson(metrics);
-    }
-
-    public static final class Info {
-        private final String status;
-        private final String message;
-
-        public Info(String status, String message) {
-            this.status = status;
-            this.message = message;
-        }
-
-        public String getStatus() {
-            return status;
-        }
-
-        public String getMessage() {
-            return message;
-        }
     }
 }

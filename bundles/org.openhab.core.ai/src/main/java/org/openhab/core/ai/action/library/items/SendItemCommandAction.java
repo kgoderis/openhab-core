@@ -8,11 +8,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.events.EventPublisher;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
@@ -147,7 +147,7 @@ public class SendItemCommandAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -234,7 +234,7 @@ public class SendItemCommandAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -246,11 +246,12 @@ public class SendItemCommandAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Send a command to a specific openHAB item").tags(List.of("items", "command", "send"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Send a command to a specific openHAB item")
+                .withTags(List.of("items", "command", "send"))
+                .withDocumentation(
                         "Sends a command to a specific openHAB item using the proper event system. Supports command validation and forced execution.")
-                .examples(List.of("Send ON command: {\"itemName\": \"LivingRoom_Light\", \"command\": \"ON\"}",
+                .withExamples(List.of("Send ON command: {\"itemName\": \"LivingRoom_Light\", \"command\": \"ON\"}",
                         "Send dimmer command: {\"itemName\": \"LivingRoom_Dimmer\", \"command\": \"50\"}",
                         "Send without validation: {\"itemName\": \"LivingRoom_Light\", \"command\": \"ON\", \"validateCommand\": false}",
                         "Force command: {\"itemName\": \"LivingRoom_Light\", \"command\": \"CUSTOM_COMMAND\", \"forceCommand\": true}"))
@@ -269,7 +270,7 @@ public class SendItemCommandAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         // No initialization needed
     }
 

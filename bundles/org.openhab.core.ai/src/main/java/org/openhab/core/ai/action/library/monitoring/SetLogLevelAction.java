@@ -8,11 +8,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,7 +126,7 @@ public class SetLogLevelAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing set log level action with parameters: {}", parameters);
 
@@ -174,7 +174,7 @@ public class SetLogLevelAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -186,11 +186,11 @@ public class SetLogLevelAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Sets log levels for specific loggers or packages in openHAB")
-                .tags(List.of("monitoring", "logging", "configuration"))
-                .documentation("Allows dynamic configuration of log levels for different components and packages")
-                .examples(List.of(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Sets log levels for specific loggers or packages in openHAB")
+                .withTags(List.of("monitoring", "logging", "configuration"))
+                .withDocumentation("Allows dynamic configuration of log levels for different components and packages")
+                .withExamples(List.of(
                         "{\"logger\": \"org.openhab.core\", \"level\": \"DEBUG\"} - Set core package to DEBUG level",
                         "{\"logger\": \"org.openhab.binding.zwave\", \"level\": \"TRACE\", \"temporary\": false} - Set Z-Wave binding to TRACE permanently",
                         "{\"logger\": \"org.openhab\", \"level\": \"WARN\", \"effective\": true} - Set all openHAB loggers to WARN level"))
@@ -204,7 +204,7 @@ public class SetLogLevelAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("SetLogLevelAction initialized for protocol: {}", context.getProtocol());
     }
 

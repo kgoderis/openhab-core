@@ -19,11 +19,11 @@ import java.util.stream.Stream;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -152,7 +152,7 @@ public class ListFilesAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing ListFilesAction with context: {}", context.getProtocol());
 
         try {
@@ -312,7 +312,7 @@ public class ListFilesAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -324,11 +324,11 @@ public class ListFilesAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Lists files and directories within the openHAB root folder with security validation")
-                .tags(List.of("filesystem", "list", "files", "directories", "security"))
-                .documentation("Provides secure file system listing capabilities for openHAB directories")
-                .examples(List.of("List current directory: {\"path\": \".\"}",
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Lists files and directories within the openHAB root folder with security validation")
+                .withTags(List.of("filesystem", "list", "files", "directories", "security"))
+                .withDocumentation("Provides secure file system listing capabilities for openHAB directories")
+                .withExamples(List.of("List current directory: {\"path\": \".\"}",
                         "List recursively: {\"path\": \".\", \"recursive\": true}",
                         "List only files: {\"path\": \".\", \"fileType\": \"files\"}",
                         "List with details: {\"path\": \".\", \"includeDetails\": true}"))
@@ -341,7 +341,7 @@ public class ListFilesAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ListFilesAction initialized for protocol: {}", context.getProtocol());
     }
 

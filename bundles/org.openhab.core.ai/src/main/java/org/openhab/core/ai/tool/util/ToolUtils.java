@@ -1,17 +1,17 @@
 package org.openhab.core.ai.tool.util;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,16 +72,19 @@ public class ToolUtils {
                             ToolValidationResult validation = tool.validateParameters(parameters);
                             if (!validation.isValid()) {
                                 LOGGER.warn("Tool parameter validation failed for {}: {}", toolId,
-                                        validation.getMessage());
-                                return new McpSchema.CallToolResult(Arrays.asList(
-                                        new McpSchema.TextContent("Validation failed: " + validation.getMessage())),
+                                        validation.getErrors());
+                                return new McpSchema.CallToolResult(List
+                                        .of(new McpSchema.TextContent("Validation failed: " + validation.getErrors())),
                                         true);
                             }
 
                             // Create tool context
-                            ToolContext context = new ToolContext();
-                            context.setProperty("requestId", toolReq.name());
-                            context.setProperty("timestamp", System.currentTimeMillis());
+                            Map<String, Object> contextValues = new HashMap<>();
+                            contextValues.put("requestId", toolReq.name());
+                            contextValues.put("timestamp", System.currentTimeMillis());
+
+                            ToolContext context = new ToolContext("tool-exec-" + System.currentTimeMillis(), toolId,
+                                    tool.getName(), tool.getMetadata().getVersion(), null, null, contextValues, null);
 
                             // Execute the tool
                             long startTime = System.currentTimeMillis();
@@ -89,8 +92,7 @@ public class ToolUtils {
                             long executionTime = System.currentTimeMillis() - startTime;
 
                             // Log performance metrics
-                            ToolUtils.optimizeToolPerformance(toolId,
-                                    executionTime);
+                            // TODO: Implement performance optimization
 
                             if (result.isSuccess()) {
                                 LOGGER.debug("Tool execution successful for {} in {}ms", toolId, executionTime);
@@ -164,16 +166,20 @@ public class ToolUtils {
                                 ToolValidationResult validation = tool.validateParameters(parameters);
                                 if (!validation.isValid()) {
                                     LOGGER.warn("Tool parameter validation failed for {}: {}", toolId,
-                                            validation.getMessage());
-                                    return new McpSchema.CallToolResult(Arrays.asList(
-                                            new McpSchema.TextContent("Validation failed: " + validation.getMessage())),
+                                            validation.getErrors());
+                                    return new McpSchema.CallToolResult(List.of(
+                                            new McpSchema.TextContent("Validation failed: " + validation.getErrors())),
                                             true);
                                 }
 
                                 // Create tool context
-                                ToolContext context = new ToolContext();
-                                context.setProperty("requestId", toolReq.name());
-                                context.setProperty("timestamp", System.currentTimeMillis());
+                                Map<String, Object> contextValues = new HashMap<>();
+                                contextValues.put("requestId", toolReq.name());
+                                contextValues.put("timestamp", System.currentTimeMillis());
+
+                                ToolContext context = new ToolContext("tool-exec-" + System.currentTimeMillis(), toolId,
+                                        tool.getName(), tool.getMetadata().getVersion(), null, null, contextValues,
+                                        null);
 
                                 // Execute the tool
                                 long startTime = System.currentTimeMillis();
@@ -181,8 +187,7 @@ public class ToolUtils {
                                 long executionTime = System.currentTimeMillis() - startTime;
 
                                 // Log performance metrics
-                                ToolUtils.optimizeToolPerformance(toolId,
-                                        executionTime);
+                                // TODO: Implement performance optimization
 
                                 if (result.isSuccess()) {
                                     LOGGER.debug("Async tool execution successful for {} in {}ms", toolId,
@@ -234,12 +239,10 @@ public class ToolUtils {
             ToolValidationResult result = tool.validateParameters(parameters);
 
             EnhancedValidationResult enhancedResult = new EnhancedValidationResult(result.isValid(),
-                    result.isValid() ? Arrays.asList()
-                            : Arrays.asList(result.getMessage() != null ? result.getMessage() : "Validation failed"),
-                    Arrays.asList(), toolId, parameters);
+                    result.isValid() ? List.of() : result.getErrors(), List.of(), toolId, parameters);
 
             if (!result.isValid()) {
-                LOGGER.warn("Tool parameter validation failed for {}: {}", toolId, result.getMessage());
+                LOGGER.warn("Tool parameter validation failed for {}: {}", toolId, result.getErrors());
             } else {
                 LOGGER.debug("Tool parameter validation passed for: {}", toolId);
             }

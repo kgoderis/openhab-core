@@ -2,6 +2,8 @@ package org.openhab.core.ai.agent.collaboration.context;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.collaboration.ContextVersion;
+import org.openhab.core.ai.agent.collaboration.SharedContext;
 
 /**
  * Result of a context retrieval operation.

@@ -14,6 +14,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.rest.SharedRestInfrastructure;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.server.DefaultToolServerManager;
+import org.openhab.core.ai.tool.server.TransportStatistics;
 import org.openhab.core.io.rest.RESTConstants;
 import org.openhab.core.io.rest.RESTResource;
 import org.osgi.service.component.annotations.Component;

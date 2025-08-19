@@ -12,11 +12,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -135,7 +135,7 @@ public class SecurityManagementAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing security management action with parameters: {}", parameters);
 
@@ -166,7 +166,7 @@ public class SecurityManagementAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -178,12 +178,12 @@ public class SecurityManagementAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB").description(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB").withDescription(
                 "Manages openHAB security including user/role management, authentication status, and security configuration")
-                .tags(List.of("security", "authentication", "users", "audit", "permissions"))
-                .documentation(
+                .withTags(List.of("security", "authentication", "users", "audit", "permissions"))
+                .withDocumentation(
                         "Manages openHAB security including user/role management, authentication status, and security configuration")
-                .examples(List.of("{\"action\": \"security_status\"} - Get overall security status",
+                .withExamples(List.of("{\"action\": \"security_status\"} - Get overall security status",
                         "{\"action\": \"list_users\"} - List all users",
                         "{\"action\": \"user_info\", \"username\": \"admin\"} - Get specific user information",
                         "{\"action\": \"authentication_methods\"} - List available authentication methods",
@@ -197,7 +197,7 @@ public class SecurityManagementAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("SecurityManagementAction initialized for protocol: {}", context.getProtocol());
     }
 

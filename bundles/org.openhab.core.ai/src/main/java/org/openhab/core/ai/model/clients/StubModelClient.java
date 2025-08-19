@@ -5,8 +5,8 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
-import org.openhab.core.ai.model.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
 import org.openhab.core.ai.model.ModelResponse;
@@ -36,9 +36,9 @@ public class StubModelClient implements ModelClient {
 
     @Override
     public CompletableFuture<ModelResponse> complete(String prompt, ModelParameters params) {
-        return CompletableFuture.completedFuture(
-                ModelResponse.builder().content("This is a stub response from " + providerType + " model " + modelName)
-                        .modelName(modelName).providerType(providerType.name()).build());
+        return CompletableFuture.completedFuture(ModelResponse.builder()
+                .withContent("This is a stub response from " + providerType + " model " + modelName)
+                .withModelName(modelName).withProviderType(providerType.name()).build());
     }
 
     @Override
@@ -47,8 +47,8 @@ public class StubModelClient implements ModelClient {
         // Simulate streaming by calling onChunk and then onComplete
         handler.onChunk("This is a stub streaming response from " + providerType + " model " + modelName);
         ModelResponse response = ModelResponse.builder()
-                .content("This is a stub streaming response from " + providerType + " model " + modelName)
-                .modelName(modelName).providerType(providerType.name()).build();
+                .withContent("This is a stub streaming response from " + providerType + " model " + modelName)
+                .withModelName(modelName).withProviderType(providerType.name()).build();
         handler.onComplete(response);
         return CompletableFuture.completedFuture(response);
     }
@@ -65,7 +65,10 @@ public class StubModelClient implements ModelClient {
 
     @Override
     public ModelHealthStatus getHealthStatus() {
-        return new ModelHealthStatus(true, Instant.now(), 0, 1.0, 0, null, null);
+        return ModelHealthStatus.builder().withId("stub-client")
+                .withOverallHealth(ModelHealthStatus.HealthState.HEALTHY).withPrimaryModelAvailable(true)
+                .withResponseTimeMs(0).withErrorRate(0.0).withTotalRequests(0).withFailedRequests(0)
+                .withLastHealthCheck(Instant.now()).build();
     }
 
     @Override

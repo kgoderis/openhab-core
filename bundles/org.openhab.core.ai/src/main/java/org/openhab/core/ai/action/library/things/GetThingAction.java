@@ -8,11 +8,11 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
@@ -135,7 +135,7 @@ public class GetThingAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
 
         try {
@@ -260,7 +260,7 @@ public class GetThingAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -272,12 +272,12 @@ public class GetThingAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieve comprehensive information about a single openHAB thing")
-                .tags(List.of("things", "information", "details", "comprehensive"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieve comprehensive information about a single openHAB thing")
+                .withTags(List.of("things", "information", "details", "comprehensive"))
+                .withDocumentation(
                         "Retrieves comprehensive information about a single openHAB thing including basic info, status, type, configuration, properties, channels, and handler information.")
-                .examples(List.of("Get basic info: {\"thingUID\": \"binding:type:thing\"}",
+                .withExamples(List.of("Get basic info: {\"thingUID\": \"binding:type:thing\"}",
                         "Get with channels: {\"thingUID\": \"binding:type:thing\", \"includeChannels\": true}",
                         "Get with configuration: {\"thingUID\": \"binding:type:thing\", \"includeConfiguration\": true}",
                         "Get with properties: {\"thingUID\": \"binding:type:thing\", \"includeProperties\": true}",
@@ -302,7 +302,7 @@ public class GetThingAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         // No initialization needed
     }
 

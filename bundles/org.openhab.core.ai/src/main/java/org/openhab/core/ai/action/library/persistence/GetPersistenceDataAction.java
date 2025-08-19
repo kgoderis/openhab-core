@@ -14,11 +14,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
@@ -191,7 +191,7 @@ public class GetPersistenceDataAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing GetPersistenceDataAction with context: {}", context.getProtocol());
 
         long startTime = System.currentTimeMillis();
@@ -219,7 +219,7 @@ public class GetPersistenceDataAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -231,12 +231,13 @@ public class GetPersistenceDataAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().author("openHAB").description("Retrieves data from persistence services")
-                .version("1.0.0").tags(List.of("persistence", "data", "query")).build();
+        return ActionMetadata.builder().withAuthor("openHAB")
+                .withDescription("Retrieves data from persistence services").withVersion("1.0.0")
+                .withTags(List.of("persistence", "data", "query")).build();
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("GetPersistenceDataAction initialized with context: {}", context.getProtocol());
     }
 

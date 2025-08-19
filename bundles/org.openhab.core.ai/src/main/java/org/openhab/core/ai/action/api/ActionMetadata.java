@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.builder.ActionMetadataBuilder;
 
 /**
  * Metadata information for an action.
@@ -29,17 +30,17 @@ public class ActionMetadata {
     private final List<String> examples;
     private final Map<String, Object> requirements;
 
-    /* package */ ActionMetadata(ActionMetadataBuilder builder) {
-        this.version = builder.version;
-        this.author = builder.author;
-        this.description = builder.description;
-        this.tags = builder.tags != null ? builder.tags : List.of();
-        this.properties = builder.properties != null ? builder.properties : Map.of();
-        this.created = builder.created != null ? builder.created : Instant.now();
-        this.lastModified = builder.lastModified != null ? builder.lastModified : Instant.now();
-        this.documentation = builder.documentation;
-        this.examples = builder.examples != null ? builder.examples : List.of();
-        this.requirements = builder.requirements != null ? builder.requirements : Map.of();
+    public ActionMetadata(ActionMetadataBuilder builder) {
+        this.version = builder.getVersion();
+        this.author = builder.getAuthor();
+        this.description = builder.getDescription();
+        this.tags = builder.getTags() != null ? builder.getTags() : List.of();
+        this.properties = builder.getProperties() != null ? builder.getProperties() : Map.of();
+        this.created = builder.getCreated() != null ? builder.getCreated() : Instant.now();
+        this.lastModified = builder.getLastModified() != null ? builder.getLastModified() : Instant.now();
+        this.documentation = builder.getDocumentation();
+        this.examples = builder.getExamples() != null ? builder.getExamples() : List.of();
+        this.requirements = builder.getRequirements() != null ? builder.getRequirements() : Map.of();
     }
 
     /**

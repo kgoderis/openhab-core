@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.builder.ServerConfigurationBuilder;
 import org.openhab.core.ai.config.ConfigurationService;
 import org.openhab.core.ai.tool.logging.ToolLoggingManager;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
@@ -472,128 +473,143 @@ public class DefaultToolServerManager implements ToolServerManager {
             ServerConfigurationBuilder builder = ServerConfiguration.builder();
 
             // Server Identity
-            builder.serverId(configurationService.getConfigValue("mcp.server.id", "openhab-mcp-server"))
-                    .serverName(configurationService.getConfigValue("mcp.server.name", "openHAB MCP Server"))
-                    .serverVersion(configurationService.getConfigValue("mcp.server.version", "1.0.0"));
+            builder.withName(configurationService.getConfigValue("mcp.server.name", "openHAB MCP Server"))
+                    .withVersion(configurationService.getConfigValue("mcp.server.version", "1.0.0"));
 
             // Transport Configuration
             String transportType = configurationService.getConfigValue("mcp.transport.type", "STDIO");
-            builder.transportType(TransportType.valueOf(transportType))
-                    .baseUrl(configurationService.getConfigValue("mcp.transport.base.url", "http://localhost:8080"))
-                    .messageEndpoint(
+            builder.withTransportType(TransportType.valueOf(transportType).name())
+                    .withSetting("baseUrl",
+                            configurationService.getConfigValue("mcp.transport.base.url", "http://localhost:8080"))
+                    .withSetting("messageEndpoint",
                             configurationService.getConfigValue("mcp.transport.message.endpoint", "/mcp/message"))
-                    .sseEndpoint(configurationService.getConfigValue("mcp.transport.sse.endpoint", "/mcp/events"))
-                    .enableSse(configurationService.getConfigValue("mcp.transport.enable.sse", Boolean.class, true));
+                    .withSetting("sseEndpoint",
+                            configurationService.getConfigValue("mcp.transport.sse.endpoint", "/mcp/events"))
+                    .withSetting("enableSse",
+                            configurationService.getConfigValue("mcp.transport.enable.sse", Boolean.class, true));
 
             // Feature Enablement
-            builder.enableTools(configurationService.getConfigValue("mcp.features.enable.tools", Boolean.class, true))
-                    .enableResources(
+            builder.withSetting("enableTools",
+                    configurationService.getConfigValue("mcp.features.enable.tools", Boolean.class, true))
+                    .withSetting("enableResources",
                             configurationService.getConfigValue("mcp.features.enable.resources", Boolean.class, true))
-                    .enablePrompts(
+                    .withSetting("enablePrompts",
                             configurationService.getConfigValue("mcp.features.enable.prompts", Boolean.class, true))
-                    .enableLogging(
+                    .withSetting("enableLogging",
                             configurationService.getConfigValue("mcp.features.enable.logging", Boolean.class, true));
 
             // Async Server Configuration
-            builder.enableAsyncServer(
+            builder.withSetting("async.enable.server",
                     configurationService.getConfigValue("mcp.async.enable.server", Boolean.class, false))
-                    .enableAsyncTools(
+                    .withSetting("async.enable.tools",
                             configurationService.getConfigValue("mcp.async.enable.tools", Boolean.class, false))
-                    .asyncThreadPoolSize(
+                    .withSetting("async.thread.pool.size",
                             configurationService.getConfigValue("mcp.async.thread.pool.size", Integer.class, 10))
-                    .asyncQueueCapacity(
+                    .withSetting("async.queue.capacity",
                             configurationService.getConfigValue("mcp.async.queue.capacity", Integer.class, 1000))
-                    .enableAsyncCompletions(
+                    .withSetting("async.enable.completions",
                             configurationService.getConfigValue("mcp.async.enable.completions", Boolean.class, false));
 
             // Security Configuration
-            builder.enableAuthentication(configurationService.getConfigValue("mcp.auth.enabled", Boolean.class, false))
-                    .enableRequestValidation(configurationService.getConfigValue("mcp.auth.enable.request.validation",
-                            Boolean.class, true))
-                    .maxConnections(configurationService.getConfigValue("mcp.connections.max", Integer.class, 100))
-                    .rateLimitPerMinute(
+            builder.withSetting("auth.enabled",
+                    configurationService.getConfigValue("mcp.auth.enabled", Boolean.class, false))
+                    .withSetting("auth.enable.request.validation",
+                            configurationService.getConfigValue("mcp.auth.enable.request.validation", Boolean.class,
+                                    true))
+                    .withSetting("connections.max",
+                            configurationService.getConfigValue("mcp.connections.max", Integer.class, 100))
+                    .withSetting("rate.limit.per.minute",
                             configurationService.getConfigValue("mcp.rate.limit.per.minute", Integer.class, 1000));
 
             // Authentication Method Selection
-            builder.primaryAuthMethod(configurationService.getConfigValue("mcp.auth.primary.method", "oauth2.1"))
-                    .fallbackAuthMethod(
+            builder.withSetting("auth.primary.method",
+                    configurationService.getConfigValue("mcp.auth.primary.method", "oauth2.1"))
+                    .withSetting("auth.fallback.method",
                             configurationService.getConfigValue("mcp.auth.fallback.method", "openhab_users"))
-                    .enableFallbackAuth(
+                    .withSetting("auth.enable.fallback",
                             configurationService.getConfigValue("mcp.auth.enable.fallback", Boolean.class, true));
 
             // OAuth 2.1 Configuration
-            builder.oauthIssuerUrl(configurationService.getConfigValue("mcp.oauth.issuer.url", ""))
-                    .oauthClientId(configurationService.getConfigValue("mcp.oauth.client.id", ""))
-                    .oauthClientSecret(configurationService.getConfigValue("mcp.oauth.client.secret", ""))
-                    .oauthRedirectUri(configurationService.getConfigValue("mcp.oauth.redirect.uri",
-                            "http://localhost:8080/callback"))
-                    .oauthPkceEnabled(
+            builder.withSetting("oauth.issuer.url", configurationService.getConfigValue("mcp.oauth.issuer.url", ""))
+                    .withSetting("oauth.client.id", configurationService.getConfigValue("mcp.oauth.client.id", ""))
+                    .withSetting("oauth.client.secret",
+                            configurationService.getConfigValue("mcp.oauth.client.secret", ""))
+                    .withSetting("oauth.redirect.uri",
+                            configurationService.getConfigValue("mcp.oauth.redirect.uri",
+                                    "http://localhost:8080/callback"))
+                    .withSetting("oauth.pkce.enabled",
                             configurationService.getConfigValue("mcp.oauth.pkce.enabled", Boolean.class, true));
 
             // openHAB Users Authentication
-            builder.openhabUsersFile(configurationService.getConfigValue("mcp.openhab.users.file", ""))
-                    .openhabUsersEnabled(
+            builder.withSetting("openhab.users.file", configurationService.getConfigValue("mcp.openhab.users.file", ""))
+                    .withSetting("openhab.users.enabled",
                             configurationService.getConfigValue("mcp.openhab.users.enabled", Boolean.class, true));
 
             // API Key Authentication
-            builder.apiKeyHeader(configurationService.getConfigValue("mcp.api.key.header", "X-API-Key"))
-                    .apiKeyValue(configurationService.getConfigValue("mcp.api.key.value", ""))
-                    .apiKeyEnabled(configurationService.getConfigValue("mcp.api.key.enabled", Boolean.class, false));
+            builder.withSetting("api.key.header",
+                    configurationService.getConfigValue("mcp.api.key.header", "X-API-Key"))
+                    .withSetting("api.key.value", configurationService.getConfigValue("mcp.api.key.value", ""))
+                    .withSetting("api.key.enabled",
+                            configurationService.getConfigValue("mcp.api.key.enabled", Boolean.class, false));
 
             // JWT Authentication
-            builder.jwtSecret(configurationService.getConfigValue("mcp.jwt.secret", ""))
-                    .jwtIssuer(configurationService.getConfigValue("mcp.jwt.issuer", "openhab-mcp"))
-                    .jwtExpirationMinutes(
+            builder.withSetting("jwt.secret", configurationService.getConfigValue("mcp.jwt.secret", ""))
+                    .withSetting("jwt.issuer", configurationService.getConfigValue("mcp.jwt.issuer", "openhab-mcp"))
+                    .withSetting("jwt.expiration.minutes",
                             configurationService.getConfigValue("mcp.jwt.expiration.minutes", Integer.class, 60))
-                    .jwtEnabled(configurationService.getConfigValue("mcp.jwt.enabled", Boolean.class, false));
+                    .withSetting("jwt.enabled",
+                            configurationService.getConfigValue("mcp.jwt.enabled", Boolean.class, false));
 
             // Timeout Settings
-            builder.connectionTimeout(
+            builder.withSetting("timeout.connection",
                     configurationService.getConfigValue("mcp.timeout.connection", Integer.class, 30000))
-                    .requestTimeout(configurationService.getConfigValue("mcp.timeout.request", Integer.class, 60000));
+                    .withSetting("timeout.request",
+                            configurationService.getConfigValue("mcp.timeout.request", Integer.class, 60000));
 
             // Resource Limits - using server options instead of non-existent methods
-            builder.serverOption("max.memory.usage",
+            builder.withSetting("resources.max.memory.usage",
                     configurationService.getConfigValue("mcp.resources.max.memory.usage", "512MB"))
-                    .serverOption("max.concurrent.requests",
+                    .withSetting("resources.max.concurrent.requests",
                             configurationService.getConfigValue("mcp.resources.max.concurrent.requests", Integer.class,
                                     50))
-                    .serverOption("max.tool.executions", configurationService
+                    .withSetting("resources.max.tool.executions", configurationService
                             .getConfigValue("mcp.resources.max.tool.executions", Integer.class, 10));
 
             // Health Monitoring - using server options instead of non-existent methods
-            builder.enableHealthChecks(configurationService.getConfigValue("mcp.health.enabled", Boolean.class, true))
-                    .serverOption("health.endpoint",
+            builder.withSetting("health.enabled",
+                    configurationService.getConfigValue("mcp.health.enabled", Boolean.class, true))
+                    .withSetting("health.endpoint",
                             configurationService.getConfigValue("mcp.health.endpoint", "/health"))
-                    .serverOption("health.check.interval",
+                    .withSetting("health.check.interval",
                             configurationService.getConfigValue("mcp.health.check.interval", "30s"))
-                    .serverOption("health.timeout", configurationService.getConfigValue("mcp.health.timeout", "10s"));
+                    .withSetting("health.timeout", configurationService.getConfigValue("mcp.health.timeout", "10s"));
 
             // Metrics Configuration - using server options instead of non-existent methods
-            builder.enableMetrics(configurationService.getConfigValue("mcp.metrics.enabled", Boolean.class, true))
-                    .serverOption("metrics.endpoint",
+            builder.withSetting("metrics.enabled",
+                    configurationService.getConfigValue("mcp.metrics.enabled", Boolean.class, true))
+                    .withSetting("metrics.endpoint",
                             configurationService.getConfigValue("mcp.metrics.endpoint", "/metrics"))
-                    .serverOption("metrics.collection.interval",
+                    .withSetting("metrics.collection.interval",
                             configurationService.getConfigValue("mcp.metrics.collection.interval", "60s"))
-                    .serverOption("metrics.retention.days",
+                    .withSetting("metrics.retention.days",
                             configurationService.getConfigValue("mcp.metrics.retention.days", Integer.class, 7));
 
             // Debug Configuration - using server options instead of non-existent methods
-            builder.serverOption("debug.enabled",
+            builder.withSetting("debug.enabled",
                     configurationService.getConfigValue("mcp.debug.enabled", Boolean.class, false))
-                    .serverOption("debug.log.requests",
+                    .withSetting("debug.log.requests",
                             configurationService.getConfigValue("mcp.debug.log.requests", Boolean.class, true))
-                    .serverOption("debug.log.responses",
+                    .withSetting("debug.log.responses",
                             configurationService.getConfigValue("mcp.debug.log.responses", Boolean.class, true))
-                    .serverOption("debug.log.tool.executions",
+                    .withSetting("debug.log.tool.executions",
                             configurationService.getConfigValue("mcp.debug.log.tool.executions", Boolean.class, true));
 
             // Development Features - using server options instead of non-existent methods
-            builder.serverOption("dev.enable.hot.reload",
+            builder.withSetting("dev.enable.hot.reload",
                     configurationService.getConfigValue("mcp.dev.enable.hot.reload", Boolean.class, false))
-                    .serverOption("dev.enable.tool.discovery",
+                    .withSetting("dev.enable.tool.discovery",
                             configurationService.getConfigValue("mcp.dev.enable.tool.discovery", Boolean.class, true))
-                    .serverOption("dev.enable.configuration.reload", configurationService
+                    .withSetting("dev.enable.configuration.reload", configurationService
                             .getConfigValue("mcp.dev.enable.configuration.reload", Boolean.class, true));
 
             ServerConfiguration config = builder.build();
@@ -612,9 +628,10 @@ public class DefaultToolServerManager implements ToolServerManager {
      * @return Default MCP server configuration
      */
     private ServerConfiguration createDefaultConfiguration() {
-        return ServerConfiguration.builder().serverId("openhab-tool-server").serverName("openHAB Tool Server")
-                .serverVersion("1.0.0").transportType(TransportType.STDIO).enableTools(true).enableResources(true)
-                .enablePrompts(true).enableLogging(true).build();
+        return ServerConfiguration.builder().withName("openHAB Tool Server").withVersion("1.0.0")
+                .withTransportType(TransportType.STDIO.name()).withSetting("enableTools", true)
+                .withSetting("enableResources", true).withSetting("enablePrompts", true)
+                .withSetting("enableLogging", true).build();
     }
 
     /**

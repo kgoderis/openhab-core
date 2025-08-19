@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.builder.MessageOptionsBuilder;
 
 /**
  * Message options.
@@ -21,12 +22,21 @@ public class MessageOptions {
     private final int maxRetries;
     private final Map<String, Object> metadata;
 
-    MessageOptions(MessageOptionsBuilder builder) {
-        this.encrypted = builder.encrypted;
-        this.persistent = builder.persistent;
-        this.timeout = builder.timeout;
-        this.maxRetries = builder.maxRetries;
-        this.metadata = builder.metadata;
+    public MessageOptions(MessageOptionsBuilder builder) {
+        this.encrypted = builder.isEncrypted();
+        this.persistent = builder.isPersistent();
+        this.timeout = builder.getTimeout();
+        this.maxRetries = builder.getMaxRetries();
+        this.metadata = builder.getMetadata();
+    }
+
+    public MessageOptions(boolean encrypted, boolean persistent, Duration timeout, int maxRetries,
+            Map<String, Object> metadata) {
+        this.encrypted = encrypted;
+        this.persistent = persistent;
+        this.timeout = timeout;
+        this.maxRetries = maxRetries;
+        this.metadata = metadata;
     }
 
     public boolean isEncrypted() {

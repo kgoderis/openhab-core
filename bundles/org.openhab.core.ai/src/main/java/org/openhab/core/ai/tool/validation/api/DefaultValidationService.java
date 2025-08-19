@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.validation.api;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -7,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 
 /**
  * Default implementation of ValidationService for MCP tools.
@@ -21,7 +23,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 public class DefaultValidationService implements ValidationService {
 
     private final Map<String, Object> validationRules;
-    private final ConcurrentHashMap<String, ValidationResult> validationCache;
+    private final ConcurrentHashMap<String, ToolValidationResult> validationCache;
     private final List<ValidationListener> listeners;
 
     /**
@@ -37,9 +39,9 @@ public class DefaultValidationService implements ValidationService {
     }
 
     @Override
-    public ValidationResult validateConfiguration(Map<String, Object> configuration) {
+    public ToolValidationResult validateConfiguration(Map<String, Object> configuration) {
         if (configuration == null) {
-            return ValidationResult.invalid(List.of("Configuration cannot be null"));
+            return ToolValidationResult.invalid(List.of("Configuration cannot be null"));
         }
 
         List<String> errors = new ArrayList<>();
@@ -56,13 +58,13 @@ public class DefaultValidationService implements ValidationService {
 
         boolean isValid = errors.isEmpty();
         Map<String, Object> details = Map.of("errors", errors, "warnings", warnings);
-        return new ValidationResult(isValid, errors, warnings, details);
+        return new ToolValidationResult(isValid, errors, warnings, details, Instant.now());
     }
 
     @Override
-    public ValidationResult validateParameters(Map<String, Object> parameters) {
+    public ToolValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null) {
-            return ValidationResult.invalid(List.of("Parameters cannot be null"));
+            return ToolValidationResult.invalid(List.of("Parameters cannot be null"));
         }
 
         List<String> errors = new ArrayList<>();
@@ -79,13 +81,13 @@ public class DefaultValidationService implements ValidationService {
 
         boolean isValid = errors.isEmpty();
         Map<String, Object> details = Map.of("errors", errors, "warnings", warnings);
-        return new ValidationResult(isValid, errors, warnings, details);
+        return new ToolValidationResult(isValid, errors, warnings, details, Instant.now());
     }
 
     @Override
-    public ValidationResult validateSchema(Map<String, Object> schema) {
+    public ToolValidationResult validateSchema(Map<String, Object> schema) {
         if (schema == null) {
-            return ValidationResult.invalid(List.of("Schema cannot be null"));
+            return ToolValidationResult.invalid(List.of("Schema cannot be null"));
         }
 
         List<String> errors = new ArrayList<>();
@@ -102,73 +104,47 @@ public class DefaultValidationService implements ValidationService {
 
         boolean isValid = errors.isEmpty();
         Map<String, Object> details = Map.of("errors", errors, "warnings", warnings);
-        return new ValidationResult(isValid, errors, warnings, details);
+        return new ToolValidationResult(isValid, errors, warnings, details, Instant.now());
     }
 
     @Override
     public boolean isToolValid(String toolId) {
-        if (toolId == null || toolId.isEmpty()) {
+        if (toolId == null || toolId.trim().isEmpty()) {
             return false;
         }
 
         // Check cache first
-        ValidationResult cachedResult = validationCache.get(toolId);
+        ToolValidationResult cachedResult = validationCache.get(toolId);
         if (cachedResult != null) {
             return cachedResult.isValid();
         }
 
-        // Implement actual tool validation logic
-        try {
-            // Load tool configuration
-            Map<String, Object> toolConfig = loadToolConfiguration(toolId);
-            if (toolConfig == null) {
-                return false;
-            }
-
-            // Validate tool configuration
-            ValidationResult configResult = validateConfiguration(toolConfig);
-            if (!configResult.isValid()) {
-                return false;
-            }
-
-            // Validate tool schema
-            Map<String, Object> toolSchema = (Map<String, Object>) toolConfig.get("schema");
-            if (toolSchema != null) {
-                ValidationResult schemaResult = validateSchema(toolSchema);
-                if (!schemaResult.isValid()) {
-                    return false;
-                }
-            }
-
-            // Check tool dependencies
-            List<String> dependencies = (List<String>) toolConfig.get("dependencies");
-            if (dependencies != null) {
-                for (String dependency : dependencies) {
-                    if (!isToolValid(dependency)) {
-                        return false;
-                    }
-                }
-            }
-
-            // Validate tool permissions
-            Map<String, Object> permissions = (Map<String, Object>) toolConfig.get("permissions");
-            if (permissions != null) {
-                if (!validateToolPermissions(permissions)) {
-                    return false;
-                }
-            }
-
-            // Cache the validation result
-            ValidationResult result = ValidationResult.valid();
-            validationCache.put(toolId, result);
-
-            return true;
-
-        } catch (Exception e) {
-            // Log error and return false
-            System.err.println("Error validating tool " + toolId + ": " + e.getMessage());
+        // Get tool configuration from registry or configuration service
+        Map<String, Object> toolConfig = loadToolConfiguration(toolId);
+        if (toolConfig == null) {
             return false;
         }
+
+        // Validate tool configuration
+        ToolValidationResult configResult = validateConfiguration(toolConfig);
+        if (!configResult.isValid()) {
+            return false;
+        }
+
+        // Validate tool schema if present
+        Map<String, Object> toolSchema = (Map<String, Object>) toolConfig.get("schema");
+        if (toolSchema != null) {
+            ToolValidationResult schemaResult = validateSchema(toolSchema);
+            if (!schemaResult.isValid()) {
+                return false;
+            }
+        }
+
+        // Cache the validation result
+        ToolValidationResult result = ToolValidationResult.valid();
+        validationCache.put(toolId, result);
+
+        return true;
     }
 
     @Override

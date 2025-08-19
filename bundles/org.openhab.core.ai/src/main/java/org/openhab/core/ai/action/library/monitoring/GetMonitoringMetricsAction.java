@@ -16,11 +16,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,7 +115,7 @@ public class GetMonitoringMetricsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing get monitoring metrics action with parameters: {}", parameters);
 
@@ -175,7 +175,7 @@ public class GetMonitoringMetricsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -187,12 +187,12 @@ public class GetMonitoringMetricsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieves comprehensive system monitoring metrics")
-                .tags(List.of("monitoring", "metrics", "system", "performance"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieves comprehensive system monitoring metrics")
+                .withTags(List.of("monitoring", "metrics", "system", "performance"))
+                .withDocumentation(
                         "Provides detailed system monitoring metrics including CPU, memory, disk, JVM, and thread statistics")
-                .examples(List.of("{} - Get all available metrics",
+                .withExamples(List.of("{} - Get all available metrics",
                         "{\"includeSystemMetrics\": true, \"includeJvmMetrics\": false} - Get only system metrics",
                         "{\"includeThreadMetrics\": true, \"includeNetworkMetrics\": true} - Focus on thread and network metrics"))
                 .build();
@@ -205,7 +205,7 @@ public class GetMonitoringMetricsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("GetMonitoringMetricsAction initialized for protocol: {}", context.getProtocol());
     }
 

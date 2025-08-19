@@ -15,9 +15,9 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.security.api.AccessLogEntry;
 import org.openhab.core.ai.tool.security.api.RateLimitInfo;
-import org.openhab.core.ai.tool.security.api.SecurityStatistics;
 import org.openhab.core.ai.tool.security.api.SpecificationPermissions;
 import org.openhab.core.ai.tool.security.api.ToolSecurityService;
 import org.openhab.core.ai.tool.security.api.UserRole;
@@ -515,8 +515,8 @@ public class DefaultToolSecurityService implements ToolSecurityService {
     }
 
     @Override
-    public SecurityStatistics getSecurityStatistics() {
-        return new SecurityStatistics(totalAccessAttempts.get(), allowedAccessAttempts.get(),
+    public ToolSecurityStatistics getSecurityStatistics() {
+        return new ToolSecurityStatistics(totalAccessAttempts.get(), allowedAccessAttempts.get(),
                 deniedAccessAttempts.get(), securityAlerts.get(), Instant.now());
     }
 

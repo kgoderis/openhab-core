@@ -16,11 +16,11 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.core.AgentContext;
 import org.openhab.core.ai.agent.core.AgentMetrics;
 import org.openhab.core.ai.agent.core.AgentState;
 import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
+import org.openhab.core.ai.common.context.AgentContext;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
 import org.openhab.core.ai.reasoning.input.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
@@ -526,16 +526,16 @@ public abstract class BaseAutonomousAgent {
         List<String> capabilities = new ArrayList<>();
 
         // Add capabilities based on available resources
-        if (context.containsKey("network")) {
+        if (context.hasValue("network")) {
             capabilities.add("network_communication");
         }
-        if (context.containsKey("database")) {
+        if (context.hasValue("database")) {
             capabilities.add("data_persistence");
         }
-        if (context.containsKey("sensors")) {
+        if (context.hasValue("sensors")) {
             capabilities.add("sensor_data_processing");
         }
-        if (context.containsKey("actuators")) {
+        if (context.hasValue("actuators")) {
             capabilities.add("actuator_control");
         }
 
@@ -658,7 +658,7 @@ public abstract class BaseAutonomousAgent {
     protected void updateContext(String key, Object value) {
         AgentContext currentContext = context.get();
         if (currentContext != null) {
-            currentContext.put(key, value);
+            context.set((AgentContext) currentContext.setValue(key, value));
         }
     }
 

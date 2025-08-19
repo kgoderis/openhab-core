@@ -10,12 +10,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,19 +85,19 @@ public class PromptManagementTool implements Tool {
 
     @Override
     public ToolMetadata getMetadata() {
-        return ToolMetadata.builder().version("1.0.0").author("openHAB")
-                .description("Prompt management tool for openHAB MCP").build();
+        return ToolMetadata.builder().withVersion("1.0.0").withAuthor("openHAB")
+                .withDescription("Prompt management tool for openHAB MCP").build();
     }
 
     @Override
     public ToolValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null || parameters.isEmpty()) {
-            return ToolValidationResult.invalid("Parameters cannot be null or empty");
+            return ToolValidationResult.invalid(List.of("Parameters cannot be null or empty"));
         }
 
         String operation = (String) parameters.get("operation");
         if (operation == null || operation.trim().isEmpty()) {
-            return ToolValidationResult.invalid("Operation is required");
+            return ToolValidationResult.invalid(List.of("Operation is required"));
         }
 
         switch (operation) {
@@ -106,19 +106,20 @@ public class PromptManagementTool implements Tool {
             case "delete":
             case "execute":
                 if (parameters.get("promptId") == null) {
-                    return ToolValidationResult.invalid("Prompt ID is required for " + operation + " operation");
+                    return ToolValidationResult
+                            .invalid(List.of("Prompt ID is required for " + operation + " operation"));
                 }
                 break;
             case "create":
                 if (parameters.get("promptData") == null) {
-                    return ToolValidationResult.invalid("Prompt data is required for create operation");
+                    return ToolValidationResult.invalid(List.of("Prompt data is required for create operation"));
                 }
                 break;
             case "list":
                 // No additional validation needed
                 break;
             default:
-                return ToolValidationResult.invalid("Invalid operation: " + operation);
+                return ToolValidationResult.invalid(List.of("Invalid operation: " + operation));
         }
 
         return ToolValidationResult.valid();
@@ -468,7 +469,7 @@ public class PromptManagementTool implements Tool {
         }
 
         // Simple regex to find {{variable}} patterns
-        Pattern pattern = Pattern.compile("\\{\\{([^}]+)\\}\\}");
+        Pattern pattern = Pattern.compile("{{([^}]+)}}");
         Matcher matcher = pattern.matcher(template);
 
         while (matcher.find()) {
@@ -528,7 +529,7 @@ public class PromptManagementTool implements Tool {
         String result = template;
 
         // Replace {{variable}} patterns with input values
-        Pattern pattern = Pattern.compile("\\{\\{([^}]+)\\}\\}");
+        Pattern pattern = Pattern.compile("{{([^}]+)}}");
         Matcher matcher = pattern.matcher(template);
 
         while (matcher.find()) {

@@ -11,6 +11,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.collaboration.ContextAccessLevel;
+import org.openhab.core.ai.agent.collaboration.SharedContext;
 import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionResult;
 import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionStrategy;
 import org.openhab.core.ai.agent.collaboration.coordination.api.CoordinationProtocol;
@@ -153,7 +155,7 @@ public class AgentCoordinationManager {
         logger.debug("Creating shared context: {} for agents: {}", contextId, agentIds);
 
         SharedContext context = SharedContext.builder().contextId(contextId).agentIds(agentIds).contextData(contextData)
-                .accessLevel(accessLevel).createdTime(Instant.now()).lastModified(Instant.now()).version(1).build();
+                .accessLevel(accessLevel).createdAt(Instant.now()).lastModifiedAt(Instant.now()).version(1).build();
 
         sharedContexts.put(contextId, context);
         totalContextSharing.incrementAndGet();
@@ -209,7 +211,7 @@ public class AgentCoordinationManager {
         Map<String, Object> newData = new ConcurrentHashMap<>(context.getContextData());
         newData.putAll(updates);
 
-        SharedContext updatedContext = context.toBuilder().contextData(newData).lastModified(Instant.now())
+        SharedContext updatedContext = context.toBuilder().contextData(newData).lastModifiedAt(Instant.now())
                 .version(context.getVersion() + 1).build();
 
         sharedContexts.put(contextId, updatedContext);

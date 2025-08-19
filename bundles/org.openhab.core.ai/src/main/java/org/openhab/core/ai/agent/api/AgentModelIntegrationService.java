@@ -6,6 +6,10 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.statistics.AgentModelStatistics;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
+import org.openhab.core.ai.common.statistics.ModelIntegrationStatistics;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 

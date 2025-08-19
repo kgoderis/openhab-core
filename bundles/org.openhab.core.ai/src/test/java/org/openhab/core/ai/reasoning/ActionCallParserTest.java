@@ -19,7 +19,8 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openhab.core.ai.action.ActionContext;
+import org.openhab.core.ai.action.api.ActionKeys;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.ModelResponseActionParser;
 
@@ -58,20 +59,20 @@ class ActionCallParserTest {
         ModelResponse response = createMockModelResponse(jsonContent);
 
         // When
-        List<ActionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
+        List<ExecutionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
 
         // Then
         assertNotNull(actionCalls);
         assertEquals(1, actionCalls.size());
 
-        ActionContext actionCall = actionCalls.get(0);
+        ExecutionContext actionCall = actionCalls.get(0);
         assertEquals("temp-1", actionCall.getCorrelationId());
         assertEquals("test-session", actionCall.getSessionId());
         assertEquals("a2a", actionCall.getProtocol());
         assertEquals("reasoning-engine", actionCall.getClientId());
 
-        Map<String, Object> protocolContext = actionCall.getProtocolContext();
-        assertEquals("openhab.items.get", protocolContext.get("action"));
+        String actionName = actionCall.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
+        assertEquals("openhab.items.get", actionName);
 
         @SuppressWarnings("unchecked")
         Map<String, Object> arguments = (Map<String, Object>) protocolContext.get("arguments");
@@ -85,23 +86,23 @@ class ActionCallParserTest {
         ModelResponse response = createMockModelResponse(content);
 
         // When
-        List<ActionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
+        List<ExecutionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
 
         // Then
         assertNotNull(actionCalls);
         assertEquals(1, actionCalls.size());
 
-        ActionContext actionCall = actionCalls.get(0);
+        ExecutionContext actionCall = actionCalls.get(0);
         assertTrue(actionCall.getCorrelationId().startsWith("action-"));
         assertEquals("test-session", actionCall.getSessionId());
         assertEquals("a2a", actionCall.getProtocol());
         assertEquals("reasoning-engine", actionCall.getClientId());
 
-        Map<String, Object> protocolContext = actionCall.getProtocolContext();
-        assertEquals("openhab.items.get", protocolContext.get("action"));
+        String actionName = actionCall.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
+        assertEquals("openhab.items.get", actionName);
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> arguments = (Map<String, Object>) protocolContext.get("arguments");
+        Map<String, Object> arguments = actionCall.getValue(ActionKeys.ARGUMENTS.getKey(), Map.class);
         assertEquals("Temperature_Sensor", arguments.get("itemName"));
     }
 
@@ -112,18 +113,18 @@ class ActionCallParserTest {
         ModelResponse response = createMockModelResponse(content);
 
         // When
-        List<ActionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
+        List<ExecutionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
 
         // Then
         assertNotNull(actionCalls);
         assertEquals(1, actionCalls.size());
 
-        ActionContext actionCall = actionCalls.get(0);
+        ExecutionContext actionCall = actionCalls.get(0);
         assertTrue(actionCall.getCorrelationId().startsWith("action-"));
         assertEquals("test-session", actionCall.getSessionId());
 
-        Map<String, Object> protocolContext = actionCall.getProtocolContext();
-        assertEquals("openhab.items.get", protocolContext.get("action"));
+        String actionName = actionCall.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
+        assertEquals("openhab.items.get", actionName);
 
         @SuppressWarnings("unchecked")
         Map<String, Object> arguments = (Map<String, Object>) protocolContext.get("arguments");
@@ -152,23 +153,23 @@ class ActionCallParserTest {
         ModelResponse response = createMockModelResponse(jsonContent);
 
         // When
-        List<ActionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
+        List<ExecutionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
 
         // Then
         assertNotNull(actionCalls);
         assertEquals(2, actionCalls.size());
 
-        ActionContext tempCall = actionCalls.get(0);
-        ActionContext humidityCall = actionCalls.get(1);
+        ExecutionContext tempCall = actionCalls.get(0);
+        ExecutionContext humidityCall = actionCalls.get(1);
 
         assertEquals("temp-1", tempCall.getCorrelationId());
         assertEquals("humidity-1", humidityCall.getCorrelationId());
 
-        Map<String, Object> tempContext = tempCall.getProtocolContext();
-        Map<String, Object> humidityContext = humidityCall.getProtocolContext();
+        String tempAction = tempCall.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
+        String humidityAction = humidityCall.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
 
-        assertEquals("openhab.items.get", tempContext.get("action"));
-        assertEquals("openhab.items.get", humidityContext.get("action"));
+        assertEquals("openhab.items.get", tempAction);
+        assertEquals("openhab.items.get", humidityAction);
     }
 
     @Test
@@ -178,7 +179,7 @@ class ActionCallParserTest {
         ModelResponse response = createMockModelResponse(content);
 
         // When
-        List<ActionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
+        List<ExecutionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
 
         // Then
         assertNotNull(actionCalls);
@@ -192,7 +193,7 @@ class ActionCallParserTest {
         ModelResponse response = createMockModelResponse(content);
 
         // When
-        List<ActionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
+        List<ExecutionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
 
         // Then
         assertNotNull(actionCalls);
@@ -205,7 +206,7 @@ class ActionCallParserTest {
         ModelResponse response = createMockModelResponse(null);
 
         // When
-        List<ActionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
+        List<ExecutionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
 
         // Then
         assertNotNull(actionCalls);
@@ -218,7 +219,7 @@ class ActionCallParserTest {
         ModelResponse response = createMockModelResponse("");
 
         // When
-        List<ActionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
+        List<ExecutionContext> actionCalls = actionCallParser.parseActionCalls(response, "test-session");
 
         // Then
         assertNotNull(actionCalls);
@@ -228,9 +229,8 @@ class ActionCallParserTest {
     @Test
     void testValidateActionCall() {
         // Given
-        ActionContext validActionCall = ActionContext.builder().protocol("a2a").clientId("test-client")
-                .sessionId("test-session").correlationId("test-correlation")
-                .protocolContext(Map.of("action", "test.action")).build();
+        ExecutionContext validActionCall = ExecutionContext.builder().protocol("a2a").clientId("test-client")
+                .sessionId("test-session").correlationId("test-correlation").withActionName("test.action").build();
 
         // When
         boolean isValid = actionCallParser.validateActionCall(validActionCall, null);
@@ -242,8 +242,9 @@ class ActionCallParserTest {
     @Test
     void testValidateActionCallMissingCorrelationId() {
         // Given
-        ActionContext invalidActionCall = ActionContext.builder().protocol("a2a").clientId("test-client")
-                .sessionId("test-session").correlationId("").protocolContext(Map.of("action", "test.action")).build();
+        ExecutionContext invalidActionCall = ExecutionContext.builder().withProtocol("a2a").withClientId("test-client")
+                .withSessionId("test-session").withCorrelationId("").withValues(Map.of("action", "test.action"))
+                .build();
 
         // When
         boolean isValid = actionCallParser.validateActionCall(invalidActionCall, null);
@@ -255,8 +256,8 @@ class ActionCallParserTest {
     @Test
     void testValidateActionCallMissingAction() {
         // Given
-        ActionContext invalidActionCall = ActionContext.builder().protocol("a2a").clientId("test-client")
-                .sessionId("test-session").correlationId("test-correlation").protocolContext(Map.of()).build();
+        ExecutionContext invalidActionCall = ExecutionContext.builder().withProtocol("a2a").withClientId("test-client")
+                .withSessionId("test-session").withCorrelationId("test-correlation").withValues(Map.of()).build();
 
         // When
         boolean isValid = actionCallParser.validateActionCall(invalidActionCall, null);
@@ -268,8 +269,8 @@ class ActionCallParserTest {
     @Test
     void testValidateActionCallEmptyAction() {
         // Given
-        ActionContext invalidActionCall = ActionContext.builder().protocol("a2a").clientId("test-client")
-                .sessionId("test-session").correlationId("test-correlation").protocolContext(Map.of("action", ""))
+        ExecutionContext invalidActionCall = ExecutionContext.builder().withProtocol("a2a").withClientId("test-client")
+                .withSessionId("test-session").withCorrelationId("test-correlation").withValues(Map.of("action", ""))
                 .build();
 
         // When
@@ -287,7 +288,7 @@ class ActionCallParserTest {
 
         // When
         actionCallParser.parseActionCalls(response, "test-session");
-        ModelResponseActionParser.PerformanceMetrics metrics = actionCallParser.getPerformanceMetrics();
+        org.openhab.core.ai.common.metrics.ModelPerformanceMetrics metrics = actionCallParser.getPerformanceMetrics();
 
         // Then
         assertNotNull(metrics);
@@ -309,7 +310,7 @@ class ActionCallParserTest {
         // When
         actionCallParser.parseActionCalls(response1, "session-1");
         actionCallParser.parseActionCalls(response2, "session-2");
-        ModelResponseActionParser.PerformanceMetrics metrics = actionCallParser.getPerformanceMetrics();
+        org.openhab.core.ai.common.metrics.ModelPerformanceMetrics metrics = actionCallParser.getPerformanceMetrics();
 
         // Then
         assertNotNull(metrics);
@@ -322,13 +323,9 @@ class ActionCallParserTest {
 
     @Test
     void testPerformanceMetricsBuilder() {
-        // Given
-        ModelResponseActionParser.PerformanceMetrics.Builder builder = ModelResponseActionParser.PerformanceMetrics
-                .builder();
-
-        // When
-        ModelResponseActionParser.PerformanceMetrics metrics = builder.totalParsingAttempts(10).successfulJsonParses(5)
-                .successfulRegexParses(3).failedParses(2).totalActionCalls(8).build();
+        // Given - Test unified metrics construction
+        ModelPerformanceMetrics metrics = new org.openhab.core.ai.common.metrics.ModelPerformanceMetrics(10, 5, 3, 2, 8,
+                0, 0.0, null);
 
         // Then
         assertNotNull(metrics);
@@ -340,8 +337,8 @@ class ActionCallParserTest {
     }
 
     private ModelResponse createMockModelResponse(String content) {
-        return ModelResponse.builder().content(content != null ? content : "").modelName("test-model")
-                .providerType("test-provider").promptTokens(50).completionTokens(50).totalTokens(100).cost(0.0)
-                .responseTimeMs(100).build();
+        return ModelResponse.builder().withContent(content != null ? content : "").withModelName("test-model")
+                .withProviderType("test-provider").withPromptTokens(50).withCompletionTokens(50).withTotalTokens(100)
+                .withCost(0.0).withResponseTimeMs(100).build();
     }
 }

@@ -20,13 +20,13 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.core.MessageType;
 import org.openhab.core.ai.agent.infrastructure.persistence.AgentPersistenceManager;
 import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentSynchronizationManager;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -972,8 +972,8 @@ public class AgentTaskManager {
             }
 
             // Create AI action context
-            ActionContext context = ActionContext.builder().protocol("a2a").clientId("a2a-client")
-                    .sessionId("a2a-session-" + taskId).correlationId(taskId).priority("normal").build();
+            ExecutionContext context = ExecutionContext.builder().withProtocol("a2a").withClientId("a2a-client")
+                    .withSessionId("a2a-session-" + taskId).withCorrelationId(taskId).withPriority("normal").build();
 
             // Execute the action
             ActionResult result = action.execute(parameters, context);
@@ -1874,7 +1874,7 @@ public class AgentTaskManager {
         }
 
         // Look for task ID patterns in control messages
-        String[] parts = content.split("\\s+");
+        String[] parts = content.split("s+");
         for (int i = 0; i < parts.length; i++) {
             if (parts[i].startsWith("task") || parts[i].matches("^[a-zA-Z0-9_-]+$")) {
                 return parts[i];

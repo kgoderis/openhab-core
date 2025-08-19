@@ -12,16 +12,18 @@ import org.openhab.core.ai.tool.prompts.api.PromptContext;
 import org.openhab.core.ai.tool.prompts.api.PromptResult;
 import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
 import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
+import org.openhab.core.ai.tool.prompts.cache.CachedPromptData;
 import org.openhab.core.automation.Rule;
 import org.openhab.core.automation.RuleRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Prompt adapter for openHAB rules.
- *
- * Consolidated: proxy logic folded into this adapter; no external factory used.
- *
+ * Adapter for creating prompts from openHAB Rules.
+ * 
+ * This adapter creates prompts based on openHAB Rules, providing
+ * contextual information about rule status, triggers, and actions.
+ * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
@@ -33,17 +35,6 @@ public class RulePromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
 
     private final RuleRegistry ruleRegistry;
     private final Map<String, CachedPromptData> promptCache = new ConcurrentHashMap<>();
-
-    private static final class CachedPromptData {
-        final String ruleUID;
-        final String promptType;
-        volatile @Nullable String cachedContent;
-
-        CachedPromptData(String ruleUID, String promptType) {
-            this.ruleUID = ruleUID;
-            this.promptType = promptType;
-        }
-    }
 
     public RulePromptAdapter(RuleRegistry ruleRegistry) {
         super(DEFAULT_REFRESH_INTERVAL_MS);
@@ -68,11 +59,11 @@ public class RulePromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         if (data == null) {
             return null;
         }
-        if (data.cachedContent == null || needsRefresh()) {
-            data.cachedContent = buildPromptContent(data.ruleUID, data.promptType);
+        if (data.getCachedContent() == null || needsRefresh()) {
+            data.setCachedContent(buildPromptContent(data.getEntityId(), data.getPromptType()));
             updateRefreshTime();
         }
-        return data.cachedContent;
+        return data.getCachedContent();
     }
 
     @Override
@@ -108,7 +99,7 @@ public class RulePromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
     public void refresh(String identifier, PromptContext context) {
         CachedPromptData data = getOrCreateCachedData(identifier, context);
         if (data != null) {
-            data.cachedContent = null;
+            data.setCachedContent(null);
             updateRefreshTime();
         }
     }
@@ -132,33 +123,52 @@ public class RulePromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         cleanup();
     }
 
-    private @Nullable CachedPromptData getOrCreateCachedData(String ruleUID, PromptContext context) {
-        String typeFromContext = (String) context.getProperty("promptType");
-        final String promptType = typeFromContext == null ? "status" : typeFromContext;
-        final String cacheKey = ruleUID + "|" + promptType;
-        return promptCache.computeIfAbsent(cacheKey, k -> new CachedPromptData(ruleUID, promptType));
+    private @Nullable CachedPromptData getOrCreateCachedData(String identifier, PromptContext context) {
+        return promptCache.computeIfAbsent(identifier, key -> {
+            String typeFromContext = (String) context.getProperty("promptType");
+            String promptType = typeFromContext == null ? "status" : typeFromContext;
+            return new CachedPromptData(identifier, promptType);
+        });
     }
 
     private String buildPromptContent(String ruleUID, String promptType) {
         Rule rule = ruleRegistry.get(ruleUID);
         if (rule == null) {
-            return "Rule '" + ruleUID + "' not found";
+            return "Rule not found: " + ruleUID;
         }
-        switch (promptType) {
-            case "status":
-                return "Status of rule " + ruleUID + ": name=" + rule.getName() + ", tags=" + rule.getTags();
-            case "execution":
-                return "Execution prompt for rule " + ruleUID + ". Arguments: parameters(JSON), confirm(optional)";
-            case "config":
-                return "Config prompt for rule " + ruleUID + ". Arguments: operation(get|set|update), property, value";
-            case "discovery":
-                return "Discovery prompt: list rules with filters (tag, status)";
-            case "creation":
-                return "Creation prompt: create rule with name, triggers, conditions, actions";
-            case "enable":
-                return "Enable/Disable prompt: set enabled flag for rule " + ruleUID;
-            default:
-                return "Prompt for rule " + ruleUID + " (" + promptType + ")";
+
+        StringBuilder content = new StringBuilder();
+        content.append("Rule: ").append(rule.getName()).append(" (").append(ruleUID).append(")\n");
+        content.append("Description: ").append(rule.getDescription() != null ? rule.getDescription() : "").append("\n");
+
+        switch (promptType.toLowerCase()) {
+            case "triggers":
+                content.append("Triggers:\n");
+                rule.getTriggers().forEach(trigger -> {
+                    content.append("  - ").append(trigger.getTypeUID()).append(": ").append(trigger.getConfiguration())
+                            .append("\n");
+                });
+                break;
+            case "actions":
+                content.append("Actions:\n");
+                rule.getActions().forEach(action -> {
+                    content.append("  - ").append(action.getTypeUID()).append(": ").append(action.getConfiguration())
+                            .append("\n");
+                });
+                break;
+            case "conditions":
+                content.append("Conditions:\n");
+                rule.getConditions().forEach(condition -> {
+                    content.append("  - ").append(condition.getTypeUID()).append(": ")
+                            .append(condition.getConfiguration()).append("\n");
+                });
+                break;
+            default: // status
+                content.append("Tags: ").append(rule.getTags()).append("\n");
+                content.append("Visibility: ").append(rule.getVisibility()).append("\n");
+                break;
         }
+
+        return content.toString();
     }
 }

@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.api.AgentModelContext;
+import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.reasoning.constraints.SafetyConstraintManager;
 import org.openhab.core.ai.reasoning.model.ModelRequest;
 import org.openhab.core.ai.reasoning.policies.SafetyValidationResult;
@@ -12,6 +12,7 @@ import org.openhab.core.ai.reasoning.results.ComprehensiveSecurityResult;
 import org.openhab.core.ai.reasoning.results.QuickSecurityResult;
 import org.openhab.core.ai.reasoning.security.api.SecurityIssue;
 import org.openhab.core.ai.reasoning.security.api.SecurityIssueType;
+import org.openhab.core.ai.reasoning.security.api.SecurityLevel;
 import org.openhab.core.ai.reasoning.security.api.SecurityValidationResult;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -83,8 +84,7 @@ public class SecurityIntegrationService {
 
                 if (!safetyResult.isValid()) {
                     result.setSafetyValid(false);
-                    result.addSafetyIssue(
-                            new SecurityIssue(SecurityIssueType.CONTENT_SAFETY_VIOLATION, safetyResult.getReason()));
+                    result.addSafetyIssue(new SafetyIssue("CONTENT_SAFETY_VIOLATION", safetyResult.getReason()));
                     result.setOverallValid(false);
                     logger.warn("Safety validation failed for request: {}", request.getRequestId());
                     return result;
@@ -100,7 +100,7 @@ public class SecurityIntegrationService {
                 logger.error("Error during comprehensive security validation: {}", e.getMessage(), e);
                 result.setOverallValid(false);
                 result.addSecurityIssue(new SecurityIssue(SecurityIssueType.SYSTEM_ERROR,
-                        "Security validation error: " + e.getMessage()));
+                        "Security validation error: " + e.getMessage(), SecurityLevel.HIGH));
             }
 
             return result;

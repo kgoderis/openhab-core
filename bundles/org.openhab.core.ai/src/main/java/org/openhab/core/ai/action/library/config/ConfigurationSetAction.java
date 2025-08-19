@@ -16,11 +16,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,7 +141,7 @@ public class ConfigurationSetAction implements Action {
         }
 
         // Basic file name validation
-        if (configName.contains("..") || configName.contains("/") || configName.contains("\\")) {
+        if (configName.contains("..") || configName.contains("/") || configName.contains("")) {
             return ActionValidationResult.invalid(List.of("Invalid configName: path traversal not allowed"));
         }
 
@@ -149,7 +149,7 @@ public class ConfigurationSetAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing configuration set action with parameters: {}", parameters);
 
@@ -176,7 +176,7 @@ public class ConfigurationSetAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -188,12 +188,12 @@ public class ConfigurationSetAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Sets and updates openHAB configuration files with backup and validation support")
-                .tags(List.of("config", "configuration", "files", "backup", "validation", "security"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Sets and updates openHAB configuration files with backup and validation support")
+                .withTags(List.of("config", "configuration", "files", "backup", "validation", "security"))
+                .withDocumentation(
                         "Sets/updates openHAB configuration files including items, things, rules, scripts, and system configurations")
-                .examples(List.of(
+                .withExamples(List.of(
                         "{\"configType\": \"items\", \"configName\": \"myItems.items\", \"content\": \"Switch MySwitch\"} - Create items file",
                         "{\"configType\": \"rules\", \"configName\": \"automation.rules\", \"content\": \"rule 'Test' when...\"} - Create rules file",
                         "{\"configType\": \"things\", \"configName\": \"zwave.things\", \"content\": \"Thing zwave:device...\"} - Create things file",
@@ -208,7 +208,7 @@ public class ConfigurationSetAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ConfigurationSetAction initialized for protocol: {}", context.getProtocol());
     }
 

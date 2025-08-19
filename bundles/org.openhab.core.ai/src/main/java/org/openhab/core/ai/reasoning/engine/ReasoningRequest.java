@@ -14,7 +14,7 @@ package org.openhab.core.ai.reasoning.engine;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.api.AgentModelContext;
+import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.model.ModelParameters;
 
 /**

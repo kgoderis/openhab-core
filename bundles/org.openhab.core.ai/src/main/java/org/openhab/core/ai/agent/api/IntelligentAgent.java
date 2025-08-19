@@ -6,12 +6,12 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.engine.MultiStepReasoningEngine;
+import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 
 /**
  * Intelligent Agent Interface
@@ -46,7 +46,7 @@ public interface IntelligentAgent {
      * @param context the current context
      * @return list of planned actions
      */
-    CompletableFuture<List<ActionContext>> planActions(String goal, Map<String, Object> context);
+    CompletableFuture<List<ExecutionContext>> planActions(String goal, Map<String, Object> context);
 
     /**
      * Execute a reasoning session

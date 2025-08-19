@@ -27,12 +27,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.agent.api.AgentModelContext;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
+import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
-import org.openhab.core.ai.reasoning.SharedModelReasoningEngine;
+import org.openhab.core.ai.reasoning.engine.SharedModelReasoningEngine;
 
 /**
  * Integration tests for model reasoning with real model providers
@@ -57,8 +57,9 @@ class ModelReasoningIntegrationTest {
         reasoningEngine = new SharedModelReasoningEngine();
 
         // Configure mock model provider for realistic responses
-        when(mockModelProvider.reasonAsync(anyString(), anyMap(), any(ModelParameters.class))).thenReturn(
-                CompletableFuture.completedFuture(ModelResponse.builder().content("Mock reasoning response").build()));
+        when(mockModelProvider.reasonAsync(anyString(), anyMap(), any(ModelParameters.class)))
+                .thenReturn(CompletableFuture
+                        .completedFuture(ModelResponse.builder().withContent("Mock reasoning response").build()));
     }
 
     @Test
@@ -74,7 +75,7 @@ class ModelReasoningIntegrationTest {
         contextData.put("systemStatus", "operational");
         contextData.put("timestamp", Instant.now().toString());
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.7).maxTokens(500).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.7).withMaxTokens(500).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -103,7 +104,7 @@ class ModelReasoningIntegrationTest {
         contextData.put("errorRate", 0.02);
         contextData.put("uptime", 86400);
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.5).maxTokens(1000).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.5).withMaxTokens(1000).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -133,7 +134,7 @@ class ModelReasoningIntegrationTest {
         optimizationHints.put("priority", "high");
         optimizationHints.put("constraints", "budget_limited");
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.3).maxTokens(800).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.3).withMaxTokens(800).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonWithOptimizationAsync(agentId, prompt,
                 contextData, optimizationHints, parameters);
@@ -157,7 +158,7 @@ class ModelReasoningIntegrationTest {
         contextData.put("testData", "sample");
 
         // Test 1: Low temperature for deterministic responses
-        ModelParameters lowTempParams = ModelParameters.builder().temperature(0.1).maxTokens(200).build();
+        ModelParameters lowTempParams = ModelParameters.builder().withTemperature(0.1).withMaxTokens(200).build();
 
         CompletableFuture<ModelResponse> result1 = reasoningEngine.reasonAsync(agentId, "Provide a concise answer",
                 contextData, lowTempParams);
@@ -165,7 +166,7 @@ class ModelReasoningIntegrationTest {
         assertNotNull(response1);
 
         // Test 2: High temperature for creative responses
-        ModelParameters highTempParams = ModelParameters.builder().temperature(0.9).maxTokens(500).build();
+        ModelParameters highTempParams = ModelParameters.builder().withTemperature(0.9).withMaxTokens(500).build();
 
         CompletableFuture<ModelResponse> result2 = reasoningEngine.reasonAsync(agentId, "Provide creative suggestions",
                 contextData, highTempParams);
@@ -173,7 +174,7 @@ class ModelReasoningIntegrationTest {
         assertNotNull(response2);
 
         // Test 3: High token limit for detailed responses
-        ModelParameters highTokenParams = ModelParameters.builder().temperature(0.5).maxTokens(2000).build();
+        ModelParameters highTokenParams = ModelParameters.builder().withTemperature(0.5).withMaxTokens(2000).build();
 
         CompletableFuture<ModelResponse> result3 = reasoningEngine.reasonAsync(agentId, "Provide a detailed analysis",
                 contextData, highTokenParams);
@@ -192,7 +193,7 @@ class ModelReasoningIntegrationTest {
         Map<String, Object> contextData = new HashMap<>();
         contextData.put("requestId", "concurrent-test");
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.5).maxTokens(300).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.5).withMaxTokens(300).build();
 
         CompletableFuture<ModelResponse>[] results = new CompletableFuture[5];
         for (int i = 0; i < 5; i++) {
@@ -221,7 +222,7 @@ class ModelReasoningIntegrationTest {
         contextData.put("scenario", "system_optimization");
         contextData.put("domain", "performance");
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.6).maxTokens(600).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.6).withMaxTokens(600).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -260,7 +261,7 @@ class ModelReasoningIntegrationTest {
         long startTime = System.currentTimeMillis();
 
         Map<String, Object> contextData = new HashMap<>();
-        ModelParameters parameters = ModelParameters.builder().temperature(0.5).maxTokens(300).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.5).withMaxTokens(300).build();
 
         CompletableFuture<ModelResponse>[] results = new CompletableFuture[10];
         for (int i = 0; i < 10; i++) {
@@ -304,7 +305,7 @@ class ModelReasoningIntegrationTest {
         preferences.put("temperature", 0.7);
         preferences.put("maxTokens", 1000);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("general-reasoning")
+        return AgentModelContext.builder().withAgentId(agentId).specialization("general-reasoning")
                 .domain("system-analysis").capabilities(capabilities).constraints(constraints)
                 .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
                 .lastUpdated(Instant.now()).build();
@@ -328,7 +329,7 @@ class ModelReasoningIntegrationTest {
         preferences.put("temperature", 0.4);
         preferences.put("maxTokens", 1500);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("performance-optimization")
+        return AgentModelContext.builder().withAgentId(agentId).specialization("performance-optimization")
                 .domain("system-performance").capabilities(capabilities).constraints(constraints)
                 .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
                 .lastUpdated(Instant.now()).build();

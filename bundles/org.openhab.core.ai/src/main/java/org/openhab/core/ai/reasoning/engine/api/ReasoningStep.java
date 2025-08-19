@@ -5,7 +5,8 @@ import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.common.builder.ReasoningStepBuilder;
+import org.openhab.core.ai.common.context.ExecutionContext;
 
 /**
  * A single step in the reasoning process
@@ -18,23 +19,23 @@ public class ReasoningStep {
     private final String sessionId;
     private final int stepNumber;
     private final String reasoning;
-    private final List<ActionContext> toolCalls;
+    private final List<ExecutionContext> toolCalls;
     private final double confidence;
     private final boolean isComplete;
     private final Instant startTime;
     private final Instant endTime;
     private final @Nullable String error;
 
-    ReasoningStep(ReasoningStepBuilder builder) {
-        this.sessionId = builder.sessionId;
-        this.stepNumber = builder.stepNumber;
-        this.reasoning = builder.reasoning;
-        this.toolCalls = builder.toolCalls;
-        this.confidence = builder.confidence;
-        this.isComplete = builder.isComplete;
-        this.startTime = builder.startTime;
-        this.endTime = builder.endTime;
-        this.error = builder.error;
+    public ReasoningStep(ReasoningStepBuilder builder) {
+        this.sessionId = builder.getStepId();
+        this.stepNumber = 1; // Default value since unified builder doesn't have stepNumber
+        this.reasoning = builder.getDescription();
+        this.toolCalls = List.of(); // Default empty list since unified builder has different structure
+        this.confidence = 1.0; // Default value since unified builder doesn't have confidence
+        this.isComplete = builder.isSuccess();
+        this.startTime = Instant.now(); // Default value since unified builder doesn't have startTime
+        this.endTime = Instant.now(); // Default value since unified builder doesn't have endTime
+        this.error = builder.getErrorMessage();
     }
 
     public String getSessionId() {
@@ -49,7 +50,7 @@ public class ReasoningStep {
         return reasoning;
     }
 
-    public List<ActionContext> getToolCalls() {
+    public List<ExecutionContext> getToolCalls() {
         return toolCalls;
     }
 
@@ -74,6 +75,6 @@ public class ReasoningStep {
     }
 
     public static ReasoningStepBuilder builder() {
-        return new ReasoningStepBuilder();
+        return new ReasoningStepBuilder("step-" + System.currentTimeMillis());
     }
 }

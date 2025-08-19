@@ -3,6 +3,7 @@ package org.openhab.core.ai.action.library.system;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,11 +12,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,7 +99,7 @@ public class MemoryInfoAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing MemoryInfoAction with context: {}", context.getProtocol());
 
         long startTime = System.currentTimeMillis();
@@ -119,7 +120,7 @@ public class MemoryInfoAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -131,13 +132,13 @@ public class MemoryInfoAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().author("openHAB")
-                .description("Retrieves detailed memory information using Java Management APIs").version("1.0.0")
-                .tags(List.of("system", "memory", "diagnostics")).build();
+        return ActionMetadata.builder().withAuthor("openHAB")
+                .withDescription("Retrieves detailed memory information using Java Management APIs")
+                .withVersion("1.0.0").withTags(List.of("system", "memory", "diagnostics")).build();
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("MemoryInfoAction initialized with context: {}", context.getProtocol());
     }
 
@@ -230,7 +231,7 @@ public class MemoryInfoAction implements Action {
         return memoryInfo;
     }
 
-    private Map<String, Object> formatMemoryUsage(java.lang.management.MemoryUsage usage) {
+    private Map<String, Object> formatMemoryUsage(MemoryUsage usage) {
         Map<String, Object> memory = new HashMap<>();
         memory.put("init", formatBytes(usage.getInit()));
         memory.put("used", formatBytes(usage.getUsed()));
@@ -252,8 +253,8 @@ public class MemoryInfoAction implements Action {
     private Map<String, Object> analyzeMemoryUsage(MemoryMXBean memoryBean) {
         Map<String, Object> analysis = new HashMap<>();
 
-        java.lang.management.MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
-        java.lang.management.MemoryUsage nonHeapUsage = memoryBean.getNonHeapMemoryUsage();
+        MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
+        MemoryUsage nonHeapUsage = memoryBean.getNonHeapMemoryUsage();
 
         // Heap analysis
         if (heapUsage.getMax() > 0) {

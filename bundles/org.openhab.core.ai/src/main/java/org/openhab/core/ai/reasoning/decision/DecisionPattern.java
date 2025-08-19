@@ -12,26 +12,26 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 4.0.0
  */
 @NonNullByDefault
-final class DecisionPattern {
+public final class DecisionPattern {
     private final String patternId;
     private final String description;
     private final Map<String, Object> characteristics;
 
-    DecisionPattern(String patternId, String description) {
+    public DecisionPattern(String patternId, String description) {
         this.patternId = patternId;
         this.description = description;
         this.characteristics = new ConcurrentHashMap<>();
     }
 
-    String getPatternId() {
+    public String getPatternId() {
         return patternId;
     }
 
-    String getDescription() {
+    public String getDescription() {
         return description;
     }
 
-    Map<String, Object> getCharacteristics() {
+    public Map<String, Object> getCharacteristics() {
         return characteristics;
     }
 }

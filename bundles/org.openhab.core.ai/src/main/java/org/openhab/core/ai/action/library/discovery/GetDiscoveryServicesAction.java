@@ -10,11 +10,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingRegistry;
 import org.osgi.service.component.annotations.Reference;
@@ -144,7 +144,7 @@ public class GetDiscoveryServicesAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing get discovery services with parameters: {}", parameters);
 
         long startTime = System.currentTimeMillis();
@@ -172,7 +172,7 @@ public class GetDiscoveryServicesAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -184,13 +184,13 @@ public class GetDiscoveryServicesAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().author("openHAB")
-                .description("Gets information about available discovery services").version("1.0.0")
-                .tags(List.of("discovery", "services", "capabilities", "configuration")).build();
+        return ActionMetadata.builder().withAuthor("openHAB")
+                .withDescription("Gets information about available discovery services").withVersion("1.0.0")
+                .withTags(List.of("discovery", "services", "capabilities", "configuration")).build();
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("Initializing GetDiscoveryServicesAction");
     }
 

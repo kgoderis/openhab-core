@@ -7,6 +7,8 @@ import java.util.Optional;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.response.Response;
+import org.openhab.core.ai.common.response.StubResponseBuilder;
 
 /**
  * Response object for stub services.
@@ -18,7 +20,7 @@ import org.eclipse.jdt.annotation.Nullable;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class StubResponse {
+public class StubResponse implements Response<Object> {
 
     private final boolean success;
     private final @Nullable String message;
@@ -30,15 +32,15 @@ public class StubResponse {
 
     // Constructor using inner Builder removed; use StubResponseBuilder instead
 
-    /* package */ StubResponse(StubResponseBuilder builder) {
-        this.success = builder.success;
-        this.message = builder.message;
-        this.data = builder.data;
-        this.statusCode = builder.statusCode;
-        this.headers = builder.headers;
-        Instant timestampValue = builder.timestamp;
-        this.timestamp = timestampValue != null ? timestampValue : Instant.now();
-        this.processingTimeMs = builder.processingTimeMs;
+    public StubResponse(StubResponseBuilder builder) {
+        this.success = builder.getSuccess();
+        this.message = builder.getMessage();
+        this.data = builder.getData();
+        this.statusCode = builder.getStatusCode();
+        this.headers = builder.getHeaders();
+        long timestampValue = builder.getTimestamp();
+        this.timestamp = Instant.ofEpochMilli(timestampValue);
+        this.processingTimeMs = builder.getProcessingTimeMs();
     }
 
     /**
@@ -117,10 +119,26 @@ public class StubResponse {
     /**
      * Get the response timestamp.
      * 
-     * @return Response timestamp
+     * @return Response timestamp as Instant
      */
-    public Instant getTimestamp() {
+    public Instant getTimestampInstant() {
         return timestamp;
+    }
+
+    // Response interface implementation
+    @Override
+    public String getId() {
+        return String.valueOf(timestamp.toEpochMilli());
+    }
+
+    @Override
+    public String getErrorMessage() {
+        return success ? null : message;
+    }
+
+    @Override
+    public long getTimestamp() {
+        return timestamp.toEpochMilli();
     }
 
     /**

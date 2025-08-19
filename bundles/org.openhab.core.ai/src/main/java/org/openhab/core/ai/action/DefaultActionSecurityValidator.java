@@ -1,14 +1,14 @@
 package org.openhab.core.ai.action;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.action.api.ActionSecurityValidator;
 import org.openhab.core.ai.action.api.SecurityLevel;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +49,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     }
 
     @Override
-    public boolean validateAction(ActionContext actionContext) {
+    public boolean validateAction(ExecutionContext actionContext) {
         try {
             // Basic validation
             if (!validateBasicRequirements(actionContext)) {
@@ -58,8 +58,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
             }
 
             // Get action name
-            Map<String, Object> protocolContext = actionContext.getProtocolContext();
-            String actionName = (String) protocolContext.get("action");
+            String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
 
             if (actionName == null) {
                 logSecurityEvent("MISSING_ACTION_NAME", actionContext, "Action name not found in context");
@@ -107,7 +106,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     /**
      * Validate basic requirements
      */
-    private boolean validateBasicRequirements(ActionContext actionContext) {
+    private boolean validateBasicRequirements(ExecutionContext actionContext) {
         // Check correlation ID
         if (actionContext.getCorrelationId() == null || actionContext.getCorrelationId().isEmpty()) {
             return false;
@@ -123,9 +122,8 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
             return false;
         }
 
-        // Check protocol context
-        Map<String, Object> protocolContext = actionContext.getProtocolContext();
-        if (protocolContext == null || protocolContext.isEmpty()) {
+        // Check if context has any values
+        if (actionContext.getAllValues().isEmpty()) {
             return false;
         }
 
@@ -135,7 +133,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     /**
      * Validate action policy using enhanced ActionSecurityPolicy
      */
-    private boolean validateActionPolicy(String actionName, ActionContext actionContext) {
+    private boolean validateActionPolicy(String actionName, ExecutionContext actionContext) {
         ActionSecurityPolicy policy = actionPolicies.get(actionName);
 
         if (policy == null) {
@@ -170,7 +168,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     /**
      * Validate client permissions
      */
-    private boolean validateClientPermissions(ActionContext actionContext) {
+    private boolean validateClientPermissions(ExecutionContext actionContext) {
         String clientId = actionContext.getClientId();
         Set<String> permissions = clientPermissions.get(clientId);
 
@@ -179,8 +177,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
             return !enableStrictValidation.get();
         }
 
-        Map<String, Object> protocolContext = actionContext.getProtocolContext();
-        String actionName = (String) protocolContext.get("action");
+        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
 
         if (actionName == null) {
             return false;
@@ -203,7 +200,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     /**
      * Validate dangerous action execution
      */
-    private boolean validateDangerousAction(ActionContext actionContext) {
+    private boolean validateDangerousAction(ExecutionContext actionContext) {
         // For dangerous actions, require additional validation
         // This could include:
         // - User confirmation
@@ -218,7 +215,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     /**
      * Check rate limiting
      */
-    private boolean checkRateLimit(String actionName, ActionContext actionContext) {
+    private boolean checkRateLimit(String actionName, ExecutionContext actionContext) {
         // Simple rate limiting implementation
         // In a real implementation, this would use a proper rate limiting service
         return true;
@@ -227,7 +224,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     /**
      * Validate authentication for action execution
      */
-    private boolean validateAuthentication(ActionContext actionContext) {
+    private boolean validateAuthentication(ExecutionContext actionContext) {
         // TODO: Implement proper authentication validation
         // This should check for valid authentication tokens, API keys, etc.
         String clientId = actionContext.getClientId();
@@ -237,7 +234,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     /**
      * Validate authorization for action execution
      */
-    private boolean validateAuthorization(ActionContext actionContext, ActionSecurityPolicy policy) {
+    private boolean validateAuthorization(ExecutionContext actionContext, ActionSecurityPolicy policy) {
         // TODO: Implement proper authorization validation
         // This should check user roles, permissions, etc.
         String clientId = actionContext.getClientId();
@@ -254,7 +251,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     /**
      * Validate critical security level actions
      */
-    private boolean validateCriticalAction(ActionContext actionContext) {
+    private boolean validateCriticalAction(ExecutionContext actionContext) {
         // TODO: Implement critical action validation
         // This should include multi-factor authentication, admin approval, etc.
         logger.warn("Critical action validation not yet implemented");
@@ -273,7 +270,7 @@ public class DefaultActionSecurityValidator implements ActionSecurityValidator {
     /**
      * Log security event
      */
-    private void logSecurityEvent(String eventType, ActionContext actionContext, String message) {
+    private void logSecurityEvent(String eventType, ExecutionContext actionContext, String message) {
         if (enableAuditLogging.get()) {
             logger.info("SECURITY_EVENT [{}] - Action: {}, Client: {}, Session: {}, Message: {}", eventType,
                     actionContext.getCorrelationId(), actionContext.getClientId(), actionContext.getSessionId(),

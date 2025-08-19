@@ -20,15 +20,15 @@ public class OptimizationStrategy {
         this.effectiveness = effectiveness;
     }
 
-    String getStrategyId() {
+    public String getStrategyId() {
         return strategyId;
     }
 
-    String getDescription() {
+    public String getDescription() {
         return description;
     }
 
-    double getEffectiveness() {
+    public double getEffectiveness() {
         return effectiveness;
     }
 }

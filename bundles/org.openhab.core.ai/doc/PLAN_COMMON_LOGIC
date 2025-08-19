@@ -1,0 +1,961 @@
+## 28. Tool and Agent Package Common Logic Refactoring
+
+### 28.1 Overview
+
+This section provides a comprehensive implementation plan for refactoring common logic between the `org.openhab.core.ai.tool` and `org.openhab.core.ai.agent` packages. The analysis has identified significant code duplication and similar patterns that can be consolidated into a shared common package, improving maintainability and reducing bundle size.
+
+### 28.2 Refactoring Goals
+
+1. **Eliminate Code Duplication**: Remove ~40% of duplicate code between tool and agent packages
+2. **Establish Common Patterns**: Unified interfaces and base classes for shared functionality
+3. **Improve Maintainability**: Single source of truth for common operations
+4. **Enhance Type Safety**: Consistent type hierarchies across packages
+5. **Reduce Bundle Size**: Smaller, more focused packages
+6. **Simplify Testing**: Consolidated test suites for common functionality
+
+### 28.3 Common Code Analysis
+
+#### 28.3.1 Context Management - Critical Priority
+
+**Identified Duplicates:**
+- `ToolContext` (tool/api package) - Simple context with properties map
+- `AgentModelContext` (agent/api package) - Complex context with contextData, metadata, specialized getters
+- `ToolMetadata` (tool/api package) - Tool metadata with version, author, description
+- `AgentModelConfiguration` (agent/api package) - Complex configuration with model settings, caching, security, monitoring
+
+**Consolidation Strategy:**
+Create unified context hierarchy in `org.openhab.core.ai.common.context`:
+
+```java
+// Base context interface
+public interface ExecutionContext {
+    String getCorrelationId();
+    long getTimestamp();
+    Map<String, Object> getProperties();
+    @Nullable Object getProperty(String key);
+    void setProperty(String key, Object value);
+}
+
+// Base metadata interface
+public interface Metadata {
+    String getVersion();
+    String getAuthor();
+    String getDescription();
+    Map<String, Object> getAdditionalMetadata();
+}
+
+// Base configuration interface
+public interface Configuration {
+    String getId();
+    Map<String, Object> getSettings();
+    boolean isValid();
+    List<String> getValidationErrors();
+}
+
+// Protocol-specific implementations
+public class ToolExecutionContext implements ExecutionContext { /* Tool-specific context */ }
+public class AgentExecutionContext implements ExecutionContext { /* Agent-specific context */ }
+public class ToolMetadata implements Metadata { /* Tool metadata */ }
+public class AgentModelConfiguration implements Configuration { /* Agent configuration */ }
+```
+
+**Action Items:**
+- [ ] Create `ExecutionContext` interface in `org.openhab.core.ai.common.context`
+- [ ] Create `Metadata` interface in `org.openhab.core.ai.common.metadata`
+- [ ] Create `Configuration` interface in `org.openhab.core.ai.common.configuration`
+- [ ] Refactor existing context classes to implement the interfaces
+- [ ] Update all imports across both packages
+- [ ] Create comprehensive unit tests for the new hierarchy
+- [ ] Update documentation to reflect new context patterns
+
+#### 28.3.2 Builder Pattern Implementation - High Priority
+
+**Identified Duplicates:**
+- `ToolMetadataBuilder` (tool/api package) - Simple builder for tool metadata
+- `AgentModelConfigurationBuilder` (agent/api package) - Complex builder with many configuration options
+- `AgentModelContextBuilder` (agent/api package) - Builder for agent context
+
+**Consolidation Strategy:**
+Create common builder utilities in `org.openhab.core.ai.common.builder`:
+
+```java
+// Abstract builder base class
+public abstract class AbstractBuilder<T> {
+    protected final Map<String, Object> properties = new HashMap<>();
+    
+    protected abstract T buildInternal();
+    
+    public T build() {
+        validate();
+        return buildInternal();
+    }
+    
+    protected void validate() {
+        // Common validation logic
+    }
+    
+    protected void setProperty(String key, Object value) {
+        properties.put(key, value);
+    }
+    
+    protected @Nullable Object getProperty(String key) {
+        return properties.get(key);
+    }
+}
+
+// Builder utilities
+public final class BuilderUtils {
+    public static <T> T buildWithValidation(AbstractBuilder<T> builder) {
+        return builder.build();
+    }
+    
+    public static void validateRequired(String name, @Nullable Object value) {
+        if (value == null || (value instanceof String && ((String) value).isBlank())) {
+            throw new IllegalArgumentException(name + " is required");
+        }
+    }
+}
+```
+
+**Action Items:**
+- [ ] Create `AbstractBuilder<T>` base class in `org.openhab.core.ai.common.builder`
+- [ ] Create `BuilderUtils` utility class
+- [ ] Refactor existing builders to extend the base class
+- [ ] Extract common validation logic to utility methods
+- [ ] Update all builder implementations to use common patterns
+- [ ] Create unit tests for builder utilities
+
+#### 28.3.3 Metrics and Statistics - High Priority
+
+**Identified Duplicates:**
+- `SystemHealthMetrics` (tool/monitoring package) - System-level health metrics
+- `ProviderHealthMetrics` (tool/monitoring package) - Provider-level health metrics
+- `AgentMetrics` (agent/api package) - Agent metrics interface and implementation
+- `ExecutionStatistics` (agent/execution package) - Execution statistics
+- `TaskExecutionMetrics` (agent/execution package) - Task-specific metrics
+
+**Consolidation Strategy:**
+Create unified metrics hierarchy in `org.openhab.core.ai.common.metrics`:
+
+```java
+// Base metrics interface
+public interface Metrics {
+    long getTimestamp();
+    String getId();
+    boolean isHealthy();
+}
+
+// Health metrics interface
+public interface HealthMetrics extends Metrics {
+    double getSuccessRate();
+    long getTotalRequests();
+    long getSuccessfulRequests();
+    long getFailedRequests();
+    double getAverageResponseTime();
+}
+
+// Performance metrics interface
+public interface PerformanceMetrics extends Metrics {
+    long getTotalExecutionTime();
+    long getAverageExecutionTime();
+    long getTotalExecutions();
+    double getThroughput();
+}
+
+// Protocol-specific implementations
+public class ToolHealthMetrics implements HealthMetrics { /* Tool health metrics */ }
+public class AgentHealthMetrics implements HealthMetrics { /* Agent health metrics */ }
+public class ToolPerformanceMetrics implements PerformanceMetrics { /* Tool performance */ }
+public class AgentPerformanceMetrics implements PerformanceMetrics { /* Agent performance */ }
+```
+
+**Action Items:**
+- [ ] Create `Metrics` interface in `org.openhab.core.ai.common.metrics`
+- [ ] Create `HealthMetrics` and `PerformanceMetrics` interfaces
+- [ ] Refactor existing metrics classes to implement the interfaces
+- [ ] Extract common metrics calculation logic to utility classes
+- [ ] Create metrics collection utilities
+- [ ] Update all metrics implementations to use common patterns
+
+#### 28.3.4 Error Handling and Recovery - Medium Priority
+
+**Identified Duplicates:**
+- `ToolException` (tool/api package) - Tool-specific exceptions
+- `ErrorInfo` (tool/error package) - Error information container
+- `RecoveryAction` (tool/error package) - Error recovery actions
+- `ErrorRecoveryStrategy` (tool/error package) - Recovery strategies
+- Error handling through execution statistics in agent package
+
+**Consolidation Strategy:**
+Create unified error handling in `org.openhab.core.ai.common.error`:
+
+```java
+// Base exception class
+public abstract class AIException extends Exception {
+    private final String entityId;
+    private final ErrorCode errorCode;
+    private final long timestamp;
+    
+    protected AIException(String entityId, String message, ErrorCode errorCode, Throwable cause) {
+        super(message, cause);
+        this.entityId = entityId;
+        this.errorCode = errorCode;
+        this.timestamp = System.currentTimeMillis();
+    }
+}
+
+// Error information
+public class ErrorInfo {
+    private final String errorType;
+    private final String message;
+    private final long count;
+    private final long lastOccurrence;
+    private final ErrorCode errorCode;
+}
+
+// Recovery strategy interface
+public interface RecoveryStrategy<T> {
+    boolean canRecover(ErrorInfo errorInfo);
+    T recover(ErrorInfo errorInfo, @Nullable T context);
+    long getRetryDelay();
+    int getMaxRetries();
+}
+
+// Protocol-specific exceptions
+public class ToolException extends AIException { /* Tool-specific exceptions */ }
+public class AgentException extends AIException { /* Agent-specific exceptions */ }
+```
+
+**Action Items:**
+- [ ] Create `AIException` base class in `org.openhab.core.ai.common.error`
+- [ ] Create `ErrorInfo` class with enhanced functionality
+- [ ] Create `RecoveryStrategy<T>` interface
+- [ ] Refactor existing exceptions to extend the base class
+- [ ] Extract common error handling logic to utility classes
+- [ ] Create error recovery utilities
+
+#### 28.3.5 State Management - Medium Priority
+
+**Identified Duplicates:**
+- `CircuitBreakerState` (tool/monitoring package) - Circuit breaker states
+- `ProviderHealthState` (tool/monitoring package) - Provider health states
+- `ServiceHealthState` (tool/monitoring package) - Service health states
+- `AgentState` (agent/core package) - Agent lifecycle states
+- `AgentStatus` (agent/api package) - Agent status enum
+- `TaskOrchestrationState` (agent/execution package) - Task orchestration states
+
+**Consolidation Strategy:**
+Create unified state management in `org.openhab.core.ai.common.state`:
+
+```java
+// Base state interface
+public interface State {
+    String getName();
+    boolean isActive();
+    boolean isTransitional();
+    boolean isFinal();
+    String getDescription();
+}
+
+// State manager interface
+public interface StateManager<T extends State> {
+    T getCurrentState();
+    boolean canTransitionTo(T targetState);
+    void transitionTo(T targetState);
+    List<T> getValidTransitions();
+    void addStateChangeListener(StateChangeListener<T> listener);
+}
+
+// State change listener
+public interface StateChangeListener<T extends State> {
+    void onStateChanged(T oldState, T newState);
+}
+
+// Protocol-specific states
+public enum ToolState implements State { /* Tool states */ }
+public enum AgentState implements State { /* Agent states */ }
+public enum HealthState implements State { /* Health states */ }
+```
+
+**Action Items:**
+- [ ] Create `State` interface in `org.openhab.core.ai.common.state`
+- [ ] Create `StateManager<T>` interface
+- [ ] Create `StateChangeListener<T>` interface
+- [ ] Refactor existing state enums to implement the `State` interface
+- [ ] Create state transition utilities
+- [ ] Implement state validation logic
+
+#### 28.3.6 Task Execution and Orchestration - Medium Priority
+
+**Identified Duplicates:**
+- `ToolExecutionService` (tool/services package) - Tool execution orchestration
+- `ToolExecutionManager` (tool/manager package) - Tool execution management
+- `AgentExecutionService` (agent/execution package) - Agent execution orchestration
+- `TaskOrchestrationService` (agent/execution package) - Task orchestration
+- `ExecutionStatistics` (agent/execution package) - Execution tracking
+- `TaskExecutionMetrics` (agent/execution package) - Task-specific metrics
+
+**Consolidation Strategy:**
+Create unified execution framework in `org.openhab.core.ai.common.execution`:
+
+```java
+// Base execution interface
+public interface ExecutionService<T extends ExecutionContext, R extends ExecutionResult> {
+    R execute(T context, ExecutionRequest request);
+    CompletableFuture<R> executeAsync(T context, ExecutionRequest request);
+    boolean canExecute(T context, ExecutionRequest request);
+    ExecutionStatistics getStatistics();
+}
+
+// Execution request interface
+public interface ExecutionRequest {
+    String getRequestId();
+    String getOperation();
+    Map<String, Object> getParameters();
+    long getTimeoutMs();
+    ExecutionPriority getPriority();
+}
+
+// Execution result interface
+public interface ExecutionResult {
+    String getRequestId();
+    boolean isSuccess();
+    @Nullable Object getData();
+    @Nullable String getErrorMessage();
+    long getExecutionTimeMs();
+    Map<String, Object> getMetadata();
+}
+
+// Execution statistics interface
+public interface ExecutionStatistics {
+    long getTotalExecutions();
+    long getSuccessfulExecutions();
+    long getFailedExecutions();
+    double getSuccessRate();
+    long getAverageExecutionTimeMs();
+    long getTotalExecutionTimeMs();
+}
+
+// Execution manager interface
+public interface ExecutionManager<T extends ExecutionContext> {
+    void registerExecutionService(String name, ExecutionService<T, ?> service);
+    ExecutionService<T, ?> getExecutionService(String name);
+    Set<String> getAvailableServices();
+    ExecutionStatistics getAggregatedStatistics();
+}
+
+// Protocol-specific implementations
+public class ToolExecutionService implements ExecutionService<ToolExecutionContext, ToolExecutionResult> { /* Tool execution */ }
+public class AgentExecutionService implements ExecutionService<AgentExecutionContext, AgentExecutionResult> { /* Agent execution */ }
+public class ToolExecutionManager implements ExecutionManager<ToolExecutionContext> { /* Tool management */ }
+public class AgentExecutionManager implements ExecutionManager<AgentExecutionContext> { /* Agent management */ }
+```
+
+**Action Items:**
+- [ ] Create `ExecutionService<T, R>` interface in `org.openhab.core.ai.common.execution`
+- [ ] Create `ExecutionRequest` and `ExecutionResult` interfaces
+- [ ] Create `ExecutionStatistics` interface
+- [ ] Create `ExecutionManager<T>` interface
+- [ ] Refactor existing execution services to implement the interfaces
+- [ ] Extract common execution logic to utility classes
+- [ ] Create execution monitoring and metrics utilities
+- [ ] Implement execution timeout and retry mechanisms
+
+#### 28.3.7 Security and Authentication - Medium Priority
+
+**Identified Duplicates:**
+- `SecurityManager` (tool/security package) - Tool security management
+- `DefaultToolSecurityService` (tool/security package) - Default security service
+- `AgentSecurityManager` (agent/lifecycle package) - Agent security management
+- `AgentSecurityContext` (agent/lifecycle package) - Security context
+- `A2APermission` (agent/lifecycle package) - Permission management
+
+**Consolidation Strategy:**
+Create unified security framework in `org.openhab.core.ai.common.security`:
+
+```java
+// Security context interface
+public interface SecurityContext {
+    String getPrincipalId();
+    Set<String> getPermissions();
+    boolean hasPermission(String permission);
+    boolean isAuthenticated();
+    @Nullable String getSessionId();
+}
+
+// Security manager interface
+public interface SecurityManager {
+    SecurityContext createContext(String principalId, Set<String> permissions);
+    boolean validatePermission(SecurityContext context, String permission);
+    boolean validateAccess(SecurityContext context, String resource);
+    void auditAccess(SecurityContext context, String resource, boolean granted);
+}
+
+// Permission management
+public interface PermissionManager {
+    Set<String> getPermissions(String principalId);
+    boolean grantPermission(String principalId, String permission);
+    boolean revokePermission(String principalId, String permission);
+    boolean hasPermission(String principalId, String permission);
+}
+
+// Protocol-specific implementations
+public class ToolSecurityManager implements SecurityManager { /* Tool security */ }
+public class AgentSecurityManager implements SecurityManager { /* Agent security */ }
+```
+
+**Action Items:**
+- [ ] Create `SecurityContext` interface in `org.openhab.core.ai.common.security`
+- [ ] Create `SecurityManager` interface
+- [ ] Create `PermissionManager` interface
+- [ ] Refactor existing security classes to implement the interfaces
+- [ ] Extract common security logic to utility classes
+- [ ] Create security validation utilities
+
+#### 28.3.8 Validation Framework - Low Priority
+
+**Identified Duplicates:**
+- `ValidationService` (tool/validation/api package) - Tool validation service
+- `ValidationEngine` (tool/validation/api package) - Validation engine
+- `ValidationRule` (tool/validation/api package) - Validation rules
+- `ValidationResult` (tool/validation/api package) - Validation results
+- `ValidationMetrics` (tool/validation/api package) - Validation metrics
+- Agent package validation logic scattered across different components
+
+**Consolidation Strategy:**
+Create unified validation framework in `org.openhab.core.ai.common.validation`:
+
+```java
+// Validation service interface
+public interface ValidationService<T> {
+    ValidationResult<T> validate(T entity);
+    ValidationResult<T> validate(T entity, Set<String> ruleNames);
+    boolean isValid(T entity);
+    List<String> getValidationErrors(T entity);
+}
+
+// Validation engine interface
+public interface ValidationEngine<T> {
+    void registerRule(ValidationRule<T> rule);
+    void unregisterRule(String ruleName);
+    Set<String> getRegisteredRules();
+    ValidationResult<T> executeValidation(T entity, Set<String> ruleNames);
+}
+
+// Validation rule interface
+public interface ValidationRule<T> {
+    String getName();
+    String getDescription();
+    ValidationResult<T> validate(T entity);
+    boolean isEnabled();
+    void setEnabled(boolean enabled);
+}
+
+// Validation result interface
+public interface ValidationResult<T> {
+    boolean isValid();
+    T getEntity();
+    List<ValidationError> getErrors();
+    List<ValidationWarning> getWarnings();
+    long getValidationTimeMs();
+    Map<String, Object> getMetadata();
+}
+
+// Validation error
+public class ValidationError {
+    private final String field;
+    private final String message;
+    private final String errorCode;
+    private final ValidationSeverity severity;
+}
+
+// Protocol-specific implementations
+public class ToolValidationService implements ValidationService<ToolContext> { /* Tool validation */ }
+public class AgentValidationService implements ValidationService<AgentContext> { /* Agent validation */ }
+public class ToolValidationEngine implements ValidationEngine<ToolContext> { /* Tool engine */ }
+public class AgentValidationEngine implements ValidationEngine<AgentContext> { /* Agent engine */ }
+```
+
+**Action Items:**
+- [ ] Create `ValidationService<T>` interface in `org.openhab.core.ai.common.validation`
+- [ ] Create `ValidationEngine<T>` interface
+- [ ] Create `ValidationRule<T>` interface
+- [ ] Create `ValidationResult<T>` interface
+- [ ] Create `ValidationError` and `ValidationWarning` classes
+- [ ] Refactor existing validation classes to implement the interfaces
+- [ ] Extract common validation logic to utility classes
+- [ ] Create validation metrics and monitoring utilities
+
+#### 28.3.9 Notification System - Low Priority
+
+**Identified Duplicates:**
+- `NotificationService` (tool/notifications package) - Tool notification service
+- `DefaultNotificationService` (tool/notifications package) - Default notification implementation
+- `AgentPushNotificationManager` (agent/communication/notifications package) - Agent push notifications
+- Notification patterns scattered across both packages
+
+**Consolidation Strategy:**
+Create unified notification framework in `org.openhab.core.ai.common.notifications`:
+
+```java
+// Notification service interface
+public interface NotificationService {
+    void sendNotification(Notification notification);
+    void sendNotificationAsync(Notification notification);
+    void registerListener(NotificationListener listener);
+    void unregisterListener(NotificationListener listener);
+    List<Notification> getNotifications(String recipientId);
+    void markAsRead(String notificationId);
+}
+
+// Notification interface
+public interface Notification {
+    String getId();
+    String getType();
+    String getTitle();
+    String getMessage();
+    String getRecipientId();
+    NotificationPriority getPriority();
+    long getTimestamp();
+    boolean isRead();
+    Map<String, Object> getMetadata();
+}
+
+// Notification listener interface
+public interface NotificationListener {
+    void onNotificationReceived(Notification notification);
+    void onNotificationRead(String notificationId);
+}
+
+// Notification priority enum
+public enum NotificationPriority {
+    LOW, MEDIUM, HIGH, CRITICAL
+}
+
+// Protocol-specific implementations
+public class ToolNotificationService implements NotificationService { /* Tool notifications */ }
+public class AgentNotificationService implements NotificationService { /* Agent notifications */ }
+public class PushNotificationService implements NotificationService { /* Push notifications */ }
+```
+
+**Action Items:**
+- [ ] Create `NotificationService` interface in `org.openhab.core.ai.common.notifications`
+- [ ] Create `Notification` interface
+- [ ] Create `NotificationListener` interface
+- [ ] Create `NotificationPriority` enum
+- [ ] Refactor existing notification classes to implement the interfaces
+- [ ] Extract common notification logic to utility classes
+- [ ] Create notification delivery and routing utilities
+- [ ] Implement notification persistence and retrieval
+
+### 28.4 Implementation Phases
+
+#### 28.4.1 Phase 1: Foundation (Weeks 1-2)
+
+**Goals:**
+- Establish common package structure
+- Create base interfaces and abstract classes
+- Set up build configuration for common package
+
+**Deliverables:**
+- [ ] Create `org.openhab.core.ai.common` package structure
+- [ ] Implement base interfaces (`ExecutionContext`, `Metadata`, `Configuration`)
+- [ ] Create `AbstractBuilder<T>` base class
+- [ ] Set up OSGi bundle configuration for common package
+- [ ] Create initial unit tests for base classes
+
+**Tasks:**
+1. **Package Structure Setup**
+   - [ ] Create directory structure for common package
+   - [ ] Set up OSGi bundle manifest
+   - [ ] Configure build dependencies
+   - [ ] Create package-info.java files
+
+2. **Base Interface Implementation**
+   - [ ] Implement `ExecutionContext` interface
+   - [ ] Implement `Metadata` interface
+   - [ ] Implement `Configuration` interface
+   - [ ] Create utility classes for common operations
+
+3. **Builder Pattern Foundation**
+   - [ ] Implement `AbstractBuilder<T>` base class
+   - [ ] Create `BuilderUtils` utility class
+   - [ ] Implement common validation logic
+   - [ ] Create builder test utilities
+
+#### 28.4.2 Phase 2: Context and Metadata Refactoring (Weeks 3-4)
+
+**Goals:**
+- Refactor context management across both packages
+- Consolidate metadata handling
+- Establish consistent configuration patterns
+
+**Deliverables:**
+- [ ] Refactored `ToolContext` and `AgentModelContext`
+- [ ] Unified metadata handling
+- [ ] Consistent configuration patterns
+- [ ] Updated imports across both packages
+
+**Tasks:**
+1. **Context Refactoring**
+   - [ ] Refactor `ToolContext` to implement `ExecutionContext`
+   - [ ] Refactor `AgentModelContext` to implement `ExecutionContext`
+   - [ ] Extract common context logic to base classes
+   - [ ] Update all context usage across packages
+
+2. **Metadata Consolidation**
+   - [ ] Refactor `ToolMetadata` to implement `Metadata` interface
+   - [ ] Refactor `AgentModelConfiguration` to implement `Configuration` interface
+   - [ ] Create metadata utility classes
+   - [ ] Update metadata builders to use common patterns
+
+3. **Configuration Standardization**
+   - [ ] Standardize configuration patterns across packages
+   - [ ] Create configuration validation utilities
+   - [ ] Implement configuration serialization/deserialization
+   - [ ] Update configuration builders
+
+#### 28.4.3 Phase 3: Metrics and Statistics Consolidation (Weeks 5-6)
+
+**Goals:**
+- Unify metrics collection across both packages
+- Consolidate statistics tracking
+- Establish consistent health monitoring
+
+**Deliverables:**
+- [ ] Unified metrics interfaces and implementations
+- [ ] Consolidated statistics tracking
+- [ ] Consistent health monitoring patterns
+- [ ] Performance metrics standardization
+
+**Tasks:**
+1. **Metrics Interface Implementation**
+   - [ ] Implement `Metrics`, `HealthMetrics`, and `PerformanceMetrics` interfaces
+   - [ ] Refactor existing metrics classes to implement interfaces
+   - [ ] Create metrics collection utilities
+   - [ ] Implement metrics aggregation logic
+
+2. **Statistics Consolidation**
+   - [ ] Consolidate execution statistics across packages
+   - [ ] Create common statistics calculation utilities
+   - [ ] Implement statistics persistence patterns
+   - [ ] Create statistics reporting utilities
+
+3. **Health Monitoring**
+   - [ ] Unify health monitoring patterns
+   - [ ] Create common health check interfaces
+   - [ ] Implement health status aggregation
+   - [ ] Create health alerting utilities
+
+#### 28.4.4 Phase 4: Error Handling, State Management, and Task Execution (Weeks 7-8)
+
+**Goals:**
+- Unify error handling patterns
+- Consolidate state management
+- Establish consistent recovery mechanisms
+- Unify task execution and orchestration patterns
+
+**Deliverables:**
+- [ ] Unified error handling framework
+- [ ] Consolidated state management
+- [ ] Consistent recovery mechanisms
+- [ ] Unified task execution framework
+- [ ] Error tracking and reporting
+
+**Tasks:**
+1. **Error Handling Framework**
+   - [ ] Implement `AIException` base class
+   - [ ] Create `ErrorInfo` and `RecoveryStrategy` classes
+   - [ ] Refactor existing exceptions to extend base class
+   - [ ] Implement error recovery utilities
+
+2. **State Management**
+   - [ ] Implement `State` interface and `StateManager<T>`
+   - [ ] Refactor existing state enums to implement `State` interface
+   - [ ] Create state transition utilities
+   - [ ] Implement state validation logic
+
+3. **Task Execution Framework**
+   - [ ] Implement `ExecutionService<T, R>` interface
+   - [ ] Create `ExecutionRequest` and `ExecutionResult` interfaces
+   - [ ] Implement `ExecutionStatistics` and `ExecutionManager<T>` interfaces
+   - [ ] Refactor existing execution services to implement interfaces
+   - [ ] Create execution monitoring and metrics utilities
+   - [ ] Implement execution timeout and retry mechanisms
+
+4. **Recovery Mechanisms**
+   - [ ] Implement common recovery strategies
+   - [ ] Create retry logic utilities
+   - [ ] Implement circuit breaker patterns
+   - [ ] Create recovery monitoring
+
+#### 28.4.5 Phase 5: Security, Validation, and Notifications (Weeks 9-10)
+
+**Goals:**
+- Unify security patterns
+- Consolidate validation framework
+- Unify notification system
+- Complete integration testing
+
+**Deliverables:**
+- [ ] Unified security framework
+- [ ] Unified validation framework
+- [ ] Unified notification system
+- [ ] Complete integration testing
+- [ ] Performance optimization
+- [ ] Documentation updates
+
+**Tasks:**
+1. **Security Framework**
+   - [ ] Implement `SecurityContext` and `SecurityManager` interfaces
+   - [ ] Create `PermissionManager` interface
+   - [ ] Refactor existing security classes
+   - [ ] Implement security utilities
+
+2. **Validation Framework**
+   - [ ] Implement `ValidationService<T>` interface
+   - [ ] Create `ValidationEngine<T>` and `ValidationRule<T>` interfaces
+   - [ ] Implement `ValidationResult<T>` interface
+   - [ ] Create `ValidationError` and `ValidationWarning` classes
+   - [ ] Refactor existing validation classes to implement interfaces
+   - [ ] Extract common validation logic to utility classes
+
+3. **Notification System**
+   - [ ] Implement `NotificationService` interface
+   - [ ] Create `Notification` and `NotificationListener` interfaces
+   - [ ] Create `NotificationPriority` enum
+   - [ ] Refactor existing notification classes to implement interfaces
+   - [ ] Extract common notification logic to utility classes
+   - [ ] Implement notification delivery and routing utilities
+
+4. **Integration Testing**
+   - [ ] Comprehensive integration tests for all refactored components
+   - [ ] Performance testing to ensure no regressions
+   - [ ] Compatibility testing with existing functionality
+   - [ ] Stress testing for concurrent operations
+
+#### 28.4.6 Phase 6: Final Integration and Cleanup (Weeks 11-12)
+
+**Goals:**
+- Complete integration testing
+- Final cleanup and optimization
+- Documentation and migration guides
+
+**Deliverables:**
+- [ ] Complete integration testing
+- [ ] Performance optimization
+- [ ] Documentation updates
+- [ ] Migration guides
+
+**Tasks:**
+1. **Final Integration Testing**
+   - [ ] End-to-end testing of all refactored components
+   - [ ] Cross-package integration testing
+   - [ ] OSGi bundle integration testing
+   - [ ] Performance benchmarking and optimization
+
+2. **Final Cleanup**
+   - [ ] Remove duplicate code
+   - [ ] Optimize performance
+   - [ ] Update documentation
+   - [ ] Create migration guides
+   - [ ] Final code review and quality assurance
+
+### 28.5 Testing Strategy
+
+#### 28.5.1 Unit Testing
+
+**Scope:**
+- All new common interfaces and base classes
+- All refactored components
+- Utility classes and helper methods
+
+**Approach:**
+- [ ] 100% test coverage for new common code
+- [ ] Comprehensive test cases for edge conditions
+- [ ] Mock-based testing for dependencies
+- [ ] Property-based testing for complex logic
+
+**Test Categories:**
+1. **Interface Compliance Tests**
+   - [ ] Test all implementations conform to interfaces
+   - [ ] Test interface contract compliance
+   - [ ] Test error handling requirements
+
+2. **Builder Pattern Tests**
+   - [ ] Test builder validation logic
+   - [ ] Test builder immutability
+   - [ ] Test builder error handling
+
+3. **Metrics and Statistics Tests**
+   - [ ] Test metrics calculation accuracy
+   - [ ] Test statistics aggregation
+   - [ ] Test performance under load
+
+#### 28.5.2 Integration Testing
+
+**Scope:**
+- End-to-end functionality testing
+- Cross-package integration
+- OSGi service integration
+
+**Approach:**
+- [ ] Test complete workflows using refactored components
+- [ ] Test OSGi service lifecycle management
+- [ ] Test concurrent access patterns
+- [ ] Test error recovery scenarios
+
+**Test Scenarios:**
+1. **Tool Execution Workflow**
+   - [ ] Tool context creation and management
+   - [ ] Tool execution with error handling
+   - [ ] Tool metrics collection and reporting
+
+2. **Agent Execution Workflow**
+   - [ ] Agent context creation and management
+   - [ ] Agent task execution and monitoring
+   - [ ] Agent state transitions and recovery
+
+3. **Cross-Package Integration**
+   - [ ] Tool and agent interaction scenarios
+   - [ ] Shared context and configuration usage
+   - [ ] Common metrics and monitoring
+
+#### 28.5.3 Performance Testing
+
+**Scope:**
+- Performance impact of refactoring
+- Memory usage optimization
+- Concurrent access performance
+
+**Approach:**
+- [ ] Benchmark existing functionality before refactoring
+- [ ] Measure performance after each phase
+- [ ] Identify and resolve performance regressions
+- [ ] Optimize hot paths and critical sections
+
+**Performance Metrics:**
+1. **Execution Time**
+   - [ ] Context creation and management time
+   - [ ] Metrics collection overhead
+   - [ ] State transition performance
+
+2. **Memory Usage**
+   - [ ] Object allocation patterns
+   - [ ] Memory leak detection
+   - [ ] Garbage collection impact
+
+3. **Concurrency Performance**
+   - [ ] Thread safety validation
+   - [ ] Concurrent access performance
+   - [ ] Lock contention analysis
+
+### 28.6 Migration Strategy
+
+#### 28.6.1 Backward Compatibility
+
+**Approach:**
+- [ ] Maintain existing public APIs during transition
+- [ ] Use delegation patterns for gradual migration
+- [ ] Provide migration utilities for consumers
+- [ ] Deprecate old APIs with clear migration paths
+
+**Compatibility Layers:**
+1. **API Compatibility**
+   - [ ] Maintain existing method signatures
+   - [ ] Use adapter patterns for interface changes
+   - [ ] Provide factory methods for new implementations
+
+2. **Data Compatibility**
+   - [ ] Maintain existing data formats
+   - [ ] Provide data migration utilities
+   - [ ] Support both old and new serialization formats
+
+3. **Configuration Compatibility**
+   - [ ] Support existing configuration formats
+   - [ ] Provide configuration migration tools
+   - [ ] Maintain configuration validation rules
+
+#### 28.6.2 Gradual Migration
+
+**Phase 1: Parallel Implementation**
+- [ ] Implement new common components alongside existing
+- [ ] Use feature flags to control usage
+- [ ] Test new components in isolation
+- [ ] Validate functionality equivalence
+
+**Phase 2: Gradual Adoption**
+- [ ] Migrate one component at a time
+- [ ] Update consumers to use new implementations
+- [ ] Monitor for issues and regressions
+- [ ] Rollback capability for each component
+
+**Phase 3: Cleanup**
+- [ ] Remove old implementations after successful migration
+- [ ] Clean up deprecated APIs
+- [ ] Update documentation and examples
+- [ ] Optimize final implementation
+
+### 28.7 Risk Mitigation
+
+#### 28.7.1 Technical Risks
+
+1. **Interface Compatibility Issues**
+   - **Risk**: New interfaces may not accommodate all existing use cases
+   - **Mitigation**: Comprehensive analysis of existing usage patterns, extensive testing, gradual migration
+
+2. **Performance Regression**
+   - **Risk**: Refactoring may introduce performance overhead
+   - **Mitigation**: Performance benchmarking at each phase, optimization of critical paths
+
+3. **OSGi Bundle Issues**
+   - **Risk**: New common package may cause OSGi dependency issues
+   - **Mitigation**: Careful bundle dependency management, comprehensive OSGi testing
+
+#### 28.7.2 Integration Risks
+
+1. **Breaking Changes**
+   - **Risk**: Refactoring may break existing integrations
+   - **Mitigation**: Backward compatibility layers, comprehensive integration testing
+
+2. **Testing Complexity**
+   - **Risk**: Increased testing complexity with shared components
+   - **Mitigation**: Comprehensive test strategy, automated testing, continuous integration
+
+### 28.8 Success Criteria
+
+#### 28.8.1 Functional Requirements
+
+- [ ] All existing functionality preserved after refactoring
+- [ ] New common interfaces support all existing use cases
+- [ ] Performance meets or exceeds existing benchmarks
+- [ ] All tests pass after refactoring
+- [ ] No breaking changes for external consumers
+
+#### 28.8.2 Quality Requirements
+
+- [ ] 100% test coverage for new common code
+- [ ] All existing tests continue to pass
+- [ ] No memory leaks introduced
+- [ ] Proper error handling throughout
+- [ ] Comprehensive documentation
+
+#### 28.8.3 Maintainability Requirements
+
+- [ ] Significant reduction in code duplication
+- [ ] Consistent patterns across both packages
+- [ ] Clear separation of concerns
+- [ ] Easy to extend and modify
+- [ ] Well-documented APIs and patterns
+
+### 28.9 Conclusion
+
+This refactoring plan will significantly improve the maintainability and consistency of the openHAB AI bundle by eliminating code duplication between the tool and agent packages. The implementation of common interfaces, base classes, and utilities will provide:
+
+- **Reduced Maintenance Burden**: Single source of truth for common functionality
+- **Improved Consistency**: Unified patterns across both packages
+- **Enhanced Extensibility**: Easy to add new features using common patterns
+- **Better Testing**: Consolidated test suites for common functionality
+- **Performance Optimization**: Shared optimizations benefit both packages
+
+The refactoring aligns with the overall BRAIN plan by establishing a solid foundation for intelligent system components, enabling better integration between tools and agents, and providing the infrastructure needed for advanced AI capabilities in openHAB.

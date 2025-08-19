@@ -6,7 +6,7 @@ import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.api.AgentModelStatistics;
+import org.openhab.core.ai.common.statistics.AgentModelStatistics;
 
 /**
  * Comprehensive system-wide statistics combining agent and tracking data.

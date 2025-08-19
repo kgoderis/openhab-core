@@ -1,8 +1,16 @@
 package org.openhab.core.ai.tool.manager;
 
+import java.time.Instant;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.auth.AuthenticationContext;
+import org.openhab.core.ai.common.security.BaseSecurityStatistics;
+import org.openhab.core.ai.common.security.SecurityStatistics;
+import org.openhab.core.ai.common.security.ToolSecurityStatistics;
+import org.openhab.core.ai.security.SecurityManager;
+import org.openhab.core.ai.tool.security.filters.SecurityResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * @author Karel Goderis - Initial Contribution
  */
 @NonNullByDefault
-public class ToolSecurityManager {
+public class ToolSecurityManager implements SecurityManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ToolSecurityManager.class);
 
@@ -59,14 +67,48 @@ public class ToolSecurityManager {
         LOGGER.warn("Security violation for tool: {}, violation: {}", toolId, violation);
     }
 
+    // SecurityManager interface implementation
+    @Override
+    public SecurityResult validateOperation(AuthenticationContext context) {
+        String componentId = context.getPrincipalId();
+        String operationType = "tool_operation";
+
+        boolean isAllowed = isExecutionAllowed(componentId, operationType);
+
+        return isAllowed ? SecurityResult.success("Tool operation allowed")
+                : SecurityResult.failure("Tool operation not allowed");
+    }
+
+    @Override
+    public boolean validateAccess(String componentId, @Nullable String userId) {
+        return validateToolAccess(componentId, userId != null ? userId : "anonymous");
+    }
+
+    @Override
+    public void logSecurityViolation(String componentId, String violation, @Nullable Map<String, Object> context) {
+        logSecurityViolation(componentId, violation);
+        if (context != null) {
+            LOGGER.debug("Security violation context: {}", context);
+        }
+    }
+
+    @Override
+    public SecurityStatistics getSecurityStatistics() {
+        ToolSecurityStatistics toolStats = getToolSecurityStatistics();
+        return new BaseSecurityStatistics(toolStats.getTotalOperations(), toolStats.getSuccessfulOperations(),
+                toolStats.getFailedOperations(), toolStats.getSecurityViolations(), Instant.now()) {
+            // Anonymous implementation using unified BaseSecurityStatistics
+        };
+    }
+
     /**
-     * Get security statistics.
+     * Get tool-specific security statistics.
      * 
      * @return security statistics
      */
-    public SecurityStatistics getSecurityStatistics() {
+    public ToolSecurityStatistics getToolSecurityStatistics() {
         // Basic implementation - can be extended with actual statistics
-        return new SecurityStatistics(0, 0, 0, 0);
+        return new ToolSecurityStatistics(0, 0, 0, 0, null);
     }
 
     /**

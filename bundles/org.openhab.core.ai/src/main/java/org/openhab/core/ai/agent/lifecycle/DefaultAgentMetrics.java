@@ -4,10 +4,10 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.api.Agent;
+import org.openhab.core.ai.agent.api.AgentMetrics;
 
 /**
- * Default implementation of {@link Agent.AgentMetrics} used by {@link AgentRegistry}.
+ * Default implementation of {@link AgentMetrics} used by {@link AgentRegistry}.
  *
  * <p>
  * Tracks execution times and success/failure counts for an agent.
@@ -17,7 +17,7 @@ import org.openhab.core.ai.agent.api.Agent;
  * @since 1.0.0
  */
 @NonNullByDefault
-public final class DefaultAgentMetrics implements Agent.AgentMetrics {
+public final class DefaultAgentMetrics implements AgentMetrics {
     private final String agentId;
     private final List<Long> executionTimes = new CopyOnWriteArrayList<>();
     private int successCount = 0;

@@ -14,11 +14,11 @@ import java.util.concurrent.TimeUnit;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.automation.RuleRegistry;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -150,7 +150,7 @@ public class ScriptExecutionAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing script execution action with parameters: {}", parameters);
 
@@ -182,7 +182,7 @@ public class ScriptExecutionAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -194,12 +194,12 @@ public class ScriptExecutionAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Script execution with parameter support, timeout control, and output capture")
-                .tags(List.of("scripts", "execution", "javascript", "python", "groovy", "sandbox"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Script execution with parameter support, timeout control, and output capture")
+                .withTags(List.of("scripts", "execution", "javascript", "python", "groovy", "sandbox"))
+                .withDocumentation(
                         "Executes openHAB Scripts with parameter support, timeout control, and execution monitoring")
-                .examples(List.of("{\"scriptPath\": \"myScript.js\"} - Execute JavaScript file",
+                .withExamples(List.of("{\"scriptPath\": \"myScript.js\"} - Execute JavaScript file",
                         "{\"scriptContent\": \"console.log('Hello World');\", \"scriptType\": \"javascript\"} - Execute inline script",
                         "{\"scriptPath\": \"test.py\", \"parameters\": {\"name\": \"test\"}, \"timeout\": 60} - Execute Python with parameters",
                         "{\"scriptContent\": \"print('test')\", \"validateOnly\": true} - Validate script without execution"))
@@ -213,7 +213,7 @@ public class ScriptExecutionAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ScriptExecutionAction initialized for protocol: {}", context.getProtocol());
     }
 

@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action.api;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.context.ExecutionContext;
 
 /**
  * Action Security Validator - Defines the contract for basic action security validation
@@ -24,7 +25,7 @@ public interface ActionSecurityValidator {
      * @param actionContext the action context to validate
      * @return true if the action is allowed, false otherwise
      */
-    boolean validateAction(ActionContext actionContext);
+    boolean validateAction(ExecutionContext actionContext);
 
     /**
      * Get the validator status

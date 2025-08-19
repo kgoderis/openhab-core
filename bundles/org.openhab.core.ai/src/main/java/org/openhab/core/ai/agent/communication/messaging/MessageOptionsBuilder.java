@@ -44,6 +44,6 @@ public class MessageOptionsBuilder {
     }
 
     public MessageOptions build() {
-        return new MessageOptions(this);
+        return new MessageOptions(encrypted, persistent, timeout, maxRetries, metadata);
     }
 }

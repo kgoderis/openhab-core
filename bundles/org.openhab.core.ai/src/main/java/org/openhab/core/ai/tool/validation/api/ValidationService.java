@@ -3,6 +3,7 @@ package org.openhab.core.ai.tool.validation.api;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 
 /**
  * Service for validating tool configurations and specifications.
@@ -23,7 +24,7 @@ public interface ValidationService {
      * @param configuration the tool configuration to validate
      * @return validation result
      */
-    ValidationResult validateConfiguration(Map<String, Object> configuration);
+    ToolValidationResult validateConfiguration(Map<String, Object> configuration);
 
     /**
      * Validate tool parameters.
@@ -31,7 +32,7 @@ public interface ValidationService {
      * @param parameters the parameters to validate
      * @return validation result
      */
-    ValidationResult validateParameters(Map<String, Object> parameters);
+    ToolValidationResult validateParameters(Map<String, Object> parameters);
 
     /**
      * Validate tool schema.
@@ -39,7 +40,7 @@ public interface ValidationService {
      * @param schema the schema to validate
      * @return validation result
      */
-    ValidationResult validateSchema(Map<String, Object> schema);
+    ToolValidationResult validateSchema(Map<String, Object> schema);
 
     /**
      * Check if a tool meets all validation requirements.

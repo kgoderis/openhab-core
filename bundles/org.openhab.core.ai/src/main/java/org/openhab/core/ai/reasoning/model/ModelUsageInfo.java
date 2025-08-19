@@ -46,4 +46,29 @@ public class ModelUsageInfo {
         hourlyUsage = 0;
         lastHourlyReset = System.currentTimeMillis();
     }
+
+    // Getter methods for external access
+    public long getLastDailyReset() {
+        return lastDailyReset;
+    }
+
+    public long getLastHourlyReset() {
+        return lastHourlyReset;
+    }
+
+    public int getDailyUsage() {
+        return dailyUsage;
+    }
+
+    public int getMaxDailyUsage() {
+        return maxDailyUsage;
+    }
+
+    public int getHourlyUsage() {
+        return hourlyUsage;
+    }
+
+    public int getMaxHourlyUsage() {
+        return maxHourlyUsage;
+    }
 }

@@ -6,6 +6,7 @@ import java.util.Map;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.agent.execution.api.ExecutionPriority;
 import org.openhab.core.ai.agent.execution.api.ExecutionStrategyType;
+import org.openhab.core.ai.common.builder.ExecutionRequestBuilder;
 
 /**
  * Execution Request
@@ -26,14 +27,14 @@ public class ExecutionRequest {
     private final boolean requiresValidation;
     private final boolean requiresSafetyChecks;
 
-    /* package */ ExecutionRequest(ExecutionRequestBuilder builder) {
-        this.type = builder.type;
-        this.targetName = builder.targetName;
-        this.parameters = new HashMap<>(builder.parameters);
-        this.priority = builder.priority;
-        this.context = new HashMap<>(builder.context);
-        this.requiresValidation = builder.requiresValidation;
-        this.requiresSafetyChecks = builder.requiresSafetyChecks;
+    public ExecutionRequest(ExecutionRequestBuilder builder) {
+        this.type = ExecutionStrategyType.ACTION; // Default value since unified builder doesn't have type
+        this.targetName = builder.getTaskDescription();
+        this.parameters = builder.getParameters() != null ? new HashMap<>(builder.getParameters()) : new HashMap<>();
+        this.priority = ExecutionPriority.MEDIUM; // Default value since unified builder doesn't have priority enum
+        this.context = new HashMap<>(); // Default empty context since unified builder doesn't have context
+        this.requiresValidation = builder.isRequiresValidation();
+        this.requiresSafetyChecks = builder.isRequiresSafetyChecks();
     }
 
     public ExecutionStrategyType getType() {
@@ -65,6 +66,6 @@ public class ExecutionRequest {
     }
 
     public static ExecutionRequestBuilder builder() {
-        return new ExecutionRequestBuilder();
+        return new ExecutionRequestBuilder("request-" + System.currentTimeMillis());
     }
 }

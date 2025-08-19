@@ -193,7 +193,7 @@ public class ToolSpecification implements Specification {
      */
     private boolean isValidVersion(String version) {
         // Basic semantic versioning validation (major.minor.patch)
-        return version.matches("^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$");
+        return version.matches("^d+.d+.d+(-[a-zA-Z0-9.-]+)?(+[a-zA-Z0-9.-]+)?$");
     }
 
     /**
@@ -235,7 +235,7 @@ public class ToolSpecification implements Specification {
      * @return the major version
      */
     public int getMajorVersion() {
-        return Integer.parseInt(version.split("\\.")[0]);
+        return Integer.parseInt(version.split(".")[0]);
     }
 
     /**
@@ -244,7 +244,7 @@ public class ToolSpecification implements Specification {
      * @return the minor version
      */
     public int getMinorVersion() {
-        return Integer.parseInt(version.split("\\.")[1]);
+        return Integer.parseInt(version.split(".")[1]);
     }
 
     /**
@@ -253,11 +253,11 @@ public class ToolSpecification implements Specification {
      * @return the patch version
      */
     public int getPatchVersion() {
-        String[] parts = version.split("\\.");
+        String[] parts = version.split(".");
         if (parts.length < 3) {
             return 0;
         }
-        String patchPart = parts[2].split("-")[0].split("\\+")[0];
+        String patchPart = parts[2].split("-")[0].split("+")[0];
         return Integer.parseInt(patchPart);
     }
 
@@ -294,14 +294,14 @@ public class ToolSpecification implements Specification {
      * @return negative if version1 < version2, 0 if equal, positive if version1 > version2
      */
     private int compareVersions(String version1, String version2) {
-        String[] parts1 = version1.split("\\.");
-        String[] parts2 = version2.split("\\.");
+        String[] parts1 = version1.split(".");
+        String[] parts2 = version2.split(".");
 
         int maxLength = Math.max(parts1.length, parts2.length);
 
         for (int i = 0; i < maxLength; i++) {
-            int part1 = i < parts1.length ? Integer.parseInt(parts1[i].split("-")[0].split("\\+")[0]) : 0;
-            int part2 = i < parts2.length ? Integer.parseInt(parts2[i].split("-")[0].split("\\+")[0]) : 0;
+            int part1 = i < parts1.length ? Integer.parseInt(parts1[i].split("-")[0].split("+")[0]) : 0;
+            int part2 = i < parts2.length ? Integer.parseInt(parts2[i].split("-")[0].split("+")[0]) : 0;
 
             if (part1 != part2) {
                 return Integer.compare(part1, part2);

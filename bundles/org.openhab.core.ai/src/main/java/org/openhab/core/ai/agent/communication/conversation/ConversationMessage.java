@@ -3,6 +3,7 @@ package org.openhab.core.ai.agent.communication.conversation;
 import java.time.Instant;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.builder.ConversationMessageBuilder;
 
 /**
  * Conversation message DTO.
@@ -21,13 +22,13 @@ public class ConversationMessage {
     private final MessageType messageType;
     private final Instant timestamp;
 
-    ConversationMessage(ConversationMessageBuilder builder) {
-        this.messageId = builder.messageId;
-        this.conversationId = builder.conversationId;
-        this.fromAgentId = builder.fromAgentId;
-        this.content = builder.content;
-        this.messageType = builder.messageType;
-        this.timestamp = builder.timestamp;
+    public ConversationMessage(ConversationMessageBuilder builder) {
+        this.messageId = builder.getMessageId();
+        this.conversationId = builder.getConversationId();
+        this.fromAgentId = builder.getFromAgentId();
+        this.content = builder.getContent();
+        this.messageType = builder.getMessageType();
+        this.timestamp = builder.getTimestamp();
     }
 
     public String getMessageId() {

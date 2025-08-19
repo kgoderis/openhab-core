@@ -14,12 +14,14 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionExecutionService;
+import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionSecurityValidator;
 import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
+import org.openhab.core.ai.common.configuration.ActionExecutionConfiguration;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -95,13 +97,13 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      * @param providerType the LLM provider type
      * @return CompletableFuture with the action result
      */
-    public CompletableFuture<ActionResult> executeAction(ActionContext actionContext, ModelProviderType providerType) {
+    public CompletableFuture<ActionResult> executeAction(ExecutionContext actionContext,
+            ModelProviderType providerType) {
         totalActionExecutions.incrementAndGet();
         Instant startTime = Instant.now();
 
         // Add debug logging
-        Map<String, Object> protocolContext = actionContext.getProtocolContext();
-        String actionName = (String) protocolContext.get("action");
+        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
         logger.debug("executeAction called for action: {}", actionName);
 
         try {
@@ -193,7 +195,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      * @param providerType the LLM provider type
      * @return CompletableFuture with list of action results
      */
-    public CompletableFuture<List<ActionResult>> executeActions(List<ActionContext> actionContexts,
+    public CompletableFuture<List<ActionResult>> executeActions(List<ExecutionContext> actionContexts,
             ModelProviderType providerType) {
         List<CompletableFuture<ActionResult>> futures = actionContexts.stream()
                 .map(context -> executeAction(context, providerType)).toList();
@@ -205,7 +207,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     /**
      * Execute action based on provider type
      */
-    private CompletableFuture<ActionResult> executeActionByProvider(ActionContext actionContext,
+    private CompletableFuture<ActionResult> executeActionByProvider(ExecutionContext actionContext,
             ModelProviderType providerType) {
         switch (providerType) {
             case OLLAMA:
@@ -230,7 +232,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     /**
      * Execute action via agent delegation
      */
-    private CompletableFuture<ActionResult> executeViaAgentDelegation(ActionContext actionContext) {
+    private CompletableFuture<ActionResult> executeViaAgentDelegation(ExecutionContext actionContext) {
         AgentActionDelegationService delegationService = agentDelegationService;
         if (delegationService == null) {
             throw new IllegalStateException("AgentActionDelegationService not available");
@@ -243,7 +245,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      * Add retry logic to action execution
      */
     private CompletableFuture<ActionResult> addRetryLogic(CompletableFuture<ActionResult> future,
-            ActionContext actionContext, ModelProviderType providerType) {
+            ExecutionContext actionContext, ModelProviderType providerType) {
         if (future == null) {
             return CompletableFuture.completedFuture(ActionResult.error("Action execution failed",
                     new ActionError("EXECUTION_ERROR", "Future is null"), 0));
@@ -288,7 +290,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     /**
      * Validate action security
      */
-    private boolean validateActionSecurity(ActionContext actionContext) {
+    private boolean validateActionSecurity(ExecutionContext actionContext) {
         ActionSecurityValidator validator = securityValidator;
         if (validator == null || !validator.isAvailable()) {
             logger.warn("Security validator not available, skipping validation");
@@ -300,7 +302,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     /**
      * Generate cache key for action context
      */
-    private @Nullable String generateCacheKey(ActionContext actionContext) {
+    private @Nullable String generateCacheKey(ExecutionContext actionContext) {
         String correlationId = actionContext.getCorrelationId();
         if (correlationId == null) {
             return null;
@@ -377,23 +379,23 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      * Update service configuration
      */
     public void updateConfiguration(ActionExecutionConfiguration config) {
-        Integer maxRetries = config.maxRetryAttempts;
+        Integer maxRetries = config.getMaxRetryAttempts();
         if (maxRetries != null) {
             maxRetryAttempts.set(maxRetries);
         }
-        Duration delay = config.retryDelay;
+        Duration delay = config.getRetryDelay();
         if (delay != null) {
             retryDelay.set(delay);
         }
-        Boolean caching = config.enableCaching;
+        Boolean caching = config.isEnableCaching();
         if (caching != null) {
             enableCaching.set(caching);
         }
-        Boolean security = config.enableSecurityValidation;
+        Boolean security = config.isEnableSecurityValidation();
         if (security != null) {
             enableSecurityValidation.set(security);
         }
-        Duration expiration = config.cacheExpiration;
+        Duration expiration = config.getCacheExpiration();
         if (expiration != null) {
             cacheExpiration.set(expiration);
         }
@@ -412,7 +414,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     // extracted to top-level: ActionExecutionPerformanceMetrics
 
     @Override
-    public CompletableFuture<ActionResult> executeActionWithRetry(ActionContext actionContext,
+    public CompletableFuture<ActionResult> executeActionWithRetry(ExecutionContext actionContext,
             ModelProviderType providerType, int maxRetries) {
         return executeAction(actionContext, providerType).thenCompose(result -> {
             if (!result.isSuccess() && maxRetries > 0) {
@@ -424,12 +426,12 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     }
 
     @Override
-    public CompletableFuture<List<ActionResult>> executeActionsParallel(List<ActionContext> actionContexts,
+    public CompletableFuture<List<ActionResult>> executeActionsParallel(List<ExecutionContext> actionContexts,
             ModelProviderType providerType) {
         logger.debug("Starting parallel execution of {} actions", actionContexts.size());
 
         List<CompletableFuture<ActionResult>> futures = actionContexts.stream().map(context -> {
-            String actionName = (String) context.getProtocolContext().get("action");
+            String actionName = context.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
             logger.debug("Creating future for action: {}", actionName);
             return executeAction(context, providerType);
         }).collect(Collectors.toList());
@@ -445,10 +447,10 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     }
 
     @Override
-    public CompletableFuture<List<ActionResult>> executeActionsSequential(List<ActionContext> actionContexts,
+    public CompletableFuture<List<ActionResult>> executeActionsSequential(List<ExecutionContext> actionContexts,
             ModelProviderType providerType) {
         CompletableFuture<List<ActionResult>> result = CompletableFuture.completedFuture(new ArrayList<>());
-        for (ActionContext context : actionContexts) {
+        for (ExecutionContext context : actionContexts) {
             result = result.thenCompose(results -> executeAction(context, providerType).thenApply(actionResult -> {
                 results.add(actionResult);
                 return results;

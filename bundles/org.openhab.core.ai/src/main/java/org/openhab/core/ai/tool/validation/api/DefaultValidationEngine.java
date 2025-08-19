@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.validation.api;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -9,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,16 +63,16 @@ public class DefaultValidationEngine implements ValidationEngine {
     }
 
     @Override
-    public ValidationResult validate(Map<String, Object> data) {
+    public ToolValidationResult validate(Map<String, Object> data) {
         return validate(data, new ArrayList<>(rules.keySet()));
     }
 
     @Override
-    public ValidationResult validate(Map<String, Object> data, List<String> ruleIds) {
+    public ToolValidationResult validate(Map<String, Object> data, List<String> ruleIds) {
         long startTime = System.currentTimeMillis();
         totalValidations.incrementAndGet();
 
-        List<ValidationResult> results = new ArrayList<>();
+        List<ToolValidationResult> results = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
 
@@ -80,7 +82,7 @@ public class DefaultValidationEngine implements ValidationEngine {
 
             for (ValidationRule rule : rulesToExecute) {
                 if (rule.isEnabled()) {
-                    ValidationResult result = executeRule(rule, data);
+                    ToolValidationResult result = executeRule(rule, data);
                     results.add(result);
 
                     if (!result.isValid()) {
@@ -90,7 +92,7 @@ public class DefaultValidationEngine implements ValidationEngine {
                 }
             }
 
-            ValidationResult aggregatedResult = aggregateResults(results, errors, warnings);
+            ToolValidationResult aggregatedResult = aggregateResults(results, errors, warnings);
             long validationTime = System.currentTimeMillis() - startTime;
             totalValidationTimeMs.addAndGet(validationTime);
 
@@ -103,7 +105,7 @@ public class DefaultValidationEngine implements ValidationEngine {
             LOGGER.error("Validation failed", e);
             long validationTime = System.currentTimeMillis() - startTime;
             totalValidationTimeMs.addAndGet(validationTime);
-            return ValidationResult.invalid(List.of("Validation engine error: " + e.getMessage()));
+            return ToolValidationResult.invalid(List.of("Validation engine error: " + e.getMessage()));
         }
     }
 
@@ -150,12 +152,12 @@ public class DefaultValidationEngine implements ValidationEngine {
         return selectedRules;
     }
 
-    private ValidationResult executeRule(ValidationRule rule, Map<String, Object> data) {
+    private ToolValidationResult executeRule(ValidationRule rule, Map<String, Object> data) {
         long startTime = System.currentTimeMillis();
         RulePerformanceMetrics metrics = performanceMetrics.get(rule.getRuleId());
 
         try {
-            ValidationResult result = rule.validate(data);
+            ToolValidationResult result = rule.validate(data);
             long executionTime = System.currentTimeMillis() - startTime;
 
             if (metrics != null) {
@@ -174,16 +176,16 @@ public class DefaultValidationEngine implements ValidationEngine {
             }
 
             LOGGER.error("Rule {} execution failed", rule.getRuleId(), e);
-            return ValidationResult.invalid(List.of("Rule execution failed: " + e.getMessage()));
+            return ToolValidationResult.invalid(List.of("Rule execution failed: " + e.getMessage()));
         }
     }
 
-    private ValidationResult aggregateResults(List<ValidationResult> results, List<String> errors,
+    private ToolValidationResult aggregateResults(List<ToolValidationResult> results, List<String> errors,
             List<String> warnings) {
         boolean isValid = errors.isEmpty();
         String message = isValid ? "Validation passed" : "Validation failed with " + errors.size() + " errors";
 
-        return new ValidationResult(isValid, errors, warnings, Map.of("totalRules", results.size(), "passedRules",
-                (int) results.stream().filter(ValidationResult::isValid).count()));
+        return new ToolValidationResult(isValid, errors, warnings, Map.of("totalRules", results.size(), "passedRules",
+                (int) results.stream().filter(ToolValidationResult::isValid).count()), Instant.now());
     }
 }

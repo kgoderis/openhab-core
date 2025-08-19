@@ -8,11 +8,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,7 +108,7 @@ public class DiscoveryAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing discovery action with parameters: {}", parameters);
 
@@ -133,7 +133,7 @@ public class DiscoveryAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -145,11 +145,11 @@ public class DiscoveryAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Basic discovery operations for openHAB")
-                .tags(List.of("discovery", "devices", "inventory"))
-                .documentation("Provides basic discovery status and information for openHAB devices")
-                .examples(List.of("{\"action\": \"status\"} - Get discovery service status",
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Basic discovery operations for openHAB")
+                .withTags(List.of("discovery", "devices", "inventory"))
+                .withDocumentation("Provides basic discovery status and information for openHAB devices")
+                .withExamples(List.of("{\"action\": \"status\"} - Get discovery service status",
                         "{\"action\": \"info\"} - Get discovery information and capabilities"))
                 .build();
     }
@@ -160,7 +160,7 @@ public class DiscoveryAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("DiscoveryAction initialized for protocol: {}", context.getProtocol());
     }
 

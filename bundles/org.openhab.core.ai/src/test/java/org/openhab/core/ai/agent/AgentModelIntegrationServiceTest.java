@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,14 +24,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.agent.api.AgentModelContext;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
-import org.openhab.core.ai.agent.api.AgentModelStatistics;
-import org.openhab.core.ai.agent.api.ModelHealthStatus;
-import org.openhab.core.ai.agent.api.ModelIntegrationStatistics;
+import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.statistics.AgentModelStatistics;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
+import org.openhab.core.ai.common.statistics.ModelIntegrationStatistics;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
-import org.openhab.core.ai.reasoning.SharedModelReasoningEngine;
+import org.openhab.core.ai.reasoning.engine.SharedModelReasoningEngine;
 
 /**
  * Unit tests for SharedModelReasoningEngine (AgentModelIntegrationService implementation)
@@ -93,8 +92,8 @@ class AgentModelIntegrationServiceTest {
         AgentModelContext originalContext = createTestAgentContext(agentId);
         integrationService.registerAgent(agentId, originalContext);
 
-        AgentModelContext updatedContext = AgentModelContext.builder().agentId(agentId)
-                .specialization("updated-specialization").domain("updated-domain").build();
+        AgentModelContext updatedContext = AgentModelContext.builder().withAgentId(agentId).withDomain("updated-domain")
+                .build();
 
         // When
         boolean result = integrationService.updateAgentContext(agentId, updatedContext);
@@ -156,7 +155,7 @@ class AgentModelIntegrationServiceTest {
         assertEquals(0, statistics.getTotalRequests());
         assertEquals(0, statistics.getSuccessfulRequests());
         assertEquals(0, statistics.getFailedRequests());
-        assertEquals(1.0, statistics.getActiveAgentRate());
+        assertEquals(1.0, statistics.getAgentUtilizationRate());
     }
 
     @Test
@@ -348,8 +347,8 @@ class AgentModelIntegrationServiceTest {
         // Given
         String agentId = "test-agent";
         AgentModelContext context1 = createTestAgentContext(agentId);
-        AgentModelContext context2 = AgentModelContext.builder().agentId(agentId)
-                .specialization("different-specialization").domain("different-domain").build();
+        AgentModelContext context2 = AgentModelContext.builder().withAgentId(agentId).withDomain("different-domain")
+                .build();
 
         // When
         boolean result1 = integrationService.registerAgent(agentId, context1);
@@ -366,9 +365,9 @@ class AgentModelIntegrationServiceTest {
 
     // Helper methods
     private AgentModelContext createTestAgentContext(String agentId) {
-        Map<String, Object> capabilities = new HashMap<>();
-        capabilities.put("reasoning", true);
-        capabilities.put("learning", true);
+        Map<String, String> capabilities = new HashMap<>();
+        capabilities.put("reasoning", "true");
+        capabilities.put("learning", "true");
 
         Map<String, Object> constraints = new HashMap<>();
         constraints.put("maxTokens", 1000);
@@ -381,8 +380,7 @@ class AgentModelIntegrationServiceTest {
         preferences.put("temperature", 0.7);
         preferences.put("maxTokens", 1000);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("test-specialization").domain("test-domain")
-                .capabilities(capabilities).constraints(constraints).promptTemplates(promptTemplates)
-                .preferences(preferences).createdAt(Instant.now()).lastUpdated(Instant.now()).build();
+        return AgentModelContext.builder().withAgentId(agentId).withDomain("test-domain").withCapabilities(capabilities)
+                .withCurrentState(preferences).build();
     }
 }

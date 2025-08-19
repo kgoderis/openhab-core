@@ -21,11 +21,11 @@ import java.util.stream.Stream;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,7 +163,7 @@ public class LoggingMonitoringAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing logging monitoring action with parameters: {}", parameters);
 
@@ -197,7 +197,7 @@ public class LoggingMonitoringAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -209,12 +209,12 @@ public class LoggingMonitoringAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Provides comprehensive logging and monitoring capabilities for openHAB")
-                .tags(List.of("monitoring", "logging", "metrics", "performance", "alerts"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Provides comprehensive logging and monitoring capabilities for openHAB")
+                .withTags(List.of("monitoring", "logging", "metrics", "performance", "alerts"))
+                .withDocumentation(
                         "Manages openHAB logging and monitoring including log viewing, system metrics, performance monitoring, and alerts")
-                .examples(List.of("{\"action\": \"list_logs\"} - List all log files",
+                .withExamples(List.of("{\"action\": \"list_logs\"} - List all log files",
                         "{\"action\": \"view_log\", \"logFile\": \"openhab.log\", \"maxLines\": 50} - View last 50 lines of openhab.log",
                         "{\"action\": \"search_logs\", \"searchPattern\": \"ERROR\"} - Search for ERROR entries in logs",
                         "{\"action\": \"system_metrics\"} - Get current system metrics",
@@ -228,7 +228,7 @@ public class LoggingMonitoringAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("LoggingMonitoringAction initialized for protocol: {}", context.getProtocol());
     }
 
@@ -611,7 +611,7 @@ public class LoggingMonitoringAction implements Action {
         // Simple timestamp extraction - assumes ISO format at the beginning of the line
         if (logLine.length() > 20) {
             String potentialTimestamp = logLine.substring(0, 20);
-            if (potentialTimestamp.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")) {
+            if (potentialTimestamp.matches("d{4}-d{2}-d{2}Td{2}:d{2}:d{2}")) {
                 return potentialTimestamp;
             }
         }

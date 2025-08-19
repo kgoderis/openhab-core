@@ -29,10 +29,10 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.action.ActionContext;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.library.items.CallItem;
@@ -71,7 +71,7 @@ import org.openhab.core.thing.type.ThingTypeRegistry;
 @ExtendWith(MockitoExtension.class)
 public abstract class BaseActionIntegrationTest {
 
-    protected ActionContext actionContext;
+    protected ExecutionContext actionContext;
     protected Path testDataDir;
     protected Map<String, Object> testParameters;
 
@@ -122,17 +122,16 @@ public abstract class BaseActionIntegrationTest {
     }
 
     /**
-     * Create a test ActionContext with embedded openHAB services.
+     * Create a test ExecutionContext with embedded openHAB services.
      */
-    protected ActionContext createTestActionContext() {
-        Map<String, Object> protocolContext = new HashMap<>();
-        protocolContext.put("testDataDir", testDataDir.toString());
-        protocolContext.put("testMode", true);
-        protocolContext.put("embedded", true);
+    protected ExecutionContext createTestActionContext() {
+        Map<String, Object> values = new HashMap<>();
+        values.put("testDataDir", testDataDir.toString());
+        values.put("testMode", true);
+        values.put("embedded", true);
 
-        return ActionContext.builder().protocol("test").clientId("test-client").sessionId("test-session")
-                .protocolContext(protocolContext).correlationId("test-correlation-" + System.currentTimeMillis())
-                .build();
+        return ExecutionContext.builder().withProtocol("test").withClientId("test-client").withSessionId("test-session")
+                .withValues(values).withCorrelationId("test-correlation-" + System.currentTimeMillis()).build();
     }
 
     /**

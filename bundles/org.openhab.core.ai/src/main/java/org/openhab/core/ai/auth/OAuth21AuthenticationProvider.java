@@ -198,7 +198,7 @@ public class OAuth21AuthenticationProvider implements AuthenticationProvider {
             // 4. Verifying with the OAuth 2.1 issuer
 
             // Basic JWT structure validation
-            String[] parts = accessToken.split("\\.");
+            String[] parts = accessToken.split(".");
             if (parts.length != 3) {
                 logger.warn("Invalid JWT token structure: expected 3 parts, got {}", parts.length);
                 return Optional.empty();

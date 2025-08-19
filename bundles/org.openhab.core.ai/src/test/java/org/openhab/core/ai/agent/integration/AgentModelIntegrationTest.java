@@ -27,23 +27,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.agent.api.AgentModelContext;
+import org.openhab.core.ai.agent.api.AgentModelContextCache;
+import org.openhab.core.ai.agent.api.AgentModelContextEnricher;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
-import org.openhab.core.ai.agent.api.AgentModelStatistics;
-import org.openhab.core.ai.agent.api.ModelHealthStatus;
-import org.openhab.core.ai.agent.api.ModelIntegrationStatistics;
+import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.statistics.AgentModelStatistics;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
+import org.openhab.core.ai.common.statistics.ModelIntegrationStatistics;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
-import org.openhab.core.ai.reasoning.AgentModelContextCache;
-import org.openhab.core.ai.reasoning.AgentModelContextEnricher;
-import org.openhab.core.ai.reasoning.AgentModelContextValidator;
-import org.openhab.core.ai.reasoning.AgentModelDecisionEngine;
-import org.openhab.core.ai.reasoning.AgentModelNLPProcessor;
-import org.openhab.core.ai.reasoning.AgentModelPromptOptimizer;
-import org.openhab.core.ai.reasoning.AgentModelPromptValidator;
-import org.openhab.core.ai.reasoning.AgentModelSecurityManager;
-import org.openhab.core.ai.reasoning.SharedModelReasoningEngine;
+import org.openhab.core.ai.reasoning.engine.AgentModelDecisionEngine;
+import org.openhab.core.ai.reasoning.engine.SharedModelReasoningEngine;
+import org.openhab.core.ai.reasoning.nlp.AgentModelNLPProcessor;
+import org.openhab.core.ai.reasoning.prompts.AgentModelPromptOptimizer;
+import org.openhab.core.ai.reasoning.prompts.AgentModelPromptValidator;
+import org.openhab.core.ai.reasoning.security.AgentModelSecurityManager;
+import org.openhab.core.ai.reasoning.validation.AgentModelContextValidator;
 
 /**
  * Comprehensive integration tests for agent-model integration
@@ -86,7 +86,7 @@ class AgentModelIntegrationTest {
 
         // Configure mock model provider
         when(mockModelProvider.reasonAsync(anyString(), anyMap(), any(ModelParameters.class))).thenReturn(
-                CompletableFuture.completedFuture(ModelResponse.builder().content("Mock response").build()));
+                CompletableFuture.completedFuture(ModelResponse.builder().withContent("Mock response").build()));
     }
 
     @Test

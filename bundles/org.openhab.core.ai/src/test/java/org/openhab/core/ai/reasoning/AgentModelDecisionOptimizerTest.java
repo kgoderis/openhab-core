@@ -27,11 +27,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.action.ActionContext;
+import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.reasoning.api.ConfigurationManager;
 import org.openhab.core.ai.reasoning.api.ErrorHandler;
 import org.openhab.core.ai.reasoning.api.MemoryManager;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.openhab.core.ai.reasoning.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.api.SecurityManager;
@@ -240,16 +240,17 @@ class AgentModelDecisionOptimizerTest {
     // Helper methods
 
     private ReasoningContext createTestContext() {
-        return ReasoningContext.builder().initialContext("test-initial-context").currentContext("test-current-context")
-                .sessionId("test-session").userId("test-agent").domain("test-model").build();
+        return ReasoningContext.builder().withInitialContext("test-initial-context")
+                .withCurrentContext("test-current-context").withSessionId("test-session").withUserId("test-agent")
+                .withDomain("test-model").build();
     }
 
     private List<ReasoningStep> createTestDecisionSteps() {
-        ActionContext actionContext1 = ActionContext.builder().protocol("mcp").clientId("client1").sessionId("session1")
-                .correlationId("corr1").build();
+        ExecutionContext actionContext1 = ExecutionContext.builder().withProtocol("mcp").withClientId("client1")
+                .withSessionId("session1").withCorrelationId("corr1").build();
 
-        ActionContext actionContext2 = ActionContext.builder().protocol("a2a").clientId("client2").sessionId("session2")
-                .correlationId("corr2").build();
+        ExecutionContext actionContext2 = ExecutionContext.builder().withProtocol("a2a").withClientId("client2")
+                .withSessionId("session2").withCorrelationId("corr2").build();
 
         ReasoningStep step1 = ReasoningStep.builder().sessionId("test-session").stepNumber(1)
                 .reasoning("First reasoning step").toolCalls(List.of(actionContext1)).confidence(0.8).isComplete(true)

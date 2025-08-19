@@ -3,7 +3,8 @@ package org.openhab.core.ai.tool.api;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 
 /**
  * Interface for MCP tools that can be executed by the MCP server.

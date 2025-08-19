@@ -324,8 +324,7 @@ public class AuditEvent implements Serializable, Comparable<AuditEvent> {
      * @return Escaped string
      */
     private String escapeJson(String input) {
-        return input.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t",
-                "\\t");
+        return input.replace("", "").replace("\"", "\"").replace("\n", "n").replace("\r", "r").replace("\t", "t");
     }
 
     /**

@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.library.events.EventSubscriptionRegistry;
+import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.reasoning.engine.MultiStepReasoningEngine;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 import org.openhab.core.events.Event;
 import org.openhab.core.events.EventSubscriber;
@@ -216,8 +216,8 @@ public class EventSystemIntegration implements EventSubscriber {
      * Convert event to reasoning context
      */
     private ReasoningContext convertEventToReasoningContext(Event event) {
-        return ReasoningContext.builder().initialContext("Event: " + event.getType() + " from " + event.getSource())
-                .currentContext("Processing event: " + event.getType()).timestamp(Instant.now()).build();
+        return new ReasoningContext("Event: " + event.getType() + " from " + event.getSource(),
+                "Processing event: " + event.getType());
     }
 
     /**

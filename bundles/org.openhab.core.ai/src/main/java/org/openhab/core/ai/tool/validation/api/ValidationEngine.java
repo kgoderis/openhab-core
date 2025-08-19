@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 
 /**
  * Engine for executing validation rules.
@@ -52,7 +53,7 @@ public interface ValidationEngine {
      * @param data the data to validate
      * @return validation result
      */
-    ValidationResult validate(Map<String, Object> data);
+    ToolValidationResult validate(Map<String, Object> data);
 
     /**
      * Execute specific validation rules on the given data.
@@ -61,7 +62,7 @@ public interface ValidationEngine {
      * @param ruleIds the rule IDs to execute
      * @return validation result
      */
-    ValidationResult validate(Map<String, Object> data, List<String> ruleIds);
+    ToolValidationResult validate(Map<String, Object> data, List<String> ruleIds);
 
     /**
      * Get validation statistics.

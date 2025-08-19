@@ -1,6 +1,8 @@
 package org.openhab.core.ai.reasoning.nlp;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.reasoning.enums.EmotionType;
+import org.openhab.core.ai.reasoning.enums.SentimentType;
 
 /**
  * Sentiment and emotion analysis result.

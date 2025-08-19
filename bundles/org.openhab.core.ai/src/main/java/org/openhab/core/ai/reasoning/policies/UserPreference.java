@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.reasoning.events.AutonomousEvent;
 
 @NonNullByDefault
 public class UserPreference {

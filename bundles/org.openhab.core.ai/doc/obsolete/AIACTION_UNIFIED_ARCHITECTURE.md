@@ -393,9 +393,9 @@ public class MCPToolAdapter implements MCPTool {
         ActionMetadata metadata = action.getMetadata();
         
         return MCPToolMetadata.builder()
-            .version(metadata.getVersion())
-            .author(metadata.getAuthor())
-            .description(metadata.getDescription())
+            .withVersion(metadata.getVersion())
+            .withAuthor(metadata.getAuthor())
+            .withDescription(metadata.getDescription())
             .build();
     }
     
@@ -517,9 +517,9 @@ public class A2ASkillAdapter implements A2ASkill {
         ActionMetadata metadata = action.getMetadata();
         
         return A2ASkillMetadata.builder()
-            .version(metadata.getVersion())
-            .author(metadata.getAuthor())
-            .description(metadata.getDescription())
+            .withVersion(metadata.getVersion())
+            .withAuthor(metadata.getAuthor())
+            .withDescription(metadata.getDescription())
             .capabilities(action.getCapabilities())
             .build();
     }
@@ -813,11 +813,11 @@ public class ListItemsAction extends AbstractAction {
     @Override
     public ActionMetadata getMetadata() {
         return ActionMetadata.builder()
-            .version("1.0.0")
+            .withVersion("1.0.0")
             .
-            .description("List openHAB items with optional filtering")
-            .tags(List.of("items", "list", "filter"))
-            .examples(List.of(
+            .withDescription("List openHAB items with optional filtering")
+            .withTags(List.of("items", "list", "filter"))
+            .withExamples(List.of(
                 "List all items: {}",
                 "Filter by name: {\"filter\": \"light*\"}",
                 "Filter by type: {\"type\": \"Switch\"}"

@@ -27,7 +27,7 @@ public class AgentCardBuilder {
     public AgentCard buildAgentCard() {
         return AgentCard.builder()
             .name("openHAB AI Agent")
-            .description("openHAB AI Agent with A2A protocol support")
+            .withDescription("openHAB AI Agent with A2A protocol support")
             .transport("http")  // Only HTTP transport declared
             .endpoint("http://localhost:8080/a2a")
             .build();
@@ -96,7 +96,7 @@ public class AgentCardBuilder {
     public AgentCard buildAgentCard() {
         return AgentCard.builder()
             .name("openHAB AI Agent")
-            .description("openHAB AI Agent with multi-transport A2A support")
+            .withDescription("openHAB AI Agent with multi-transport A2A support")
             .transports(Arrays.asList(
                 TransportCapability.builder()
                     .type("json-rpc")
@@ -568,7 +568,7 @@ public class A2AServer {
         // Return A2A SDK AgentCard with all transport capabilities
         return io.a2a.spec.AgentCard.builder()
             .name("openHAB AI Agent")
-            .description("Multi-transport A2A agent")
+            .withDescription("Multi-transport A2A agent")
             .transports(transports.values().stream()
                 .map(A2ATransport::getTransportCapabilities)
                 .collect(Collectors.toList()))

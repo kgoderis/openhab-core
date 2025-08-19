@@ -8,11 +8,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.config.core.ConfigDescriptionRegistry;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.Thing;
@@ -121,7 +121,7 @@ public class GetThingConfigurationAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
 
         try {
@@ -179,7 +179,7 @@ public class GetThingConfigurationAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -191,12 +191,12 @@ public class GetThingConfigurationAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieve configuration information for openHAB things")
-                .tags(List.of("things", "configuration", "settings", "properties"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieve configuration information for openHAB things")
+                .withTags(List.of("things", "configuration", "settings", "properties"))
+                .withDocumentation(
                         "Retrieves configuration information for openHAB things including current configuration values and optional schema.")
-                .examples(List.of("Get configuration: {\"thingUID\": \"binding:type:id\"}",
+                .withExamples(List.of("Get configuration: {\"thingUID\": \"binding:type:id\"}",
                         "Get with keys: {\"thingUID\": \"binding:type:id\", \"includeConfigurationKeys\": true}",
                         "Get with schema: {\"thingUID\": \"binding:type:id\", \"includeConfigurationSchema\": true}"))
                 .build();
@@ -216,7 +216,7 @@ public class GetThingConfigurationAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         // No initialization needed
     }
 

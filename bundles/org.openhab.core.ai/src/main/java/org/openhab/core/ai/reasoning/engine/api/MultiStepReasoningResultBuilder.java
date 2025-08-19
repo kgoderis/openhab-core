@@ -6,7 +6,7 @@ import java.util.List;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.ActionResult;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
+import org.openhab.core.ai.common.context.ReasoningContext;
 
 @NonNullByDefault
 public class MultiStepReasoningResultBuilder {

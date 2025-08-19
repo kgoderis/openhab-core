@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.api.AgentModelContext;
+import org.openhab.core.ai.common.context.AgentModelContext;
 
 /**
  * Manages session state and interaction history for model reasoning sessions.

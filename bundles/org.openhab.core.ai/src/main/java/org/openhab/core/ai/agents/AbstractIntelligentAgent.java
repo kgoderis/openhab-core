@@ -12,12 +12,13 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionError;
+import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.api.IntelligentAgent;
+import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.engine.MultiStepReasoningEngine;
 import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 import org.osgi.service.component.annotations.Reference;
@@ -84,7 +85,8 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                 MultiStepReasoningResult reasoningResult = reasoningEngine.reasonAsync(reasoningContext).get();
 
                 // 3. Parse reasoning result to extract concrete actions
-                List<ActionContext> actionsToExecute = parseReasoningToActions(reasoningResult, actionName, parameters);
+                List<ExecutionContext> actionsToExecute = parseReasoningToActions(reasoningResult, actionName,
+                        parameters);
 
                 // 4. Execute concrete actions
                 List<ActionResult> actionResults = executeActions(actionsToExecute);
@@ -110,7 +112,7 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
     }
 
     @Override
-    public CompletableFuture<List<ActionContext>> planActions(String goal, Map<String, Object> context) {
+    public CompletableFuture<List<ExecutionContext>> planActions(String goal, Map<String, Object> context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 logger.debug("Agent {} planning actions for goal: {}", getAgentId(), goal);
@@ -118,12 +120,12 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                 // Create reasoning context for planning
                 Map<String, Object> metadata = new HashMap<>();
                 metadata.put("context", context);
-                metadata.put("agentContext", getContext().getAll());
+                metadata.put("agentContext", getContext().getAllValues());
                 metadata.put("knowledge", agentKnowledge);
 
-                ReasoningContext reasoningContext = ReasoningContext.builder().initialContext("Goal: " + goal)
-                        .currentContext("Goal: " + goal).domain(getSpecialization())
-                        .sessionId("session-" + System.currentTimeMillis()).metadata(metadata).build();
+                ReasoningContext reasoningContext = ReasoningContext.builder().withInitialContext("Goal: " + goal)
+                        .withCurrentContext("Goal: " + goal).withDomain(getSpecialization())
+                        .withSessionId("session-" + System.currentTimeMillis()).withMetadata(metadata).build();
 
                 // Execute reasoning for planning
                 MultiStepReasoningResult reasoningResult = reasoningEngine.reasonAsync(reasoningContext).get();
@@ -152,7 +154,7 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
         try {
             // Create learning example
             LearningExample example = new LearningExample(actionName, parameters, result, success,
-                    getContext().getAll(), Instant.now());
+                    getContext().getAllValues(), Instant.now());
 
             // Store in learning history
             learningHistory.computeIfAbsent(actionName, k -> new ArrayList<>()).add(example);
@@ -209,15 +211,16 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
     // Helper methods
     private ReasoningContext createReasoningContext(String actionName, Map<String, Object> parameters) {
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put("agentContext", getContext().getAll());
+        metadata.put("agentContext", getContext().getAllValues());
         metadata.put("knowledge", agentKnowledge);
         metadata.put("learningHistory", learningHistory);
         metadata.put("capabilities", getCapabilities());
 
         ReasoningContext context = ReasoningContext.builder()
-                .initialContext("Action: " + actionName + " with parameters: " + parameters)
-                .currentContext("Action: " + actionName + " with parameters: " + parameters).domain(getSpecialization())
-                .sessionId("session-" + System.currentTimeMillis()).metadata(metadata).build();
+                .withInitialContext("Action: " + actionName + " with parameters: " + parameters)
+                .withCurrentContext("Action: " + actionName + " with parameters: " + parameters)
+                .withDomain(getSpecialization()).withSessionId("session-" + System.currentTimeMillis())
+                .withMetadata(metadata).build();
         return context;
     }
 
@@ -228,9 +231,9 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
      */
     public abstract String getSpecialization();
 
-    private List<ActionContext> parseReasoningToActions(MultiStepReasoningResult reasoningResult, String originalAction,
-            Map<String, Object> originalParams) {
-        List<ActionContext> actions = new ArrayList<>();
+    private List<ExecutionContext> parseReasoningToActions(MultiStepReasoningResult reasoningResult,
+            String originalAction, Map<String, Object> originalParams) {
+        List<ExecutionContext> actions = new ArrayList<>();
 
         try {
             // Extract actions from reasoning steps
@@ -238,10 +241,9 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                 // Parse actions from reasoning step
                 // This would integrate with the existing action parsing logic
                 // For now, create a simple action context
-                ActionContext actionContext = ActionContext.builder().protocol("openhab").clientId(getAgentId())
-                        .sessionId("session-" + System.currentTimeMillis())
-                        .protocolContext(Map.of("actionId", originalAction))
-                        .correlationId("corr-" + System.currentTimeMillis()).build();
+                ExecutionContext actionContext = ExecutionContext.builder().withProtocol("openhab")
+                        .withClientId(getAgentId()).withSessionId("session-" + System.currentTimeMillis())
+                        .withCorrelationId("corr-" + System.currentTimeMillis()).build();
 
                 actions.add(actionContext);
             }
@@ -253,10 +255,10 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
         return actions;
     }
 
-    private List<ActionResult> executeActions(List<ActionContext> actions) {
+    private List<ActionResult> executeActions(List<ExecutionContext> actions) {
         List<ActionResult> results = new ArrayList<>();
 
-        for (ActionContext action : actions) {
+        for (ExecutionContext action : actions) {
             try {
                 if (actionRegistry != null) {
                     // Get action from registry and execute
@@ -264,8 +266,10 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                     Action fetchedAction = actionRegistry.getAction(actionId);
                     if (fetchedAction == null) {
                         // Fallback: try matching by name or alternative candidate from protocol context
-                        String nameCandidate = String
-                                .valueOf(action.getProtocolContext().getOrDefault("actionId", actionId));
+                        String nameCandidate = action.getValue(ActionKeys.ACTION_ID.getKey(), String.class);
+                        if (nameCandidate == null) {
+                            nameCandidate = actionId;
+                        }
                         for (Action a : getRegisteredActions()) {
                             if (a.getActionId().equals(actionId) || a.getActionId().equals(nameCandidate)
                                     || a.getActionName().equalsIgnoreCase(nameCandidate)) {
@@ -275,7 +279,7 @@ public abstract class AbstractIntelligentAgent extends BaseAutonomousAgent imple
                         }
                     }
                     if (fetchedAction != null) {
-                        ActionResult result = fetchedAction.execute(action.getProtocolContext(), action);
+                        ActionResult result = fetchedAction.execute(action.getAllValues(), action);
                         results.add(ActionResult.success(result,
                                 Duration.between(Instant.now(), Instant.now()).toMillis()));
                     } else {

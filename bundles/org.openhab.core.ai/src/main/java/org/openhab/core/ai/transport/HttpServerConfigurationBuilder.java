@@ -4,9 +4,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.builder.AbstractBuilder;
 
+/**
+ * Builder for {@link HttpServerConfiguration}.
+ *
+ * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
+ */
 @NonNullByDefault
-public class HttpServerConfigurationBuilder {
+public class HttpServerConfigurationBuilder extends AbstractBuilder<HttpServerConfiguration> {
     String baseUrl = "http://localhost:8080";
     int port = 8080;
     String contextPath = "/";
@@ -312,7 +319,74 @@ public class HttpServerConfigurationBuilder {
         return this;
     }
 
+    @Override
     public HttpServerConfiguration build() {
         return new HttpServerConfiguration(this);
+    }
+
+    @Override
+    protected void validate() {
+        validateRequiredString(baseUrl, "baseUrl");
+        validateRange(port, "port", 1, 65535);
+        validateRequiredString(contextPath, "contextPath");
+        validatePositive(maxConnections, "maxConnections");
+        validatePositive(rateLimitPerMinute, "rateLimitPerMinute");
+        validatePositive(healthCheckInterval, "healthCheckInterval");
+        validatePositive(requestTimeout, "requestTimeout");
+        validatePositive(connectionTimeout, "connectionTimeout");
+        validatePositive(shutdownTimeout, "shutdownTimeout");
+        validatePositive(jwtExpirationMinutes, "jwtExpirationMinutes");
+    }
+
+    @Override
+    protected void doReset() {
+        baseUrl = "http://localhost:8080";
+        port = 8080;
+        contextPath = "/";
+        mcpServletPath = "/mcp";
+        mcpServletPattern = "/mcp/*";
+        a2aServletPath = "/a2a";
+        a2aServletPattern = "/a2a/*";
+        enableAuthentication = false;
+        primaryAuthMethod = "oauth2.1";
+        fallbackAuthMethod = "openhab_users";
+        enableFallbackAuth = true;
+        maxConnections = 100;
+        rateLimitPerMinute = 1000;
+        enableRequestValidation = true;
+        oauthIssuerUrl = "";
+        oauthClientId = "";
+        oauthClientSecret = "";
+        oauthRedirectUri = "";
+        oauthPkceEnabled = true;
+        openhabUsersFile = "";
+        openhabUsersEnabled = true;
+        apiKeyHeader = "X-API-Key";
+        apiKeyValue = "";
+        apiKeyEnabled = false;
+        jwtSecret = "";
+        jwtIssuer = "openhab-http-server";
+        jwtExpirationMinutes = 60;
+        jwtEnabled = false;
+        enableMetrics = true;
+        enableHealthChecks = true;
+        healthCheckInterval = 30000;
+        enablePerformanceMonitoring = true;
+        metricsEndpoint = "/metrics";
+        productionMode = false;
+        requestTimeout = 30000;
+        connectionTimeout = 10000;
+        enableGracefulShutdown = true;
+        shutdownTimeout = 30000;
+        enableCors = true;
+        corsAllowedOrigins = "*";
+        corsAllowedMethods = "GET, POST, PUT, DELETE, OPTIONS";
+        corsAllowedHeaders = "Content-Type, Authorization, X-API-Key";
+        enableSsl = false;
+        sslKeyStore = "";
+        sslKeyStorePassword = "";
+        sslTrustStore = "";
+        sslTrustStorePassword = "";
+        serverOptions = new HashMap<>();
     }
 }

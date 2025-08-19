@@ -24,8 +24,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
-import org.openhab.core.ai.model.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
 import org.openhab.core.ai.model.ModelResponse;
@@ -500,9 +500,9 @@ public class OllamaClient implements ModelClient {
         OllamaChatResult result = ollamaAPI.chat(request);
 
         // Convert to ModelResponse
-        return ModelResponse.builder().content(result.getResponseModel().getMessage().getContent())
-                .modelName(config.getModelName()).providerType(ModelProviderType.OLLAMA.name())
-                .totalTokens(result.getResponseModel().getMessage().getContent().length()) // Approximate
+        return ModelResponse.builder().withContent(result.getResponseModel().getMessage().getContent())
+                .withModelName(config.getModelName()).withProviderType(ModelProviderType.OLLAMA.name())
+                .withTotalTokens(result.getResponseModel().getMessage().getContent().length()) // Approximate
                 .build();
     }
 
@@ -549,8 +549,8 @@ public class OllamaClient implements ModelClient {
         JsonNode responseJson = objectMapper.readTree(response.body());
         String content = responseJson.path("message").path("content").asText();
 
-        return ModelResponse.builder().content(content).modelName(config.getModelName())
-                .providerType(ModelProviderType.OLLAMA.name()).totalTokens(content.length()) // Approximate
+        return ModelResponse.builder().withContent(content).withModelName(config.getModelName())
+                .withProviderType(ModelProviderType.OLLAMA.name()).withTotalTokens(content.length()) // Approximate
                 .build();
     }
 
@@ -607,9 +607,9 @@ public class OllamaClient implements ModelClient {
             handler.onChunk(content);
         });
 
-        ModelResponse finalResponse = ModelResponse.builder().content(fullContent.toString())
-                .modelName(config.getModelName()).providerType(ModelProviderType.OLLAMA.name())
-                .totalTokens(fullContent.length()) // Approximate
+        ModelResponse finalResponse = ModelResponse.builder().withContent(fullContent.toString())
+                .withModelName(config.getModelName()).withProviderType(ModelProviderType.OLLAMA.name())
+                .withTotalTokens(fullContent.length()) // Approximate
                 .build();
 
         handler.onComplete(finalResponse);
@@ -682,9 +682,9 @@ public class OllamaClient implements ModelClient {
             }
         }
 
-        ModelResponse finalResponse = ModelResponse.builder().content(fullContent.toString())
-                .modelName(config.getModelName()).providerType(ModelProviderType.OLLAMA.name())
-                .totalTokens(fullContent.length()) // Approximate
+        ModelResponse finalResponse = ModelResponse.builder().withContent(fullContent.toString())
+                .withModelName(config.getModelName()).withProviderType(ModelProviderType.OLLAMA.name())
+                .withTotalTokens(fullContent.length()) // Approximate
                 .build();
 
         handler.onComplete(finalResponse);
@@ -709,8 +709,13 @@ public class OllamaClient implements ModelClient {
     @Override
     public ModelHealthStatus getHealthStatus() {
         boolean available = isAvailable();
-        return new ModelHealthStatus(available, Instant.now(), available ? 100L : 0L, available ? 1.0 : 0.0,
-                available ? 0 : 1, available ? null : "Connection failed", available ? null : Instant.now());
+        return ModelHealthStatus.builder().withId("ollama-client")
+                .withOverallHealth(
+                        available ? ModelHealthStatus.HealthState.HEALTHY : ModelHealthStatus.HealthState.UNHEALTHY)
+                .withPrimaryModelAvailable(available).withResponseTimeMs(available ? 100L : 0L)
+                .withErrorRate(available ? 0.0 : 100.0).withTotalRequests(0).withFailedRequests(available ? 0 : 1)
+                .withLastError(available ? null : "Connection failed").withLastHealthCheck(Instant.now())
+                .withLastFailedRequest(available ? null : Instant.now()).build();
     }
 
     @Override

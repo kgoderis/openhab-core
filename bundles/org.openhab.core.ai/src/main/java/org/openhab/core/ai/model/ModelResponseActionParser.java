@@ -12,7 +12,9 @@ import java.util.regex.Pattern;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionKeys;
+import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.metrics.ModelPerformanceMetrics;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,10 +111,10 @@ public class ModelResponseActionParser {
     private final AtomicLong totalActionCalls = new AtomicLong(0);
 
     // Regex patterns for fallback parsing
-    private static final Pattern ACTION_CALL_PATTERN = Pattern.compile(
-            "action[\\s_]*call[\\s]*\\([\\s]*([\\w\\.]+)[\\s]*,[\\s]*\\{([^}]*)\\}[\\s]*\\)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ACTION_CALL_PATTERN = Pattern
+            .compile("action[s_]*call[s]*([s]*([w.]+)[s]*,[s]*{([^}]*)}[s]*)", Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern ARGUMENT_PATTERN = Pattern.compile("([\\w]+)[\\s]*:[\\s]*([^,}]+)",
+    private static final Pattern ARGUMENT_PATTERN = Pattern.compile("([w]+)[s]*:[s]*([^,}]+)",
             Pattern.CASE_INSENSITIVE);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -124,15 +126,15 @@ public class ModelResponseActionParser {
      * @param sessionId the reasoning session ID for context
      * @return list of parsed action contexts
      */
-    public List<ActionContext> parseActionCalls(ModelResponse response, String sessionId) {
+    public List<ExecutionContext> parseActionCalls(ModelResponse response, String sessionId) {
         totalParsingAttempts.incrementAndGet();
         Instant startTime = Instant.now();
 
         try {
-            List<ActionContext> actionCalls = new ArrayList<>();
+            List<ExecutionContext> actionCalls = new ArrayList<>();
 
             // Try JSON-based parsing first
-            List<ActionContext> jsonResults = parseJsonActionCalls(response, sessionId);
+            List<ExecutionContext> jsonResults = parseJsonActionCalls(response, sessionId);
             if (!jsonResults.isEmpty()) {
                 successfulJsonParses.incrementAndGet();
                 actionCalls.addAll(jsonResults);
@@ -140,7 +142,7 @@ public class ModelResponseActionParser {
                         sessionId);
             } else {
                 // Fallback to regex-based parsing
-                List<ActionContext> regexResults = parseRegexActionCalls(response, sessionId);
+                List<ExecutionContext> regexResults = parseRegexActionCalls(response, sessionId);
                 if (!regexResults.isEmpty()) {
                     successfulRegexParses.incrementAndGet();
                     actionCalls.addAll(regexResults);
@@ -169,8 +171,8 @@ public class ModelResponseActionParser {
     /**
      * Parse action calls using JSON structure
      */
-    private List<ActionContext> parseJsonActionCalls(ModelResponse response, String sessionId) {
-        List<ActionContext> actionCalls = new ArrayList<>();
+    private List<ExecutionContext> parseJsonActionCalls(ModelResponse response, String sessionId) {
+        List<ExecutionContext> actionCalls = new ArrayList<>();
 
         try {
             String content = response.getContent();
@@ -185,7 +187,7 @@ public class ModelResponseActionParser {
             if (rootNode.has("action_calls") && rootNode.get("action_calls").isArray()) {
                 ArrayNode actionCallsArray = (ArrayNode) rootNode.get("action_calls");
                 for (JsonNode actionCallNode : actionCallsArray) {
-                    ActionContext actionContext = parseJsonActionCall(actionCallNode, sessionId);
+                    ExecutionContext actionContext = parseJsonActionCall(actionCallNode, sessionId);
                     if (actionContext != null) {
                         actionCalls.add(actionContext);
                     }
@@ -195,7 +197,7 @@ public class ModelResponseActionParser {
             // Check for embedded action calls in reasoning
             if (rootNode.has("reasoning") && rootNode.get("reasoning").isTextual()) {
                 String reasoning = rootNode.get("reasoning").asText();
-                List<ActionContext> embeddedCalls = parseEmbeddedJsonActionCalls(reasoning, sessionId);
+                List<ExecutionContext> embeddedCalls = parseEmbeddedJsonActionCalls(reasoning, sessionId);
                 actionCalls.addAll(embeddedCalls);
             }
 
@@ -211,7 +213,7 @@ public class ModelResponseActionParser {
     /**
      * Parse a single JSON action call
      */
-    private @Nullable ActionContext parseJsonActionCall(JsonNode actionCallNode, String sessionId) {
+    private @Nullable ExecutionContext parseJsonActionCall(JsonNode actionCallNode, String sessionId) {
         try {
             if (!actionCallNode.has("action") || !actionCallNode.has("arguments")) {
                 logger.debug("Invalid action call structure in JSON for session {}", sessionId);
@@ -226,9 +228,9 @@ public class ModelResponseActionParser {
             String correlationId = actionCallNode.has("id") ? actionCallNode.get("id").asText()
                     : "action-" + System.currentTimeMillis() + "-" + System.nanoTime();
 
-            return ActionContext.builder().protocol("a2a").clientId("reasoning-engine").sessionId(sessionId)
-                    .correlationId(correlationId).protocolContext(Map.of("action", actionName, "arguments", arguments))
-                    .build();
+            return ExecutionContext.builder().withProtocol("a2a").withClientId("reasoning-engine")
+                    .withSessionId(sessionId).withCorrelationId(correlationId)
+                    .withProtocolContext(Map.of("action", actionName, "arguments", arguments)).build();
 
         } catch (Exception e) {
             logger.debug("Error parsing JSON action call for session {}: {}", sessionId, e.getMessage());
@@ -258,18 +260,18 @@ public class ModelResponseActionParser {
     /**
      * Parse embedded JSON action calls from reasoning text
      */
-    private List<ActionContext> parseEmbeddedJsonActionCalls(String reasoning, String sessionId) {
-        List<ActionContext> actionCalls = new ArrayList<>();
+    private List<ExecutionContext> parseEmbeddedJsonActionCalls(String reasoning, String sessionId) {
+        List<ExecutionContext> actionCalls = new ArrayList<>();
 
         // Look for JSON blocks in the reasoning text
-        Pattern jsonBlockPattern = Pattern.compile("\\{.*?\"action\"\\s*:.*?\\}", Pattern.DOTALL);
+        Pattern jsonBlockPattern = Pattern.compile("{.*?\"action\"s*:.*?}", Pattern.DOTALL);
         Matcher matcher = jsonBlockPattern.matcher(reasoning);
 
         while (matcher.find()) {
             try {
                 String jsonBlock = matcher.group();
                 JsonNode actionCallNode = objectMapper.readTree(jsonBlock);
-                ActionContext actionContext = parseJsonActionCall(actionCallNode, sessionId);
+                ExecutionContext actionContext = parseJsonActionCall(actionCallNode, sessionId);
                 if (actionContext != null) {
                     actionCalls.add(actionContext);
                 }
@@ -284,8 +286,8 @@ public class ModelResponseActionParser {
     /**
      * Parse action calls using regex patterns
      */
-    private List<ActionContext> parseRegexActionCalls(ModelResponse response, String sessionId) {
-        List<ActionContext> actionCalls = new ArrayList<>();
+    private List<ExecutionContext> parseRegexActionCalls(ModelResponse response, String sessionId) {
+        List<ExecutionContext> actionCalls = new ArrayList<>();
 
         String content = response.getContent();
         if (content == null || content.isEmpty()) {
@@ -303,9 +305,9 @@ public class ModelResponseActionParser {
 
                 String correlationId = "action-" + System.currentTimeMillis() + "-" + actionCalls.size();
 
-                ActionContext actionContext = ActionContext.builder().protocol("a2a").clientId("reasoning-engine")
-                        .sessionId(sessionId).correlationId(correlationId)
-                        .protocolContext(Map.of("action", actionName, "arguments", arguments)).build();
+                ExecutionContext actionContext = ExecutionContext.builder().withProtocol("a2a")
+                        .withClientId("reasoning-engine").withSessionId(sessionId).withCorrelationId(correlationId)
+                        .withProtocolContext(Map.of("action", actionName, "arguments", arguments)).build();
 
                 actionCalls.add(actionContext);
 
@@ -346,7 +348,7 @@ public class ModelResponseActionParser {
     /**
      * Validate action call
      */
-    public boolean validateActionCall(ActionContext actionContext, @Nullable ActionRegistry registry) {
+    public boolean validateActionCall(ExecutionContext actionContext, @Nullable ActionRegistry registry) {
         try {
             // Basic validation
             if (actionContext.getCorrelationId() == null || actionContext.getCorrelationId().isEmpty()) {
@@ -354,13 +356,11 @@ public class ModelResponseActionParser {
                 return false;
             }
 
-            Map<String, Object> protocolContext = actionContext.getProtocolContext();
-            if (!protocolContext.containsKey("action")) {
+            String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
+            if (actionName == null || actionName.isEmpty()) {
                 logger.debug("Action call missing action name");
                 return false;
             }
-
-            String actionName = (String) protocolContext.get("action");
             if (actionName == null || actionName.isEmpty()) {
                 logger.debug("Action call has empty action name");
                 return false;
@@ -384,10 +384,16 @@ public class ModelResponseActionParser {
     /**
      * Get performance metrics
      */
-    public PerformanceMetrics getPerformanceMetrics() {
-        return PerformanceMetrics.builder().totalParsingAttempts(totalParsingAttempts.get())
-                .successfulJsonParses(successfulJsonParses.get()).successfulRegexParses(successfulRegexParses.get())
-                .failedParses(failedParses.get()).totalActionCalls(totalActionCalls.get()).build();
+    public ModelPerformanceMetrics getPerformanceMetrics() {
+        return new ModelPerformanceMetrics(totalParsingAttempts.get(), successfulJsonParses.get(),
+                successfulRegexParses.get(), failedParses.get(), totalActionCalls.get(), 0, // totalProcessingTime
+                                                                                            // -
+                                                                                            // not
+                                                                                            // tracked
+                                                                                            // yet
+                0.0, // averageResponseTime - not tracked yet
+                null // lastOperationTime - not tracked yet
+        );
     }
 
     /**

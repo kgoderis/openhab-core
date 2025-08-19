@@ -14,11 +14,11 @@ import java.util.regex.Pattern;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -166,7 +166,7 @@ public class GetLogsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing get logs action with parameters: {}", parameters);
 
@@ -259,7 +259,7 @@ public class GetLogsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -271,12 +271,12 @@ public class GetLogsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieves logs from openHAB log files with filtering and pagination")
-                .tags(List.of("monitoring", "logging", "logs", "filtering"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieves logs from openHAB log files with filtering and pagination")
+                .withTags(List.of("monitoring", "logging", "logs", "filtering"))
+                .withDocumentation(
                         "Provides access to openHAB log files with filtering by log level, search patterns, and time periods")
-                .examples(List.of(
+                .withExamples(List.of(
                         "{\"logFile\": \"openhab.log\", \"maxLines\": 50, \"logLevel\": \"ERROR\"} - Get last 50 error lines",
                         "{\"logFile\": \"events.log\", \"searchPattern\": \"ItemStateEvent\", \"tail\": true} - Get recent item state events",
                         "{\"logFile\": \"openhab.log\", \"startLine\": 1000, \"maxLines\": 100, \"tail\": false} - Get lines 1000-1099"))
@@ -290,7 +290,7 @@ public class GetLogsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("GetLogsAction initialized for protocol: {}", context.getProtocol());
     }
 
@@ -325,7 +325,7 @@ public class GetLogsAction implements Action {
         // Simple timestamp extraction - assumes ISO format at the beginning of the line
         if (logLine.length() > 20) {
             String potentialTimestamp = logLine.substring(0, 20);
-            if (potentialTimestamp.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")) {
+            if (potentialTimestamp.matches("d{4}-d{2}-d{2}Td{2}:d{2}:d{2}")) {
                 return potentialTimestamp;
             }
         }

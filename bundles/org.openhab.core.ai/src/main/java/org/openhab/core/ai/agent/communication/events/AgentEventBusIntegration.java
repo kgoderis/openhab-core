@@ -22,6 +22,7 @@ import org.openhab.core.ai.agent.communication.events.api.EventRouter;
 import org.openhab.core.ai.agent.communication.events.api.EventSchema;
 import org.openhab.core.ai.agent.communication.events.api.EventSubscription;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
+import org.openhab.core.ai.common.builder.EventSubscriptionBuilder;
 import org.openhab.core.events.Event;
 import org.openhab.core.events.EventPublisher;
 import org.openhab.core.events.EventSubscriber;
@@ -168,9 +169,9 @@ public class AgentEventBusIntegration implements EventSubscriber {
             return false;
         }
 
-        EventSubscription subscription = EventSubscription.builder().subscriptionId(generateSubscriptionId())
-                .agentId(agentId).eventTypes(eventTypes).filter(filter).handler(handler).timestamp(Instant.now())
-                .build();
+        EventSubscription subscription = EventSubscriptionBuilder.builder().withSubscriptionId(generateSubscriptionId())
+                .withFromAgentId(agentId).withEventTypesSet(Set.copyOf(eventTypes)).withTimestamp(Instant.now())
+                .withFilter(filter).withHandler(handler).build();
 
         subscriptions.put(subscription.getSubscriptionId(), subscription);
         return true;

@@ -14,10 +14,11 @@ import org.openhab.core.ai.agent.infrastructure.security.AuthorizationResult;
 import org.openhab.core.ai.agent.infrastructure.security.DecryptedMessage;
 import org.openhab.core.ai.agent.infrastructure.security.EncryptedMessage;
 import org.openhab.core.ai.agent.infrastructure.security.KeyGenerationResult;
-import org.openhab.core.ai.agent.infrastructure.security.SecurityConfiguration;
 import org.openhab.core.ai.agent.infrastructure.security.SecurityIncident;
 import org.openhab.core.ai.agent.infrastructure.security.SecurityPolicy;
-import org.openhab.core.ai.agent.infrastructure.security.SecurityStatistics;
+import org.openhab.core.ai.agent.infrastructure.security.SecuritySeverity;
+import org.openhab.core.ai.common.configuration.SecurityConfiguration;
+import org.openhab.core.ai.common.security.MessageSecurityStatistics;
 
 /**
  * Agent Security Manager Interface
@@ -110,7 +111,7 @@ public interface AgentSecurityManager {
      * 
      * @return Security statistics
      */
-    SecurityStatistics getSecurityStatistics();
+    MessageSecurityStatistics getSecurityStatistics();
 
     /**
      * Get security configuration

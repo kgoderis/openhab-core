@@ -3,6 +3,8 @@ package org.openhab.core.ai.agent.collaboration.context;
 import java.time.Instant;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.collaboration.ContextVersion;
+import org.openhab.core.ai.agent.collaboration.SharedContext;
 
 /**
  * Cached context entry with expiry tracking.

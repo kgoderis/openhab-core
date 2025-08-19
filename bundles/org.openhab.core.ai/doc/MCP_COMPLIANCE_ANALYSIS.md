@@ -166,7 +166,7 @@ private McpServerFeatures.SyncToolSpecification[] filterToolsBySecurity(
 public static McpServerFeatures.SyncToolSpecification createSyncToolSpecification(Tool tool) {
     McpSchema.Tool mcpTool = McpSchema.Tool.builder()
         .name(tool.getId())
-        .description(tool.getDescription())
+        .withDescription(tool.getDescription())
         .inputSchema(tool.getInputSchema())
         .build();
     

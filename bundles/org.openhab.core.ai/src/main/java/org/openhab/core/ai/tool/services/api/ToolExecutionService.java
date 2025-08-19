@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**
@@ -42,7 +42,7 @@ public interface ToolExecutionService {
      * @param availableProviders list of available providers
      * @return CompletableFuture with the action result
      */
-    CompletableFuture<ActionResult> executeTool(ActionContext actionContext,
+    CompletableFuture<ActionResult> executeTool(ExecutionContext actionContext,
             List<ModelProviderType> availableProviders);
 
     // Configuration methods

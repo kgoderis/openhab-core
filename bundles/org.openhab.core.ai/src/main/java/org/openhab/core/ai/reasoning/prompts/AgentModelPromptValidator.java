@@ -39,18 +39,18 @@ public class AgentModelPromptValidator {
 
     // Safety patterns
     private static final Pattern PROMPT_INJECTION_PATTERNS = Pattern.compile(
-            "\\b(ignore|forget|disregard|skip|bypass|override|previous|instructions|prompt|system)\\b",
+            "b(ignore|forget|disregard|skip|bypass|override|previous|instructions|prompt|system)b",
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern SENSITIVE_INFO_PATTERNS = Pattern.compile(
-            "\\b(password|secret|key|token|api[_-]?key|auth[_-]?token|private[_-]?key)\\b", Pattern.CASE_INSENSITIVE);
+            "b(password|secret|key|token|api[_-]?key|auth[_-]?token|private[_-]?key)b", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern MALICIOUS_PATTERNS = Pattern.compile(
-            "\\b(delete|remove|destroy|corrupt|hack|exploit|vulnerability|backdoor|malware|virus)\\b",
+            "b(delete|remove|destroy|corrupt|hack|exploit|vulnerability|backdoor|malware|virus)b",
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern PERSONAL_INFO_PATTERNS = Pattern.compile(
-            "\\b(ssn|social[_-]?security|credit[_-]?card|bank[_-]?account|phone[_-]?number|address|email)\\b",
+            "b(ssn|social[_-]?security|credit[_-]?card|bank[_-]?account|phone[_-]?number|address|email)b",
             Pattern.CASE_INSENSITIVE);
 
     private final Map<String, PromptValidationRule> validationRules = new ConcurrentHashMap<>();
@@ -264,17 +264,17 @@ public class AgentModelPromptValidator {
         }
 
         // Check for email addresses
-        if (text.matches(".*\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b.*")) {
+        if (text.matches(".*b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Z|a-z]{2,}b.*")) {
             result.addSafetyWarning("Email address detected in prompt");
         }
 
         // Check for phone numbers
-        if (text.matches(".*\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b.*")) {
+        if (text.matches(".*bd{3}[-.]?d{3}[-.]?d{4}b.*")) {
             result.addSafetyWarning("Phone number detected in prompt");
         }
 
         // Check for credit card numbers
-        if (text.matches(".*\\b\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4}\\b.*")) {
+        if (text.matches(".*bd{4}[- ]?d{4}[- ]?d{4}[- ]?d{4}b.*")) {
             result.addSafetyIssue("Potential credit card number detected in prompt");
         }
     }
@@ -326,7 +326,7 @@ public class AgentModelPromptValidator {
         // Check for run-on sentences
         String[] sentences = text.split("[.!?]");
         for (String sentence : sentences) {
-            if (sentence.split("\\s+").length > 50) {
+            if (sentence.split("s+").length > 50) {
                 result.addQualityWarning("Very long sentence detected, may affect clarity");
             }
         }

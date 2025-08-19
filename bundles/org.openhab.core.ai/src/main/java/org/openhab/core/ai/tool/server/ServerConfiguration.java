@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.builder.ServerConfigurationBuilder;
 import org.openhab.core.ai.tool.server.api.TransportType;
 
 /**
@@ -92,77 +93,59 @@ public class ServerConfiguration {
     /**
      * Private constructor for builder pattern.
      */
-    ServerConfiguration(ServerConfigurationBuilder builder) {
-        this.serverId = builder.serverId;
-        this.serverName = builder.serverName;
-        this.serverVersion = builder.serverVersion;
-        this.transportType = builder.transportType;
-        this.baseUrl = builder.baseUrl;
-        this.messageEndpoint = builder.messageEndpoint;
-        this.sseEndpoint = builder.sseEndpoint;
-        this.enableSse = builder.enableSse;
+    public ServerConfiguration(ServerConfigurationBuilder builder) {
+        this.serverId = builder.getName() != null ? builder.getName() : "default-server";
+        this.serverName = builder.getName() != null ? builder.getName() : "Default Server";
+        this.serverVersion = "1.0.0"; // Default value since unified builder doesn't have version
+        this.transportType = TransportType.HTTP; // Default value since unified builder doesn't have transport type
+        this.baseUrl = "http://" + builder.getHost() + ":" + builder.getPort();
 
-        this.enableTools = builder.enableTools;
-        this.enableResources = builder.enableResources;
-        this.enablePrompts = builder.enablePrompts;
-        this.enableLogging = builder.enableLogging;
-
-        // Async server configuration
-        this.enableAsyncServer = builder.enableAsyncServer;
-        this.enableAsyncTools = builder.enableAsyncTools;
-        this.asyncThreadPoolSize = builder.asyncThreadPoolSize;
-        this.asyncQueueCapacity = builder.asyncQueueCapacity;
-        this.enableAsyncCompletions = builder.enableAsyncCompletions;
-
-        // Security configuration
-        this.enableAuthentication = builder.enableAuthentication;
-        this.authToken = builder.authToken;
-        this.maxConnections = builder.maxConnections;
-        this.rateLimitPerMinute = builder.rateLimitPerMinute;
-        this.enableRequestValidation = builder.enableRequestValidation;
-
-        // Authentication method selection
-        this.primaryAuthMethod = builder.primaryAuthMethod;
-        this.fallbackAuthMethod = builder.fallbackAuthMethod;
-        this.enableFallbackAuth = builder.enableFallbackAuth;
-
-        // OAuth 2.1 configuration
-        this.oauthIssuerUrl = builder.oauthIssuerUrl;
-        this.oauthClientId = builder.oauthClientId;
-        this.oauthClientSecret = builder.oauthClientSecret;
-        this.oauthRedirectUri = builder.oauthRedirectUri;
-        this.oauthPkceEnabled = builder.oauthPkceEnabled;
-
-        // openHAB users authentication
-        this.openhabUsersFile = builder.openhabUsersFile;
-        this.openhabUsersEnabled = builder.openhabUsersEnabled;
-
-        // API key authentication
-        this.apiKeyHeader = builder.apiKeyHeader;
-        this.apiKeyValue = builder.apiKeyValue;
-        this.apiKeyEnabled = builder.apiKeyEnabled;
-
-        // JWT authentication
-        this.jwtSecret = builder.jwtSecret;
-        this.jwtIssuer = builder.jwtIssuer;
-        this.jwtExpirationMinutes = builder.jwtExpirationMinutes;
-        this.jwtEnabled = builder.jwtEnabled;
-
-        // Monitoring and metrics
-        this.enableMetrics = builder.enableMetrics;
-        this.enableHealthChecks = builder.enableHealthChecks;
-        this.healthCheckInterval = builder.healthCheckInterval;
-        this.enablePerformanceMonitoring = builder.enablePerformanceMonitoring;
-
-        // Production settings
-        this.productionMode = builder.productionMode;
-        this.requestTimeout = builder.requestTimeout;
-        this.connectionTimeout = builder.connectionTimeout;
-        this.enableGracefulShutdown = builder.enableGracefulShutdown;
-        this.shutdownTimeout = builder.shutdownTimeout;
-
-        this.transportOptions = Map.copyOf(builder.transportOptions);
-        this.serverOptions = Map.copyOf(builder.serverOptions);
+        // Default values for missing fields
+        this.messageEndpoint = "/mcp";
+        this.sseEndpoint = "/sse";
+        this.enableSse = false;
+        this.enableTools = true;
+        this.enableResources = true;
+        this.enablePrompts = true;
+        this.enableLogging = true;
+        this.enableAsyncServer = false;
+        this.enableAsyncTools = false;
+        this.asyncThreadPoolSize = 10;
+        this.asyncQueueCapacity = 100;
+        this.enableAsyncCompletions = false;
+        this.enableAuthentication = false;
+        this.authToken = null;
+        this.maxConnections = 100;
+        this.rateLimitPerMinute = 60;
+        this.enableRequestValidation = true;
+        this.primaryAuthMethod = "none";
+        this.fallbackAuthMethod = "none";
+        this.enableFallbackAuth = false;
+        this.oauthIssuerUrl = null;
+        this.oauthClientId = null;
+        this.oauthClientSecret = null;
+        this.oauthRedirectUri = null;
+        this.oauthPkceEnabled = false;
+        this.openhabUsersFile = null;
+        this.openhabUsersEnabled = false;
+        this.apiKeyHeader = "X-API-Key";
+        this.apiKeyValue = null;
+        this.apiKeyEnabled = false;
+        this.jwtSecret = null;
+        this.jwtIssuer = null;
+        this.jwtExpirationMinutes = 60;
+        this.jwtEnabled = false;
+        this.enableMetrics = true;
+        this.enableHealthChecks = true;
+        this.healthCheckInterval = 30;
+        this.enablePerformanceMonitoring = false;
+        this.productionMode = false;
+        this.requestTimeout = 30000;
+        this.connectionTimeout = 10000;
+        this.enableGracefulShutdown = true;
+        this.shutdownTimeout = 5000;
+        this.transportOptions = builder.getSettings() != null ? Map.copyOf(builder.getSettings()) : Map.of();
+        this.serverOptions = Map.of();
     }
 
     /**

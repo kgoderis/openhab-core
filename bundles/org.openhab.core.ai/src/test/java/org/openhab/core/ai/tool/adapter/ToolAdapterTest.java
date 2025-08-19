@@ -20,12 +20,13 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
+import org.openhab.core.ai.tool.api.ToolErrorCode;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -57,7 +58,7 @@ class ToolAdapterTest {
 
         assertNotNull(mcpTool);
         assertEquals("test_tool", mcpTool.name());
-        assertEquals("Test Tool for MCP", mcpTool.description());
+        assertEquals("Test Tool for MCP", mcpTool.withDescription());
         assertNotNull(mcpTool.inputSchema());
         assertEquals("object", mcpTool.inputSchema().type());
     }
@@ -235,7 +236,7 @@ class ToolAdapterTest {
             if (parameters.containsKey("testParam")) {
                 return ToolValidationResult.valid();
             } else {
-                return ToolValidationResult.invalid("testParam is required");
+                return ToolValidationResult.invalid(List.of("testParam is required"));
             }
         }
 
@@ -244,14 +245,14 @@ class ToolAdapterTest {
             if (parameters.containsKey("testParam")) {
                 return ToolResult.successJson(getId(), Map.of("result", "success"), 100);
             } else {
-                throw new ToolException(getId(), "testParam is required",
-                        ToolException.ToolErrorCode.INVALID_PARAMETER);
+                throw new ToolException(getId(), "testParam is required", ToolErrorCode.INVALID_PARAMETER);
             }
         }
 
         @Override
         public ToolMetadata getMetadata() {
-            return ToolMetadata.builder().version("1.0.0").author("test").description("Test tool metadata").build();
+            return ToolMetadata.builder().withVersion("1.0.0").withAuthor("test").withDescription("Test tool metadata")
+                    .build();
         }
     }
 }

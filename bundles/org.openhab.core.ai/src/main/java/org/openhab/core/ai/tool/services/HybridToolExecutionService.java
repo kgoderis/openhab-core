@@ -2,6 +2,7 @@ package org.openhab.core.ai.tool.services;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -12,11 +13,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionError;
+import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.context.ToolContext;
 import org.openhab.core.ai.model.api.ModelProviderType;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.monitoring.DefaultSystemHealthMonitor;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.resources.ResourceManager;
@@ -95,7 +97,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     private @Nullable ResourceManager resourceManager;
 
     @Override
-    public CompletableFuture<ActionResult> executeTool(ActionContext actionContext,
+    public CompletableFuture<ActionResult> executeTool(ExecutionContext actionContext,
             List<ModelProviderType> availableProviders) {
         totalToolExecutions.incrementAndGet();
         Instant startTime = Instant.now();
@@ -129,12 +131,13 @@ public class HybridToolExecutionService implements ToolExecutionService {
     /**
      * Execute tool with privacy-aware routing
      */
-    private CompletableFuture<ActionResult> executeWithPrivacyRouting(ActionContext actionContext,
+    private CompletableFuture<ActionResult> executeWithPrivacyRouting(ExecutionContext actionContext,
             List<ModelProviderType> availableProviders) {
         // Select privacy-focused provider (e.g., local providers)
         ModelProviderType privacyProvider = selectPrivacyProvider(availableProviders);
 
-        logger.debug("Using privacy-aware routing for action: {}", actionContext.getProtocolContext().get("action"));
+        logger.debug("Using privacy-aware routing for action: {}",
+                actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class));
 
         return executeWithFallback(actionContext, privacyProvider, availableProviders, Instant.now());
     }
@@ -142,7 +145,8 @@ public class HybridToolExecutionService implements ToolExecutionService {
     /**
      * Select provider based on load balancing strategy
      */
-    private ModelProviderType selectProvider(List<ModelProviderType> availableProviders, ActionContext actionContext) {
+    private ModelProviderType selectProvider(List<ModelProviderType> availableProviders,
+            ExecutionContext actionContext) {
         if (!enableLoadBalancing.get() || availableProviders.isEmpty()) {
             return availableProviders.get(0);
         }
@@ -174,7 +178,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
      * Optimize provider selection for cost
      */
     private ModelProviderType optimizeForCost(ModelProviderType selectedProvider,
-            List<ModelProviderType> availableProviders, ActionContext actionContext) {
+            List<ModelProviderType> availableProviders, ExecutionContext actionContext) {
         // Get cost estimates for all providers
         Map<ModelProviderType, Double> costEstimates = estimateCosts(availableProviders, actionContext);
 
@@ -201,7 +205,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     /**
      * Execute tool with fallback mechanism
      */
-    private CompletableFuture<ActionResult> executeWithFallback(ActionContext actionContext,
+    private CompletableFuture<ActionResult> executeWithFallback(ExecutionContext actionContext,
             ModelProviderType primaryProvider, List<ModelProviderType> availableProviders, Instant startTime) {
 
         if (!enableFallback.get()) {
@@ -221,7 +225,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     /**
      * Execute with fallback providers
      */
-    private CompletableFuture<ActionResult> executeWithFallbackProviders(ActionContext actionContext,
+    private CompletableFuture<ActionResult> executeWithFallbackProviders(ExecutionContext actionContext,
             List<ModelProviderType> availableProviders, ModelProviderType failedProvider, Instant startTime) {
 
         fallbackExecutions.incrementAndGet();
@@ -245,7 +249,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     /**
      * Try fallback providers recursively
      */
-    private CompletableFuture<ActionResult> tryFallbackProviders(ActionContext actionContext,
+    private CompletableFuture<ActionResult> tryFallbackProviders(ExecutionContext actionContext,
             List<ModelProviderType> fallbackProviders, int attemptIndex, Instant startTime) {
 
         if (attemptIndex >= fallbackProviders.size() || attemptIndex >= maxFallbackAttempts.get()) {
@@ -271,8 +275,8 @@ public class HybridToolExecutionService implements ToolExecutionService {
     /**
      * Execute tool directly on a specific provider
      */
-    private CompletableFuture<ActionResult> executeToolDirectly(ActionContext actionContext, ModelProviderType provider,
-            Instant startTime) {
+    private CompletableFuture<ActionResult> executeToolDirectly(ExecutionContext actionContext,
+            ModelProviderType provider, Instant startTime) {
         // Update provider load counter
         providerLoadCounters.computeIfAbsent(provider, p -> new AtomicLong(0)).incrementAndGet();
 
@@ -297,7 +301,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     /**
      * Execute tool on specific provider (actual integration)
      */
-    private ActionResult executeToolOnProvider(ActionContext actionContext, ModelProviderType provider) {
+    private ActionResult executeToolOnProvider(ExecutionContext actionContext, ModelProviderType provider) {
         // Integrate with UnifiedActionExecutionService or similar
         logger.debug("Executing tool on provider: {}", provider);
 
@@ -305,8 +309,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
         try {
             // Get the action name from context
-            Map<String, Object> protocolContext = actionContext.getProtocolContext();
-            String actionName = (String) protocolContext.get("action");
+            String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
 
             if (actionName == null || actionName.isEmpty()) {
                 return ActionResult.error(
@@ -332,7 +335,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
             // Get tool parameters from context
             @SuppressWarnings("unchecked")
-            Map<String, Object> parameters = (Map<String, Object>) protocolContext.get("parameters");
+            Map<String, Object> parameters = actionContext.getValue(ActionKeys.PARAMETERS.getKey(), Map.class);
             if (parameters == null) {
                 parameters = Map.of();
             }
@@ -340,16 +343,22 @@ public class HybridToolExecutionService implements ToolExecutionService {
             // Validate tool parameters
             var validationResult = tool.validateParameters(parameters);
             if (!validationResult.isValid()) {
-                return ActionResult.error("Tool execution failed", new ActionError("VALIDATION_ERROR",
-                        "Tool parameter validation failed: " + validationResult.getMessage(), "VALIDATION_ERROR", null),
+                return ActionResult.error("Tool execution failed",
+                        new ActionError("VALIDATION_ERROR",
+                                "Tool parameter validation failed: " + String.join(", ", validationResult.getErrors()),
+                                "VALIDATION_ERROR", null),
                         Duration.between(startTime, Instant.now()).toMillis());
             }
 
             // Create tool context
-            var toolContext = new ToolContext();
-            toolContext.setProperty("provider", provider.name());
-            toolContext.setProperty("requestId", actionContext.getCorrelationId());
-            toolContext.setProperty("timestamp", startTime.toEpochMilli());
+            Map<String, Object> contextValues = new HashMap<>();
+            contextValues.put("provider", provider.name());
+            contextValues.put("requestId", actionContext.getCorrelationId());
+            contextValues.put("timestamp", startTime.toEpochMilli());
+
+            var toolContext = new ToolContext("tool-exec-" + System.currentTimeMillis(), "hybrid-tool",
+                    "Hybrid Tool Execution", "1.0.0", actionContext.getClientId(), actionContext.getSessionId(),
+                    contextValues, null);
 
             // Execute the tool
             var toolResult = tool.execute(parameters, toolContext);
@@ -397,11 +406,10 @@ public class HybridToolExecutionService implements ToolExecutionService {
     }
 
     // Privacy and security methods
-    private boolean isPrivacySensitive(ActionContext actionContext) {
+    private boolean isPrivacySensitive(ExecutionContext actionContext) {
         // Implement privacy sensitivity detection
         // Check for sensitive data in action context
-        Map<String, Object> context = actionContext.getProtocolContext();
-        String action = (String) context.get("action");
+        String action = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
 
         if (action == null) {
             return false;
@@ -425,7 +433,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
         // Check parameters for sensitive data
         @SuppressWarnings("unchecked")
-        Map<String, Object> parameters = (Map<String, Object>) context.get("parameters");
+        Map<String, Object> parameters = actionContext.getValue(ActionKeys.PARAMETERS.getKey(), Map.class);
         if (parameters != null) {
             boolean hasSensitiveParameters = checkParametersForSensitiveData(parameters);
             if (hasSensitiveParameters) {
@@ -486,17 +494,17 @@ public class HybridToolExecutionService implements ToolExecutionService {
         }
 
         // Email pattern
-        if (value.matches(".*@.*\\..*")) {
+        if (value.matches(".*@.*..*")) {
             return true;
         }
 
         // Phone number pattern
-        if (value.matches(".*\\d{3}[-.]?\\d{3}[-.]?\\d{4}.*")) {
+        if (value.matches(".*d{3}[-.]?d{3}[-.]?d{4}.*")) {
             return true;
         }
 
         // Credit card pattern (basic)
-        if (value.matches(".*\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4}.*")) {
+        if (value.matches(".*d{4}[- ]?d{4}[- ]?d{4}[- ]?d{4}.*")) {
             return true;
         }
 
@@ -506,7 +514,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
         }
 
         // SSN pattern
-        if (value.matches(".*\\d{3}-\\d{2}-\\d{4}.*")) {
+        if (value.matches(".*d{3}-d{2}-d{4}.*")) {
             return true;
         }
 
@@ -532,13 +540,13 @@ public class HybridToolExecutionService implements ToolExecutionService {
         return true; // Default to healthy if no health monitor
     }
 
-    private boolean isProviderAcceptable(ModelProviderType provider, ActionContext actionContext) {
+    private boolean isProviderAcceptable(ModelProviderType provider, ExecutionContext actionContext) {
         ProviderMetrics metrics = getProviderMetrics(provider);
         return metrics.getSuccessRate() > 0.8 && metrics.getAverageResponseTime() < 5000; // 5 seconds
     }
 
     private Map<ModelProviderType, Double> estimateCosts(List<ModelProviderType> providers,
-            ActionContext actionContext) {
+            ExecutionContext actionContext) {
         // Implement cost estimation based on provider pricing and action complexity
         Map<ModelProviderType, Double> costEstimates = new ConcurrentHashMap<>();
 
@@ -550,10 +558,9 @@ public class HybridToolExecutionService implements ToolExecutionService {
         return costEstimates;
     }
 
-    private double estimateProviderCost(ModelProviderType provider, ActionContext actionContext) {
+    private double estimateProviderCost(ModelProviderType provider, ExecutionContext actionContext) {
         // Implement actual cost estimation
-        Map<String, Object> context = actionContext.getProtocolContext();
-        String action = (String) context.get("action");
+        String action = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
 
         if (action == null) {
             return 0.0;
@@ -631,10 +638,9 @@ public class HybridToolExecutionService implements ToolExecutionService {
     /**
      * Calculate parameter complexity multiplier
      */
-    private double calculateParameterComplexity(ActionContext actionContext) {
-        Map<String, Object> context = actionContext.getProtocolContext();
+    private double calculateParameterComplexity(ExecutionContext actionContext) {
         @SuppressWarnings("unchecked")
-        Map<String, Object> parameters = (Map<String, Object>) context.get("parameters");
+        Map<String, Object> parameters = actionContext.getValue(ActionKeys.PARAMETERS.getKey(), Map.class);
 
         if (parameters == null || parameters.isEmpty()) {
             return 1.0;
@@ -657,7 +663,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     /**
      * Calculate authentication complexity multiplier
      */
-    private double calculateAuthComplexity(ActionContext actionContext) {
+    private double calculateAuthComplexity(ExecutionContext actionContext) {
         var authContext = actionContext.getAuthContext();
 
         if (authContext == null) {
@@ -677,7 +683,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     }
 
     // Metrics management
-    private void updateMetrics(ModelProviderType provider, ActionContext actionContext, ActionResult result,
+    private void updateMetrics(ModelProviderType provider, ExecutionContext actionContext, ActionResult result,
             Instant startTime) {
         long executionTime = Duration.between(startTime, Instant.now()).toMillis();
 
@@ -686,7 +692,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
         providerMetrics.recordExecution(result.isSuccess(), executionTime);
 
         // Update tool metrics
-        String actionName = (String) actionContext.getProtocolContext().get("action");
+        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
         if (actionName != null) {
             ToolMetrics toolMetrics = getToolMetrics(actionName);
             toolMetrics.recordExecution(result.isSuccess(), executionTime);
@@ -701,14 +707,14 @@ public class HybridToolExecutionService implements ToolExecutionService {
         totalExecutionTime.addAndGet(executionTime);
     }
 
-    private void updateFailureMetrics(ModelProviderType provider, ActionContext actionContext, Exception error,
+    private void updateFailureMetrics(ModelProviderType provider, ExecutionContext actionContext, Exception error,
             Instant startTime) {
         long executionTime = Duration.between(startTime, Instant.now()).toMillis();
 
         ProviderMetrics providerMetrics = getProviderMetrics(provider);
         providerMetrics.recordExecution(false, executionTime);
 
-        String actionName = (String) actionContext.getProtocolContext().get("action");
+        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
         if (actionName != null) {
             ToolMetrics toolMetrics = getToolMetrics(actionName);
             toolMetrics.recordExecution(false, executionTime);

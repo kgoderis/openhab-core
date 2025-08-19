@@ -26,23 +26,24 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.api.AgentModelContext;
 import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
-import org.openhab.core.ai.agent.api.AgentModelStatistics;
-import org.openhab.core.ai.agent.api.HealthState;
-import org.openhab.core.ai.agent.api.ModelHealthStatus;
-import org.openhab.core.ai.agent.api.ModelIntegrationStatistics;
 import org.openhab.core.ai.agent.core.DefaultAgentModelProvider;
+import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.context.ReasoningContext;
+import org.openhab.core.ai.common.statistics.AgentModelStatistics;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus.HealthState;
+import org.openhab.core.ai.common.statistics.ModelIntegrationStatistics;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.model.api.ModelProviderType;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus;
 import org.openhab.core.ai.reasoning.session.ModelReasoningSession;
@@ -429,7 +430,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
             agentProviders.put(agentId, provider);
 
             // Initialize statistics
-            agentStatistics.put(agentId, AgentModelStatistics.builder().agentId(agentId).build());
+            agentStatistics.put(agentId, AgentModelStatistics.builder().withAgentId(agentId).build());
 
             logger.info("Agent registered successfully: {}", agentId);
             return true;
@@ -461,21 +462,21 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
 
     @Override
     public AgentModelStatistics getAgentStatistics(String agentId) {
-        return agentStatistics.getOrDefault(agentId, AgentModelStatistics.builder().agentId(agentId).build());
+        return agentStatistics.getOrDefault(agentId, AgentModelStatistics.builder().withAgentId(agentId).build());
     }
 
     @Override
     public ModelIntegrationStatistics getOverallStatistics() {
-        return new PerformanceMetricsBuilder().totalSessions(totalReasoningSessions.get())
-                .activeAgents(registeredAgents.size()).totalRequests(totalRequests.get())
-                .successfulRequests(successfulRequests.get()).failedRequests(failedRequests.get())
-                .cacheHits(cacheHits.get()).cacheMisses(cacheMisses.get())
-                .totalResponseTimeMs(totalResponseTimeMs.get()).averageResponseTimeMs(calculateAverageResponseTime())
-                .minResponseTimeMs(minResponseTimeMs.get()).maxResponseTimeMs(maxResponseTimeMs.get())
-                .totalTokensUsed(totalTokensUsed.get()).totalCost(totalCost.get().longValue())
-                .lastRequestTime(lastRequestTime.get()).lastSuccessTime(lastSuccessTime.get())
-                .lastFailureTime(lastFailureTime.get()).lastError(lastError.get())
-                .registeredAgentIds(new ArrayList<>(registeredAgents.keySet())).build();
+        return ModelIntegrationStatistics.builder().withId("shared-model-reasoning")
+                .withTotalAgents(registeredAgents.size()).withActiveAgents(registeredAgents.size())
+                .withTotalRequests(totalRequests.get()).withSuccessfulRequests(successfulRequests.get())
+                .withFailedRequests(failedRequests.get()).withCacheHits(cacheHits.get())
+                .withCacheMisses(cacheMisses.get()).withTotalResponseTimeMs(totalResponseTimeMs.get())
+                .withAverageResponseTimeMs(calculateAverageResponseTime())
+                .withMinResponseTimeMs(minResponseTimeMs.get()).withMaxResponseTimeMs(maxResponseTimeMs.get())
+                .withTotalTokensUsed(totalTokensUsed.get()).withTotalCost(totalCost.get().longValue())
+                .withLastRequestTime(lastRequestTime.get()).withLastSuccessTime(lastSuccessTime.get())
+                .withLastFailureTime(lastFailureTime.get()).withLastError(lastError.get()).build();
     }
 
     @Override
@@ -521,9 +522,12 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     private AgentModelContext convertToAgentModelContext(ReasoningContext context) {
         // Create a simple AgentModelContext from ReasoningContext
         // This is a basic conversion - can be enhanced based on actual needs
-        return AgentModelContext.builder().agentId(context.getUserId() != null ? context.getUserId() : "unknown")
-                .specialization("reasoning-agent").domain(context.getDomain() != null ? context.getDomain() : "general")
-                .capabilities(context.getMetadata()).build();
+        return AgentModelContext.builder().withAgentId(context.getUserId() != null ? context.getUserId() : "unknown")
+                .withSpecialization("reasoning-agent")
+                .withDomain(context.getDomain() != null ? context.getDomain() : "general")
+                .withCapabilities(context.getMetadata().entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString())))
+                .build();
     }
 
     @Override
@@ -601,12 +605,12 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
             healthState = HealthState.UNHEALTHY;
         }
 
-        return ModelHealthStatus.builder().overallHealth(healthState)
-                .primaryModelAvailable(checkPrimaryModelAvailability())
-                .fallbackModelAvailable(checkFallbackModelAvailability()).errorRate(errorRate)
-                .responseTimeMs(avgResponseTime).totalRequests(total).failedRequests(failedRequests.get())
-                .lastError(lastError.get()).lastHealthCheck(Instant.now()).lastSuccessfulRequest(lastSuccessTime.get())
-                .lastFailedRequest(lastFailureTime.get()).build();
+        return ModelHealthStatus.builder().withOverallHealth(healthState)
+                .withPrimaryModelAvailable(checkPrimaryModelAvailability())
+                .withFallbackModelAvailable(checkFallbackModelAvailability()).withErrorRate(errorRate)
+                .withResponseTimeMs(avgResponseTime).withTotalRequests(total).withFailedRequests(failedRequests.get())
+                .withLastError(lastError.get()).withLastHealthCheck(Instant.now())
+                .withLastSuccessfulRequest(lastSuccessTime.get()).withLastFailedRequest(lastFailureTime.get()).build();
     }
 
     @Override

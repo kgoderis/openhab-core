@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.reasoning.security.SafetyIssue;
+import org.openhab.core.ai.reasoning.security.api.SecurityIssue;
 
 /**
  * Comprehensive security validation result.
@@ -17,7 +19,7 @@ public class ComprehensiveSecurityResult {
     private boolean authorizationValid;
     private boolean safetyValid;
     private boolean overallValid;
-    private final List<org.openhab.core.ai.reasoning.security.SecurityIssue> securityIssues = new ArrayList<>();
+    private final List<SecurityIssue> securityIssues = new ArrayList<>();
     private final List<org.openhab.core.ai.reasoning.security.SafetyIssue> safetyIssues = new ArrayList<>();
 
     public ComprehensiveSecurityResult(String requestId) {
@@ -44,7 +46,7 @@ public class ComprehensiveSecurityResult {
         return overallValid;
     }
 
-    public List<org.openhab.core.ai.reasoning.security.SecurityIssue> getSecurityIssues() {
+    public List<SecurityIssue> getSecurityIssues() {
         return new ArrayList<>(securityIssues);
     }
 
@@ -68,7 +70,7 @@ public class ComprehensiveSecurityResult {
         this.overallValid = valid;
     }
 
-    public void addSecurityIssues(List<org.openhab.core.ai.reasoning.security.SecurityIssue> issues) {
+    public void addSecurityIssues(List<SecurityIssue> issues) {
         securityIssues.addAll(issues);
     }
 

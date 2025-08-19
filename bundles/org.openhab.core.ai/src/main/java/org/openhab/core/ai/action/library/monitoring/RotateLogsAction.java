@@ -16,11 +16,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,7 +148,7 @@ public class RotateLogsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing rotate logs action with parameters: {}", parameters);
 
@@ -211,7 +211,7 @@ public class RotateLogsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -223,11 +223,11 @@ public class RotateLogsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Rotates log files to prevent them from growing too large")
-                .tags(List.of("monitoring", "logging", "maintenance"))
-                .documentation("Performs log rotation to manage log file sizes and maintain log history")
-                .examples(List.of(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Rotates log files to prevent them from growing too large")
+                .withTags(List.of("monitoring", "logging", "maintenance"))
+                .withDocumentation("Performs log rotation to manage log file sizes and maintain log history")
+                .withExamples(List.of(
                         "{\"logFile\": \"openhab.log\", \"maxSize\": \"10MB\"} - Rotate openhab.log if larger than 10MB",
                         "{\"logFile\": \"events.log\", \"force\": true, \"compress\": true} - Force rotate events.log with compression",
                         "{\"logFile\": \"openhab.log\", \"maxHistory\": 10, \"suffix\": \".%d{yyyy-MM-dd}\"} - Rotate with date suffix, keep 10 files"))
@@ -241,7 +241,7 @@ public class RotateLogsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("RotateLogsAction initialized for protocol: {}", context.getProtocol());
     }
 
@@ -331,11 +331,11 @@ public class RotateLogsAction implements Action {
     }
 
     private boolean isValidSizeFormat(String size) {
-        return size.matches("\\d+\\s*(B|KB|MB|GB|TB)");
+        return size.matches("d+s*(B|KB|MB|GB|TB)");
     }
 
     private long parseSize(String size) {
-        size = size.toUpperCase().replaceAll("\\s+", "");
+        size = size.toUpperCase().replaceAll("s+", "");
         long multiplier = 1;
 
         if (size.endsWith("KB")) {

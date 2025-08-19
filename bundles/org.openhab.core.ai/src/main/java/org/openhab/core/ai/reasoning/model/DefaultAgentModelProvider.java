@@ -9,13 +9,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.api.AgentModelConfiguration;
-import org.openhab.core.ai.agent.api.AgentModelContext;
 import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
-import org.openhab.core.ai.agent.api.AgentModelStatistics;
-import org.openhab.core.ai.agent.api.HealthState;
-import org.openhab.core.ai.agent.api.ModelHealthStatus;
+import org.openhab.core.ai.common.configuration.AgentModelConfiguration;
+import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.statistics.AgentModelStatistics;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus.HealthState;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.slf4j.Logger;
@@ -219,8 +219,8 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
         enhancedContext.put("specialization", context.getSpecialization());
         enhancedContext.put("domain", context.getDomain());
         enhancedContext.put("capabilities", context.getCapabilities());
-        enhancedContext.put("constraints", context.getConstraints());
-        enhancedContext.put("preferences", context.getPreferences());
+        enhancedContext.put("constraints", context.getValue("constraints"));
+        enhancedContext.put("preferences", context.getUserPreferences());
 
         // Add optimization settings
         if (configuration.isEnableOptimization()) {
@@ -242,11 +242,11 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
         }
 
         return ModelParameters.builder()
-                .maxTokens(baseParameters.getMaxTokens() > 0 ? baseParameters.getMaxTokens()
+                .withMaxTokens(baseParameters.getMaxTokens() > 0 ? baseParameters.getMaxTokens()
                         : configuration.getMaxTokens())
-                .temperature(baseParameters.getTemperature() > 0 ? baseParameters.getTemperature()
+                .withTemperature(baseParameters.getTemperature() > 0 ? baseParameters.getTemperature()
                         : configuration.getTemperature())
-                .timeoutMs((int) configuration.getTimeout().toMillis()).build();
+                .withTimeoutMs((int) configuration.getTimeout().toMillis()).build();
     }
 
     @Override
@@ -265,14 +265,14 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
 
     @Override
     public AgentModelStatistics getStatistics() {
-        return AgentModelStatistics.builder().agentId(agentId).totalRequests(totalRequests)
-                .successfulRequests(successfulRequests).failedRequests(failedRequests).cacheHits(cacheHits)
-                .cacheMisses(cacheMisses).totalResponseTimeMs(totalResponseTimeMs)
-                .averageResponseTimeMs(calculateAverageResponseTime())
-                .minResponseTimeMs(minResponseTimeMs == Long.MAX_VALUE ? 0 : minResponseTimeMs)
-                .maxResponseTimeMs(maxResponseTimeMs).totalTokensUsed(totalTokensUsed).totalCost(totalCost)
-                .lastRequestTime(lastRequestTime).lastSuccessTime(lastSuccessTime).lastFailureTime(lastFailureTime)
-                .lastError(lastError).build();
+        return AgentModelStatistics.builder().withAgentId(agentId).withTotalRequests(totalRequests)
+                .withSuccessfulRequests(successfulRequests).withFailedRequests(failedRequests).withCacheHits(cacheHits)
+                .withCacheMisses(cacheMisses).withTotalResponseTimeMs(totalResponseTimeMs)
+                .withAverageResponseTimeMs(calculateAverageResponseTime())
+                .withMinResponseTimeMs(minResponseTimeMs == Long.MAX_VALUE ? 0 : minResponseTimeMs)
+                .withMaxResponseTimeMs(maxResponseTimeMs).withTotalTokensUsed(totalTokensUsed).withTotalCost(totalCost)
+                .withLastRequestTime(lastRequestTime).withLastSuccessTime(lastSuccessTime)
+                .withLastFailureTime(lastFailureTime).withLastError(lastError).build();
     }
 
     @Override
@@ -289,11 +289,11 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
             healthState = HealthState.UNHEALTHY;
         }
 
-        return ModelHealthStatus.builder().overallHealth(healthState).primaryModelAvailable(!fallbackActive)
-                .fallbackModelAvailable(fallbackActive).errorRate(errorRate).responseTimeMs(avgResponseTime)
-                .totalRequests(totalRequests).failedRequests(failedRequests).lastError(lastError)
-                .lastHealthCheck(Instant.now()).lastSuccessfulRequest(lastSuccessTime)
-                .lastFailedRequest(lastFailureTime).build();
+        return ModelHealthStatus.builder().withOverallHealth(healthState).withPrimaryModelAvailable(!fallbackActive)
+                .withFallbackModelAvailable(fallbackActive).withErrorRate(errorRate).withResponseTimeMs(avgResponseTime)
+                .withTotalRequests(totalRequests).withFailedRequests(failedRequests).withLastError(lastError)
+                .withLastHealthCheck(Instant.now()).withLastSuccessfulRequest(lastSuccessTime)
+                .withLastFailedRequest(lastFailureTime).build();
     }
 
     @Override
@@ -353,7 +353,9 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
     // Helper methods
     private void initializeProvider() {
         // Load prompt templates from context
-        promptTemplates.putAll(context.getPromptTemplates());
+        promptTemplates.putAll(
+                context.getValue("promptTemplates") != null ? (Map<String, String>) context.getValue("promptTemplates")
+                        : Map.of());
 
         // Set initial configuration
         currentModel = configuration.getPreferredModel();
@@ -363,10 +365,11 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
     }
 
     private AgentModelConfiguration createDefaultConfiguration() {
-        return AgentModelConfiguration.builder().agentId(agentId).preferredModel("gpt-4").fallbackModel("gpt-3.5-turbo")
-                .temperature(0.7).maxTokens(1000).timeout(Duration.ofSeconds(30)).maxRetries(3)
-                .retryDelay(Duration.ofSeconds(5)).enableCaching(true).cacheExpiration(Duration.ofMinutes(30))
-                .maxCacheSize(1000).enableOptimization(true).enableSecurity(true).enableMonitoring(true).build();
+        return AgentModelConfiguration.builder().withAgentId(agentId).withPreferredModel("gpt-4")
+                .withFallbackModel("gpt-3.5-turbo").withTemperature(0.7).withMaxTokens(1000)
+                .withTimeout(Duration.ofSeconds(30)).withMaxRetries(3).withRetryDelay(Duration.ofSeconds(5))
+                .withEnableCaching(true).withCacheExpiration(Duration.ofMinutes(30)).withMaxCacheSize(1000)
+                .withEnableOptimization(true).withEnableSecurity(true).withEnableMonitoring(true).build();
     }
 
     private String generateCacheKey(String prompt, Map<String, Object> context) {

@@ -133,9 +133,9 @@ public final class AIUtils {
         }
 
         // Replace common sensitive patterns
-        String sanitized = input.replaceAll("(?i)(password|token|key|secret|auth)=[^\\s&]+", "$1=***")
-                .replaceAll("(?i)(bearer|basic)\\s+[^\\s]+", "$1 ***")
-                .replaceAll("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b", "***@***.***");
+        String sanitized = input.replaceAll("(?i)(password|token|key|secret|auth)=[^s&]+", "$1=***")
+                .replaceAll("(?i)(bearer|basic)s+[^s]+", "$1 ***")
+                .replaceAll("b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Z|a-z]{2,}b", "***@***.***");
 
         return sanitized;
     }

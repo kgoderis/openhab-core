@@ -5,6 +5,7 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.builder.EventSubscriptionBuilder;
 
 /**
  * Event subscription.
@@ -23,13 +24,23 @@ public class EventSubscription {
     private final EventHandler handler;
     private final Instant timestamp;
 
-    EventSubscription(EventSubscriptionBuilder builder) {
-        this.subscriptionId = builder.subscriptionId;
-        this.agentId = builder.agentId;
-        this.eventTypes = builder.eventTypes;
-        this.filter = builder.filter;
-        this.handler = builder.handler;
-        this.timestamp = builder.timestamp;
+    public EventSubscription(EventSubscriptionBuilder builder) {
+        this.subscriptionId = builder.getSubscriptionId();
+        this.agentId = builder.getAgentId();
+        this.eventTypes = builder.getEventTypes();
+        this.filter = builder.getFilter();
+        this.handler = builder.getHandler();
+        this.timestamp = builder.getTimestamp() != null ? builder.getTimestamp() : Instant.now();
+    }
+
+    public EventSubscription(String subscriptionId, String agentId, Set<String> eventTypes,
+            @Nullable EventFilter filter, EventHandler handler, Instant timestamp) {
+        this.subscriptionId = subscriptionId;
+        this.agentId = agentId;
+        this.eventTypes = eventTypes;
+        this.filter = filter;
+        this.handler = handler;
+        this.timestamp = timestamp;
     }
 
     public String getSubscriptionId() {
@@ -59,6 +70,4 @@ public class EventSubscription {
     public static EventSubscriptionBuilder builder() {
         return new EventSubscriptionBuilder();
     }
-
-    /* Extracted: org.openhab.core.ai.agent.communication.events.EventSubscriptionBuilder */
 }

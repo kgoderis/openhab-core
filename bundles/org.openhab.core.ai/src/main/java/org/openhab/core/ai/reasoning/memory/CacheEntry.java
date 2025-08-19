@@ -4,7 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.api.AgentModelContext;
+import org.openhab.core.ai.common.context.AgentModelContext;
 
 /**
  * Cache entry wrapper with expiration and last-access tracking.

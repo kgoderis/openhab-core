@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**
@@ -36,7 +37,7 @@ public interface ActionExecutionService {
      * @param providerType the LLM provider type
      * @return CompletableFuture with the action result
      */
-    CompletableFuture<ActionResult> executeAction(ActionContext actionContext, ModelProviderType providerType);
+    CompletableFuture<ActionResult> executeAction(ExecutionContext actionContext, ModelProviderType providerType);
 
     /**
      * Execute an action with retry mechanism
@@ -46,8 +47,8 @@ public interface ActionExecutionService {
      * @param maxRetries the maximum number of retry attempts
      * @return CompletableFuture with the action result
      */
-    CompletableFuture<ActionResult> executeActionWithRetry(ActionContext actionContext, ModelProviderType providerType,
-            int maxRetries);
+    CompletableFuture<ActionResult> executeActionWithRetry(ExecutionContext actionContext,
+            ModelProviderType providerType, int maxRetries);
 
     /**
      * Execute multiple actions in parallel
@@ -56,7 +57,7 @@ public interface ActionExecutionService {
      * @param providerType the LLM provider type
      * @return CompletableFuture with the list of action results
      */
-    CompletableFuture<List<ActionResult>> executeActionsParallel(List<ActionContext> actionContexts,
+    CompletableFuture<List<ActionResult>> executeActionsParallel(List<ExecutionContext> actionContexts,
             ModelProviderType providerType);
 
     /**
@@ -66,7 +67,7 @@ public interface ActionExecutionService {
      * @param providerType the LLM provider type
      * @return CompletableFuture with the list of action results
      */
-    CompletableFuture<List<ActionResult>> executeActionsSequential(List<ActionContext> actionContexts,
+    CompletableFuture<List<ActionResult>> executeActionsSequential(List<ExecutionContext> actionContexts,
             ModelProviderType providerType);
 
     /**

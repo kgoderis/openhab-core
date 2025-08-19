@@ -25,12 +25,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.action.ActionRegistry;
+import org.openhab.core.ai.common.configuration.MultiStepReasoningConfiguration;
+import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.reasoning.api.MultiStepReasoningConfiguration;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
 
 /**
  * Unit tests for MultiStepReasoningEngine
@@ -75,7 +75,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testReasonAsyncWithValidContext() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = new ReasoningContext("Initial context", "Current context");
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").build();
         ModelResponse mockResponse = createMockModelResponse("Step 1 reasoning: Analyzing the situation...");
 
         when(llmClient.complete(anyString(), any(ModelParameters.class)))
@@ -101,7 +102,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testMultiStepReasoningWithContextAccumulation() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = new ReasoningContext("Initial context", "Current context");
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").build();
         ModelResponse step1Response = createMockModelResponse("Step 1: Understanding the problem...");
         ModelResponse step2Response = createMockModelResponse("Step 2: Based on previous analysis, I can see...");
 
@@ -127,8 +129,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testReasoningWithGuidancePrompts() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = ReasoningContext.builder().initialContext("Initial context")
-                .currentContext("Current context").domain("home-automation").build();
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").withDomain("home-automation").build();
 
         ModelResponse mockResponse = createMockModelResponse("Following guidance for step 1...");
 
@@ -152,7 +154,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testStepLimitEnforcement() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = new ReasoningContext("Initial context", "Current context");
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").build();
         ModelResponse mockResponse = createMockModelResponse("Continuing reasoning...");
 
         when(llmClient.complete(anyString(), any(ModelParameters.class)))
@@ -173,7 +176,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testReasoningCompletionDetection() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = new ReasoningContext("Initial context", "Current context");
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").build();
         ModelResponse completionResponse = createMockModelResponse(
                 "Final conclusion: The answer is 42. Reasoning complete.");
 
@@ -196,7 +200,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testConfidenceThresholdCompletion() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = new ReasoningContext("Initial context", "Current context");
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").build();
         ModelResponse highConfidenceResponse = createMockModelResponse("I am very confident about this because...");
 
         when(llmClient.complete(anyString(), any(ModelParameters.class)))
@@ -217,7 +222,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testErrorHandlingAndRecovery() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = new ReasoningContext("Initial context", "Current context");
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").build();
 
         when(llmClient.complete(anyString(), any(ModelParameters.class)))
                 .thenThrow(new RuntimeException("LLM service unavailable"))
@@ -239,7 +245,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testPerformanceMonitoring() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = new ReasoningContext("Initial context", "Current context");
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").build();
         ModelResponse mockResponse = createMockModelResponse("Performance test reasoning...");
 
         when(llmClient.complete(anyString(), any(ModelParameters.class)))
@@ -278,7 +285,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testActionIntegration() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = new ReasoningContext("Initial context", "Current context");
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").build();
         ModelResponse mockResponse = createMockModelResponse("I need to call an action to get more information...");
 
         when(llmClient.complete(anyString(), any(ModelParameters.class)))
@@ -297,7 +305,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testSessionTimeoutHandling() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context = new ReasoningContext("Initial context", "Current context");
+        ReasoningContext context = ReasoningContext.builder().withInitialContext("Initial context")
+                .withCurrentContext("Current context").build();
 
         // Simulate a slow response that would exceed timeout
         CompletableFuture<ModelResponse> slowResponse = new CompletableFuture<>();
@@ -327,7 +336,8 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testEmptyContextHandling() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext emptyContext = new ReasoningContext("", "");
+        ReasoningContext emptyContext = ReasoningContext.builder().withInitialContext("").withCurrentContext("")
+                .build();
         ModelResponse mockResponse = createMockModelResponse("Reasoning with empty context...");
 
         when(llmClient.complete(anyString(), any(ModelParameters.class)))
@@ -346,8 +356,10 @@ public class MultiStepReasoningEngineTest {
     @Test
     void testConcurrentReasoningSessions() throws ExecutionException, InterruptedException {
         // Given
-        ReasoningContext context1 = new ReasoningContext("Context 1", "Current 1");
-        ReasoningContext context2 = new ReasoningContext("Context 2", "Current 2");
+        ReasoningContext context1 = ReasoningContext.builder().withInitialContext("Context 1")
+                .withCurrentContext("Current 1").build();
+        ReasoningContext context2 = ReasoningContext.builder().withInitialContext("Context 2")
+                .withCurrentContext("Current 2").build();
         ModelResponse mockResponse = createMockModelResponse("Concurrent reasoning...");
 
         when(llmClient.complete(anyString(), any(ModelParameters.class)))

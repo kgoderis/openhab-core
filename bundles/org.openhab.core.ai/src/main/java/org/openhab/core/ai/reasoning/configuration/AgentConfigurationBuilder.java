@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.builder.AbstractBuilder;
 
 /**
  * Builder for {@link AgentConfiguration}.
@@ -15,7 +16,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-public final class AgentConfigurationBuilder {
+public final class AgentConfigurationBuilder extends AbstractBuilder<AgentConfiguration> {
     String agentId;
     boolean autonomousModeEnabled = true;
     boolean behaviorLearningEnabled = true;
@@ -83,7 +84,33 @@ public final class AgentConfigurationBuilder {
         return this;
     }
 
+    @Override
     public AgentConfiguration build() {
         return new AgentConfiguration(this);
+    }
+
+    @Override
+    protected void validate() {
+        validateRequiredString(agentId, "agentId");
+        validateRange((int) (confidenceThreshold * 100), "confidenceThreshold", 0, 100);
+        validatePositive(maxConcurrentActions, "maxConcurrentActions");
+        if (timeout.toMinutes() < 0) {
+            addValidationError("timeout must be non-negative");
+        }
+    }
+
+    @Override
+    protected void doReset() {
+        agentId = null;
+        autonomousModeEnabled = true;
+        behaviorLearningEnabled = true;
+        safetyConstraintsEnabled = true;
+        confidenceThreshold = 0.7;
+        timeout = Duration.ofMinutes(5);
+        maxConcurrentActions = 10;
+        behaviorPolicies = new ArrayList<>();
+        constraints = new ArrayList<>();
+        safetyPolicies = new ArrayList<>();
+        customSettings = new ConcurrentHashMap<>();
     }
 }

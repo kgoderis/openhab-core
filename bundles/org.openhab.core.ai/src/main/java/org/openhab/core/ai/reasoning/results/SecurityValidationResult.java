@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.reasoning.security.api.SecurityIssue;
+import org.openhab.core.ai.reasoning.security.api.SecurityIssueType;
+import org.openhab.core.ai.reasoning.security.api.SecurityLevel;
 
 /**
  * Result of security validation.
@@ -11,7 +14,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class SecurityValidationResult {
     private final String requestId;
-    private final List<org.openhab.core.ai.reasoning.security.SecurityIssue> securityIssues;
+    private final List<SecurityIssue> securityIssues;
     private boolean authenticationValid;
     private boolean authorizationValid;
     private boolean contentSafetyValid;
@@ -32,7 +35,7 @@ public class SecurityValidationResult {
         return requestId;
     }
 
-    public List<org.openhab.core.ai.reasoning.security.SecurityIssue> getSecurityIssues() {
+    public List<SecurityIssue> getSecurityIssues() {
         return new ArrayList<>(securityIssues);
     }
 
@@ -77,7 +80,7 @@ public class SecurityValidationResult {
     }
 
     public void addSecurityIssue(SecurityIssueType issueType, String description) {
-        securityIssues.add(new SecurityIssue(issueType, description));
+        securityIssues.add(new SecurityIssue(issueType, description, SecurityLevel.MEDIUM));
     }
 
     public boolean isValid() {

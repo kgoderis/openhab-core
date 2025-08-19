@@ -7,6 +7,7 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 
 /**
  * Tool Security Service Interface
@@ -91,7 +92,7 @@ public interface ToolSecurityService {
      * 
      * @return Security statistics
      */
-    SecurityStatistics getSecurityStatistics();
+    ToolSecurityStatistics getSecurityStatistics();
 
     /**
      * Get specification permissions

@@ -8,8 +8,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.action.api.ActionContext;
+import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 
 /**
  * Information and execution helper for a registered agent.
@@ -35,17 +36,16 @@ public class AgentInfo {
         return capabilities.contains(actionName);
     }
 
-    public double getCapabilityScore(ActionContext actionContext) {
-        Map<String, Object> protocolContext = actionContext.getProtocolContext();
+    public double getCapabilityScore(ExecutionContext actionContext) {
         @Nullable
-        String actionName = (String) protocolContext.get("action");
+        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
         if (actionName == null) {
             return 0.0;
         }
         return capabilityScores.getOrDefault(actionName, 1.0);
     }
 
-    public CompletableFuture<ActionResult> executeAction(ActionContext actionContext) {
+    public CompletableFuture<ActionResult> executeAction(ExecutionContext actionContext) {
         // This would integrate with the actual agent execution system
         return CompletableFuture.completedFuture(ActionResult.success("Mock result from agent " + agentId, 100));
     }

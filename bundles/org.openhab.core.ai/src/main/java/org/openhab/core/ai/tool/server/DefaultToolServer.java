@@ -5,12 +5,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.error.DefaultErrorRecoveryService;
 import org.openhab.core.ai.tool.error.ErrorInfo;
 import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.security.DefaultToolSecurityService;
-import org.openhab.core.ai.tool.security.api.SecurityStatistics;
 import org.openhab.core.ai.tool.server.api.ToolServer;
 import org.openhab.core.ai.tool.server.api.ToolServerState;
 import org.openhab.core.ai.tool.server.api.TransportType;
@@ -209,7 +209,7 @@ public class DefaultToolServer implements ToolServer {
      * 
      * @return security statistics or null if security manager is not available
      */
-    public @Nullable SecurityStatistics getSecurityStatistics() {
+    public @Nullable ToolSecurityStatistics getSecurityStatistics() {
         DefaultToolSecurityService manager = securityManager;
         return manager != null ? manager.getSecurityStatistics() : null;
     }

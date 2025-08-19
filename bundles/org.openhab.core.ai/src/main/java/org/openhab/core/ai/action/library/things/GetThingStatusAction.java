@@ -9,11 +9,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.persistence.FilterCriteria;
 import org.openhab.core.persistence.HistoricItem;
 import org.openhab.core.persistence.PersistenceService;
@@ -126,7 +126,7 @@ public class GetThingStatusAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
 
         try {
@@ -214,7 +214,7 @@ public class GetThingStatusAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -226,12 +226,12 @@ public class GetThingStatusAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieve detailed status information for openHAB things")
-                .tags(List.of("things", "status", "monitoring", "health"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieve detailed status information for openHAB things")
+                .withTags(List.of("things", "status", "monitoring", "health"))
+                .withDocumentation(
                         "Retrieves comprehensive status information for openHAB things including current status, details, and optional history.")
-                .examples(List.of("Get basic status: {\"thingUID\": \"binding:type:id\"}",
+                .withExamples(List.of("Get basic status: {\"thingUID\": \"binding:type:id\"}",
                         "Get with details: {\"thingUID\": \"binding:type:id\", \"includeStatusDetails\": true}",
                         "Get with history: {\"thingUID\": \"binding:type:id\", \"includeStatusHistory\": true}",
                         "Get everything: {\"thingUID\": \"binding:type:id\", \"includeStatusDetails\": true, \"includeStatusHistory\": true}"))
@@ -253,7 +253,7 @@ public class GetThingStatusAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         // No initialization needed
     }
 

@@ -5,8 +5,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.api.AgentModelContext;
-import org.openhab.core.ai.agent.api.AgentModelContextBuilder;
+import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.context.AgentModelContext.AgentModelContextBuilder;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.reasoning.engine.SharedModelReasoningEngine;
 import org.openhab.core.ai.reasoning.enums.EmotionType;

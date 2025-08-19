@@ -7,8 +7,7 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.adapter.BaseAdapter;
-import org.openhab.core.ai.tool.api.Adapter;
+import org.openhab.core.ai.common.adapter.CompletionAdapter;
 import org.openhab.core.ai.tool.completions.api.CompletionContext;
 import org.openhab.core.ai.tool.completions.api.CompletionResult;
 import org.openhab.core.ai.tool.completions.api.dto.Completion;
@@ -18,16 +17,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Completion handler for openHAB items.
+ * Completion handler for openHAB items using the unified adapter hierarchy.
  *
- * Consolidated: logic folded into this handler; no external factory used.
+ * This adapter provides completion suggestions for openHAB items.
  *
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
-public class ItemCompletionHandler extends BaseAdapter
-        implements Adapter<Completion, CompletionContext, CompletionResult> {
+public class ItemCompletionHandler extends CompletionAdapter<Completion, CompletionContext, CompletionResult> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ItemCompletionHandler.class);
     private static final long DEFAULT_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -122,11 +120,44 @@ public class ItemCompletionHandler extends BaseAdapter
         return "openhab://completions/items/{itemName}";
     }
 
-    public void close() {
-        cleanup();
+    @Override
+    public @Nullable CompletionResult adapt(Completion source, CompletionContext context) {
+        // For completion adapters, we typically don't adapt existing completions
+        // but rather create new ones or execute operations
+        return null;
     }
 
-    private @Nullable List<String> getSuggestions(String identifier, CompletionContext context) {
+    @Override
+    public boolean canAdapt(Completion source) {
+        // Check if this adapter can handle the given completion
+        return source != null && source.getPromptReference().startsWith("item_");
+    }
+
+    @Override
+    public Class<Completion> getSourceType() {
+        return Completion.class;
+    }
+
+    @Override
+    public Class<CompletionResult> getResultType() {
+        return CompletionResult.class;
+    }
+
+    @Override
+    protected void doRefresh(String identifier, CompletionContext context) {
+        // Clear cache for this identifier
+        cache.clear();
+        updateRefreshTime();
+    }
+
+    @Override
+    protected void doCleanup() {
+        super.doCleanup();
+        cache.clear();
+    }
+
+    @Override
+    public @Nullable List<String> getSuggestions(String identifier, CompletionContext context) {
         String type = (String) context.getProperty("type");
         if (type == null) {
             type = "names";

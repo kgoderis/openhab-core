@@ -8,11 +8,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.GroupItem;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
@@ -124,7 +124,7 @@ public class GetItemTypeAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
 
         try {
@@ -216,7 +216,7 @@ public class GetItemTypeAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -228,12 +228,12 @@ public class GetItemTypeAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Retrieve type information for openHAB items")
-                .tags(List.of("items", "types", "commands", "states", "validation"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Retrieve type information for openHAB items")
+                .withTags(List.of("items", "types", "commands", "states", "validation"))
+                .withDocumentation(
                         "Retrieves type information for openHAB items including item type, accepted command and state types, and detailed type information.")
-                .examples(List.of("Get basic type info: {\"itemName\": \"LivingRoom_Light\"}",
+                .withExamples(List.of("Get basic type info: {\"itemName\": \"LivingRoom_Light\"}",
                         "Get accepted types: {\"itemName\": \"LivingRoom_Light\", \"includeAcceptedTypes\": true}",
                         "Get detailed type info: {\"itemName\": \"LivingRoom_Light\", \"includeTypeDetails\": true}",
                         "Get all type information: {\"itemName\": \"LivingRoom_Light\", \"includeAcceptedTypes\": true, \"includeTypeDetails\": true}"))
@@ -254,7 +254,7 @@ public class GetItemTypeAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         // No initialization needed
     }
 

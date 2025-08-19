@@ -16,7 +16,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionMetadata;
-import org.openhab.core.ai.action.api.ActionPerformanceMetrics;
+import org.openhab.core.ai.common.metrics.ActionPerformanceMetrics;
 import org.openhab.core.ai.model.ActionExecutionEventStatus;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
@@ -461,9 +461,9 @@ public class ActionRegistry {
      * @return the overall performance metrics
      */
     public ActionPerformanceMetrics getOverallPerformanceMetrics() {
-        return ActionPerformanceMetrics.builder().actionId("overall").totalExecutions(totalExecutions.get())
-                .successfulExecutions(successfulExecutions.get()).failedExecutions(failedExecutions.get())
-                .totalExecutionTimeMs(totalExecutionTimeMs.get()).build();
+        return ActionPerformanceMetrics.builder().withActionId("overall").withTotalCount(totalExecutions.get())
+                .withSuccessCount(successfulExecutions.get()).withFailureCount(failedExecutions.get())
+                .withTotalDurationMs(totalExecutionTimeMs.get()).build();
     }
 
     /**

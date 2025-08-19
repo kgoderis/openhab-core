@@ -6,6 +6,7 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.configuration.BaseConfiguration;
 
 /**
  * Unified HTTP Server Configuration for MCP and A2A protocols.
@@ -18,7 +19,7 @@ import org.eclipse.jdt.annotation.Nullable;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class HttpServerConfiguration {
+public class HttpServerConfiguration extends BaseConfiguration {
 
     private final String baseUrl;
     private final int port;
@@ -96,6 +97,7 @@ public class HttpServerConfiguration {
     // Constructor using inner Builder removed; use HttpServerConfigurationBuilder instead
 
     public HttpServerConfiguration(HttpServerConfigurationBuilder builder) {
+        super("http-server-" + builder.port, true, "HTTP Server Configuration", "1.0.0", builder.serverOptions);
         this.baseUrl = builder.baseUrl;
         this.port = builder.port;
         this.contextPath = builder.contextPath;
@@ -356,6 +358,9 @@ public class HttpServerConfiguration {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
+        if (!super.equals(o)) {
+            return false;
+        }
         HttpServerConfiguration that = (HttpServerConfiguration) o;
         return port == that.port && Objects.equals(baseUrl, that.baseUrl)
                 && Objects.equals(contextPath, that.contextPath) && Objects.equals(mcpServletPath, that.mcpServletPath)
@@ -364,7 +369,7 @@ public class HttpServerConfiguration {
 
     @Override
     public int hashCode() {
-        return Objects.hash(baseUrl, port, contextPath, mcpServletPath, a2aServletPath);
+        return Objects.hash(super.hashCode(), baseUrl, port, contextPath, mcpServletPath, a2aServletPath);
     }
 
     @Override

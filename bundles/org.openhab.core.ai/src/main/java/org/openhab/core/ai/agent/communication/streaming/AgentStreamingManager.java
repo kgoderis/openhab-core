@@ -12,10 +12,10 @@ import java.util.concurrent.SubmissionPublisher;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.execution.AgentTaskManager;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -320,8 +320,8 @@ public class AgentStreamingManager {
             }
 
             // Create AI action context
-            ActionContext context = ActionContext.builder().protocol("a2a").clientId("a2a-client")
-                    .sessionId("a2a-session-" + taskId).correlationId(taskId).priority("normal").build();
+            ExecutionContext context = ExecutionContext.builder().withProtocol("a2a").withClientId("a2a-client")
+                    .withSessionId("a2a-session-" + taskId).withCorrelationId(taskId).withPriority("normal").build();
 
             // Send progress update
             publishStreamingTaskStatus(publisher, taskId, TaskState.WORKING, "Executing action: " + actionId);

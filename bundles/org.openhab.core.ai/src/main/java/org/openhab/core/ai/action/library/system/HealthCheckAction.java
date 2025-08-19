@@ -14,11 +14,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,7 +96,7 @@ public class HealthCheckAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing health check action with parameters: {}", parameters);
 
@@ -117,7 +117,7 @@ public class HealthCheckAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -129,12 +129,12 @@ public class HealthCheckAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Performs comprehensive openHAB system health checks")
-                .tags(List.of("system", "health", "monitoring", "diagnostics"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Performs comprehensive openHAB system health checks")
+                .withTags(List.of("system", "health", "monitoring", "diagnostics"))
+                .withDocumentation(
                         "Provides comprehensive system health monitoring including memory, disk space, threads, and system resources")
-                .examples(List.of("{} - Perform basic health checks",
+                .withExamples(List.of("{} - Perform basic health checks",
                         "{\"includeDetailedChecks\": true} - Perform detailed health checks including GC and class loader analysis"))
                 .build();
     }
@@ -145,7 +145,7 @@ public class HealthCheckAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("HealthCheckAction initialized for protocol: {}", context.getProtocol());
     }
 

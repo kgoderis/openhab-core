@@ -5,10 +5,19 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.configuration.BaseConfiguration;
 
+/**
+ * Configuration for AI agent behavior and capabilities.
+ * 
+ * This class defines configuration settings for autonomous agents including
+ * behavior policies, safety constraints, learning capabilities, and operational parameters.
+ * 
+ * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
+ */
 @NonNullByDefault
-public class AgentConfiguration {
-    private final String agentId;
+public class AgentConfiguration extends BaseConfiguration {
     private final boolean autonomousModeEnabled;
     private final boolean behaviorLearningEnabled;
     private final boolean safetyConstraintsEnabled;
@@ -18,10 +27,9 @@ public class AgentConfiguration {
     private final List<String> behaviorPolicies;
     private final List<String> constraints;
     private final List<String> safetyPolicies;
-    private final Map<String, Object> customSettings;
 
     /* package */ AgentConfiguration(AgentConfigurationBuilder builder) {
-        this.agentId = builder.agentId;
+        super(builder.agentId, true, "Agent Configuration", "1.0.0", builder.customSettings);
         this.autonomousModeEnabled = builder.autonomousModeEnabled;
         this.behaviorLearningEnabled = builder.behaviorLearningEnabled;
         this.safetyConstraintsEnabled = builder.safetyConstraintsEnabled;
@@ -31,15 +39,19 @@ public class AgentConfiguration {
         this.behaviorPolicies = builder.behaviorPolicies;
         this.constraints = builder.constraints;
         this.safetyPolicies = builder.safetyPolicies;
-        this.customSettings = builder.customSettings;
     }
 
     public static AgentConfigurationBuilder builder() {
         return new AgentConfigurationBuilder();
     }
 
+    /**
+     * Get the agent ID.
+     * 
+     * @return the agent ID
+     */
     public String getAgentId() {
-        return agentId;
+        return getId();
     }
 
     public boolean isAutonomousModeEnabled() {
@@ -78,8 +90,13 @@ public class AgentConfiguration {
         return safetyPolicies;
     }
 
+    /**
+     * Get custom settings.
+     * 
+     * @return custom settings map
+     */
     public Map<String, Object> getCustomSettings() {
-        return customSettings;
+        return getCustomOptions();
     }
 
     // Inner Builder extracted to top-level class org.openhab.core.ai.reasoning.AgentConfigurationBuilder

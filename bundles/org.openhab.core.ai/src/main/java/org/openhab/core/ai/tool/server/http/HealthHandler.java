@@ -7,8 +7,8 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
-import org.openhab.core.ai.tool.security.api.SecurityStatistics;
 import org.openhab.core.ai.tool.server.DefaultToolServer;
 import org.openhab.core.ai.tool.server.ServerConfiguration;
 import org.openhab.core.ai.tool.server.TransportHealthInfo;
@@ -72,7 +72,7 @@ public final class HealthHandler implements HttpHandler {
             response.append("  \"version\": \"").append(config.getServerVersion()).append("\",\n");
 
             if (serverInstance.isSecurityEnabled()) {
-                SecurityStatistics securityStats = serverInstance.getSecurityStatistics();
+                ToolSecurityStatistics securityStats = serverInstance.getSecurityStatistics();
                 if (securityStats != null) {
                     response.append("  \"security\": {\n");
                     response.append("    \"totalRequests\": ").append(securityStats.getTotalAccessAttempts())

@@ -31,13 +31,6 @@ public interface Agent {
     // AgentStatus extracted to top-level enum in this package
 
     /**
-     * Backward-compatible nested metrics interface expected by existing usages.
-     * Delegates to the top-level {@link org.openhab.core.ai.agent.api.AgentMetrics}.
-     */
-    interface AgentMetrics extends org.openhab.core.ai.agent.api.AgentMetrics {
-    }
-
-    /**
      * Get the unique identifier for this agent
      */
     String getAgentId();

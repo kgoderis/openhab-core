@@ -17,11 +17,11 @@ import java.util.regex.Pattern;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -181,7 +181,7 @@ public class SearchLogsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing search logs action with parameters: {}", parameters);
 
@@ -268,7 +268,7 @@ public class SearchLogsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -280,12 +280,12 @@ public class SearchLogsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Searches log files with advanced filtering and regex support")
-                .tags(List.of("monitoring", "logging", "search", "filtering"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Searches log files with advanced filtering and regex support")
+                .withTags(List.of("monitoring", "logging", "search", "filtering"))
+                .withDocumentation(
                         "Provides powerful search capabilities for log files including regex patterns, time filtering, and context lines")
-                .examples(List.of("{\"query\": \"ERROR\", \"logLevel\": \"ERROR\"} - Search for ERROR entries",
+                .withExamples(List.of("{\"query\": \"ERROR\", \"logLevel\": \"ERROR\"} - Search for ERROR entries",
                         "{\"query\": \"ItemStateEvent\", \"useRegex\": true, \"includeContext\": true} - Search for ItemStateEvent with context",
                         "{\"query\": \"Exception\", \"startTime\": \"2023-01-01T00:00:00\", \"endTime\": \"2023-01-01T23:59:59\"} - Search for exceptions on specific date"))
                 .build();
@@ -298,7 +298,7 @@ public class SearchLogsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("SearchLogsAction initialized for protocol: {}", context.getProtocol());
     }
 
@@ -420,7 +420,7 @@ public class SearchLogsAction implements Action {
         // Simple timestamp extraction - assumes ISO format at the beginning of the line
         if (logLine.length() > 20) {
             String potentialTimestamp = logLine.substring(0, 20);
-            if (potentialTimestamp.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")) {
+            if (potentialTimestamp.matches("d{4}-d{2}-d{2}Td{2}:d{2}:d{2}")) {
                 return potentialTimestamp;
             }
         }

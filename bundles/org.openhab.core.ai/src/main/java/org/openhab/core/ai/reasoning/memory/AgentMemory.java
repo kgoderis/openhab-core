@@ -16,13 +16,18 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.reasoning.api.MemoryConsolidationResult;
-import org.openhab.core.ai.reasoning.api.MemoryPerformanceMetrics;
-import org.openhab.core.ai.reasoning.api.MemorySearchResult;
-import org.openhab.core.ai.reasoning.api.MemoryStoreResult;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
+import org.openhab.core.ai.common.context.ReasoningContext;
+import org.openhab.core.ai.reasoning.learning.LearningEntry;
+import org.openhab.core.ai.reasoning.learning.LearningHistory;
+import org.openhab.core.ai.reasoning.memory.api.MemoryConsolidationResult;
 import org.openhab.core.ai.reasoning.memory.api.MemoryManager;
+import org.openhab.core.ai.reasoning.memory.api.MemoryPerformanceMetrics;
+import org.openhab.core.ai.reasoning.memory.api.MemorySearchResult;
+import org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult;
+import org.openhab.core.ai.reasoning.patterns.PatternEntry;
 import org.openhab.core.ai.reasoning.session.MemoryReasoningSession;
+import org.openhab.core.ai.reasoning.session.ReasoningSessionResult;
+import org.openhab.core.ai.reasoning.session.SessionContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -59,7 +64,7 @@ public class AgentMemory implements MemoryManager {
 
     // Reasoning session management (UNIFIED MEMORY ARCHITECTURE)
     private final Map<String, MemoryReasoningSession> activeSessions = new ConcurrentHashMap<>();
-    private final Map<String, org.openhab.core.ai.reasoning.session.SessionContext> sessionContexts = new ConcurrentHashMap<>();
+    private final Map<String, SessionContext> sessionContexts = new ConcurrentHashMap<>();
     private final Map<String, LearningHistory> learningHistory = new ConcurrentHashMap<>();
 
     // Performance monitoring
@@ -244,7 +249,7 @@ public class AgentMemory implements MemoryManager {
     /**
      * Get memory patterns for an agent
      */
-    public List<org.openhab.core.ai.reasoning.patterns.PatternEntry> getMemoryPatterns(String agentId) {
+    public List<PatternEntry> getMemoryPatterns(String agentId) {
         try {
             patternLock.readLock().lock();
 
@@ -263,11 +268,10 @@ public class AgentMemory implements MemoryManager {
      * Get memory performance metrics
      */
     public MemoryPerformanceMetrics getPerformanceMetrics() {
-        return MemoryPerformanceMetrics.builder()
-                .totalStores(totalMemoryStores.get()).totalRetrievals(totalMemoryRetrievals.get())
-                .totalConsolidations(totalMemoryConsolidations.get())
-                .totalPatternRecognitions(totalPatternRecognitions.get()).shortTermMemoryCount(shortTermMemories.size())
-                .longTermMemoryCount(longTermMemories.size()).patternCount(memoryPatterns.size()).build();
+        return new MemoryPerformanceMetrics(totalMemoryStores.get() + totalMemoryRetrievals.get(),
+                shortTermMemories.size(), longTermMemories.size(), 0.0, // averageSearchTime - would need to track this
+                0.0 // averageStorageTime - would need to track this
+        );
     }
 
     // ===== UNIFIED MEMORY ARCHITECTURE - NEW METHODS =====
@@ -563,21 +567,23 @@ public class AgentMemory implements MemoryManager {
 
     // MemoryManager interface implementation
     @Override
-    public CompletableFuture<MemoryStoreResult> storeShortTermMemory(String agentId, String memory,
-            @Nullable Map<String, Object> metadata) {
+    public CompletableFuture<org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult> storeShortTermMemory(
+            String agentId, String memory, @Nullable Map<String, Object> metadata) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 MemoryEntry entry = new MemoryEntry(generateMemoryId(), memory, "general", 0.5,
                         metadata != null ? metadata : new ConcurrentHashMap<>());
                 AgentMemoryStoreResult result = storeShortTermMemory(agentId, entry);
                 if (result.isSuccess()) {
-                    return new MemoryStoreResult(true, result.getEntry().getId(), null);
+                    return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(true,
+                            result.getEntry().getId(), null);
                 } else {
-                    return new MemoryStoreResult(false, null, result.getError());
+                    return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(false, null,
+                            result.getError());
                 }
             } catch (Exception e) {
                 logger.error("Error storing short-term memory for agent: {}", agentId, e);
-                return new MemoryStoreResult(false, null, e.getMessage());
+                return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(false, null, e.getMessage());
             }
         });
     }
@@ -591,13 +597,15 @@ public class AgentMemory implements MemoryManager {
                         metadata != null ? metadata : new ConcurrentHashMap<>());
                 AgentMemoryStoreResult result = storeLongTermMemory(agentId, entry);
                 if (result.isSuccess()) {
-                    return new MemoryStoreResult(true, result.getEntry().getId(), null);
+                    return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(true,
+                            result.getEntry().getId(), null);
                 } else {
-                    return new MemoryStoreResult(false, null, result.getError());
+                    return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(false, null,
+                            result.getError());
                 }
             } catch (Exception e) {
                 logger.error("Error storing long-term memory for agent: {}", agentId, e);
-                return new MemoryStoreResult(false, null, e.getMessage());
+                return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(false, null, e.getMessage());
             }
         });
     }
@@ -625,8 +633,11 @@ public class AgentMemory implements MemoryManager {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 AgentMemoryConsolidationResult result = consolidateMemoriesInternal(agentId);
-                return new MemoryConsolidationResult(result.isSuccess(), result.getConsolidatedCount(),
-                        result.getError());
+                if (result.isSuccess()) {
+                    return new MemoryConsolidationResult(true, result.getConsolidatedCount(), null);
+                } else {
+                    return new MemoryConsolidationResult(false, 0, result.getError());
+                }
             } catch (Exception e) {
                 logger.error("Error consolidating memories for agent: {}", agentId, e);
                 return new MemoryConsolidationResult(false, 0, e.getMessage());
@@ -639,13 +650,10 @@ public class AgentMemory implements MemoryManager {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 MemoryPerformanceMetrics metrics = getPerformanceMetrics();
-                return new MemoryPerformanceMetrics(metrics.getTotalStores() + metrics.getTotalRetrievals(),
-                        metrics.getShortTermMemoryCount(), metrics.getLongTermMemoryCount(), 0.0, // averageSearchTime -
-                                                                                                  // not tracked in
-                                                                                                  // current
-                                                                                                  // implementation
-                        0.0 // averageStorageTime - not tracked in current implementation
-                );
+                return new MemoryPerformanceMetrics(
+                        metrics.getTotalMemories() + metrics.getShortTermMemories() + metrics.getLongTermMemories(),
+                        metrics.getShortTermMemories(), metrics.getLongTermMemories(), metrics.getAverageSearchTime(),
+                        metrics.getAverageStorageTime());
             } catch (Exception e) {
                 logger.error("Error getting performance metrics for agent: {}", agentId, e);
                 return new MemoryPerformanceMetrics(0, 0, 0, 0.0, 0.0);
@@ -843,8 +851,8 @@ public class AgentMemory implements MemoryManager {
                 List<Map<String, Object>> patternsData = (List<Map<String, Object>>) entry.getValue();
 
                 MemoryPattern pattern = new MemoryPattern(agentId);
-                for (PatternEntry patternEntry : patternsData) {
-                    PatternEntry patternEntry = new PatternEntry((String) patternData.get("category"));
+                for (Map<String, Object> patternData : patternsData) {
+                    String category = (String) patternData.get("category");
                     // Note: PatternEntry doesn't have setters, so we can't restore the full state
                     // In a real implementation, you'd need to add setters or use a different approach
                 }
@@ -892,7 +900,7 @@ public class AgentMemory implements MemoryManager {
         if (value == null) {
             return "null";
         } else if (value instanceof String) {
-            return "\"" + ((String) value).replace("\"", "\\\"") + "\"";
+            return "\"" + ((String) value).replace("\"", "\"") + "\"";
         } else if (value instanceof Number || value instanceof Boolean) {
             return value.toString();
         } else if (value instanceof List) {
@@ -921,7 +929,7 @@ public class AgentMemory implements MemoryManager {
             json.append("}");
             return json.toString();
         } else {
-            return "\"" + value.toString().replace("\"", "\\\"") + "\"";
+            return "\"" + value.toString().replace("\"", "\"") + "\"";
         }
     }
 }

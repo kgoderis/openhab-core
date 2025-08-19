@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.response.Response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -15,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class ToolResponse {
+public class ToolResponse implements Response<Object> {
 
     @JsonProperty("jsonrpc")
     private final String jsonrpc = "2.0";
@@ -122,6 +123,22 @@ public class ToolResponse {
      */
     public boolean isError() {
         return error != null;
+    }
+
+    // Response interface implementation
+    @Override
+    public Object getData() {
+        return result;
+    }
+
+    @Override
+    public String getErrorMessage() {
+        return error != null ? error.getMessage() : null;
+    }
+
+    @Override
+    public long getTimestamp() {
+        return System.currentTimeMillis();
     }
 
     @Override

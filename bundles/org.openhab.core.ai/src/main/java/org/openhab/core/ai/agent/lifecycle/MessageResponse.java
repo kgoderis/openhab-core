@@ -1,6 +1,7 @@
 package org.openhab.core.ai.agent.lifecycle;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.response.Response;
 
 /**
  * Message response indicating processing status
@@ -9,7 +10,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class MessageResponse {
+public class MessageResponse implements Response<String> {
     private final boolean acknowledged;
     private final String response;
     private final long timestamp;
@@ -30,6 +31,27 @@ public class MessageResponse {
 
     public long getTimestamp() {
         return timestamp;
+    }
+
+    // Response interface implementation
+    @Override
+    public String getId() {
+        return String.valueOf(timestamp);
+    }
+
+    @Override
+    public boolean isSuccess() {
+        return acknowledged;
+    }
+
+    @Override
+    public String getData() {
+        return response;
+    }
+
+    @Override
+    public String getErrorMessage() {
+        return acknowledged ? null : response;
     }
 
     public static MessageResponse success(String response) {

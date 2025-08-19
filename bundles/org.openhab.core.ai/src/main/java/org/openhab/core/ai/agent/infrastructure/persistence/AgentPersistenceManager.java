@@ -3,6 +3,7 @@ package org.openhab.core.ai.agent.infrastructure.persistence;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -297,7 +298,7 @@ public class AgentPersistenceManager implements ReadyTracker {
         if (state != null) {
             // Maintain execution log entry if supported by TaskExecutionState implementation
             try {
-                java.lang.reflect.Method m = state.getClass().getMethod("addLogEntry", String.class);
+                Method m = state.getClass().getMethod("addLogEntry", String.class);
                 m.invoke(state, logEntry);
             } catch (Exception ignore) {
                 // no-op if method not present

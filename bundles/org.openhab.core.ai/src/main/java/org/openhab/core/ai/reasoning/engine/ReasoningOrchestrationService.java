@@ -24,10 +24,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.context.ReasoningContext;
+import org.openhab.core.ai.common.validation.ReasoningValidationResult;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.IntelligentToolClient;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
 import org.openhab.core.ai.reasoning.constraints.SafetyConstraintManager;
 import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningPlanStep;
@@ -39,7 +40,6 @@ import org.openhab.core.ai.reasoning.strategies.ParallelReasoningStrategy;
 import org.openhab.core.ai.reasoning.strategies.SequentialReasoningStrategy;
 import org.openhab.core.ai.reasoning.strategies.api.ReasoningStrategy;
 import org.openhab.core.ai.reasoning.strategies.execution.AdaptiveReasoningStrategy;
-import org.openhab.core.ai.reasoning.validation.ValidationResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -213,8 +213,8 @@ public class ReasoningOrchestrationService {
      * @param steps The reasoning steps to validate
      * @return Validation result with any issues found
      */
-    public ValidationResult validateSteps(List<ReasoningPlanStep> steps) {
-        ValidationResult result = new ValidationResult();
+    public ReasoningValidationResult validateSteps(List<ReasoningPlanStep> steps) {
+        ReasoningValidationResult result = ReasoningValidationResult.create();
         Map<String, ReasoningPlanStep> stepMap = new HashMap<>();
 
         // Build step map and check for duplicates

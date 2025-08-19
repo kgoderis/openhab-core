@@ -27,12 +27,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.core.ai.agent.api.AgentModelContext;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
+import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
-import org.openhab.core.ai.reasoning.SharedModelReasoningEngine;
+import org.openhab.core.ai.reasoning.engine.SharedModelReasoningEngine;
 
 /**
  * Integration tests for decision-making with various scenarios
@@ -59,7 +59,7 @@ class DecisionMakingIntegrationTest {
         // Configure mock model provider for decision-making responses
         when(mockModelProvider.reasonAsync(anyString(), anyMap(), any(ModelParameters.class)))
                 .thenReturn(CompletableFuture.completedFuture(
-                        ModelResponse.builder().content("Decision: Proceed with optimization").build()));
+                        ModelResponse.builder().withContent("Decision: Proceed with optimization").build()));
     }
 
     @Test
@@ -76,7 +76,7 @@ class DecisionMakingIntegrationTest {
         contextData.put("updateRisk", "low");
         contextData.put("userApproval", true);
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.3).maxTokens(200).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.3).withMaxTokens(200).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -105,7 +105,7 @@ class DecisionMakingIntegrationTest {
         contextData.put("userImpact", "minimal");
         contextData.put("timeline", "2_weeks");
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.4).maxTokens(500).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.4).withMaxTokens(500).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -133,7 +133,7 @@ class DecisionMakingIntegrationTest {
         contextData.put("businessCriticality", "high");
         contextData.put("downtimeTolerance", "low");
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.2).maxTokens(400).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.2).withMaxTokens(400).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -161,7 +161,7 @@ class DecisionMakingIntegrationTest {
         contextData.put("availableResources", 2);
         contextData.put("timeConstraint", "1_week");
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.3).maxTokens(600).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.3).withMaxTokens(600).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -191,7 +191,7 @@ class DecisionMakingIntegrationTest {
         contextData.put("project3",
                 Map.of("name", "Technical Debt", "budget", 25000, "developers", 1, "priority", "low"));
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.4).maxTokens(800).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.4).withMaxTokens(800).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -218,7 +218,7 @@ class DecisionMakingIntegrationTest {
         contextData.put("securityCompliance", "required");
         contextData.put("userAdoption", "critical");
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.5).maxTokens(700).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.5).withMaxTokens(700).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -248,7 +248,7 @@ class DecisionMakingIntegrationTest {
         contextData.put("teamExpertise", "mixed");
         contextData.put("businessGoals", "scale_10x");
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.6).maxTokens(1000).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.6).withMaxTokens(1000).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -274,7 +274,7 @@ class DecisionMakingIntegrationTest {
         contextData.put("confidenceLevel", 0.6);
         contextData.put("fallbackPlan", "available");
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.7).maxTokens(500).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.7).withMaxTokens(500).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -305,7 +305,7 @@ class DecisionMakingIntegrationTest {
                 Map.of("name", "MySQL", "cost", 5000, "performance", 75, "scalability", 70, "support", 90));
         contextData.put("weights", Map.of("cost", 0.3, "performance", 0.3, "scalability", 0.25, "support", 0.15));
 
-        ModelParameters parameters = ModelParameters.builder().temperature(0.3).maxTokens(600).build();
+        ModelParameters parameters = ModelParameters.builder().withTemperature(0.3).withMaxTokens(600).build();
 
         CompletableFuture<ModelResponse> result = reasoningEngine.reasonAsync(agentId, prompt, contextData, parameters);
 
@@ -335,7 +335,7 @@ class DecisionMakingIntegrationTest {
         preferences.put("temperature", 0.4);
         preferences.put("maxTokens", 800);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("decision-making")
+        return AgentModelContext.builder().withAgentId(agentId).specialization("decision-making")
                 .domain("business-strategy").capabilities(capabilities).constraints(constraints)
                 .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
                 .lastUpdated(Instant.now()).build();
@@ -359,7 +359,7 @@ class DecisionMakingIntegrationTest {
         preferences.put("temperature", 0.3);
         preferences.put("maxTokens", 600);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("risk-assessment")
+        return AgentModelContext.builder().withAgentId(agentId).specialization("risk-assessment")
                 .domain("safety-management").capabilities(capabilities).constraints(constraints)
                 .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
                 .lastUpdated(Instant.now()).build();
@@ -383,7 +383,7 @@ class DecisionMakingIntegrationTest {
         preferences.put("temperature", 0.3);
         preferences.put("maxTokens", 700);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("prioritization")
+        return AgentModelContext.builder().withAgentId(agentId).specialization("prioritization")
                 .domain("project-management").capabilities(capabilities).constraints(constraints)
                 .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
                 .lastUpdated(Instant.now()).build();
@@ -407,7 +407,7 @@ class DecisionMakingIntegrationTest {
         preferences.put("temperature", 0.4);
         preferences.put("maxTokens", 900);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("resource-allocation")
+        return AgentModelContext.builder().withAgentId(agentId).specialization("resource-allocation")
                 .domain("resource-management").capabilities(capabilities).constraints(constraints)
                 .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
                 .lastUpdated(Instant.now()).build();
@@ -431,9 +431,10 @@ class DecisionMakingIntegrationTest {
         preferences.put("temperature", 0.5);
         preferences.put("maxTokens", 800);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("conflict-resolution").domain("mediation")
-                .capabilities(capabilities).constraints(constraints).promptTemplates(promptTemplates)
-                .preferences(preferences).createdAt(Instant.now()).lastUpdated(Instant.now()).build();
+        return AgentModelContext.builder().withAgentId(agentId).specialization("conflict-resolution")
+                .domain("mediation").capabilities(capabilities).constraints(constraints)
+                .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
+                .lastUpdated(Instant.now()).build();
     }
 
     private AgentModelContext createStrategicAgentContext(String agentId) {
@@ -454,7 +455,7 @@ class DecisionMakingIntegrationTest {
         preferences.put("temperature", 0.6);
         preferences.put("maxTokens", 1200);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("strategic-planning")
+        return AgentModelContext.builder().withAgentId(agentId).specialization("strategic-planning")
                 .domain("business-strategy").capabilities(capabilities).constraints(constraints)
                 .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
                 .lastUpdated(Instant.now()).build();
@@ -478,7 +479,7 @@ class DecisionMakingIntegrationTest {
         preferences.put("temperature", 0.7);
         preferences.put("maxTokens", 600);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("uncertainty-handling")
+        return AgentModelContext.builder().withAgentId(agentId).specialization("uncertainty-handling")
                 .domain("risk-management").capabilities(capabilities).constraints(constraints)
                 .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
                 .lastUpdated(Instant.now()).build();
@@ -502,7 +503,7 @@ class DecisionMakingIntegrationTest {
         preferences.put("temperature", 0.3);
         preferences.put("maxTokens", 700);
 
-        return AgentModelContext.builder().agentId(agentId).specialization("multi-criteria-analysis")
+        return AgentModelContext.builder().withAgentId(agentId).specialization("multi-criteria-analysis")
                 .domain("decision-analysis").capabilities(capabilities).constraints(constraints)
                 .promptTemplates(promptTemplates).preferences(preferences).createdAt(Instant.now())
                 .lastUpdated(Instant.now()).build();

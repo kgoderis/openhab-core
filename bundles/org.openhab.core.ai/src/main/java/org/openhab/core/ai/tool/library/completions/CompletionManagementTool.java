@@ -6,12 +6,12 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,19 +79,19 @@ public class CompletionManagementTool implements Tool {
 
     @Override
     public ToolMetadata getMetadata() {
-        return ToolMetadata.builder().version("1.0.0").author("openHAB")
-                .description("Completion management tool for openHAB MCP").build();
+        return ToolMetadata.builder().withVersion("1.0.0").withAuthor("openHAB")
+                .withDescription("Completion management tool for openHAB MCP").build();
     }
 
     @Override
     public ToolValidationResult validateParameters(Map<String, Object> parameters) {
         if (parameters == null || parameters.isEmpty()) {
-            return ToolValidationResult.invalid("Parameters cannot be null or empty");
+            return ToolValidationResult.invalid(List.of("Parameters cannot be null or empty"));
         }
 
         String operation = (String) parameters.get("operation");
         if (operation == null || operation.trim().isEmpty()) {
-            return ToolValidationResult.invalid("Operation is required");
+            return ToolValidationResult.invalid(List.of("Operation is required"));
         }
 
         switch (operation) {
@@ -100,19 +100,20 @@ public class CompletionManagementTool implements Tool {
             case "delete":
             case "execute":
                 if (parameters.get("completionId") == null) {
-                    return ToolValidationResult.invalid("Completion ID is required for " + operation + " operation");
+                    return ToolValidationResult
+                            .invalid(List.of("Completion ID is required for " + operation + " operation"));
                 }
                 break;
             case "create":
                 if (parameters.get("completionData") == null) {
-                    return ToolValidationResult.invalid("Completion data is required for create operation");
+                    return ToolValidationResult.invalid(List.of("Completion data is required for create operation"));
                 }
                 break;
             case "list":
                 // No additional validation needed
                 break;
             default:
-                return ToolValidationResult.invalid("Invalid operation: " + operation);
+                return ToolValidationResult.invalid(List.of("Invalid operation: " + operation));
         }
 
         return ToolValidationResult.valid();

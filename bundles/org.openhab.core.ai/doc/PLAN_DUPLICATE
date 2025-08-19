@@ -1,0 +1,920 @@
+## 26. Code Consolidation and Duplicate Elimination
+
+### 26.1 Overview
+
+This section provides a comprehensive plan for consolidating duplicate classes and eliminating code redundancy across the openHAB AI bundle. The consolidation effort aims to improve code maintainability, reduce bundle size, and establish consistent patterns throughout the codebase.
+
+### 26.2 Consolidation Goals
+
+1. **Eliminate Code Duplication**: Remove ~30% of duplicate code
+2. **Improve Maintainability**: Single source of truth for common patterns
+3. **Enhance Type Safety**: Unified interfaces and hierarchies
+4. **Standardize APIs**: Consistent patterns across the codebase
+5. **Reduce Bundle Size**: Smaller, more focused bundles
+6. **Simplify Testing**: Consolidated test suites
+
+### 26.3 Duplicate Class Analysis
+
+#### 26.3.1 Response Classes - Critical Priority
+
+**Identified Duplicates:**
+- `ModelResponse` (model package)
+- `ToolResponse` (tool/server/api package) 
+- `AgentResponse` (agent/infrastructure/synchronization package)
+- `MessageResponse` (agent/lifecycle package)
+- `StubResponse` (stub package)
+
+**Consolidation Strategy:**
+Create unified response hierarchy in `org.openhab.core.ai.common.response`:
+
+```java
+// Base response interface
+public interface Response<T> {
+    String getId();
+    boolean isSuccess();
+    @Nullable T getData();
+    @Nullable String getErrorMessage();
+    long getTimestamp();
+}
+
+// Protocol-specific implementations
+public class ModelResponse implements Response<String> { /* LLM responses */ }
+public class ToolResponse implements Response<Object> { /* MCP tool responses */ }
+public class AgentResponse implements Response<Object> { /* Agent responses */ }
+public class MessageResponse implements Response<String> { /* Simple messages */ }
+```
+
+**Action Items:**
+- [x] Create `Response<T>` interface in `org.openhab.core.ai.common.response`
+- [x] Refactor existing response classes to implement the interface
+- [x] Update all imports across the codebase
+- [x] Create comprehensive unit tests for the new hierarchy
+- [x] Update documentation to reflect new response patterns
+
+#### 26.3.2 Context Classes - High Priority
+
+**Identified Duplicates:**
+- `ActionContext` (action/api package)
+- `ToolContext` (tool/api package)
+- `AgentContext` (agent/core package)
+- `PromptContext` (tool/prompts/api package)
+- `CompletionContext` (tool/completions/api package)
+- `ResourceContext` (tool/resources/api package)
+- `ReasoningContext` (reasoning/api package)
+- `DecisionContext` (reasoning/decision package)
+- `SessionContext` (reasoning/session package)
+- `ErrorContext` (reasoning/error/api package)
+- `AuthenticationContext` (auth package)
+
+**Consolidation Strategy:**
+Create unified context hierarchy in `org.openhab.core.ai.common.context`:
+
+```java
+// Base context interface
+public interface Context {
+    String getCorrelationId();
+    long getTimestamp();
+    Map<String, Object> getProperties();
+}
+
+// Domain-specific contexts
+public class ExecutionContext implements Context { /* Base for Action/Tool contexts */ }
+public class AgentExecutionContext extends ExecutionContext { /* Agent-specific */ }
+public class ToolExecutionContext extends ExecutionContext { /* Tool-specific */ }
+public class AuthenticationContext implements Context { /* Keep separate for security */ }
+```
+
+**Action Items:**
+- [x] Create `Context` interface in `org.openhab.core.ai.common.context`
+- [x] Create `ExecutionContext` base class
+- [x] Refactor domain-specific contexts to extend base classes
+- [x] Update all context references across the codebase
+- [x] Create comprehensive unit tests for context hierarchy
+- [x] Update documentation for context patterns
+
+#### 26.3.3 Manager Classes - Medium Priority
+
+**Identified Duplicates:**
+- `ToolErrorRecoveryManager` (tool/manager AND tool/error packages) - **EXACT DUPLICATE**
+- `ToolLoggingManager` (tool/manager AND tool/logging packages) - **EXACT DUPLICATE**
+- `ProgressTrackingManager` (tool/progress package)
+- `DefaultProgressTrackingService` (tool/progress package) - **Similar functionality**
+- `RootDiscoveryManager` (tool/roots package)
+- `DefaultRootDiscoveryService` (tool/roots/discovery package) - **Similar functionality**
+
+**Consolidation Strategy:**
+- Remove exact duplicates in `tool/manager` package
+- Consolidate similar managers into single implementations
+- Create base manager interfaces for common patterns
+
+**Action Items:**
+- [x] Remove duplicate `ToolErrorRecoveryManager` from `tool/manager` package
+- [x] Remove duplicate `ToolLoggingManager` from `tool/manager` package
+- [x] Consolidate `ProgressTrackingManager` and `DefaultProgressTrackingService`
+- [x] Consolidate `RootDiscoveryManager` and `DefaultRootDiscoveryService`
+- [x] Create base manager interfaces for common patterns
+- [x] Update all imports to use consolidated implementations
+
+#### 26.3.4 Service Classes - Medium Priority
+
+**Identified Duplicates:**
+- `DefaultProgressTrackingService` vs `ProgressTrackingManager` - **Same interface, different implementations**
+- `DefaultRootDiscoveryService` vs `RootDiscoveryManager` - **Same interface, different implementations**
+- `DefaultValidationService` vs `ValidationService` - **Interface/implementation pattern**
+- `DefaultNotificationService` vs `NotificationService` - **Interface/implementation pattern**
+
+**Consolidation Strategy:**
+- Keep one implementation per service interface
+- Remove redundant implementations
+- Standardize naming: `Default[ServiceName]` for implementations
+
+**Action Items:**
+- [x] Audit all service interface/implementation pairs
+- [x] Remove redundant service implementations
+- [x] Standardize service naming conventions
+- [x] Update OSGi service registrations
+- [x] Update all service references
+
+#### 26.3.5 SharedContext Classes - High Priority
+
+**Identified Duplicates:**
+- `SharedContext` (agent/collaboration/coordination package)
+- `SharedContext` (agent/collaboration/context package) - **Different implementations**
+- `SharedContextBuilder` (both packages) - **Different implementations**
+
+**Consolidation Strategy:**
+- Merge into single `SharedContext` class in `org.openhab.core.ai.agent.collaboration`
+- Combine functionality from both implementations
+- Create unified builder pattern
+
+**Action Items:**
+- [x] Analyze both `SharedContext` implementations
+- [x] Create unified `SharedContext` class combining both functionalities
+- [x] Create unified `SharedContextBuilder` class
+- [x] Update all references to use unified implementation
+- [x] Remove duplicate implementations
+- [x] Create comprehensive unit tests for unified implementation
+
+#### 26.3.6 Security Manager Classes - Medium Priority
+
+**Identified Duplicates:**
+- `ToolSecurityManager` (tool/manager package)
+- `SecurityManager` (tool/security package)
+- `AgentSecurityManager` (agent/lifecycle package)
+- `DefaultAgentSecurityManager` (agent/infrastructure/security package)
+- `AgentModelSecurityManager` (reasoning/security package)
+- `MessageSecurityManager` (agent/communication/messaging package)
+
+**Consolidation Strategy:**
+Create unified security hierarchy in `org.openhab.core.ai.common.security`:
+
+```java
+public interface SecurityManager {
+    boolean authenticate(String principal, String credentials);
+    boolean authorize(String principal, String resource, String action);
+    void audit(String principal, String action, String resource);
+}
+
+// Domain-specific implementations
+public class ToolSecurityManager implements SecurityManager { /* Tool-specific */ }
+public class AgentSecurityManager implements SecurityManager { /* Agent-specific */ }
+public class MessageSecurityManager implements SecurityManager { /* Message-specific */ }
+```
+
+**Action Items:**
+- [x] Create `SecurityManager` interface in `org.openhab.core.ai.common.security`
+- [x] Refactor existing security managers to implement the interface
+- [x] Consolidate common security functionality
+- [x] Update all security manager references
+- [x] Create comprehensive security tests
+- [x] Update security documentation
+
+
+#### 26.3.8 Configuration Classes - Low Priority
+
+**Identified Duplicates:**
+- `HttpServerConfiguration` (transport package)
+- `ServerConfiguration` (tool/server package)
+- `AgentServerConfiguration` (agent/lifecycle package)
+- Multiple configuration builders
+
+**Consolidation Strategy:**
+- Create base configuration interfaces
+- Keep domain-specific configurations but ensure consistent patterns
+- Standardize configuration builder patterns
+
+**Action Items:**
+- [x] Audit all configuration classes for common patterns
+- [x] Create base configuration interfaces
+- [x] Standardize configuration patterns
+- [x] Update configuration implementations
+- [x] Create configuration documentation
+
+### 26.4 Implementation Phases
+
+#### Phase 1: Critical Duplicates (Week 1-2)
+**Priority: Immediate**
+- [x] Remove exact duplicates: `ToolErrorRecoveryManager`, `ToolLoggingManager`
+- [x] Consolidate Response classes: Create unified response hierarchy
+- [x] Consolidate SharedContext classes: Merge into single implementation
+
+**Success Criteria:**
+- [x] All exact duplicates removed
+- [x] Response hierarchy implemented and tested
+- [x] SharedContext unified and tested
+- [x] No compilation errors
+- [x] All existing functionality preserved
+
+#### Phase 2: High Impact Consolidations (Week 3-4) ✅ COMPLETED
+**Priority: High**
+- [x] Consolidate Context classes: Create unified context hierarchy
+- [x] Consolidate Security Manager classes: Create unified security hierarchy
+- [x] Consolidate similar Service/Manager pairs: Remove redundant implementations
+
+**Success Criteria:**
+- [x] Context hierarchy implemented and tested
+- [x] Security hierarchy implemented and tested
+- [x] Service/Manager consolidation completed
+- [x] All imports updated
+- [x] Comprehensive tests passing
+
+#### Phase 3: Pattern Standardization (Week 5-6) ✅ COMPLETED
+**Priority: Medium**
+- [x] Standardize Builder patterns: Create base builder interfaces
+- [x] Standardize Configuration patterns: Create base configuration interfaces
+- [x] Review and standardize naming conventions: Ensure consistent patterns
+
+**Success Criteria:**
+- [x] Builder patterns standardized
+- [x] Configuration patterns standardized
+- [x] Naming conventions documented
+- [x] All patterns consistent across codebase
+
+#### Phase 4: Configuration Consolidation (Week 7-8) ✅ COMPLETED
+**Priority: Medium**
+- [x] Update configuration implementations: Migrate existing configuration classes to use unified interfaces
+- [x] Implement configuration validation and hot-reload: Add validation to configuration builders
+- [x] Maintain backward compatibility: Ensure existing code continues to work
+
+**Success Criteria:**
+- [x] ProtocolConfiguration updated to extend BaseConfiguration
+- [x] HttpServerConfiguration updated to extend BaseConfiguration
+- [x] AgentConfiguration updated to extend BaseConfiguration
+- [x] All configuration builders extend AbstractBuilder with validation
+- [x] Comprehensive unit tests created for updated configurations
+- [x] Backward compatibility maintained for all configuration classes
+
+### 26.5 Migration Guidelines
+
+#### 26.5.1 Code Migration Process
+
+1. **Create New Consolidated Classes**
+   - Create new classes in appropriate packages
+   - Implement comprehensive functionality
+   - Add comprehensive javadoc
+   - Follow openHAB coding standards
+
+2. **Update Imports Gradually**
+   - Update imports in one package at a time
+   - Ensure backward compatibility during transition
+   - Use deprecation annotations for old classes
+
+3. **Deprecate Old Classes**
+   - Add `@Deprecated` annotations to old classes
+   - Add migration guides in javadoc
+   - Provide clear migration instructions
+
+4. **Remove Deprecated Classes**
+   - Remove deprecated classes after migration period
+   - Update all remaining references
+   - Clean up unused imports
+
+5. **Update Documentation**
+   - Update technical documentation
+   - Update API documentation
+   - Update migration guides
+
+#### 26.5.2 Testing Requirements
+
+For each consolidation:
+
+1. **Unit Tests**
+   - Test all new consolidated classes
+   - Test all deprecated classes still work
+   - Test migration paths
+   - Test edge cases and error conditions
+
+2. **Integration Tests**
+   - Test integration with existing systems
+   - Test OSGi service registrations
+   - Test protocol compatibility
+   - Test performance impact
+
+3. **Migration Tests**
+   - Test migration from old to new classes
+   - Test backward compatibility
+   - Test deprecation warnings
+   - Test removal of deprecated classes
+
+#### 26.5.3 Documentation Requirements
+
+1. **Migration Guides**
+   - Step-by-step migration instructions
+   - Code examples for common migrations
+   - Troubleshooting guides
+   - Performance impact documentation
+
+2. **API Documentation**
+   - Updated javadoc for all new classes
+   - Deprecation notices in old classes
+   - Migration examples
+   - Best practices documentation
+
+3. **Architecture Documentation**
+   - Updated architecture diagrams
+   - Package structure documentation
+   - Dependency documentation
+   - Integration documentation
+
+### 26.6 Quality Assurance
+
+#### 26.6.1 Code Quality Checks
+
+- [x] All new classes follow openHAB coding standards
+- [x] All new classes have comprehensive javadoc
+- [x] All new classes have unit tests
+- [x] All new classes follow null safety patterns
+- [x] All new classes are immutable where appropriate
+- [x] All new classes have proper equals/hashCode/toString methods
+
+#### 26.6.2 Performance Validation
+
+- [x] No performance regression in consolidated classes
+- [x] Memory usage remains stable or improves
+- [x] Startup time remains stable or improves
+- [x] Bundle size reduction achieved
+- [x] No memory leaks introduced
+
+#### 26.6.3 Compatibility Validation
+
+- [x] All existing functionality preserved
+- [x] All existing APIs remain compatible
+- [x] All existing tests pass
+- [x] All existing integrations work
+- [x] No breaking changes introduced
+
+### 26.7 Additional Duplicate Class Consolidation
+
+#### 26.7.1 SecurityStatistics Classes - Critical Priority ✅ COMPLETED
+
+**Identified Duplicates:**
+- `src/main/java/org/openhab/core/ai/tool/security/api/SecurityStatistics.java` (102 lines)
+- `src/main/java/org/openhab/core/ai/tool/manager/SecurityStatistics.java` (41 lines)
+- `src/main/java/org/openhab/core/ai/agent/infrastructure/security/SecurityStatistics.java` (74 lines)
+- `src/main/java/org/openhab/core/ai/agent/lifecycle/SecurityStatistics.java` (60 lines)
+
+**Consolidation Approach:**
+Created unified security statistics hierarchy in `org.openhab.core.ai.common.security`:
+
+```java
+// Base security statistics interface
+public interface SecurityStatistics {
+    long getTotalOperations();
+    long getSuccessfulOperations();
+    long getFailedOperations();
+    long getSecurityViolations();
+    Instant getLastOperationTime();
+}
+
+// Domain-specific implementations
+public class ToolSecurityStatistics implements SecurityStatistics { /* Tool-specific metrics */ }
+public class AgentSecurityStatistics implements SecurityStatistics { /* Agent-specific metrics */ }
+public class MessageSecurityStatistics implements SecurityStatistics { /* Message-specific metrics */ }
+```
+
+**Action Items:**
+- [x] Create `SecurityStatistics` interface in `org.openhab.core.ai.common.security`
+- [x] Create `BaseSecurityStatistics` abstract class with common functionality
+- [x] Refactor `tool/security/api/SecurityStatistics` to extend base class
+- [x] Refactor `tool/manager/SecurityStatistics` to extend base class
+- [x] Refactor `agent/infrastructure/security/SecurityStatistics` to extend base class
+- [x] Refactor `agent/lifecycle/SecurityStatistics` to extend base class
+- [x] Update all imports across the codebase
+- [x] Create comprehensive unit tests for security statistics hierarchy
+- [x] Update security documentation to reflect new patterns
+
+#### 26.7.2 PerformanceMetrics Classes - Critical Priority ✅ COMPLETED
+
+**Identified Duplicates (15+ classes):**
+- `src/main/java/org/openhab/core/ai/model/PerformanceMetrics.java` (53 lines)
+- `src/main/java/org/openhab/core/ai/reasoning/metrics/PerformanceMetrics.java` (74 lines)
+- `src/main/java/org/openhab/core/ai/reasoning/engine/PerformanceMetrics.java` (48 lines)
+- `src/main/java/org/openhab/core/ai/tool/util/ToolPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/events/LogPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/events/CorrelationPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/reasoning/metrics/AutonomousPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/reasoning/metrics/LearningPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/reasoning/metrics/ConfigurationPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/reasoning/memory/MemoryPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/reasoning/constraints/SafetyPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/action/api/ActionPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/action/ActionExecutionPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/agent/delegation/DelegationPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/model/ClientPerformanceMetrics.java`
+- `src/main/java/org/openhab/core/ai/reasoning/input/InputPerformanceMetrics.java`
+
+**Consolidation Approach:**
+Created unified performance metrics hierarchy in `org.openhab.core.ai.common.metrics`:
+
+```java
+// Base performance metrics interface
+public interface PerformanceMetrics {
+    long getTotalOperations();
+    long getSuccessfulOperations();
+    long getFailedOperations();
+    long getTotalProcessingTime();
+    double getAverageResponseTime();
+    Instant getLastOperationTime();
+}
+
+// Domain-specific implementations
+public class ModelPerformanceMetrics implements PerformanceMetrics { /* Model-specific */ }
+public class ReasoningPerformanceMetrics implements PerformanceMetrics { /* Reasoning-specific */ }
+```
+
+**Action Items:**
+- [x] Create `PerformanceMetrics` interface in `org.openhab.core.ai.common.metrics`
+- [x] Create `BasePerformanceMetrics` abstract class with common functionality
+- [x] Analyze all 15+ PerformanceMetrics classes for common patterns
+- [x] Group similar metrics classes by domain (Model, Tool, Agent, Reasoning, Action)
+- [x] Create domain-specific implementations extending base class
+- [x] Refactor existing classes to extend appropriate domain implementations
+- [x] Update all imports across the codebase
+- [x] Create comprehensive unit tests for performance metrics hierarchy
+- [x] Update metrics documentation to reflect new patterns
+- [x] Ensure backward compatibility for existing metrics consumers
+
+#### 26.7.3 ValidationResult Classes - Critical Priority ✅ COMPLETED
+
+**Identified Duplicates (20+ classes):**
+- `src/main/java/org/openhab/core/ai/tool/validation/api/ValidationResult.java` (230 lines)
+- `src/main/java/org/openhab/core/ai/reasoning/validation/ValidationResult.java` (42 lines)
+- `src/main/java/org/openhab/core/ai/tool/validation/api/ToolValidationResult.java`
+- `src/main/java/org/openhab/core/ai/tool/resources/api/validation/ResourceValidationResult.java`
+- `src/main/java/org/openhab/core/ai/tool/util/helpers/ParameterValidationResult.java`
+- `src/main/java/org/openhab/core/ai/tool/util/EnhancedValidationResult.java`
+- `src/main/java/org/openhab/core/ai/tool/elicitation/input/InputValidationResult.java`
+- `src/main/java/org/openhab/core/ai/tool/filter/validators/FilterValidationResult.java`
+- `src/main/java/org/openhab/core/ai/reasoning/validation/ContextValidationResult.java`
+- `src/main/java/org/openhab/core/ai/reasoning/validation/InputValidationResult.java`
+- `src/main/java/org/openhab/core/ai/reasoning/policies/SafetyValidationResult.java`
+- `src/main/java/org/openhab/core/ai/reasoning/configuration/api/ConfigurationValidationResult.java`
+- `src/main/java/org/openhab/core/ai/reasoning/decision/DecisionValidationResult.java`
+- `src/main/java/org/openhab/core/ai/reasoning/security/api/SecurityValidationResult.java`
+- `src/main/java/org/openhab/core/ai/reasoning/prompts/PromptValidationResult.java`
+- `src/main/java/org/openhab/core/ai/agent/lifecycle/ConfigurationValidationResult.java`
+- `src/main/java/org/openhab/core/ai/agent/lifecycle/AgentValidationResult.java`
+- `src/main/java/org/openhab/core/ai/agent/execution/SchemaValidationResult.java`
+- `src/main/java/org/openhab/core/ai/action/api/ActionValidationResult.java`
+- `src/main/java/org/openhab/core/ai/action/DefaultContextValidationResult.java`
+
+**Consolidation Approach:**
+Created unified validation result hierarchy in `org.openhab.core.ai.common.validation`:
+
+```java
+// Base validation result interface
+public interface ValidationResult {
+    boolean isValid();
+    List<String> getErrors();
+    List<String> getWarnings();
+    Map<String, Object> getDetails();
+    Instant getValidationTime();
+}
+
+// Domain-specific implementations
+public class ToolValidationResult implements ValidationResult { /* Tool-specific */ }
+public class AgentValidationResult implements ValidationResult { /* Agent-specific */ }
+public class ReasoningValidationResult implements ValidationResult { /* Reasoning-specific */ }
+public class ActionValidationResult implements ValidationResult { /* Action-specific */ }
+public class ConfigurationValidationResult implements ValidationResult { /* Configuration-specific */ }
+```
+
+**Action Items:**
+- [x] Create `ValidationResult` interface in `org.openhab.core.ai.common.validation`
+- [x] Create `BaseValidationResult` abstract class with common functionality
+- [x] Analyze all 20+ ValidationResult classes for common patterns
+- [x] Group similar validation classes by domain (Tool, Agent, Reasoning, Action, Configuration)
+- [x] Create domain-specific implementations extending base class
+- [x] Refactor existing classes to extend appropriate domain implementations
+- [x] Update all imports across the codebase
+- [x] Create comprehensive unit tests for validation result hierarchy
+- [x] Update validation documentation to reflect new patterns
+- [x] Ensure backward compatibility for existing validation consumers
+
+#### 26.7.4 Context Classes - High Priority ✅ COMPLETED
+
+**Identified Duplicates (10+ classes):**
+- `src/main/java/org/openhab/core/ai/tool/api/ToolContext.java`
+- `src/main/java/org/openhab/core/ai/tool/resources/api/ResourceContext.java`
+- `src/main/java/org/openhab/core/ai/tool/completions/api/CompletionContext.java`
+- `src/main/java/org/openhab/core/ai/tool/prompts/api/PromptContext.java`
+- `src/main/java/org/openhab/core/ai/auth/AuthenticationContext.java`
+- `src/main/java/org/openhab/core/ai/reasoning/api/ReasoningContext.java`
+- `src/main/java/org/openhab/core/ai/reasoning/session/SessionContext.java`
+- `src/main/java/org/openhab/core/ai/reasoning/decision/DecisionContext.java`
+- `src/main/java/org/openhab/core/ai/reasoning/error/api/ErrorContext.java`
+- `src/main/java/org/openhab/core/ai/action/api/ActionContext.java`
+
+**Consolidation Approach:**
+Extended existing context hierarchy in `org.openhab.core.ai.common.context`:
+
+```java
+// Extend existing Context interface
+public interface Context {
+    String getCorrelationId();
+    long getTimestamp();
+    Map<String, Object> getProperties();
+    String getContextType(); // NEW: Identify context type
+}
+
+// Domain-specific context implementations
+public class ToolContext extends BaseContext { /* Tool-specific */ }
+public class AgentContext extends BaseContext { /* Agent-specific */ }
+public class ReasoningContext extends BaseContext { /* Reasoning-specific */ }
+public class ActionContext extends BaseContext { /* Action-specific */ }
+public class AuthenticationContext extends BaseContext { /* Authentication-specific */ }
+```
+
+**Action Items:**
+- [x] Extend existing `Context` interface with additional common methods
+- [x] Create domain-specific context implementations extending `BaseContext`
+- [x] Refactor existing context classes to extend appropriate domain implementations
+- [x] Update all context references across the codebase
+- [x] Create comprehensive unit tests for context hierarchy
+- [x] Update context documentation to reflect new patterns
+
+#### 26.7.5 Configuration Classes - High Priority
+
+**Identified Duplicates (8+ classes):**
+- `src/main/java/org/openhab/core/ai/tool/server/ServerConfiguration.java`
+- `src/main/java/org/openhab/core/ai/transport/HttpServerConfiguration.java`
+- `src/main/java/org/openhab/core/ai/config/ProtocolConfiguration.java`
+- `src/main/java/org/openhab/core/ai/reasoning/configuration/AgentConfiguration.java`
+- `src/main/java/org/openhab/core/ai/reasoning/engine/api/MultiStepReasoningConfiguration.java`
+- `src/main/java/org/openhab/core/ai/action/ActionExecutionConfiguration.java`
+- `src/main/java/org/openhab/core/ai/reasoning/actions/AutonomousBehaviorConfig.java`
+- `src/main/java/org/openhab/core/ai/stub/StubConfiguration.java`
+
+**Consolidation Approach:**
+Extend existing configuration hierarchy in `org.openhab.core.ai.common.configuration`:
+
+```java
+// Extend existing Configuration interface
+public interface Configuration {
+    String getId();
+    String getName();
+    String getVersion();
+    boolean isEnabled();
+    Map<String, Object> getProperties();
+    ConfigurationType getType(); // NEW: Identify configuration type
+}
+
+// Domain-specific configuration implementations
+public class ServerConfiguration extends BaseConfiguration { /* Server-specific */ }
+public class AgentConfiguration extends BaseConfiguration { /* Agent-specific */ }
+public class ToolConfiguration extends BaseConfiguration { /* Tool-specific */ }
+public class ActionConfiguration extends BaseConfiguration { /* Action-specific */ }
+```
+
+**Action Items:**
+- [x] Extend existing `Configuration` interface with additional common methods
+- [x] Create domain-specific configuration implementations extending `BaseConfiguration`
+- [x] Refactor existing configuration classes to extend appropriate domain implementations
+- [x] Update all configuration references across the codebase
+- [x] Create comprehensive unit tests for configuration hierarchy
+- [x] Update configuration documentation to reflect new patterns
+
+#### 26.7.6 Adapter Classes - Medium Priority
+
+**Identified Duplicates (15+ classes):**
+- `src/main/java/org/openhab/core/ai/tool/adapter/BaseAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/adapter/ToolAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/adapter/ResourceAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/resources/adapter/ItemResourceAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/resources/adapter/ConfigurationResourceAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/resources/adapter/RuleResourceAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/resources/adapter/ThingResourceAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/completions/adapter/ItemCompletionHandler.java`
+- `src/main/java/org/openhab/core/ai/tool/completions/adapter/RuleCompletionAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/completions/adapter/ConfigurationCompletionAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/completions/adapter/CommandCompletionAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/prompts/adapter/ConfigurationPromptAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/prompts/adapter/SystemPromptAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/prompts/adapter/ItemPromptAdapter.java`
+- `src/main/java/org/openhab/core/ai/tool/prompts/adapter/RulePromptAdapter.java`
+- `src/main/java/org/openhab/core/ai/agent/execution/AgentSkillAdapter.java`
+
+**Consolidation Approach:**
+Create unified adapter hierarchy in `org.openhab.core.ai.common.adapter`:
+
+```java
+// Base adapter interface
+public interface Adapter<T, C, R> {
+    R adapt(T source, C context);
+    boolean canAdapt(T source);
+    Class<T> getSourceType();
+    Class<R> getResultType();
+}
+
+// Domain-specific adapter implementations
+public class ResourceAdapter<T, C, R> extends BaseAdapter<T, C, R> { /* Resource-specific */ }
+public class CompletionAdapter<T, C, R> extends BaseAdapter<T, C, R> { /* Completion-specific */ }
+public class PromptAdapter<T, C, R> extends BaseAdapter<T, C, R> { /* Prompt-specific */ }
+public class ToolAdapter<T, C, R> extends BaseAdapter<T, C, R> { /* Tool-specific */ }
+```
+
+**Action Items:**
+- [x] Create `Adapter<T, C, R>` interface in `org.openhab.core.ai.common.adapter`
+- [x] Create `BaseAdapter<T, C, R>` abstract class with common functionality
+- [x] Analyze all 15+ adapter classes for common patterns
+- [x] Group similar adapter classes by domain (Resource, Completion, Prompt, Tool)
+- [x] Create domain-specific adapter implementations extending base class
+- [x] Refactor existing adapter classes to extend appropriate domain implementations
+- [x] Update all adapter references across the codebase
+- [x] Create comprehensive unit tests for adapter hierarchy
+- [x] Update adapter documentation to reflect new patterns
+
+#### 26.7.7 Builder Classes - Medium Priority
+
+**Identified Duplicates (40+ classes):**
+**Performance Metrics Builders (10 duplicates):** ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/model/PerformanceMetricsBuilder.java` ✅ (extends MetricsBuilder)
+- `src/main/java/org/openhab/core/ai/reasoning/metrics/PerformanceMetricsBuilder.java` ✅ (deprecated, extends ReasoningPerformanceMetrics)
+- `src/main/java/org/openhab/core/ai/reasoning/engine/PerformanceMetricsBuilder.java` ✅ (deprecated, extends ReasoningPerformanceMetrics)
+- `src/main/java/org/openhab/core/ai/reasoning/metrics/AutonomousPerformanceMetricsBuilder.java` ✅ (deprecated, extends ReasoningPerformanceMetrics)
+- `src/main/java/org/openhab/core/ai/reasoning/metrics/LearningPerformanceMetricsBuilder.java` ✅ (deprecated, extends ReasoningPerformanceMetrics)
+- `src/main/java/org/openhab/core/ai/reasoning/metrics/ConfigurationPerformanceMetricsBuilder.java` ✅ (deprecated, extends ReasoningPerformanceMetrics)
+- `src/main/java/org/openhab/core/ai/reasoning/metrics/SafetyPerformanceMetricsBuilder.java` ✅ (deprecated, extends ReasoningPerformanceMetrics)
+- `src/main/java/org/openhab/core/ai/reasoning/memory/MemoryPerformanceMetricsBuilder.java` ✅ (deprecated, uses unified MemoryPerformanceMetrics)
+- `src/main/java/org/openhab/core/ai/agent/delegation/DelegationPerformanceMetricsBuilder.java` ✅ (deprecated, uses unified DelegationPerformanceMetrics)
+- `src/main/java/org/openhab/core/ai/action/api/ActionPerformanceMetricsBuilder.java` ✅ (deprecated, uses unified ActionPerformanceMetrics)
+
+**Configuration Builders (8 duplicates):** ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/agent/api/AgentModelConfigurationBuilder.java` ✅ COMPLETED (consolidated with unified AgentModelConfiguration)
+- `src/main/java/org/openhab/core/ai/agent/lifecycle/AgentServerConfigurationBuilder.java` ✅ (already follows unified pattern)
+- `src/main/java/org/openhab/core/ai/reasoning/engine/api/MultiStepReasoningConfigurationBuilder.java` ✅ COMPLETED (consolidated with unified MultiStepReasoningConfiguration)
+- `src/main/java/org/openhab/core/ai/config/ProtocolConfigurationBuilder.java` ✅ (extends AbstractBuilder)
+- `src/main/java/org/openhab/core/ai/transport/HttpServerConfigurationBuilder.java` ✅ (extends AbstractBuilder)
+- `src/main/java/org/openhab/core/ai/reasoning/configuration/AgentConfigurationBuilder.java` ✅ (extends AbstractBuilder)
+- `src/main/java/org/openhab/core/ai/common/configuration/ServerConfigurationBuilder.java` ✅ (extends AbstractBuilder)
+- `src/main/java/org/openhab/core/ai/common/configuration/ActionExecutionConfigurationBuilder.java` ✅ (extends AbstractBuilder)
+- `src/main/java/org/openhab/core/ai/common/configuration/SecurityConfigurationBuilder.java` ✅ (extends AbstractBuilder)
+
+**Context Builders (6 duplicates):** ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/action/api/ActionContextBuilder.java` ✅ (deprecated, uses unified ExecutionContext)
+- `src/main/java/org/openhab/core/ai/agent/api/AgentModelContextBuilder.java` ✅ COMPLETED (consolidated with unified AgentModelContext)
+- `src/main/java/org/openhab/core/ai/reasoning/api/ReasoningContextBuilder.java` ✅ (deprecated, uses unified ReasoningContext)
+- `src/main/java/org/openhab/core/ai/agent/collaboration/SharedContextBuilder.java` ✅ (already consolidated in Phase 1)
+- `src/main/java/org/openhab/core/ai/agent/collaboration/ContextOptionsBuilder.java` ✅ (already consolidated in Phase 1)
+- `src/main/java/org/openhab/core/ai/agent/collaboration/ContextVersionBuilder.java` ✅ (already consolidated in Phase 1)
+- `src/main/java/org/openhab/core/ai/common/context/ExecutionContextBuilder.java` ✅ (extends AbstractBuilder)
+
+**Statistics Builders (3 duplicates):** ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/agent/api/AgentModelStatisticsBuilder.java` ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/agent/api/ModelIntegrationStatisticsBuilder.java` ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/agent/api/ModelHealthStatusBuilder.java` ✅ COMPLETED
+
+**Response Builders (4 duplicates):** ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/model/ModelResponseBuilder.java` → unified builder added under `org.openhab.core.ai.common.response.ModelResponseBuilder`
+- `src/main/java/org/openhab/core/ai/stub/StubResponseBuilder.java` → unified builder added under `org.openhab.core.ai.common.response.MessageResponseBuilder`
+
+**Action Builders (4 duplicates):** ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/action/ActionAnalyticsBuilder.java` ✅ (deprecated, uses unified ActionBuilder)
+- `src/main/java/org/openhab/core/ai/action/api/ActionMetadataBuilder.java` ✅ COMPLETED (consolidated with unified ActionMetadataBuilder)
+- `src/main/java/org/openhab/core/ai/action/ActionVersionInfoBuilder.java` ✅ (deprecated, uses unified ActionBuilder)
+- `src/main/java/org/openhab/core/ai/action/ActionSecurityPolicyBuilder.java` ✅ (deprecated, uses unified ActionBuilder)
+- `src/main/java/org/openhab/core/ai/action/ActionExecutionEventBuilder.java` ✅ (deprecated, uses unified ActionBuilder)
+
+**Communication Builders (6 duplicates):** ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/agent/communication/conversation/ConversationBuilder.java` ✅ (deprecated, uses unified CommunicationBuilder)
+- `src/main/java/org/openhab/core/ai/agent/communication/conversation/ConversationMessageBuilder.java` ✅ COMPLETED (consolidated with unified ConversationMessageBuilder)
+- `src/main/java/org/openhab/core/ai/agent/communication/conversation/ConversationExportBuilder.java` ✅ (deprecated, uses unified CommunicationBuilder)
+- `src/main/java/org/openhab/core/ai/agent/communication/messaging/MessageOptionsBuilder.java` ✅ COMPLETED (consolidated with unified MessageOptionsBuilder)
+- `src/main/java/org/openhab/core/ai/agent/communication/messaging/MessageAcknowledgmentBuilder.java` ✅ (deprecated, uses unified CommunicationBuilder)
+- `src/main/java/org/openhab/core/ai/agent/communication/events/AgentEventBuilder.java` ✅ (deprecated, uses unified CommunicationBuilder)
+- `src/main/java/org/openhab/core/ai/agent/communication/events/api/EventSubscriptionBuilder.java` ✅ COMPLETED (consolidated with unified EventSubscriptionBuilder)
+- `src/main/java/org/openhab/core/ai/agent/communication/events/api/EventOptionsBuilder.java` ✅ (deprecated, uses unified CommunicationBuilder)
+
+**Other Builders (8 duplicates):** ✅ COMPLETED
+- `src/main/java/org/openhab/core/ai/model/ModelParametersBuilder.java` ✅ COMPLETED (consolidated with unified ModelParametersBuilder)
+- `src/main/java/org/openhab/core/ai/tool/api/ToolMetadataBuilder.java` ✅ COMPLETED (consolidated with unified ToolMetadataBuilder)
+- `src/main/java/org/openhab/core/ai/agent/collaboration/negotiation/NegotiationSessionBuilder.java` ✅ COMPLETED (consolidated with unified NegotiationSessionBuilder)
+- `src/main/java/org/openhab/core/ai/agent/core/ExecutionRequestBuilder.java` ✅ COMPLETED (consolidated with unified ExecutionRequestBuilder)
+- `src/main/java/org/openhab/core/ai/agent/delegation/AgentCardBuilder.java` ✅ (deprecated, service component not builder pattern)
+- `src/main/java/org/openhab/core/ai/reasoning/engine/api/ReasoningStepBuilder.java` ✅ COMPLETED (consolidated with unified ReasoningStepBuilder)
+- `src/main/java/org/openhab/core/ai/reasoning/engine/api/MultiStepReasoningResultBuilder.java` ✅ (deprecated, uses unified ReasoningBuilder)
+- `src/main/java/org/openhab/core/ai/reasoning/prompts/AgentModelPromptBuilder.java` ✅ (deprecated, uses unified ReasoningBuilder)
+
+**Consolidation Approach:**
+Extend existing builder hierarchy in `org.openhab.core.ai.common.builder`:
+
+```java
+// Extend existing Builder interface
+public interface Builder<T> {
+    T build();
+    Builder<T> reset();
+    Builder<T> validate();
+    BuilderType getType(); // NEW: Identify builder type
+}
+
+// Domain-specific builder implementations
+public class MetricsBuilder<T> extends AbstractBuilder<T> { /* Metrics-specific */ }
+public class StatisticsBuilder<T> extends AbstractBuilder<T> { /* Statistics-specific */ }
+public class ConfigurationBuilder<T> extends AbstractBuilder<T> { /* Configuration-specific */ }
+public class ContextBuilder<T> extends AbstractBuilder<T> { /* Context-specific */ }
+public class ResponseBuilder<T> extends AbstractBuilder<T> { /* Response-specific */ }
+public class ActionBuilder<T> extends AbstractBuilder<T> { /* Action-specific */ }
+public class CommunicationBuilder<T> extends AbstractBuilder<T> { /* Communication-specific */ }
+```
+
+**Action Items:**
+- [x] Analyze builder patterns and identify common functionality ✅ COMPLETED
+- [x] Create domain-specific builder base classes (MetricsBuilder, ConfigurationBuilder, etc.) ✅ COMPLETED
+- [x] Consolidate PerformanceMetricsBuilder duplicates into unified hierarchy ✅ COMPLETED
+- [x] Consolidate ConfigurationBuilder duplicates into unified hierarchy ✅ COMPLETED
+- [x] Consolidate ContextBuilder duplicates into unified hierarchy ✅ COMPLETED
+- [x] Consolidate StatisticsBuilder duplicates into unified hierarchy ✅ COMPLETED
+- [x] Consolidate ResponseBuilder duplicates into unified hierarchy ✅ COMPLETED
+- [x] Consolidate ActionBuilder duplicates into unified hierarchy ✅ COMPLETED
+- [x] Consolidate CommunicationBuilder duplicates into unified hierarchy ✅ COMPLETED
+- [x] Consolidate Other Builders (Model, Tool, Session, Execution, Reasoning) ✅ COMPLETED
+- [x] Update all imports to use consolidated implementations ✅ COMPLETED
+- [x] Create unit tests for consolidated builder hierarchy ✅ COMPLETED
+- [x] Maintain backward compatibility with deprecated wrappers ✅ COMPLETED
+
+#### 26.7.8 Statistics/Info Classes - Medium Priority ✅ COMPLETED
+
+**Identified Duplicates (12+ classes):**
+- `src/main/java/org/openhab/core/ai/tool/services/api/ToolMetrics.java` → unified under `org.openhab.core.ai.common.statistics.ToolStatistics`
+- `src/main/java/org/openhab/core/ai/tool/services/ToolMetrics.java` → unified under `org.openhab.core.ai.common.statistics.ToolStatistics`
+- `src/main/java/org/openhab/core/ai/tool/services/api/ProviderMetrics.java` → unified under `org.openhab.core.ai.common.statistics.ProviderStatistics`
+- `src/main/java/org/openhab/core/ai/tool/services/ProviderMetrics.java` → unified under `org.openhab.core.ai.common.statistics.ProviderStatistics`
+- `src/main/java/org/openhab/core/ai/tool/services/api/HybridServiceMetrics.java` → unified under `org.openhab.core.ai.common.statistics.ServiceStatistics`
+- `src/main/java/org/openhab/core/ai/tool/services/HybridServiceMetrics.java` → unified under `org.openhab.core.ai.common.statistics.ServiceStatistics`
+- `src/main/java/org/openhab/core/ai/model/ClientUsageInfo.java` → unified under `org.openhab.core.ai.common.statistics.ClientStatistics`
+- `src/main/java/org/openhab/core/ai/model/ModelClientInfo.java` → unified under `org.openhab.core.ai.common.statistics.ClientStatistics`
+- `src/main/java/org/openhab/core/ai/model/clients/ModelProviderInfo.java` → unified under `org.openhab.core.ai.common.statistics.ProviderStatistics`
+- `src/main/java/org/openhab/core/ai/transport/ServletInfo.java` → unified under `org.openhab.core.ai.common.statistics.ServiceStatistics`
+- `src/main/java/org/openhab/core/ai/agent/transport/StatusInfo.java` → unified under `org.openhab.core.ai.common.statistics.InfoStatistics`
+- `src/main/java/org/openhab/core/ai/rest/SessionInfo.java` → unified under `org.openhab.core.ai.common.statistics.InfoStatistics`
+
+**Consolidation Approach:**
+Created unified statistics/info hierarchy in `org.openhab.core.ai.common.statistics`:
+
+```java
+// Base statistics/info interface
+public interface Statistics {
+    String getId();
+    Instant getTimestamp();
+    Map<String, Object> getMetrics();
+    StatisticsType getType();
+}
+
+// Domain-specific implementations
+public class ToolStatistics extends BaseStatistics { /* Tool-specific */ }
+public class ProviderStatistics extends BaseStatistics { /* Provider-specific */ }
+public class ServiceStatistics extends BaseStatistics { /* Service-specific */ }
+public class ClientStatistics extends BaseStatistics { /* Client-specific */ }
+public class InfoStatistics extends BaseStatistics { /* Info-specific */ }
+```
+
+**Action Items:**
+- [x] Create `Statistics` interface in `org.openhab.core.ai.common.statistics` ✅ COMPLETED
+- [x] Create `BaseStatistics` abstract class with common functionality ✅ COMPLETED
+- [x] Analyze all 12+ statistics/info classes for common patterns ✅ COMPLETED
+- [x] Group similar statistics classes by domain (Tool, Provider, Service, Client) ✅ COMPLETED
+- [x] Create domain-specific implementations extending base class ✅ COMPLETED
+- [x] Refactor existing classes to extend appropriate domain implementations ✅ COMPLETED
+- [x] Update all statistics references across the codebase ✅ COMPLETED
+- [x] Create comprehensive unit tests for statistics hierarchy ✅ COMPLETED
+- [x] Update statistics documentation to reflect new patterns ✅ COMPLETED
+
+### 26.8 Implementation Phases for Additional Duplicates
+
+#### Phase 5: Critical Duplicate Consolidation (Week 9-10) ✅ COMPLETED
+**Priority: Critical**
+- [x] Consolidate SecurityStatistics classes: Create unified security statistics hierarchy
+- [x] Consolidate PerformanceMetrics classes: Create unified performance metrics hierarchy
+- [x] Consolidate ValidationResult classes: Create unified validation result hierarchy
+
+**Success Criteria:**
+- [x] SecurityStatistics hierarchy implemented and tested
+- [x] PerformanceMetrics hierarchy implemented and tested
+- [x] ValidationResult hierarchy implemented and tested
+- [x] All imports updated
+- [x] Comprehensive tests passing
+- [x] No compilation errors
+
+#### Phase 6: High Priority Duplicate Consolidation (Week 11-12)
+**Priority: High**
+- [x] Consolidate Context classes: Extend existing context hierarchy
+- [x] Consolidate Configuration classes: Extend existing configuration hierarchy
+- [x] Consolidate Adapter classes: Create unified adapter hierarchy
+
+**Success Criteria:**
+- [x] Context hierarchy extended and tested
+- [x] Configuration hierarchy extended and tested
+- [x] Adapter hierarchy implemented and tested
+- [x] All imports updated
+- [x] Comprehensive tests passing
+- [x] No compilation errors
+
+#### Phase 7: Medium Priority Duplicate Consolidation (Week 13-14) ✅ COMPLETED
+**Priority: Medium**
+- [x] Consolidate Builder classes: Extend existing builder hierarchy
+- [x] Consolidate Statistics/Info classes: Create unified statistics hierarchy
+- [x] Final cleanup and optimization
+
+**Success Criteria:**
+- [x] Builder hierarchy extended and tested
+- [x] Statistics hierarchy implemented and tested
+- [x] All duplicate patterns eliminated
+- [x] All imports updated
+- [x] Comprehensive tests passing
+- [x] No compilation errors
+- [x] Performance validation completed
+
+### 26.7 Success Metrics
+
+#### 26.7.1 Quantitative Metrics
+
+- [ ] 30% reduction in duplicate code
+- [ ] 20% reduction in bundle size
+- [ ] 50% reduction in similar class patterns
+- [ ] 100% test coverage for new consolidated classes
+- [ ] 0 compilation errors after consolidation
+
+#### 26.7.2 Qualitative Metrics
+
+- [ ] Improved code maintainability
+- [ ] Consistent API patterns across codebase
+- [ ] Better type safety through unified interfaces
+- [ ] Simplified testing through consolidated test suites
+- [ ] Clearer architecture through unified hierarchies
+
+### 26.8 Risk Mitigation
+
+#### 26.8.1 Technical Risks
+
+1. **Breaking Changes**
+   - **Risk**: Introduction of breaking changes during consolidation
+   - **Mitigation**: Comprehensive testing, gradual migration, backward compatibility
+
+2. **Performance Regression**
+   - **Risk**: Performance degradation from consolidation
+   - **Mitigation**: Performance testing, profiling, optimization
+
+3. **Integration Issues**
+   - **Risk**: Issues with existing integrations
+   - **Mitigation**: Integration testing, gradual rollout, rollback plan
+
+#### 26.8.2 Process Risks
+
+1. **Scope Creep**
+   - **Risk**: Consolidation effort expanding beyond planned scope
+   - **Mitigation**: Clear scope definition, phase-based approach, regular reviews
+
+2. **Resource Constraints**
+   - **Risk**: Insufficient resources for consolidation effort
+   - **Mitigation**: Prioritized approach, incremental delivery, resource planning
+
+3. **Timeline Delays**
+   - **Risk**: Consolidation taking longer than planned
+   - **Mitigation**: Realistic timelines, buffer time, regular progress tracking
+
+### 26.9 Maintenance and Evolution
+
+#### 26.9.1 Ongoing Maintenance
+
+- [ ] Regular audits for new duplicate patterns
+- [ ] Continuous improvement of consolidated patterns
+- [ ] Documentation updates as patterns evolve
+- [ ] Performance monitoring of consolidated classes
+- [ ] User feedback collection and incorporation
+
+#### 26.9.2 Future Evolution
+
+- [ ] Plan for future consolidation opportunities
+- [ ] Establish patterns for preventing future duplication
+- [ ] Create guidelines for new class creation
+- [ ] Establish review process for new patterns
+- [ ] Plan for architectural evolution
+
+### 26.10 Conclusion
+
+This consolidation effort will significantly improve the openHAB AI bundle codebase by eliminating duplicate code, establishing consistent patterns, and improving maintainability. The phased approach ensures minimal disruption while achieving maximum benefit. Success will be measured through both quantitative metrics (code reduction, performance improvement) and qualitative improvements (maintainability, consistency, type safety).
+
+The consolidation effort aligns with the overall BRAIN plan by creating a cleaner, more maintainable foundation for the intelligent openHAB system. This foundation will support the development of advanced AI capabilities, autonomous reasoning, and learning systems outlined in the broader BRAIN architecture.
+
+---
+

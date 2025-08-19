@@ -5502,7 +5502,7 @@ public class OllamaWithMCPService {
         return tools.stream()
             .map(tool -> Function.builder()
                 .name(tool.getName())
-                .description(tool.getDescription())
+                .withDescription(tool.getDescription())
                 .parameters(tool.getInputSchema())
                 .build())
             .collect(Collectors.toList());
@@ -6445,7 +6445,7 @@ public class SecureWebhookGateway {
             .timestamp(System.currentTimeMillis())
             .requestId(generateRequestId())
             .clientId(context.getClientId())
-            .version("1.0")
+            .withVersion("1.0")
             .build();
         
         return SecurePayload.builder()

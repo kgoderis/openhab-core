@@ -8,11 +8,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.Thing;
@@ -186,7 +186,7 @@ public class ListThingsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -222,7 +222,7 @@ public class ListThingsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -234,12 +234,12 @@ public class ListThingsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("List openHAB things with comprehensive filtering and metadata options")
-                .tags(List.of("things", "list", "filter", "metadata", "sorting"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("List openHAB things with comprehensive filtering and metadata options")
+                .withTags(List.of("things", "list", "filter", "metadata", "sorting"))
+                .withDocumentation(
                         "Lists openHAB Things with comprehensive filtering, sorting, and metadata options including status, configuration, and channel information")
-                .examples(List.of("List all things: {}", "List only online things: {\"status\": \"ONLINE\"}",
+                .withExamples(List.of("List all things: {}", "List only online things: {\"status\": \"ONLINE\"}",
                         "List things by binding: {\"binding\": \"zwave\"}",
                         "List things with channels: {\"includeChannels\": true}",
                         "List things with configuration: {\"includeConfiguration\": true}",
@@ -255,7 +255,7 @@ public class ListThingsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ListThingsAction initialized for protocol: {}", context.getProtocol());
     }
 

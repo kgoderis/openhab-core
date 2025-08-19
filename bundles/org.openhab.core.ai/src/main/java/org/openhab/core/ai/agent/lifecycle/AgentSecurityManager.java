@@ -13,6 +13,8 @@ import org.openhab.core.ai.auth.AuditLogger;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.openhab.core.ai.auth.RoleBasedAccessControl;
+import org.openhab.core.ai.common.security.BaseSecurityStatistics;
+import org.openhab.core.ai.common.security.SecurityStatistics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -224,9 +226,13 @@ public class AgentSecurityManager {
      * @return Security statistics
      */
     public SecurityStatistics getSecurityStatistics() {
-        return new SecurityStatistics(requestCounters.size(), failedAttempts.size(), blockedUntil.size(),
-                config.isEnableAuthentication(), config.isEnableRequestValidation(), config.getMaxConnections(),
-                config.getRateLimitPerMinute(), authManager == null ? 0 : authManager.getActiveSessions().size());
+        long totalOps = requestCounters.size() + failedAttempts.size() + blockedUntil.size();
+        long successfulOps = requestCounters.size();
+        long failedOps = failedAttempts.size();
+        long violations = blockedUntil.size();
+        return new BaseSecurityStatistics(totalOps, successfulOps, failedOps, violations, Instant.now()) {
+            // Anonymous implementation using unified BaseSecurityStatistics
+        };
     }
 
     /**

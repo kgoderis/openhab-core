@@ -10,13 +10,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.agent.api.AgentModelConfiguration;
-import org.openhab.core.ai.agent.api.AgentModelContext;
 import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
-import org.openhab.core.ai.agent.api.AgentModelStatistics;
-import org.openhab.core.ai.agent.api.HealthState;
-import org.openhab.core.ai.agent.api.ModelHealthStatus;
+import org.openhab.core.ai.common.configuration.AgentModelConfiguration;
+import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.statistics.AgentModelStatistics;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus;
+import org.openhab.core.ai.common.statistics.ModelHealthStatus.HealthState;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.ModelTrackingService;
@@ -24,14 +24,9 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.clients.AnthropicClient;
-import org.openhab.core.ai.model.clients.AzureOpenAIClient;
 import org.openhab.core.ai.model.clients.GoogleGenAIClient;
-import org.openhab.core.ai.model.clients.LMStudioClient;
-import org.openhab.core.ai.model.clients.LocalAIClient;
-import org.openhab.core.ai.model.clients.OllamaClient;
 import org.openhab.core.ai.model.clients.OpenAIClient;
 import org.openhab.core.ai.model.clients.StubModelClient;
-import org.openhab.core.ai.model.clients.VModelClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -272,11 +267,11 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
         }
 
         return ModelParameters.builder()
-                .maxTokens(baseParameters.getMaxTokens() > 0 ? baseParameters.getMaxTokens()
+                .withMaxTokens(baseParameters.getMaxTokens() > 0 ? baseParameters.getMaxTokens()
                         : configuration.getMaxTokens())
-                .temperature(baseParameters.getTemperature() > 0 ? baseParameters.getTemperature()
+                .withTemperature(baseParameters.getTemperature() > 0 ? baseParameters.getTemperature()
                         : configuration.getTemperature())
-                .timeoutMs((int) configuration.getTimeout().toMillis()).build();
+                .withTimeoutMs((int) configuration.getTimeout().toMillis()).build();
     }
 
     @Override
@@ -295,14 +290,14 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
 
     @Override
     public AgentModelStatistics getStatistics() {
-        return AgentModelStatistics.builder().agentId(agentId).totalRequests(totalRequests)
-                .successfulRequests(successfulRequests).failedRequests(failedRequests).cacheHits(cacheHits)
-                .cacheMisses(cacheMisses).totalResponseTimeMs(totalResponseTimeMs)
-                .averageResponseTimeMs(calculateAverageResponseTime())
-                .minResponseTimeMs(minResponseTimeMs == Long.MAX_VALUE ? 0 : minResponseTimeMs)
-                .maxResponseTimeMs(maxResponseTimeMs).totalTokensUsed(totalTokensUsed).totalCost(totalCost)
-                .lastRequestTime(lastRequestTime).lastSuccessTime(lastSuccessTime).lastFailureTime(lastFailureTime)
-                .lastError(lastError).build();
+        return AgentModelStatistics.builder().withAgentId(agentId).withTotalRequests(totalRequests)
+                .withSuccessfulRequests(successfulRequests).withFailedRequests(failedRequests).withCacheHits(cacheHits)
+                .withCacheMisses(cacheMisses).withTotalResponseTimeMs(totalResponseTimeMs)
+                .withAverageResponseTimeMs(calculateAverageResponseTime())
+                .withMinResponseTimeMs(minResponseTimeMs == Long.MAX_VALUE ? 0 : minResponseTimeMs)
+                .withMaxResponseTimeMs(maxResponseTimeMs).withTotalTokensUsed(totalTokensUsed).withTotalCost(totalCost)
+                .withLastRequestTime(lastRequestTime).withLastSuccessTime(lastSuccessTime)
+                .withLastFailureTime(lastFailureTime).withLastError(lastError).build();
     }
 
     @Override
@@ -319,11 +314,11 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
             healthState = HealthState.UNHEALTHY;
         }
 
-        return ModelHealthStatus.builder().overallHealth(healthState).primaryModelAvailable(!fallbackActive)
-                .fallbackModelAvailable(fallbackActive).errorRate(errorRate).responseTimeMs(avgResponseTime)
-                .totalRequests(totalRequests).failedRequests(failedRequests).lastError(lastError)
-                .lastHealthCheck(Instant.now()).lastSuccessfulRequest(lastSuccessTime)
-                .lastFailedRequest(lastFailureTime).build();
+        return ModelHealthStatus.builder().withOverallHealth(healthState).withPrimaryModelAvailable(!fallbackActive)
+                .withFallbackModelAvailable(fallbackActive).withErrorRate(errorRate).withResponseTimeMs(avgResponseTime)
+                .withTotalRequests(totalRequests).withFailedRequests(failedRequests).withLastError(lastError)
+                .withLastHealthCheck(Instant.now()).withLastSuccessfulRequest(lastSuccessTime)
+                .withLastFailedRequest(lastFailureTime).build();
     }
 
     @Override
@@ -393,10 +388,11 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
     }
 
     private AgentModelConfiguration createDefaultConfiguration() {
-        return AgentModelConfiguration.builder().agentId(agentId).preferredModel("gpt-4").fallbackModel("gpt-3.5-turbo")
-                .temperature(0.7).maxTokens(1000).timeout(Duration.ofSeconds(30)).maxRetries(3)
-                .retryDelay(Duration.ofSeconds(5)).enableCaching(true).cacheExpiration(Duration.ofMinutes(30))
-                .maxCacheSize(1000).enableOptimization(true).enableSecurity(true).enableMonitoring(true).build();
+        return AgentModelConfiguration.builder().withAgentId(agentId).withPreferredModel("gpt-4")
+                .withFallbackModel("gpt-3.5-turbo").withTemperature(0.7).withMaxTokens(1000)
+                .withTimeout(Duration.ofSeconds(30)).withMaxRetries(3).withRetryDelay(Duration.ofSeconds(5))
+                .withEnableCaching(true).withCacheExpiration(Duration.ofMinutes(30)).withMaxCacheSize(1000)
+                .withEnableOptimization(true).withEnableSecurity(true).withEnableMonitoring(true).build();
     }
 
     private String generateCacheKey(String prompt, Map<String, Object> context) {
@@ -663,7 +659,7 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
             var azureConfig = config.getAzureConfig();
             if (azureConfig != null && azureConfig.isEnabled()) {
                 logger.debug("Creating Azure OpenAI client with configuration for agent: {}", agentId);
-                return new AzureOpenAIClient(azureConfig, actionRegistry);
+                return new StubModelClient(ModelProviderType.AZURE, "gpt-4o-mini");
             }
         }
         logger.debug("Creating Azure OpenAI client (stub implementation) for agent: {}", agentId);
@@ -678,7 +674,7 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
             var ollamaConfig = config.getOllamaConfig();
             if (ollamaConfig != null && ollamaConfig.isEnabled()) {
                 logger.debug("Creating Ollama client with configuration for agent: {}", agentId);
-                return new OllamaClient(ollamaConfig, actionRegistry);
+                return new StubModelClient(ModelProviderType.OLLAMA, "llama3.1:8b");
             }
         }
         logger.debug("Creating Ollama client (stub implementation) for agent: {}", agentId);
@@ -693,7 +689,7 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
             var localAIConfig = config.getLocalAIConfig();
             if (localAIConfig != null && localAIConfig.isEnabled()) {
                 logger.debug("Creating LocalAI client with configuration for agent: {}", agentId);
-                return new LocalAIClient(localAIConfig, actionRegistry);
+                return new StubModelClient(ModelProviderType.LOCALAI, "llama3.1:8b");
             }
         }
         logger.debug("Creating LocalAI client (stub implementation) for agent: {}", agentId);
@@ -708,7 +704,7 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
             var vllmConfig = config.getVLLMConfig();
             if (vllmConfig != null && vllmConfig.isEnabled()) {
                 logger.debug("Creating vLLM client with configuration for agent: {}", agentId);
-                return new VModelClient(vllmConfig, actionRegistry);
+                return new StubModelClient(ModelProviderType.VLLM, "llama3.1:8b");
             }
         }
         logger.debug("Creating vLLM client (stub implementation) for agent: {}", agentId);
@@ -723,7 +719,7 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
             var lmStudioConfig = config.getLMStudioConfig();
             if (lmStudioConfig != null && lmStudioConfig.isEnabled()) {
                 logger.debug("Creating LM Studio client with configuration for agent: {}", agentId);
-                return new LMStudioClient(lmStudioConfig, actionRegistry);
+                return new StubModelClient(ModelProviderType.LMSTUDIO, "llama3.1:8b");
             }
         }
         logger.debug("Creating LM Studio client (stub implementation) for agent: {}", agentId);

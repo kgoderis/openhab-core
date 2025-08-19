@@ -1,6 +1,7 @@
 package org.openhab.core.ai.reasoning.results;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.reasoning.policies.SafetyPolicyConfig;
 
 @NonNullByDefault
 public class SafetyResult {

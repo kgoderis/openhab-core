@@ -10,8 +10,8 @@ import org.openhab.core.ai.reasoning.optimization.OptimizationStrategy;
  * @since 4.0.0
  */
 @NonNullByDefault
-final class EarlyTerminationStrategy extends OptimizationStrategy {
-    EarlyTerminationStrategy() {
+public final class EarlyTerminationStrategy extends OptimizationStrategy {
+    public EarlyTerminationStrategy() {
         super("EARLY_TERMINATION", "Terminates decision process early when sufficient confidence is reached", 0.6);
     }
 }

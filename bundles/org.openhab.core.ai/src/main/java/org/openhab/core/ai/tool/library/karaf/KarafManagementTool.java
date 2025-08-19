@@ -14,13 +14,13 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolErrorCode;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -106,24 +106,28 @@ public class KarafManagementTool implements Tool {
 
     @Override
     public ToolValidationResult validateParameters(Map<String, Object> parameters) {
+        if (parameters == null || parameters.isEmpty()) {
+            return ToolValidationResult.invalid(List.of("Parameters cannot be null or empty"));
+        }
+
         String operation = (String) parameters.get("operation");
-        if (operation == null) {
-            return ToolValidationResult.invalid("Missing required parameter: operation");
+        if (operation == null || operation.trim().isEmpty()) {
+            return ToolValidationResult.invalid(List.of("Operation is required"));
         }
 
-        if (List.of("bundle_info", "start_bundle", "stop_bundle", "restart_bundle", "refresh_bundle", "set_start_level",
-                "bundle_headers", "bundle_services", "bundle_dependencies").contains(operation)) {
-            String bundleId = (String) parameters.get("bundleId");
-            if (bundleId == null || bundleId.trim().isEmpty()) {
-                return ToolValidationResult.invalid("bundleId is required for operation: " + operation);
-            }
-        }
-
-        if ("set_start_level".equals(operation)) {
-            Integer startLevel = (Integer) parameters.get("startLevel");
-            if (startLevel == null || startLevel < 1) {
-                return ToolValidationResult.invalid("Valid startLevel (>= 1) is required for set_start_level");
-            }
+        switch (operation) {
+            case "list":
+            case "start":
+            case "stop":
+            case "restart":
+            case "status":
+                if (parameters.get("bundleId") == null) {
+                    return ToolValidationResult
+                            .invalid(List.of("Bundle ID is required for " + operation + " operation"));
+                }
+                break;
+            default:
+                return ToolValidationResult.invalid(List.of("Invalid operation: " + operation));
         }
 
         return ToolValidationResult.valid();
@@ -171,8 +175,8 @@ public class KarafManagementTool implements Tool {
 
     @Override
     public ToolMetadata getMetadata() {
-        return ToolMetadata.builder().version("1.0.0").author("openHAB")
-                .description("Provides Karaf runtime container management capabilities").build();
+        return ToolMetadata.builder().withVersion("1.0.0").withAuthor("openHAB")
+                .withDescription("Provides Karaf runtime container management capabilities").build();
     }
 
     private Map<String, Object> listBundles(Map<String, Object> parameters) {

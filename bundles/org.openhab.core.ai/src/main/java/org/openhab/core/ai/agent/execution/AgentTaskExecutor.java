@@ -15,7 +15,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.communication.protocol.AgentProtocolHandler;
 import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
@@ -25,6 +24,7 @@ import org.openhab.core.ai.agent.infrastructure.security.AuthorizationResult;
 import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManager;
 import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentSynchronizationManager;
 import org.openhab.core.ai.auth.AuthenticationContext;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -373,7 +373,7 @@ public class AgentTaskExecutor implements AgentExecutor {
 
         try {
             // Create AI action context
-            ActionContext aiContext = createActionContext(task, authContext);
+            ExecutionContext aiContext = createActionContext(task, authContext);
 
             // Find and execute the appropriate action
             String actionName = extractActionName(task);
@@ -641,10 +641,10 @@ public class AgentTaskExecutor implements AgentExecutor {
     }
 
     @NonNullByDefault
-    private ActionContext createActionContext(Task task, AuthenticationContext authContext) {
-        return ActionContext.builder().protocol("a2a").clientId(extractClientIdFromTask(task))
-                .sessionId("a2a-session-" + System.currentTimeMillis()).correlationId(task.getId())
-                .authContext(authContext).build();
+    private ExecutionContext createActionContext(Task task, AuthenticationContext authContext) {
+        return ExecutionContext.builder().withProtocol("a2a").withClientId(extractClientIdFromTask(task))
+                .withSessionId("a2a-session-" + System.currentTimeMillis()).withCorrelationId(task.getId())
+                .withAuthContext(authContext).build();
     }
 
     @NonNullByDefault

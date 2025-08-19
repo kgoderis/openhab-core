@@ -5,12 +5,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
 import org.openhab.core.ai.tool.notifications.DefaultNotificationService;
 import org.openhab.core.ai.tool.notifications.api.events.NotificationType;
 import org.openhab.core.ai.tool.progress.ToolProgressTracker;
 import org.openhab.core.ai.tool.util.ToolUtils;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 import org.openhab.core.ai.util.ValidationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -389,7 +389,7 @@ public class ToolUtilsManager {
             // Use tool's built-in validation
             ToolValidationResult toolValidation = tool.validateParameters(parameters);
             if (!toolValidation.isValid()) {
-                return new ParameterValidationResult(false, toolValidation.getMessage());
+                return new ParameterValidationResult(false, String.join(", ", toolValidation.getErrors()));
             }
 
             // Additional validation using ValidationUtils

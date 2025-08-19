@@ -58,7 +58,7 @@ public class LogIngestionPipeline {
 
     // Log parsing patterns
     private static final Pattern LOG_PATTERN = Pattern
-            .compile("(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}) \\[(.*?)\\] (\\w+) - (.*)");
+            .compile("(d{4}-d{2}-d{2} d{2}:d{2}:d{2}.d{3}) [(.*?)] (w+) - (.*)");
     private static final Pattern ERROR_PATTERN = Pattern.compile("(?i)(error|exception|failed|failure)");
     private static final Pattern WARNING_PATTERN = Pattern.compile("(?i)(warn|warning)");
     private static final Pattern ANOMALY_PATTERN = Pattern
@@ -284,7 +284,7 @@ public class LogIngestionPipeline {
         }
 
         // Extract thread information if present
-        Pattern threadPattern = Pattern.compile("\\[([^\\]]+)\\]");
+        Pattern threadPattern = Pattern.compile("[([^]]+)]");
         Matcher threadMatcher = threadPattern.matcher(line);
         if (threadMatcher.find()) {
             metadata.put("thread", threadMatcher.group(1));

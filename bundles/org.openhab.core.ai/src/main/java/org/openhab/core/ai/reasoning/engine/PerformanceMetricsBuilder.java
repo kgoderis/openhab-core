@@ -1,6 +1,7 @@
 package org.openhab.core.ai.reasoning.engine;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.metrics.ReasoningPerformanceMetrics;
 
 /**
  * Builder for performance metrics in the reasoning engine.
@@ -41,8 +42,8 @@ public class PerformanceMetricsBuilder {
         return this;
     }
 
-    public PerformanceMetrics build() {
-        return new PerformanceMetrics(totalReasoningSessions, successfulSessions, failedSessions, totalProcessingTime,
-                averageResponseTime);
+    public ReasoningPerformanceMetrics build() {
+        return new ReasoningPerformanceMetrics(totalReasoningSessions, successfulSessions, failedSessions, 0, 0, 0.0,
+                totalProcessingTime, averageResponseTime, null);
     }
 }

@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.configuration.BaseConfiguration;
 
 /**
  * Configuration for a specific AI protocol (MCP or A2A).
@@ -13,13 +14,12 @@ import org.eclipse.jdt.annotation.Nullable;
  * This class encapsulates protocol-specific configuration settings
  * including endpoints, authentication, and protocol-specific options.
  * 
- * 
+ * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
  */
 @NonNullByDefault
-public class ProtocolConfiguration {
+public class ProtocolConfiguration extends BaseConfiguration {
 
-    private final String protocolName;
-    private final boolean enabled;
     private final @Nullable String endpoint;
     private final Map<String, String> authenticationConfig;
     private final Map<String, Object> protocolSpecificConfig;
@@ -40,8 +40,8 @@ public class ProtocolConfiguration {
     public ProtocolConfiguration(String protocolName, boolean enabled, @Nullable String endpoint,
             Map<String, String> authenticationConfig, Map<String, Object> protocolSpecificConfig, int timeoutSeconds,
             int retryAttempts) {
-        this.protocolName = Objects.requireNonNull(protocolName, "Protocol name cannot be null");
-        this.enabled = enabled;
+        super(protocolName, enabled, protocolName, "1.0.0",
+                createCustomOptions(authenticationConfig, protocolSpecificConfig));
         this.endpoint = endpoint;
         this.authenticationConfig = authenticationConfig != null ? Map.copyOf(authenticationConfig) : Map.of();
         this.protocolSpecificConfig = protocolSpecificConfig != null ? Map.copyOf(protocolSpecificConfig) : Map.of();
@@ -50,12 +50,27 @@ public class ProtocolConfiguration {
     }
 
     /**
+     * Create custom options map from authentication and protocol-specific configs.
+     */
+    private static Map<String, Object> createCustomOptions(Map<String, String> authenticationConfig,
+            Map<String, Object> protocolSpecificConfig) {
+        Map<String, Object> customOptions = new java.util.HashMap<>();
+        if (authenticationConfig != null) {
+            customOptions.putAll(authenticationConfig);
+        }
+        if (protocolSpecificConfig != null) {
+            customOptions.putAll(protocolSpecificConfig);
+        }
+        return customOptions;
+    }
+
+    /**
      * Get the protocol name.
      * 
      * @return Protocol name
      */
     public String getProtocolName() {
-        return protocolName;
+        return getId();
     }
 
     /**
@@ -63,8 +78,9 @@ public class ProtocolConfiguration {
      * 
      * @return true if enabled, false otherwise
      */
+    @Override
     public boolean isEnabled() {
-        return enabled;
+        return super.isEnabled();
     }
 
     /**
@@ -165,23 +181,25 @@ public class ProtocolConfiguration {
             return true;
         if (o == null || getClass() != o.getClass())
             return false;
+        if (!super.equals(o))
+            return false;
         ProtocolConfiguration that = (ProtocolConfiguration) o;
-        return enabled == that.enabled && timeoutSeconds == that.timeoutSeconds && retryAttempts == that.retryAttempts
-                && protocolName.equals(that.protocolName) && Objects.equals(endpoint, that.endpoint)
+        return timeoutSeconds == that.timeoutSeconds && retryAttempts == that.retryAttempts
+                && Objects.equals(endpoint, that.endpoint)
                 && Objects.equals(authenticationConfig, that.authenticationConfig)
                 && Objects.equals(protocolSpecificConfig, that.protocolSpecificConfig);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(protocolName, enabled, endpoint, authenticationConfig, protocolSpecificConfig,
-                timeoutSeconds, retryAttempts);
+        return Objects.hash(super.hashCode(), endpoint, authenticationConfig, protocolSpecificConfig, timeoutSeconds,
+                retryAttempts);
     }
 
     @Override
     public String toString() {
         String endpointStr = endpoint != null ? endpoint : "null";
-        return "ProtocolConfiguration{" + "protocolName='" + protocolName + '\'' + ", enabled=" + enabled
+        return "ProtocolConfiguration{" + "protocolName='" + getProtocolName() + '\'' + ", enabled=" + isEnabled()
                 + ", endpoint='" + endpointStr + '\'' + ", timeoutSeconds=" + timeoutSeconds + ", retryAttempts="
                 + retryAttempts + ", authConfigSize=" + authenticationConfig.size() + ", protocolConfigSize="
                 + protocolSpecificConfig.size() + '}';

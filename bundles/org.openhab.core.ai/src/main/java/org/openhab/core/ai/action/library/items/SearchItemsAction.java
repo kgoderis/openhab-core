@@ -9,11 +9,11 @@ import java.util.stream.Collectors;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.GroupItem;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
@@ -135,7 +135,7 @@ public class SearchItemsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
 
         try {
@@ -199,7 +199,7 @@ public class SearchItemsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -211,12 +211,12 @@ public class SearchItemsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Search for openHAB items based on various criteria")
-                .tags(List.of("items", "search", "filter", "query"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Search for openHAB items based on various criteria")
+                .withTags(List.of("items", "search", "filter", "query"))
+                .withDocumentation(
                         "Searches for openHAB items based on name patterns, types, tags, groups, and categories. Supports wildcard matching and detailed results.")
-                .examples(List.of("Search by name: {\"namePattern\": \"*Light*\"}",
+                .withExamples(List.of("Search by name: {\"namePattern\": \"*Light*\"}",
                         "Search by type: {\"itemType\": \"Switch\"}", "Search by tag: {\"tag\": \"semantics\"}",
                         "Search by group: {\"group\": \"LivingRoom\"}",
                         "Complex search: {\"namePattern\": \"*Light*\", \"itemType\": \"Switch\", \"tag\": \"semantics\", \"includeDetails\": true}"))
@@ -240,7 +240,7 @@ public class SearchItemsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         // No initialization needed
     }
 

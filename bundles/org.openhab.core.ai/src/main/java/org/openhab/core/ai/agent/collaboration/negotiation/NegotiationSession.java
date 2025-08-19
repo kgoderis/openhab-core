@@ -33,16 +33,30 @@ public class NegotiationSession {
     private @Nullable Instant completedAt;
     private final List<NegotiationProposal> proposals = new ArrayList<>();
 
-    /* package */ NegotiationSession(NegotiationSessionBuilder builder) {
-        this.sessionId = builder.sessionId;
-        this.initiatorId = builder.initiatorId;
-        this.participantIds = builder.participantIds;
-        this.templateId = builder.templateId;
-        this.strategyId = builder.strategyId;
-        this.initialProposal = builder.initialProposal;
-        this.status = builder.status;
-        this.createdAt = builder.createdAt;
-        this.timeoutAt = builder.timeoutAt;
+    public NegotiationSession(NegotiationSessionBuilder builder) {
+        this.sessionId = builder.getSessionId();
+        this.initiatorId = builder.getInitiatorId();
+        this.participantIds = builder.getParticipantIds();
+        this.templateId = builder.getTemplateId();
+        this.strategyId = builder.getStrategyId();
+        this.initialProposal = builder.getInitialProposal();
+        this.status = builder.getStatus();
+        this.createdAt = builder.getCreatedAt();
+        this.timeoutAt = builder.getTimeoutAt();
+    }
+
+    public NegotiationSession(String sessionId, String initiatorId, Set<String> participantIds, String templateId,
+            String strategyId, Map<String, Object> initialProposal, NegotiationStatus status, Instant createdAt,
+            Instant timeoutAt) {
+        this.sessionId = sessionId;
+        this.initiatorId = initiatorId;
+        this.participantIds = participantIds;
+        this.templateId = templateId;
+        this.strategyId = strategyId;
+        this.initialProposal = initialProposal;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.timeoutAt = timeoutAt;
     }
 
     public String getSessionId() {

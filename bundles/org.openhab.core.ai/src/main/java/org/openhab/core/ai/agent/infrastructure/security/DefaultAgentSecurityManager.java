@@ -27,6 +27,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManager;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
+import org.openhab.core.ai.common.configuration.SecurityConfiguration;
+import org.openhab.core.ai.common.security.MessageSecurityStatistics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -76,7 +78,7 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
     // Configuration
     private final AtomicReference<SecurityConfiguration> configuration = new AtomicReference<>(
-            new SecurityConfiguration());
+            SecurityConfiguration.builder().build());
 
     // Background processing
     private final ScheduledExecutorService securityMonitor = Executors.newSingleThreadScheduledExecutor();
@@ -331,10 +333,15 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
      * @return Security statistics
      */
     @Override
-    public SecurityStatistics getSecurityStatistics() {
-        return new SecurityStatistics(totalMessagesEncrypted.get(), totalMessagesDecrypted.get(),
-                totalSignaturesVerified.get(), totalSecurityIncidents.get(), totalAuthenticationFailures.get(),
-                securityPolicies.size(), agentKeyPairs.size(), securityIncidents.size(), auditLogs.size());
+    public MessageSecurityStatistics getSecurityStatistics() {
+        long totalOps = totalMessagesEncrypted.get() + totalMessagesDecrypted.get() + totalSignaturesVerified.get();
+        long successfulOps = totalMessagesEncrypted.get() + totalMessagesDecrypted.get()
+                + totalSignaturesVerified.get();
+        long failedOps = totalAuthenticationFailures.get();
+        long violations = totalSecurityIncidents.get();
+        return new MessageSecurityStatistics(totalOps, successfulOps, failedOps, violations, Instant.now(),
+                totalMessagesEncrypted.get(), totalMessagesDecrypted.get(), totalSignaturesVerified.get(),
+                totalAuthenticationFailures.get(), securityPolicies.size(), agentKeyPairs.size(), auditLogs.size());
     }
 
     /**
@@ -753,8 +760,10 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
             // Update configuration with new rotation time
             SecurityConfiguration config = configuration.get();
-            config.setKeyRotationInterval(Duration.ofDays(30)); // Reset to 30 days
-            configuration.set(config);
+            SecurityConfiguration newConfig = SecurityConfiguration.builder()
+                    .withKeyRotationInterval(Duration.ofDays(30)) // Reset to 30 days
+                    .build();
+            configuration.set(newConfig);
 
         } catch (Exception e) {
             logger.error("Error in key rotation: {}", e.getMessage(), e);

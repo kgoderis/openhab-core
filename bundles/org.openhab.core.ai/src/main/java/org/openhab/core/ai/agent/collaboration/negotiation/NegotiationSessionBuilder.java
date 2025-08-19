@@ -66,4 +66,41 @@ public final class NegotiationSessionBuilder {
     public NegotiationSession build() {
         return new NegotiationSession(this);
     }
+
+    // Getters for the NegotiationSession constructor
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public String getInitiatorId() {
+        return initiatorId;
+    }
+
+    public Set<String> getParticipantIds() {
+        return participantIds;
+    }
+
+    public String getTemplateId() {
+        return templateId;
+    }
+
+    public String getStrategyId() {
+        return strategyId;
+    }
+
+    public Map<String, Object> getInitialProposal() {
+        return initialProposal;
+    }
+
+    public NegotiationStatus getStatus() {
+        return status;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getTimeoutAt() {
+        return timeoutAt;
+    }
 }

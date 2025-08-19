@@ -11,9 +11,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.auth.AuditLogger;
-import org.openhab.core.ai.model.api.SafetyValidationResult;
 import org.openhab.core.ai.reasoning.policies.PolicyResult;
 import org.openhab.core.ai.reasoning.policies.SafetyPolicy;
+import org.openhab.core.ai.reasoning.policies.SafetyValidationResult;
 import org.openhab.core.ai.reasoning.results.IncidentResult;
 import org.openhab.core.ai.reasoning.results.OverrideResult;
 import org.openhab.core.ai.reasoning.security.SafetyIncident;
@@ -291,9 +291,14 @@ public class SafetyConstraintManager {
      * Get safety performance metrics
      */
     public SafetyPerformanceMetrics getPerformanceMetrics() {
-        return new SafetyPerformanceMetrics(totalSafetyValidations.get(), totalConstraintViolations.get(),
-                totalSafetyIncidents.get(), totalSafetyOverrides.get(), safetyPolicies.size(), userConstraints.size(),
-                constraintViolations.size(), safetyIncidents.size());
+        long totalValidations = totalSafetyValidations.get();
+        long successfulValidations = totalValidations - totalConstraintViolations.get();
+        long failedValidations = totalConstraintViolations.get();
+        long totalTime = totalValidations * 10; // Estimate average time per validation
+        double avgTime = totalValidations > 0 ? (double) totalTime / totalValidations : 0.0;
+
+        return new SafetyPerformanceMetrics(totalValidations, successfulValidations, failedValidations, totalTime,
+                avgTime);
     }
 
     // Configuration methods

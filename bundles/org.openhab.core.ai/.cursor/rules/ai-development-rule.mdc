@@ -25,6 +25,7 @@ alwaysApply: true
 - **Add TODO comments** for incomplete implementations with clear descriptions
 - **Create tasks in BRAIN_PLAN.md** for any incomplete work
 - **Verify all method calls exist** before using them - no invented or guessed calls
+- **Never use full qualified class names**, but use simple names combined with valid imports
 
 ### 4. **SDK Integration**
 - **Maximize use of official SDK classes** for MCP and A2A protocols

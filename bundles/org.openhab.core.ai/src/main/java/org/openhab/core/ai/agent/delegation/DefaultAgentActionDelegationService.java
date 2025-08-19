@@ -7,16 +7,22 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionError;
+import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
+import org.openhab.core.ai.common.configuration.ActionExecutionConfiguration;
+import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.metrics.api.Counts;
+import org.openhab.core.ai.common.metrics.api.MetricKeys;
+import org.openhab.core.ai.common.metrics.api.Timing;
+import org.openhab.core.ai.common.metrics.registry.MetricsRegistry;
+import org.openhab.core.ai.common.metrics.snapshot.DelegationMetricsSnapshot;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -47,45 +53,45 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
     private static final Logger logger = LoggerFactory.getLogger(DefaultAgentActionDelegationService.class);
 
     // Performance monitoring
-    private final AtomicLong totalDelegations = new AtomicLong(0);
-    private final AtomicLong successfulDelegations = new AtomicLong(0);
-    private final AtomicLong failedDelegations = new AtomicLong(0);
-    private final AtomicLong totalDelegationTime = new AtomicLong(0);
+    @Reference
+    private @Nullable MetricsRegistry metricsRegistry;
 
     // Agent registry and load balancing
     private final ConcurrentHashMap<String, AgentInfo> agentRegistry = new ConcurrentHashMap<>();
     private final AtomicReference<LoadBalancingStrategy> loadBalancingStrategy = new AtomicReference<>(
             LoadBalancingStrategy.ROUND_ROBIN);
 
-    // Configuration
-    private final AtomicReference<Duration> agentTimeout = new AtomicReference<>(Duration.ofSeconds(30));
-    private final AtomicReference<Boolean> enableFailover = new AtomicReference<>(true);
-    private final AtomicReference<Integer> maxRetryAttempts = new AtomicReference<>(2);
+    // Unified configuration
+    private final AtomicReference<ActionExecutionConfiguration> configuration = new AtomicReference<>(
+            ActionExecutionConfiguration.builder().withConfigId("default-delegation-config")
+                    .withExecutionTimeout(Duration.ofSeconds(30)).withMaxRetryAttempts(2)
+                    .withRetryDelay(Duration.ofSeconds(5)).withEnableAsyncExecution(true)
+                    .withMaxConcurrentExecutions(10).build());
 
     @Reference
     private @Nullable ActionRegistry actionRegistry;
 
     @Override
-    public CompletableFuture<ActionResult> delegateAction(ActionContext actionContext) {
-        totalDelegations.incrementAndGet();
+    public CompletableFuture<ActionResult> delegateAction(ExecutionContext actionContext) {
         Instant startTime = Instant.now();
+        long startNanos = System.nanoTime();
 
         try {
             // Find appropriate agent for the action
             @Nullable
             String agentId = selectAgentForAction(actionContext);
             if (agentId == null) {
-                failedDelegations.incrementAndGet();
+                updateMetrics(actionContext, false, System.nanoTime() - startNanos);
                 return CompletableFuture.completedFuture(ActionResult.error("No suitable agent found for action",
                         new ActionError("NO_AGENT_AVAILABLE", "No agent available to handle this action"),
                         Duration.between(startTime, Instant.now()).toMillis()));
             }
 
             // Execute action on selected agent
-            return executeActionOnAgent(agentId, actionContext, startTime);
+            return executeActionOnAgent(agentId, actionContext, startTime, startNanos);
 
         } catch (Exception e) {
-            failedDelegations.incrementAndGet();
+            updateMetrics(actionContext, false, System.nanoTime() - startNanos);
             logger.error("Error delegating action: {}", actionContext.getCorrelationId(), e);
             return CompletableFuture.completedFuture(
                     ActionResult.error("Action delegation failed", new ActionError("DELEGATION_ERROR", e.getMessage()),
@@ -104,11 +110,29 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
     }
 
     /**
+     * Update the delegation configuration
+     * 
+     * @param newConfiguration the new configuration to apply
+     */
+    public void updateConfiguration(ActionExecutionConfiguration newConfiguration) {
+        configuration.set(newConfiguration);
+        logger.info("Delegation configuration updated: {}", newConfiguration.getId());
+    }
+
+    /**
+     * Get the current delegation configuration
+     * 
+     * @return the current configuration
+     */
+    public ActionExecutionConfiguration getConfiguration() {
+        return configuration.get();
+    }
+
+    /**
      * Select an appropriate agent for the action
      */
-    private @Nullable String selectAgentForAction(ActionContext actionContext) {
-        Map<String, Object> protocolContext = actionContext.getProtocolContext();
-        String actionName = (String) protocolContext.get("action");
+    private @Nullable String selectAgentForAction(ExecutionContext actionContext) {
+        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
 
         if (actionName == null) {
             logger.warn("Action name not found in context");
@@ -132,7 +156,7 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
     /**
      * Apply load balancing strategy to select agent
      */
-    private @Nullable String applyLoadBalancingStrategy(List<String> capableAgents, ActionContext actionContext) {
+    private @Nullable String applyLoadBalancingStrategy(List<String> capableAgents, ExecutionContext actionContext) {
         LoadBalancingStrategy strategy = loadBalancingStrategy.get();
 
         if (strategy == null) {
@@ -175,7 +199,7 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
     /**
      * Capability-based selection
      */
-    private @Nullable String selectCapabilityBased(List<String> capableAgents, ActionContext actionContext) {
+    private @Nullable String selectCapabilityBased(List<String> capableAgents, ExecutionContext actionContext) {
         // Select agent with highest capability score for this action
         return capableAgents.stream()
                 .max((a, b) -> Double.compare(agentRegistry.get(a).getCapabilityScore(actionContext),
@@ -194,10 +218,10 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
     /**
      * Execute action on selected agent
      */
-    private CompletableFuture<ActionResult> executeActionOnAgent(@Nullable String agentId, ActionContext actionContext,
-            Instant startTime) {
+    private CompletableFuture<ActionResult> executeActionOnAgent(@Nullable String agentId,
+            ExecutionContext actionContext, Instant startTime, long startNanos) {
         if (agentId == null) {
-            failedDelegations.incrementAndGet();
+            updateMetrics(actionContext, false, System.nanoTime() - startNanos);
             return CompletableFuture.completedFuture(ActionResult.error("No agent selected",
                     new ActionError("NO_AGENT_SELECTED", "No agent was selected for execution"),
                     Duration.between(startTime, Instant.now()).toMillis()));
@@ -205,7 +229,7 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
 
         AgentInfo agentInfo = agentRegistry.get(agentId);
         if (agentInfo == null) {
-            failedDelegations.incrementAndGet();
+            updateMetrics(actionContext, false, System.nanoTime() - startNanos);
             return CompletableFuture.completedFuture(ActionResult.error("Selected agent not found",
                     new ActionError("AGENT_NOT_FOUND", "Agent " + agentId + " not found in registry"),
                     Duration.between(startTime, Instant.now()).toMillis()));
@@ -217,10 +241,10 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
         // Execute action with timeout and retry logic
         CompletableFuture<ActionResult> executionFuture = agentInfo.executeAction(actionContext);
 
-        Duration timeout = agentTimeout.get();
-        if (timeout == null) {
-            timeout = Duration.ofSeconds(30); // Default fallback
-        }
+        // Get timeout from configuration
+        ActionExecutionConfiguration config = configuration.get();
+        Duration timeout = config != null && config.getExecutionTimeout() != null ? config.getExecutionTimeout()
+                : Duration.ofSeconds(30);
 
         return executionFuture.orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS).handle((result, throwable) -> {
             agentInfo.decrementLoad();
@@ -228,26 +252,24 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
             if (throwable != null) {
                 logger.warn("Action execution failed on agent {}: {}", agentId, throwable.getMessage());
 
-                // Try failover if enabled
-                Boolean failoverEnabled = enableFailover.get();
-                if (failoverEnabled != null && failoverEnabled) {
-                    return attemptFailover(actionContext, agentId, startTime);
+                // Try failover if enabled (using configuration)
+                Boolean failoverEnabled = config != null && config.isEnableSecurityValidation() != null
+                        ? config.isEnableSecurityValidation()
+                        : true;
+                if (failoverEnabled) {
+                    return attemptFailover(actionContext, agentId, startTime, startNanos);
                 }
 
-                failedDelegations.incrementAndGet();
+                updateMetrics(actionContext, false, System.nanoTime() - startNanos);
                 return ActionResult.error("Action execution failed on agent",
                         new ActionError("AGENT_EXECUTION_ERROR", throwable.getMessage()),
                         Duration.between(startTime, Instant.now()).toMillis());
             }
 
-            if (result != null && result.isSuccess()) {
-                successfulDelegations.incrementAndGet();
-            } else {
-                failedDelegations.incrementAndGet();
-            }
+            boolean success = result != null && result.isSuccess();
+            updateMetrics(actionContext, success, System.nanoTime() - startNanos);
 
             long executionTime = Duration.between(startTime, Instant.now()).toMillis();
-            totalDelegationTime.addAndGet(executionTime);
 
             logger.debug("Action delegation completed in {} ms on agent {}", executionTime, agentId);
             return result;
@@ -257,13 +279,13 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
     /**
      * Attempt failover to another agent
      */
-    private ActionResult attemptFailover(ActionContext actionContext, String failedAgentId, Instant startTime) {
+    private ActionResult attemptFailover(ExecutionContext actionContext, String failedAgentId, Instant startTime,
+            long startNanos) {
         logger.info("Attempting failover for action: {}", actionContext.getCorrelationId());
 
         // Find alternative agents
-        Map<String, Object> protocolContext = actionContext.getProtocolContext();
         @Nullable
-        String actionName = (String) protocolContext.get("action");
+        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
 
         if (actionName == null) {
             return ActionResult.error("Action name not found for failover",
@@ -284,8 +306,13 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
                     Duration.between(startTime, Instant.now()).toMillis());
         }
 
+        // Get retry configuration
+        ActionExecutionConfiguration config = configuration.get();
+        Integer maxRetries = config != null && config.getMaxRetryAttempts() != null ? config.getMaxRetryAttempts() : 2;
+
         // Try alternative agents
-        for (String alternativeAgentId : alternativeAgents) {
+        for (int attempt = 0; attempt < Math.min(maxRetries, alternativeAgents.size()); attempt++) {
+            String alternativeAgentId = alternativeAgents.get(attempt);
             try {
                 AgentInfo agentInfo = agentRegistry.get(alternativeAgentId);
                 if (agentInfo != null) {
@@ -294,7 +321,7 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
                     agentInfo.decrementLoad();
 
                     if (result.isSuccess()) {
-                        successfulDelegations.incrementAndGet();
+                        updateMetrics(actionContext, true, System.nanoTime() - startNanos);
                         logger.info("Failover successful to agent: {}", alternativeAgentId);
                         return result;
                     }
@@ -304,7 +331,7 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
             }
         }
 
-        failedDelegations.incrementAndGet();
+        updateMetrics(actionContext, false, System.nanoTime() - startNanos);
         return ActionResult.error("All failover attempts failed",
                 new ActionError("FAILOVER_FAILED", "All alternative agents failed"),
                 Duration.between(startTime, Instant.now()).toMillis());
@@ -335,12 +362,33 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
     }
 
     /**
+     * Update metrics for delegation operations.
+     * 
+     * @param actionContext execution context
+     * @param ok whether the operation was successful
+     * @param durationNanos duration in nanoseconds
+     */
+    private void updateMetrics(ExecutionContext actionContext, boolean ok, long durationNanos) {
+        if (metricsRegistry != null) {
+            String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
+            if (actionName != null && !actionName.isBlank()) {
+                metricsRegistry.executionCollector(MetricKeys.action(actionName)).recordExecution(ok, durationNanos);
+            }
+            metricsRegistry.executionCollector(MetricKeys.delegation("agent")).recordExecution(ok, durationNanos);
+        }
+    }
+
+    /**
      * Get performance metrics
      */
-    public DelegationPerformanceMetrics getPerformanceMetrics() {
-        return DelegationPerformanceMetrics.builder().totalDelegations(totalDelegations.get())
-                .successfulDelegations(successfulDelegations.get()).failedDelegations(failedDelegations.get())
-                .totalDelegationTime(totalDelegationTime.get()).registeredAgents(agentRegistry.size()).build();
+    public DelegationMetricsSnapshot getPerformanceMetrics() {
+        if (metricsRegistry != null) {
+            var baseSnapshot = metricsRegistry.executionCollector(MetricKeys.delegation("agent")).snapshot();
+            return new DelegationMetricsSnapshot(baseSnapshot.counts(), baseSnapshot.timing(),
+                    baseSnapshot.timestampMs(), agentRegistry.size());
+        }
+        return new DelegationMetricsSnapshot(new Counts(0, 0, 0), new Timing(0), System.currentTimeMillis(),
+                agentRegistry.size());
     }
 
     /**

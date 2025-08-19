@@ -9,11 +9,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemBuilder;
 import org.openhab.core.items.ItemBuilderFactory;
@@ -161,7 +161,7 @@ public class CreateItemAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
 
         try {
@@ -284,7 +284,7 @@ public class CreateItemAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -296,12 +296,13 @@ public class CreateItemAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Create new openHAB items with various types and configurations")
-                .tags(List.of("items", "create", "configuration", "setup"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Create new openHAB items with various types and configurations")
+                .withTags(List.of("items", "create", "configuration", "setup"))
+                .withDocumentation(
                         "Creates new openHAB items with specified type, label, category, groups, tags, and metadata. Supports validation mode.")
-                .examples(List.of("Create basic switch: {\"itemName\": \"LivingRoom_Light\", \"itemType\": \"Switch\"}",
+                .withExamples(List.of(
+                        "Create basic switch: {\"itemName\": \"LivingRoom_Light\", \"itemType\": \"Switch\"}",
                         "Create with label: {\"itemName\": \"LivingRoom_Light\", \"itemType\": \"Switch\", \"label\": \"Living Room Light\"}",
                         "Create with groups: {\"itemName\": \"LivingRoom_Light\", \"itemType\": \"Switch\", \"groups\": [\"Lights\", \"LivingRoom\"]}",
                         "Create with metadata: {\"itemName\": \"LivingRoom_Light\", \"itemType\": \"Switch\", \"metadata\": {\"semantics\": {\"value\": \"Light\"}}}",
@@ -324,7 +325,7 @@ public class CreateItemAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         // No initialization needed
     }
 

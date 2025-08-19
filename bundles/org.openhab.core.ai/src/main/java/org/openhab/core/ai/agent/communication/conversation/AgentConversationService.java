@@ -178,9 +178,9 @@ public class AgentConversationService {
         }
 
         // Create conversation message
-        ConversationMessage conversationMessage = ConversationMessage.builder().messageId(generateMessageId())
-                .conversationId(conversationId).fromAgentId(fromAgentId).content(message).messageType(messageType)
-                .timestamp(Instant.now()).build();
+        ConversationMessage conversationMessage = ConversationMessage.builder().withMessageId(generateMessageId())
+                .withConversationId(conversationId).withFromAgentId(fromAgentId).withContent(message)
+                .withMessageType(messageType).withTimestamp(Instant.now()).build();
 
         // Add to conversation history
         ConversationHistory history = conversationHistories.get(conversationId);

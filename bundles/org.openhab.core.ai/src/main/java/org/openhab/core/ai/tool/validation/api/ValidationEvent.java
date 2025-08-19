@@ -1,6 +1,7 @@
 package org.openhab.core.ai.tool.validation.api;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 
 /**
  * Validation event emitted by validation services.
@@ -11,10 +12,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class ValidationEvent {
     private final String toolId;
-    private final ValidationResult result;
+    private final ToolValidationResult result;
     private final long timestamp;
 
-    public ValidationEvent(String toolId, ValidationResult result) {
+    public ValidationEvent(String toolId, ToolValidationResult result) {
         this.toolId = toolId;
         this.result = result;
         this.timestamp = System.currentTimeMillis();
@@ -24,7 +25,7 @@ public class ValidationEvent {
         return toolId;
     }
 
-    public ValidationResult getResult() {
+    public ToolValidationResult getResult() {
         return result;
     }
 

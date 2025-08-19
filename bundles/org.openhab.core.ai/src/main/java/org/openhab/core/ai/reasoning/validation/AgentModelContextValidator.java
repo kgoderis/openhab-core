@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.api.AgentModelContext;
+import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.reasoning.context.ContextOptimizationResult;
 import org.openhab.core.ai.reasoning.context.ContextOptimizationRule;
 import org.osgi.service.component.annotations.Component;

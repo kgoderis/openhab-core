@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -26,7 +25,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openhab.core.ai.action.api.ActionError;
+import org.openhab.core.ai.action.api.ActionKeys;
+import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.action.api.ActionSecurityValidator;
 import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**
@@ -80,7 +84,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testExecuteActionSuccess() {
         // Given
-        ActionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
         ActionResult expectedResult = ActionResult.success("Success", 100);
 
         when(securityValidator.isAvailable()).thenReturn(true);
@@ -106,7 +110,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testExecuteActionSecurityValidationFailure() {
         // Given
-        ActionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
 
         when(securityValidator.isAvailable()).thenReturn(true);
         when(securityValidator.validateAction(actionContext)).thenReturn(false);
@@ -129,7 +133,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testExecuteActionWithEmptyActionName() {
         // Given
-        ActionContext actionContext = createTestActionContext("", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("", Map.of("param", "value"));
 
         // When
         CompletableFuture<ActionResult> future = defaultActionExecutionService.executeAction(actionContext,
@@ -149,7 +153,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testExecuteActionWithNullActionName() {
         // Given
-        ActionContext actionContext = createTestActionContext(null, Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext(null, Map.of("param", "value"));
 
         // When
         CompletableFuture<ActionResult> future = defaultActionExecutionService.executeAction(actionContext,
@@ -169,7 +173,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testExecuteActionWithSecurityValidatorNotAvailable() {
         // Given
-        ActionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
         ActionResult expectedResult = ActionResult.success("Success", 100);
 
         when(securityValidator.isAvailable()).thenReturn(false);
@@ -192,9 +196,9 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testExecuteActionsInParallel() {
         // Given
-        ActionContext context1 = createTestActionContext("action1", Map.of("param1", "value1"),
+        ExecutionContext context1 = createTestActionContext("action1", Map.of("param1", "value1"),
                 "test-correlation-id-1");
-        ActionContext context2 = createTestActionContext("action2", Map.of("param2", "value2"),
+        ExecutionContext context2 = createTestActionContext("action2", Map.of("param2", "value2"),
                 "test-correlation-id-2");
         ActionResult result1 = ActionResult.success("Result1", 100);
         ActionResult result2 = ActionResult.success("Result2", 200);
@@ -202,9 +206,9 @@ class DefaultActionExecutionServiceTest {
         when(securityValidator.isAvailable()).thenReturn(true);
         when(securityValidator.validateAction(context1)).thenReturn(true);
         when(securityValidator.validateAction(context2)).thenReturn(true);
-        when(agentDelegationService.delegateAction(any(ActionContext.class))).thenAnswer(invocation -> {
-            ActionContext context = invocation.getArgument(0);
-            String actionName = (String) context.getProtocolContext().get("action");
+        when(agentDelegationService.delegateAction(any(ExecutionContext.class))).thenAnswer(invocation -> {
+            ExecutionContext context = invocation.getArgument(0);
+            String actionName = context.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
             if ("action1".equals(actionName)) {
                 return CompletableFuture.completedFuture(result1);
             } else if ("action2".equals(actionName)) {
@@ -234,7 +238,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testExecuteActionWithRetryLogic() {
         // Given
-        ActionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
         ActionResult failureResult = ActionResult.error("Failed",
                 new ActionError("EXECUTION_ERROR", "Temporary failure"), 50);
         ActionResult successResult = ActionResult.success("Success", 100);
@@ -260,7 +264,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testExecuteActionWithException() {
         // Given
-        ActionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
         RuntimeException exception = new RuntimeException("Test exception");
 
         when(securityValidator.isAvailable()).thenReturn(true);
@@ -287,7 +291,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testPerformanceMetrics() {
         // Given
-        ActionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
         ActionResult expectedResult = ActionResult.success("Success", 100);
 
         when(securityValidator.isAvailable()).thenReturn(true);
@@ -319,7 +323,7 @@ class DefaultActionExecutionServiceTest {
 
         // Then
         // Configuration is updated internally, we can verify by checking behavior
-        ActionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
         ActionResult expectedResult = ActionResult.success("Success", 100);
 
         when(agentDelegationService.delegateAction(actionContext))
@@ -348,7 +352,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testResetMetrics() {
         // Given
-        ActionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
         ActionResult expectedResult = ActionResult.success("Success", 100);
 
         when(securityValidator.isAvailable()).thenReturn(true);
@@ -374,7 +378,7 @@ class DefaultActionExecutionServiceTest {
     @Test
     void testUnsupportedProviderType() {
         // Given
-        ActionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
+        ExecutionContext actionContext = createTestActionContext("test.action", Map.of("param", "value"));
 
         // When
         CompletableFuture<ActionResult> future = defaultActionExecutionService.executeAction(actionContext, null);
@@ -388,15 +392,13 @@ class DefaultActionExecutionServiceTest {
         assertEquals("Provider type cannot be null", result.getError().getErrorMessage());
     }
 
-    private ActionContext createTestActionContext(String actionName, Map<String, Object> parameters) {
+    private ExecutionContext createTestActionContext(String actionName, Map<String, Object> parameters) {
         return createTestActionContext(actionName, parameters, "test-correlation-id");
     }
 
-    private ActionContext createTestActionContext(String actionName, Map<String, Object> parameters,
+    private ExecutionContext createTestActionContext(String actionName, Map<String, Object> parameters,
             String correlationId) {
-        Map<String, Object> protocolContext = new HashMap<>();
-        protocolContext.put("action", actionName);
-        return ActionContext.builder().correlationId(correlationId).protocol("test-protocol")
-                .protocolContext(protocolContext).build();
+        return ExecutionContext.builder().correlationId(correlationId).protocol("test-protocol")
+                .withActionName(actionName).withParameters(parameters).build();
     }
 }

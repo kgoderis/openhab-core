@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolException;
 import org.openhab.core.ai.tool.api.ToolMetadata;
 import org.openhab.core.ai.tool.api.ToolResult;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
 
 /**
  * Factory for creating MCP tools.
@@ -155,7 +155,7 @@ public class ToolFactory {
                         : "Unknown";
                 String desc = description != null ? description : "No description provided";
 
-                return ToolMetadata.builder().version(version).author(author).description(desc).build();
+                return ToolMetadata.builder().withVersion(version).withAuthor(author).withDescription(desc).build();
             }
 
             @Override
@@ -167,7 +167,8 @@ public class ToolFactory {
                     if (requiredParams != null) {
                         for (String requiredParam : requiredParams) {
                             if (!parameters.containsKey(requiredParam)) {
-                                return ToolValidationResult.invalid("Missing required parameter: " + requiredParam);
+                                return ToolValidationResult
+                                        .invalid(List.of("Missing required parameter: " + requiredParam));
                             }
                         }
                     }

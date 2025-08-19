@@ -282,10 +282,8 @@ class DefaultRootDiscoveryServiceTest {
             }
 
             @Override
-            public ResourceResult execute(Map<String, Object> parameters,
-                    ResourceContext context) {
-                return ResourceResult.success(
-                        Map.of("root", name, "path", path, "access", access), // content
+            public ResourceResult execute(Map<String, Object> parameters, ResourceContext context) {
+                return ResourceResult.success(Map.of("root", name, "path", path, "access", access), // content
                         0 // executionTimeMs
                 );
             }

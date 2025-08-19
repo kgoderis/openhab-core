@@ -3,8 +3,8 @@ package org.openhab.core.ai.agent.delegation.api;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 
 /**
  * Agent Action Delegation Service - Defines the contract for agent-based action delegation
@@ -28,7 +28,7 @@ public interface AgentActionDelegationService {
      * @param actionContext the action context to delegate
      * @return CompletableFuture with the action result
      */
-    CompletableFuture<ActionResult> delegateAction(ActionContext actionContext);
+    CompletableFuture<ActionResult> delegateAction(ExecutionContext actionContext);
 
     /**
      * Get the service status

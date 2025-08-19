@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.builder.ModelParametersBuilder;
 
 /**
  * Configuration parameters for LLM requests.
@@ -22,14 +23,14 @@ public class ModelParameters {
     private final @Nullable String systemPrompt;
     private final int timeoutMs;
 
-    /* package */ ModelParameters(ModelParametersBuilder builder) {
-        this.temperature = builder.temperature;
-        this.maxTokens = builder.maxTokens;
-        this.model = builder.model;
-        this.additionalParams = builder.additionalParams;
-        this.stream = builder.stream;
-        this.systemPrompt = builder.systemPrompt;
-        this.timeoutMs = builder.timeoutMs;
+    public ModelParameters(ModelParametersBuilder builder) {
+        this.temperature = builder.getTemperature();
+        this.maxTokens = builder.getMaxTokens();
+        this.model = builder.getModel();
+        this.additionalParams = builder.getAdditionalParams();
+        this.stream = builder.isStream();
+        this.systemPrompt = builder.getSystemPrompt();
+        this.timeoutMs = builder.getTimeoutMs();
     }
 
     /**

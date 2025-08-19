@@ -408,9 +408,9 @@ public class DefaultConfigurationService implements ConfigurationService {
             // Try to determine the best type
             if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false")) {
                 return (T) Boolean.valueOf(value);
-            } else if (value.matches("-?\\d+")) {
+            } else if (value.matches("-?d+")) {
                 return (T) Long.valueOf(value);
-            } else if (value.matches("-?\\d*\\.\\d+")) {
+            } else if (value.matches("-?d*.d+")) {
                 return (T) Double.valueOf(value);
             } else {
                 return (T) value;

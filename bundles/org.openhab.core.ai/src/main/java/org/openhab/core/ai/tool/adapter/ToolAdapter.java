@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
-import org.openhab.core.ai.tool.api.ToolContext;
 import org.openhab.core.ai.tool.api.ToolException;
-import org.openhab.core.ai.tool.validation.api.ToolValidationResult;
+import org.openhab.core.ai.tool.api.ToolMetadata;
+import org.openhab.core.ai.tool.api.ToolResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,14 +62,12 @@ public class ToolAdapter {
 
         try {
             // Create a tool context for execution
-            ToolContext context = new ToolContext();
-            context.setProperty("requestId", "mcp-request-" + System.currentTimeMillis());
-            context.setProperty("principalId", "mcp-client");
-            context.setProperty("protocol", "mcp");
-            context.setProperty("timestamp", System.currentTimeMillis());
+            ToolContext context = new ToolContext("mcp-request-" + System.currentTimeMillis(), "mcp-tool", "MCP Tool",
+                    "1.0.0", "mcp-client", null, Map.of("protocol", "mcp", "timestamp", System.currentTimeMillis()),
+                    null);
 
             // Execute the tool
-            var result = tool.execute(parameters, context);
+            ToolResult result = tool.execute(parameters, context);
 
             // Convert the result to a Map format suitable for MCP
             Map<String, Object> resultMap = Map.of("success", result.isSuccess(), "toolId", tool.getId(), "content",
@@ -101,7 +101,7 @@ public class ToolAdapter {
             boolean isValid = validationResult.isValid();
 
             if (!isValid) {
-                logger.warn("Parameter validation failed for tool {}: {}", tool.getId(), validationResult.getMessage());
+                logger.warn("Parameter validation failed for tool {}: {}", tool.getId(), validationResult.getErrors());
             }
 
             return isValid;

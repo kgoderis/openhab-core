@@ -11,11 +11,11 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.thing.ChannelUID;
@@ -139,7 +139,7 @@ public class GetChannelLinksAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing GetChannelLinksAction with context: {}", context.getProtocol());
 
         long startTime = System.currentTimeMillis();
@@ -161,7 +161,7 @@ public class GetChannelLinksAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -173,12 +173,13 @@ public class GetChannelLinksAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().author("openHAB").description("Retrieves information about item-channel links")
-                .version("1.0.0").tags(List.of("channels", "links", "items")).build();
+        return ActionMetadata.builder().withAuthor("openHAB")
+                .withDescription("Retrieves information about item-channel links").withVersion("1.0.0")
+                .withTags(List.of("channels", "links", "items")).build();
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("GetChannelLinksAction initialized with context: {}", context.getProtocol());
     }
 

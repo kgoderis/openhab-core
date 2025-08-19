@@ -5,8 +5,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.api.AgentModelContext;
-import org.openhab.core.ai.agent.api.AgentModelContextBuilder;
+import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.context.AgentModelContext.AgentModelContextBuilder;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.reasoning.context.ContextPriority;
 import org.openhab.core.ai.reasoning.decision.DecisionContext;
@@ -94,7 +94,7 @@ public class AgentModelDecisionEngine {
         return contextBuilder.create().withAgentId(decisionContext.getAgentId())
                 .withAgentType(decisionContext.getAgentType()).withDomain(decisionContext.getDomain())
                 .withCurrentState(currentState).withUserPreferences(decisionContext.getUserPreferences())
-                .withContextData("constraints", decisionContext.getConstraints()).withPriority(ContextPriority.HIGH)
+                .withValue("constraints", decisionContext.getConstraints()).withPriority(ContextPriority.HIGH.name())
                 .withSource("decision_engine").build();
     }
 

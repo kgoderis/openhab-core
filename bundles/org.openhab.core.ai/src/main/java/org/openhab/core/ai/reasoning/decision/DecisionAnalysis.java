@@ -14,47 +14,47 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 4.0.0
  */
 @NonNullByDefault
-final class DecisionAnalysis {
+public final class DecisionAnalysis {
     private double averageComplexity;
     private List<Integer> redundantSteps;
     private Map<Integer, List<Integer>> dependencyGraph;
     private List<OptimizationOpportunity> optimizationOpportunities;
 
-    DecisionAnalysis() {
+    public DecisionAnalysis() {
         this.redundantSteps = new ArrayList<>();
         this.dependencyGraph = new ConcurrentHashMap<>();
         this.optimizationOpportunities = new ArrayList<>();
     }
 
-    double getAverageComplexity() {
+    public double getAverageComplexity() {
         return averageComplexity;
     }
 
-    void setAverageComplexity(double averageComplexity) {
+    public void setAverageComplexity(double averageComplexity) {
         this.averageComplexity = averageComplexity;
     }
 
-    List<Integer> getRedundantSteps() {
+    public List<Integer> getRedundantSteps() {
         return redundantSteps;
     }
 
-    void setRedundantSteps(List<Integer> redundantSteps) {
+    public void setRedundantSteps(List<Integer> redundantSteps) {
         this.redundantSteps = redundantSteps;
     }
 
-    Map<Integer, List<Integer>> getDependencyGraph() {
+    public Map<Integer, List<Integer>> getDependencyGraph() {
         return dependencyGraph;
     }
 
-    void setDependencyGraph(Map<Integer, List<Integer>> dependencyGraph) {
+    public void setDependencyGraph(Map<Integer, List<Integer>> dependencyGraph) {
         this.dependencyGraph = dependencyGraph;
     }
 
-    List<OptimizationOpportunity> getOptimizationOpportunities() {
+    public List<OptimizationOpportunity> getOptimizationOpportunities() {
         return optimizationOpportunities;
     }
 
-    void setOptimizationOpportunities(List<OptimizationOpportunity> optimizationOpportunities) {
+    public void setOptimizationOpportunities(List<OptimizationOpportunity> optimizationOpportunities) {
         this.optimizationOpportunities = optimizationOpportunities;
     }
 }

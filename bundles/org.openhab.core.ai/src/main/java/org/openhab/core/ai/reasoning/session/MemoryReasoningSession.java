@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.reasoning.api.ReasoningContext;
+import org.openhab.core.ai.common.context.ReasoningContext;
 
 @NonNullByDefault
 public class MemoryReasoningSession {

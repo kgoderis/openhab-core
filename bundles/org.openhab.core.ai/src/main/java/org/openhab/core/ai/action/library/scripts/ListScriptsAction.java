@@ -14,11 +14,11 @@ import java.util.stream.Stream;
 
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.action.api.ActionContext;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
+import org.openhab.core.ai.common.context.ExecutionContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -147,7 +147,7 @@ public class ListScriptsAction implements Action {
     }
 
     @Override
-    public ActionResult execute(Map<String, Object> parameters, ActionContext context) throws ActionException {
+    public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         logger.debug("Executing list scripts action with parameters: {}", parameters);
 
@@ -179,7 +179,7 @@ public class ListScriptsAction implements Action {
     }
 
     @Override
-    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ActionContext context) {
+    public CompletableFuture<ActionResult> executeAsync(Map<String, Object> parameters, ExecutionContext context) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return execute(parameters, context);
@@ -191,14 +191,15 @@ public class ListScriptsAction implements Action {
 
     @Override
     public ActionMetadata getMetadata() {
-        return ActionMetadata.builder().version(getVersion()).author("openHAB")
-                .description("Comprehensive script listing with filtering, content inclusion, and metadata options")
-                .tags(List.of("scripts", "list", "filter", "metadata", "sorting"))
-                .documentation(
+        return ActionMetadata.builder().withVersion(getVersion()).withAuthor("openHAB")
+                .withDescription("Comprehensive script listing with filtering, content inclusion, and metadata options")
+                .withTags(List.of("scripts", "list", "filter", "metadata", "sorting"))
+                .withDocumentation(
                         "Lists openHAB Scripts with comprehensive filtering, sorting, and metadata options including script type, size, and modification details")
-                .examples(List.of("{} - List all scripts", "{\"scriptType\": \"js\"} - List only JavaScript scripts",
-                        "{\"nameContains\": \"light\"} - List scripts with 'light' in the name",
-                        "{\"includeContent\": true, \"limit\": 10} - List first 10 scripts with content"))
+                .withExamples(
+                        List.of("{} - List all scripts", "{\"scriptType\": \"js\"} - List only JavaScript scripts",
+                                "{\"nameContains\": \"light\"} - List scripts with 'light' in the name",
+                                "{\"includeContent\": true, \"limit\": 10} - List first 10 scripts with content"))
                 .build();
     }
 
@@ -208,7 +209,7 @@ public class ListScriptsAction implements Action {
     }
 
     @Override
-    public void initialize(ActionContext context) {
+    public void initialize(ExecutionContext context) {
         logger.debug("ListScriptsAction initialized for protocol: {}", context.getProtocol());
     }
 
@@ -353,7 +354,7 @@ public class ListScriptsAction implements Action {
         // Basic analysis
         analysis.put("lines", content.split("\n").length);
         analysis.put("characters", content.length());
-        analysis.put("nonWhitespaceCharacters", content.replaceAll("\\s", "").length());
+        analysis.put("nonWhitespaceCharacters", content.replaceAll("s", "").length());
 
         // Count common patterns
         analysis.put("functionCount", countOccurrences(content, "function"));
