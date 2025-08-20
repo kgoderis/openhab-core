@@ -42,6 +42,24 @@ public class SecurityConfiguration extends BaseConfiguration {
         this.defaultAuthMethod = builder.defaultAuthMethod;
     }
 
+    /**
+     * Default constructor for SecurityConfiguration.
+     * Creates a basic security configuration with default values.
+     */
+    public SecurityConfiguration() {
+        super("default-security", true, "Security Configuration", "1.0.0", null);
+        this.keyRotationInterval = null;
+        this.maxAuthenticationFailures = null;
+        this.lockoutDuration = null;
+        this.enableAuditLogging = null;
+        this.enableIncidentDetection = null;
+        this.enableEncryption = null;
+        this.encryptionAlgorithm = null;
+        this.sessionTimeoutMinutes = null;
+        this.enableMultiFactorAuth = null;
+        this.defaultAuthMethod = null;
+    }
+
     public static SecurityConfigurationBuilder builder() {
         return new SecurityConfigurationBuilder();
     }

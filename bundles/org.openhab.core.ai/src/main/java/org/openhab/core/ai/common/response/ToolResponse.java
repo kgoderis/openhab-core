@@ -2,21 +2,28 @@ package org.openhab.core.ai.common.response;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Response implementation for MCP tool responses.
  * 
  * This class represents responses from MCP tool operations,
- * implementing the unified Response interface.
+ * implementing the unified Response interface and supporting
+ * both general tool responses and MCP JSON-RPC protocol.
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
 public class ToolResponse implements Response<Object> {
+
+    @JsonProperty("jsonrpc")
+    private final String jsonrpc = "2.0";
 
     private final String id;
     private final @Nullable Object data;
@@ -26,6 +33,7 @@ public class ToolResponse implements Response<Object> {
     private final long executionTimeMs;
     private final Map<String, Object> metadata;
     private final @Nullable String errorMessage;
+    private final @Nullable ToolError error;
 
     /**
      * Create a new ToolResponse.
@@ -49,6 +57,34 @@ public class ToolResponse implements Response<Object> {
         this.executionTimeMs = executionTimeMs;
         this.metadata = Objects.requireNonNull(metadata, "metadata");
         this.errorMessage = errorMessage;
+        this.error = null;
+    }
+
+    /**
+     * Create a new MCP ToolResponse with error.
+     * 
+     * @param id the response ID
+     * @param error the MCP error
+     */
+    public ToolResponse(String id, ToolError error) {
+        this.id = Objects.requireNonNull(id, "id");
+        this.data = null;
+        this.timestamp = System.currentTimeMillis();
+        this.toolId = "unknown";
+        this.operation = "unknown";
+        this.executionTimeMs = 0;
+        this.metadata = Map.of();
+        this.errorMessage = error.getMessage();
+        this.error = Objects.requireNonNull(error, "error");
+    }
+
+    /**
+     * Get the JSON-RPC version.
+     * 
+     * @return Always "2.0"
+     */
+    public String getJsonrpc() {
+        return jsonrpc;
     }
 
     @Override
@@ -58,7 +94,7 @@ public class ToolResponse implements Response<Object> {
 
     @Override
     public boolean isSuccess() {
-        return errorMessage == null;
+        return errorMessage == null && error == null;
     }
 
     @Override
@@ -113,6 +149,50 @@ public class ToolResponse implements Response<Object> {
     }
 
     /**
+     * Get the MCP error information.
+     * 
+     * @return Error information, or empty if this is a success response
+     */
+    public Optional<ToolError> getError() {
+        return Optional.ofNullable(error);
+    }
+
+    /**
+     * Get the response result (MCP compatibility).
+     * 
+     * @return Result data, or empty if this is an error response
+     */
+    public Optional<Object> getResult() {
+        return Optional.ofNullable(data);
+    }
+
+    /**
+     * Get a typed response result (MCP compatibility).
+     * 
+     * @param <T> Expected result type
+     * @param type Expected type class
+     * @return Typed result, or empty if not found or wrong type
+     */
+    @SuppressWarnings("unchecked")
+    public <T> Optional<T> getResult(Class<T> type) {
+        if (data != null && type.isInstance(data)) {
+            @SuppressWarnings("null")
+            T typedResult = (T) data;
+            return Optional.of(typedResult);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Check if this response indicates an error (MCP compatibility).
+     * 
+     * @return true if error, false if successful
+     */
+    public boolean isError() {
+        return error != null || errorMessage != null;
+    }
+
+    /**
      * Create a successful response.
      * 
      * @param data the response data
@@ -151,6 +231,28 @@ public class ToolResponse implements Response<Object> {
                 Map.of(), null);
     }
 
+    /**
+     * Create an MCP error response.
+     * 
+     * @param id the response ID
+     * @param error the MCP error
+     * @return an MCP error ToolResponse
+     */
+    public static ToolResponse mcpError(String id, ToolError error) {
+        return new ToolResponse(id, error);
+    }
+
+    /**
+     * Create an MCP success response.
+     * 
+     * @param id the response ID
+     * @param result the result data
+     * @return an MCP success ToolResponse
+     */
+    public static ToolResponse mcpSuccess(String id, Object result) {
+        return new ToolResponse(id, result, System.currentTimeMillis(), "mcp", "response", 0, Map.of(), null);
+    }
+
     private static String generateId() {
         return "tool-response-" + System.currentTimeMillis() + "-" + System.nanoTime();
     }
@@ -164,21 +266,24 @@ public class ToolResponse implements Response<Object> {
             return false;
         }
         ToolResponse other = (ToolResponse) obj;
-        return Objects.equals(id, other.id) && Objects.equals(data, other.data) && timestamp == other.timestamp
+        return Objects.equals(jsonrpc, other.jsonrpc) && Objects.equals(id, other.id)
+                && Objects.equals(data, other.data) && timestamp == other.timestamp
                 && Objects.equals(toolId, other.toolId) && Objects.equals(operation, other.operation)
                 && executionTimeMs == other.executionTimeMs && Objects.equals(metadata, other.metadata)
-                && Objects.equals(errorMessage, other.errorMessage);
+                && Objects.equals(errorMessage, other.errorMessage) && Objects.equals(error, other.error);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, data, timestamp, toolId, operation, executionTimeMs, metadata, errorMessage);
+        return Objects.hash(jsonrpc, id, data, timestamp, toolId, operation, executionTimeMs, metadata, errorMessage,
+                error);
     }
 
     @Override
     public String toString() {
-        return "ToolResponse{" + "id='" + id + '\'' + ", data=" + data + ", timestamp=" + timestamp + ", toolId='"
-                + toolId + '\'' + ", operation='" + operation + '\'' + ", executionTimeMs=" + executionTimeMs
-                + ", metadata=" + metadata + ", errorMessage='" + errorMessage + '\'' + '}';
+        return "ToolResponse{" + "jsonrpc='" + jsonrpc + '\'' + ", id='" + id + '\'' + ", data=" + data + ", timestamp="
+                + timestamp + ", toolId='" + toolId + '\'' + ", operation='" + operation + '\'' + ", executionTimeMs="
+                + executionTimeMs + ", metadata=" + metadata + ", errorMessage='" + errorMessage + '\'' + ", error="
+                + error + '}';
     }
 }

@@ -1,9 +1,11 @@
 package org.openhab.core.ai.common.configuration;
 
+import java.util.Map;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.builder.ServerConfigurationBuilder;
 
 /**
  * Unified server configuration for AI components.
@@ -89,58 +91,127 @@ public class ServerConfiguration extends BaseConfiguration {
     private final String sslTrustStorePassword;
 
     /**
-     * Package-private constructor for builder pattern.
+     * Public constructor for builder pattern.
      */
-    ServerConfiguration(ServerConfigurationBuilder builder) {
-        super(builder.id, builder.enabled, builder.name, builder.version, builder.customOptions);
-        this.baseUrl = builder.baseUrl;
-        this.port = builder.port;
-        this.contextPath = builder.contextPath;
-        this.servletPath = builder.servletPath;
-        this.servletPattern = builder.servletPattern;
-        this.messageEndpoint = builder.messageEndpoint;
-        this.healthEndpoint = builder.healthEndpoint;
-        this.statusEndpoint = builder.statusEndpoint;
-        this.metricsEndpoint = builder.metricsEndpoint;
-        this.enableAuthentication = builder.enableAuthentication;
-        this.primaryAuthMethod = builder.primaryAuthMethod;
-        this.fallbackAuthMethod = builder.fallbackAuthMethod;
-        this.enableFallbackAuth = builder.enableFallbackAuth;
-        this.maxConnections = builder.maxConnections;
-        this.rateLimitPerMinute = builder.rateLimitPerMinute;
-        this.enableRequestValidation = builder.enableRequestValidation;
-        this.oauthIssuerUrl = builder.oauthIssuerUrl;
-        this.oauthClientId = builder.oauthClientId;
-        this.oauthClientSecret = builder.oauthClientSecret;
-        this.oauthRedirectUri = builder.oauthRedirectUri;
-        this.oauthPkceEnabled = builder.oauthPkceEnabled;
-        this.openhabUsersFile = builder.openhabUsersFile;
-        this.openhabUsersEnabled = builder.openhabUsersEnabled;
-        this.apiKeyHeader = builder.apiKeyHeader;
-        this.apiKeyValue = builder.apiKeyValue;
-        this.apiKeyEnabled = builder.apiKeyEnabled;
-        this.jwtSecret = builder.jwtSecret;
-        this.jwtIssuer = builder.jwtIssuer;
-        this.jwtExpirationMinutes = builder.jwtExpirationMinutes;
-        this.jwtEnabled = builder.jwtEnabled;
-        this.enableMetrics = builder.enableMetrics;
-        this.enableHealthChecks = builder.enableHealthChecks;
-        this.healthCheckInterval = builder.healthCheckInterval;
-        this.enablePerformanceMonitoring = builder.enablePerformanceMonitoring;
-        this.productionMode = builder.productionMode;
-        this.requestTimeout = builder.requestTimeout;
-        this.connectionTimeout = builder.connectionTimeout;
-        this.enableGracefulShutdown = builder.enableGracefulShutdown;
-        this.shutdownTimeout = builder.shutdownTimeout;
-        this.enableCors = builder.enableCors;
-        this.corsAllowedOrigins = builder.corsAllowedOrigins;
-        this.corsAllowedMethods = builder.corsAllowedMethods;
-        this.corsAllowedHeaders = builder.corsAllowedHeaders;
-        this.enableSsl = builder.enableSsl;
-        this.sslKeyStore = builder.sslKeyStore;
-        this.sslKeyStorePassword = builder.sslKeyStorePassword;
-        this.sslTrustStore = builder.sslTrustStore;
-        this.sslTrustStorePassword = builder.sslTrustStorePassword;
+    public ServerConfiguration(ServerConfigurationBuilder builder) {
+        super("server-" + builder.getHost() + "-" + builder.getPort(), builder.isEnabled(), builder.getName(),
+                builder.getVersion(), builder.getSettings());
+        // Use builder fields with defaults for missing values
+        this.baseUrl = "http://" + builder.getHost() + ":" + builder.getPort();
+        this.port = builder.getPort();
+        this.contextPath = "/";
+        this.servletPath = "/";
+        this.servletPattern = "/*";
+        this.messageEndpoint = "/api/messages";
+        this.healthEndpoint = "/health";
+        this.statusEndpoint = "/status";
+        this.metricsEndpoint = "/metrics";
+        this.enableAuthentication = false;
+        this.primaryAuthMethod = "none";
+        this.fallbackAuthMethod = "none";
+        this.enableFallbackAuth = false;
+        this.maxConnections = 100;
+        this.rateLimitPerMinute = 1000;
+        this.enableRequestValidation = true;
+        this.oauthIssuerUrl = "";
+        this.oauthClientId = "";
+        this.oauthClientSecret = "";
+        this.oauthRedirectUri = "";
+        this.oauthPkceEnabled = false;
+        this.openhabUsersFile = "";
+        this.openhabUsersEnabled = false;
+        this.apiKeyHeader = "";
+        this.apiKeyValue = "";
+        this.apiKeyEnabled = false;
+        this.jwtSecret = "";
+        this.jwtIssuer = "";
+        this.jwtExpirationMinutes = 60;
+        this.jwtEnabled = false;
+        this.enableMetrics = true;
+        this.enableHealthChecks = true;
+        this.healthCheckInterval = 30;
+        this.enablePerformanceMonitoring = false;
+        this.productionMode = false;
+        this.requestTimeout = 30000;
+        this.connectionTimeout = 10000;
+        this.enableGracefulShutdown = true;
+        this.shutdownTimeout = 30;
+        this.enableCors = false;
+        this.corsAllowedOrigins = "*";
+        this.corsAllowedMethods = "GET,POST,PUT,DELETE";
+        this.corsAllowedHeaders = "*";
+        this.enableSsl = false;
+        this.sslKeyStore = "";
+        this.sslKeyStorePassword = "";
+        this.sslTrustStore = "";
+        this.sslTrustStorePassword = "";
+    }
+
+    /**
+     * Protected constructor for subclasses.
+     */
+    protected ServerConfiguration(String id, boolean enabled, String name, String version,
+            @Nullable Map<String, Object> customOptions, String baseUrl, int port, String contextPath,
+            String servletPath, String servletPattern, String messageEndpoint, String healthEndpoint,
+            String statusEndpoint, String metricsEndpoint, boolean enableAuthentication, String primaryAuthMethod,
+            String fallbackAuthMethod, boolean enableFallbackAuth, int maxConnections, int rateLimitPerMinute,
+            boolean enableRequestValidation, String oauthIssuerUrl, String oauthClientId, String oauthClientSecret,
+            String oauthRedirectUri, boolean oauthPkceEnabled, String openhabUsersFile, boolean openhabUsersEnabled,
+            String apiKeyHeader, String apiKeyValue, boolean apiKeyEnabled, String jwtSecret, String jwtIssuer,
+            int jwtExpirationMinutes, boolean jwtEnabled, boolean enableMetrics, boolean enableHealthChecks,
+            int healthCheckInterval, boolean enablePerformanceMonitoring, boolean productionMode, int requestTimeout,
+            int connectionTimeout, boolean enableGracefulShutdown, int shutdownTimeout, boolean enableCors,
+            String corsAllowedOrigins, String corsAllowedMethods, String corsAllowedHeaders, boolean enableSsl,
+            String sslKeyStore, String sslKeyStorePassword, String sslTrustStore, String sslTrustStorePassword) {
+        super(id, enabled, name, version, customOptions);
+        this.baseUrl = baseUrl;
+        this.port = port;
+        this.contextPath = contextPath;
+        this.servletPath = servletPath;
+        this.servletPattern = servletPattern;
+        this.messageEndpoint = messageEndpoint;
+        this.healthEndpoint = healthEndpoint;
+        this.statusEndpoint = statusEndpoint;
+        this.metricsEndpoint = metricsEndpoint;
+        this.enableAuthentication = enableAuthentication;
+        this.primaryAuthMethod = primaryAuthMethod;
+        this.fallbackAuthMethod = fallbackAuthMethod;
+        this.enableFallbackAuth = enableFallbackAuth;
+        this.maxConnections = maxConnections;
+        this.rateLimitPerMinute = rateLimitPerMinute;
+        this.enableRequestValidation = enableRequestValidation;
+        this.oauthIssuerUrl = oauthIssuerUrl;
+        this.oauthClientId = oauthClientId;
+        this.oauthClientSecret = oauthClientSecret;
+        this.oauthRedirectUri = oauthRedirectUri;
+        this.oauthPkceEnabled = oauthPkceEnabled;
+        this.openhabUsersFile = openhabUsersFile;
+        this.openhabUsersEnabled = openhabUsersEnabled;
+        this.apiKeyHeader = apiKeyHeader;
+        this.apiKeyValue = apiKeyValue;
+        this.apiKeyEnabled = apiKeyEnabled;
+        this.jwtSecret = jwtSecret;
+        this.jwtIssuer = jwtIssuer;
+        this.jwtExpirationMinutes = jwtExpirationMinutes;
+        this.jwtEnabled = jwtEnabled;
+        this.enableMetrics = enableMetrics;
+        this.enableHealthChecks = enableHealthChecks;
+        this.healthCheckInterval = healthCheckInterval;
+        this.enablePerformanceMonitoring = enablePerformanceMonitoring;
+        this.productionMode = productionMode;
+        this.requestTimeout = requestTimeout;
+        this.connectionTimeout = connectionTimeout;
+        this.enableGracefulShutdown = enableGracefulShutdown;
+        this.shutdownTimeout = shutdownTimeout;
+        this.enableCors = enableCors;
+        this.corsAllowedOrigins = corsAllowedOrigins;
+        this.corsAllowedMethods = corsAllowedMethods;
+        this.corsAllowedHeaders = corsAllowedHeaders;
+        this.enableSsl = enableSsl;
+        this.sslKeyStore = sslKeyStore;
+        this.sslKeyStorePassword = sslKeyStorePassword;
+        this.sslTrustStore = sslTrustStore;
+        this.sslTrustStorePassword = sslTrustStorePassword;
     }
 
     /**

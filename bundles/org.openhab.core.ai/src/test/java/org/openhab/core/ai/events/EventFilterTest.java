@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.common.events.EventFilter;
 import org.openhab.core.events.Event;
 
 /**

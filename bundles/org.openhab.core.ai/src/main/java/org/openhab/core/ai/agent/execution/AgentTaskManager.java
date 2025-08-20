@@ -22,7 +22,7 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionResult;
-import org.openhab.core.ai.agent.core.MessageType;
+import org.openhab.core.ai.agent.core.AgentMessageType;
 import org.openhab.core.ai.agent.infrastructure.persistence.AgentPersistenceManager;
 import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentSynchronizationManager;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
@@ -1520,14 +1520,14 @@ public class AgentTaskManager {
      * @param message the A2A message to analyze
      * @return the detected message type
      */
-    private MessageType detectMessageType(Message message) {
+    private AgentMessageType detectMessageType(Message message) {
         String content = extractTextContent(message);
         Map<String, Object> metadata = message.getMetadata();
 
         // Check metadata for explicit type
         if (metadata != null && metadata.containsKey("messageType")) {
             try {
-                return MessageType.valueOf(metadata.get("messageType").toString().toUpperCase());
+                return AgentMessageType.valueOf(metadata.get("messageType").toString().toUpperCase());
             } catch (IllegalArgumentException e) {
                 logger.warn("Invalid messageType in metadata: {}", metadata.get("messageType"));
             }
@@ -1535,7 +1535,7 @@ public class AgentTaskManager {
 
         // Infer from content
         if (content == null || content.trim().isEmpty()) {
-            return MessageType.QUERY; // Default to query for empty messages
+            return AgentMessageType.QUERY; // Default to query for empty messages
         }
 
         String lowerContent = content.toLowerCase().trim();
@@ -1543,39 +1543,39 @@ public class AgentTaskManager {
         // Discovery patterns
         if (lowerContent.startsWith("discover_") || lowerContent.startsWith("get_agent_capabilities")
                 || lowerContent.startsWith("find_agents") || lowerContent.contains("capabilities")) {
-            return MessageType.DISCOVERY;
+            return AgentMessageType.DISCOVERY;
         }
 
         // Query patterns
         if (lowerContent.startsWith("get_") || lowerContent.startsWith("list_") || lowerContent.startsWith("ping")
                 || lowerContent.startsWith("status") || lowerContent.startsWith("info")
                 || lowerContent.startsWith("query")) {
-            return MessageType.QUERY;
+            return AgentMessageType.QUERY;
         }
 
         // Control patterns
         if (lowerContent.startsWith("cancel_") || lowerContent.startsWith("pause_")
                 || lowerContent.startsWith("resume_") || lowerContent.startsWith("stop_")
                 || lowerContent.startsWith("abort_")) {
-            return MessageType.CONTROL;
+            return AgentMessageType.CONTROL;
         }
 
         // Execution patterns
         if (lowerContent.startsWith("execute_") || lowerContent.startsWith("perform_")
                 || lowerContent.startsWith("run_") || lowerContent.startsWith("start_")
                 || lowerContent.startsWith("trigger_") || lowerContent.startsWith("action:")) {
-            return MessageType.EXECUTION;
+            return AgentMessageType.EXECUTION;
         }
 
         // Notification patterns
         if (lowerContent.startsWith("notify_") || lowerContent.startsWith("alert_")
                 || lowerContent.startsWith("event_")) {
-            return MessageType.NOTIFICATION;
+            return AgentMessageType.NOTIFICATION;
         }
 
         // Default to query for safety
         logger.debug("Could not determine message type for content: '{}', defaulting to QUERY", content);
-        return MessageType.QUERY;
+        return AgentMessageType.QUERY;
     }
 
     /**
@@ -1923,7 +1923,7 @@ public class AgentTaskManager {
         metadata.put("conversionTimestamp", System.currentTimeMillis());
 
         // Detect message type and store it
-        MessageType messageType = detectMessageType(message);
+        AgentMessageType messageType = detectMessageType(message);
         metadata.put("messageType", messageType.name());
 
         // Create initial task status

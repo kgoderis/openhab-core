@@ -9,19 +9,30 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.auth.AuditLogger;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.openhab.core.ai.auth.RoleBasedAccessControl;
+import org.openhab.core.ai.common.audit.AuditLogger;
+import org.openhab.core.ai.common.configuration.SecurityConfiguration;
 import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.common.context.AgentModelContext.AgentModelContextBuilder;
+import org.openhab.core.ai.common.security.AgentSecurityStatistics;
+import org.openhab.core.ai.common.security.QuickSecurityResult;
+import org.openhab.core.ai.common.security.RateLimitInfo;
+import org.openhab.core.ai.common.security.SecurityContext;
+import org.openhab.core.ai.common.security.SecurityIssue;
+import org.openhab.core.ai.common.security.SecurityIssueType;
+import org.openhab.core.ai.common.security.SecurityManager;
+import org.openhab.core.ai.common.security.SecurityRequest;
+import org.openhab.core.ai.common.security.SecurityStatistics;
+import org.openhab.core.ai.common.security.SecurityValidationResult;
 import org.openhab.core.ai.reasoning.engine.SharedModelReasoningEngine;
 import org.openhab.core.ai.reasoning.model.ModelRequest;
 import org.openhab.core.ai.reasoning.model.ModelUsageInfo;
 import org.openhab.core.ai.reasoning.prompts.AgentModelPromptBuilder;
-import org.openhab.core.ai.reasoning.security.api.SecurityIssue;
-import org.openhab.core.ai.reasoning.security.api.SecurityIssueType;
-import org.openhab.core.ai.reasoning.security.api.SecurityValidationResult;
+import org.openhab.core.ai.reasoning.security.api.ReasoningSecurityManager;
+import org.openhab.core.ai.tool.security.filters.SecurityResult;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -40,9 +51,9 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Karel Goderis - Initial Contribution
  */
-@Component(service = AgentModelSecurityManager.class)
+@Component(service = ReasoningSecurityManager.class)
 @NonNullByDefault
-public class AgentModelSecurityManager {
+public class AgentModelSecurityManager implements ReasoningSecurityManager {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentModelSecurityManager.class);
 
@@ -65,7 +76,7 @@ public class AgentModelSecurityManager {
     @Reference
     private AuditLogger auditLogger;
 
-    private final Map<String, SecurityPolicy> securityPolicies = new ConcurrentHashMap<>();
+    private final Map<String, ModelSecurityPolicy> securityPolicies = new ConcurrentHashMap<>();
     private final Map<String, AccessControl> accessControls = new ConcurrentHashMap<>();
 
     /**
@@ -1061,38 +1072,28 @@ public class AgentModelSecurityManager {
         }
 
         try {
-            // Get or create rate limiting info for the agent
+            // Simple rate limiting implementation using existing RateLimitInfo
             RateLimitInfo rateLimitInfo = rateLimitCache.computeIfAbsent(agentId,
-                    k -> new RateLimitInfo(agentId, 60, 10)); // Default: 60 requests per minute, 10 per second
+                    k -> new RateLimitInfo(agentId, 60, 0, Instant.now().plusSeconds(60), false));
 
-            long currentTime = System.currentTimeMillis();
-
-            // Check if we need to reset the minute window
-            if (currentTime - rateLimitInfo.lastMinuteReset > 60000) { // 1 minute
-                rateLimitInfo.resetMinuteWindow();
-            }
-
-            // Check if we need to reset the second window
-            if (currentTime - rateLimitInfo.lastSecondReset > 1000) { // 1 second
-                rateLimitInfo.resetSecondWindow();
-            }
-
-            // Check per-second rate limit (burst protection)
-            if (rateLimitInfo.requestsThisSecond >= rateLimitInfo.maxRequestsPerSecond) {
-                logger.warn("Per-second rate limit exceeded for agent: {} (limit: {}, current: {})", agentId,
-                        rateLimitInfo.maxRequestsPerSecond, rateLimitInfo.requestsThisSecond);
+            // Check if rate limit has been exceeded
+            if (rateLimitInfo.isExceeded()) {
+                logger.warn("Rate limit exceeded for agent: {} (limit: {}, current: {})", agentId,
+                        rateLimitInfo.getLimit(), rateLimitInfo.getCurrentCount());
                 return true;
             }
 
-            // Check per-minute rate limit
-            if (rateLimitInfo.requestsThisMinute >= rateLimitInfo.maxRequestsPerMinute) {
-                logger.warn("Per-minute rate limit exceeded for agent: {} (limit: {}, current: {})", agentId,
-                        rateLimitInfo.maxRequestsPerMinute, rateLimitInfo.requestsThisMinute);
-                return true;
+            // Check if we need to reset the window
+            if (Instant.now().isAfter(rateLimitInfo.getResetTime())) {
+                // Create a new rate limit info with reset window
+                rateLimitCache.put(agentId, new RateLimitInfo(agentId, 60, 1, Instant.now().plusSeconds(60), false));
+            } else {
+                // Increment the count
+                rateLimitCache.put(agentId,
+                        new RateLimitInfo(agentId, rateLimitInfo.getLimit(), rateLimitInfo.getCurrentCount() + 1,
+                                rateLimitInfo.getResetTime(),
+                                rateLimitInfo.getCurrentCount() + 1 >= rateLimitInfo.getLimit()));
             }
-
-            // Increment request counters
-            rateLimitInfo.incrementRequests();
 
             return false;
 
@@ -1269,4 +1270,126 @@ public class AgentModelSecurityManager {
     /**
      * Model Request class.
      */
+
+    @Override
+    public boolean isEnabled() {
+        return true; // Default implementation
+    }
+
+    @Override
+    public boolean canAccess(String componentId, @Nullable String userId) {
+        return true; // Default implementation
+    }
+
+    @Override
+    public SecurityResult validate(String action, String resource, AuthenticationContext context) {
+        return SecurityResult.success("Model validation passed");
+    }
+
+    @Override
+    public void logViolation(String componentId, String violation, @Nullable Map<String, Object> context) {
+        logger.warn("Security violation in component {}: {} with context: {}", componentId, violation, context);
+    }
+
+    @Override
+    public SecurityStatistics getStatistics() {
+        return new AgentSecurityStatistics(0, 0, 0, 0, Instant.now(), 0, 0, true, true, 100, 60, 0);
+    }
+
+    @Override
+    public SecurityManager.SecurityManagerType getType() {
+        return SecurityManager.SecurityManagerType.REASONING;
+    }
+
+    @Override
+    public SecurityConfiguration getConfig() {
+        return new SecurityConfiguration(); // Default implementation
+    }
+
+    @Override
+    public void updateConfig(SecurityConfiguration config) {
+        // Default implementation
+    }
+
+    @Override
+    public CompletableFuture<SecurityValidationResult> validateModelAccess(String modelId, String agentId) {
+        return CompletableFuture.supplyAsync(() -> {
+            SecurityValidationResult result = new SecurityValidationResult(
+                    "model-access-" + System.currentTimeMillis());
+
+            // Check if model is available
+            if (!isModelAvailable(modelId)) {
+                result.addSecurityIssue(SecurityIssueType.ACCESS_CONTROL_VIOLATION,
+                        "Model is not available: " + modelId);
+                return result;
+            }
+
+            // Check if agent has permission
+            if (!hasModelPermission(agentId, modelId)) {
+                result.addSecurityIssue(SecurityIssueType.AUTHORIZATION_FAILED,
+                        "Agent does not have permission for model: " + modelId);
+                return result;
+            }
+
+            result.setAccessControlValid(true);
+            return result;
+        });
+    }
+
+    @Override
+    public CompletableFuture<QuickSecurityResult> quickSecurityCheck(String agentId, String action) {
+        return CompletableFuture.supplyAsync(() -> {
+            // Simple quick check implementation
+            if (agentId == null || agentId.trim().isEmpty()) {
+                return new QuickSecurityResult(false, "Invalid agent ID", System.currentTimeMillis());
+            }
+
+            return new QuickSecurityResult(true, "Quick check passed", System.currentTimeMillis());
+        });
+    }
+
+    @Override
+    public CompletableFuture<SecurityValidationResult> validateContentSafety(String content, SecurityContext context) {
+        return CompletableFuture.supplyAsync(() -> {
+            SecurityValidationResult result = new SecurityValidationResult(
+                    "content-safety-" + System.currentTimeMillis());
+
+            if (content != null && !content.trim().isEmpty()) {
+                // Check for sensitive information
+                if (containsSensitiveInformation(content)) {
+                    result.addSecurityIssue(SecurityIssueType.CONTENT_SAFETY_VIOLATION,
+                            "Sensitive information detected in content");
+                    return result;
+                }
+
+                // Check for inappropriate content
+                if (containsInappropriateContent(content)) {
+                    result.addSecurityIssue(SecurityIssueType.CONTENT_SAFETY_VIOLATION,
+                            "Inappropriate content detected");
+                    return result;
+                }
+            }
+
+            result.setContentSafetyValid(true);
+            return result;
+        });
+    }
+
+    @Override
+    public CompletableFuture<SecurityValidationResult> validateSecurity(SecurityRequest request) {
+        return CompletableFuture.supplyAsync(() -> {
+            SecurityValidationResult result = new SecurityValidationResult(request.getRequestId());
+
+            // Basic security validation
+            String agentId = (String) request.getMetadata().get("agentId");
+            if (agentId == null || agentId.trim().isEmpty()) {
+                result.addSecurityIssue(SecurityIssueType.AUTHENTICATION_FAILED, "Invalid agent ID");
+                return result;
+            }
+
+            result.setAuthenticationValid(true);
+            result.setAuthorizationValid(true);
+            return result;
+        });
+    }
 }

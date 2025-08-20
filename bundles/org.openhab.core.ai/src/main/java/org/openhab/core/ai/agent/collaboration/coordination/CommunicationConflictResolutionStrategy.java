@@ -1,10 +1,8 @@
 package org.openhab.core.ai.agent.collaboration.coordination;
 
-import java.util.concurrent.CompletableFuture;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionResult;
-import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionStrategy;
+import org.openhab.core.ai.agent.collaboration.ConflictResolutionResult;
+import org.openhab.core.ai.agent.collaboration.ConflictResolutionStrategy;
 
 /**
  * Communication conflict resolution strategy.
@@ -15,8 +13,7 @@ import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResoluti
 @NonNullByDefault
 public class CommunicationConflictResolutionStrategy implements ConflictResolutionStrategy {
     @Override
-    public CompletableFuture<ConflictResolutionResult> resolve(ConflictResolutionSession session) {
-        return CompletableFuture.completedFuture(
-                ConflictResolutionResult.success("Communication conflict resolved using retry mechanism"));
+    public ConflictResolutionResult resolve(Object session) {
+        return ConflictResolutionResult.success("Communication conflict resolved using retry mechanism");
     }
 }

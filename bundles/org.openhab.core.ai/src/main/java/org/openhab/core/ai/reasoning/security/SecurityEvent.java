@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.reasoning.security.api.SecurityIssue;
+import org.openhab.core.ai.common.security.SecurityIssue;
 
 /**
  * Security event captured during validation.

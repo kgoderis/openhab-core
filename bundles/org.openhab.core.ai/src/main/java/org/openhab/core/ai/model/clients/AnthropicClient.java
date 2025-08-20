@@ -15,11 +15,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.response.ModelResponse;
+import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
-import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
@@ -105,7 +106,7 @@ public class AnthropicClient implements ModelClient {
                 long responseTime = System.currentTimeMillis() - startTime;
                 trackMetrics(responseTime, true, null);
 
-                return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
+                return ModelResponseBuilder.builder().withContent(responseContent).withModelName(config.getModelName())
                         .withProviderType(ModelProviderType.ANTHROPIC.name()).build();
 
             } catch (Exception e) {
@@ -171,7 +172,7 @@ public class AnthropicClient implements ModelClient {
                         var start = event.asMessageStart();
                         modelNameRef.set(start.message().model().toString());
                     } else if (event.isMessageStop()) {
-                        handler.onComplete(ModelResponse.builder().withContent(responseContent.toString())
+                        handler.onComplete(ModelResponseBuilder.builder().withContent(responseContent.toString())
                                 .withModelName(modelNameRef.get()).withProviderType(ModelProviderType.ANTHROPIC.name())
                                 .build());
                     }
@@ -181,8 +182,8 @@ public class AnthropicClient implements ModelClient {
                 long responseTime = System.currentTimeMillis() - startTime;
                 trackMetrics(responseTime, true, null);
 
-                return ModelResponse.builder().withContent(responseContent.toString()).withModelName(modelNameRef.get())
-                        .withProviderType(ModelProviderType.ANTHROPIC.name()).build();
+                return ModelResponseBuilder.builder().withContent(responseContent.toString())
+                        .withModelName(modelNameRef.get()).withProviderType(ModelProviderType.ANTHROPIC.name()).build();
 
             } catch (Exception e) {
                 // Track error metrics

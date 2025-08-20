@@ -5,15 +5,15 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.security.QuickSecurityResult;
+import org.openhab.core.ai.common.security.SecurityIssue;
+import org.openhab.core.ai.common.security.SecurityIssueType;
+import org.openhab.core.ai.common.security.SecurityLevel;
+import org.openhab.core.ai.common.security.SecurityValidationResult;
 import org.openhab.core.ai.reasoning.constraints.SafetyConstraintManager;
 import org.openhab.core.ai.reasoning.model.ModelRequest;
 import org.openhab.core.ai.reasoning.policies.SafetyValidationResult;
 import org.openhab.core.ai.reasoning.results.ComprehensiveSecurityResult;
-import org.openhab.core.ai.reasoning.results.QuickSecurityResult;
-import org.openhab.core.ai.reasoning.security.api.SecurityIssue;
-import org.openhab.core.ai.reasoning.security.api.SecurityIssueType;
-import org.openhab.core.ai.reasoning.security.api.SecurityLevel;
-import org.openhab.core.ai.reasoning.security.api.SecurityValidationResult;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -119,25 +119,19 @@ public class SecurityIntegrationService {
         logger.debug("Performing quick security check for agent: {} action: {}", agentId, actionType);
 
         return CompletableFuture.supplyAsync(() -> {
-            QuickSecurityResult result = new QuickSecurityResult(agentId, actionType);
-
             try {
                 // Only perform safety validation for quick checks
                 SafetyValidationResult safetyResult = safetyConstraintManager.validateAction(agentId, actionType,
                         Map.of(), userId);
+                long checkTime = System.currentTimeMillis();
 
-                result.setValid(safetyResult.isValid());
-                if (!safetyResult.isValid()) {
-                    result.setReason(safetyResult.getReason());
-                }
-
+                return new QuickSecurityResult(safetyResult.isValid(),
+                        safetyResult.isValid() ? "Security check passed" : safetyResult.getReason(), checkTime);
             } catch (Exception e) {
                 logger.error("Error during quick security check: {}", e.getMessage(), e);
-                result.setValid(false);
-                result.setReason("Security check error: " + e.getMessage());
+                long checkTime = System.currentTimeMillis();
+                return new QuickSecurityResult(false, "Security check error: " + e.getMessage(), checkTime);
             }
-
-            return result;
         });
     }
 

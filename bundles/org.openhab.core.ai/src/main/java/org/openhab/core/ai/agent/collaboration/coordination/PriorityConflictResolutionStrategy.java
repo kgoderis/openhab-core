@@ -1,10 +1,8 @@
 package org.openhab.core.ai.agent.collaboration.coordination;
 
-import java.util.concurrent.CompletableFuture;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionResult;
-import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionStrategy;
+import org.openhab.core.ai.agent.collaboration.ConflictResolutionResult;
+import org.openhab.core.ai.agent.collaboration.ConflictResolutionStrategy;
 
 /**
  * Priority conflict resolution strategy.
@@ -15,8 +13,10 @@ import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResoluti
 @NonNullByDefault
 public class PriorityConflictResolutionStrategy implements ConflictResolutionStrategy {
     @Override
-    public CompletableFuture<ConflictResolutionResult> resolve(ConflictResolutionSession session) {
-        return CompletableFuture.completedFuture(
-                ConflictResolutionResult.success("Priority conflict resolved using hierarchical resolution"));
+    public ConflictResolutionResult resolve(Object session) {
+        if (session instanceof ConflictResolutionSession) {
+            return ConflictResolutionResult.success("Priority conflict resolved using hierarchical resolution");
+        }
+        return ConflictResolutionResult.failure("Invalid session type");
     }
 }

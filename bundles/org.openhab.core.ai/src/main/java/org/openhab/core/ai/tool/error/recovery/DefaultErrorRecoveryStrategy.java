@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.error.ErrorRecoveryResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,8 +162,9 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
             logger.error("Error during recovery execution: {}", e.getMessage(), e);
             failedRecoveries.incrementAndGet();
 
-            return new ErrorRecoveryResult(false, "FAILED", "Recovery execution failed: " + e.getMessage(),
-                    Map.of("error", e.getMessage(), "strategy", strategyName), System.currentTimeMillis());
+            return new ErrorRecoveryResult(false, "FAILED", "EXECUTION_FAILED",
+                    "Recovery execution failed: " + e.getMessage(),
+                    Map.of("error", e.getMessage(), "strategy", strategyName), System.currentTimeMillis(), 0);
         }
     }
 
@@ -284,23 +286,25 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
                 // Check if error is recoverable
                 if (isRecoverableError(error)) {
                     successfulRecoveries.incrementAndGet();
-                    return new ErrorRecoveryResult(true, "RECOVERED", "Recovery successful on attempt " + attempt,
+                    return new ErrorRecoveryResult(true, "RECOVERED", "RETRY_SUCCESS",
+                            "Recovery successful on attempt " + attempt,
                             Map.of("attempt", attempt, "errorType", errorType, "strategy", strategyName),
-                            System.currentTimeMillis());
+                            System.currentTimeMillis(), 0);
                 }
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return new ErrorRecoveryResult(false, "FAILED", "Recovery interrupted",
-                        Map.of("error", e.getMessage(), "strategy", strategyName), System.currentTimeMillis());
+                return new ErrorRecoveryResult(false, "FAILED", "INTERRUPTED", "Recovery interrupted",
+                        Map.of("error", e.getMessage(), "strategy", strategyName), System.currentTimeMillis(), 0);
             } catch (Exception e) {
                 logger.warn("Recovery attempt {} failed: {}", attempt, e.getMessage());
             }
         }
 
         failedRecoveries.incrementAndGet();
-        return new ErrorRecoveryResult(false, "FAILED", "Recovery failed after " + maxRetryAttempts + " attempts",
-                Map.of("attempts", maxRetryAttempts, "strategy", strategyName), System.currentTimeMillis());
+        return new ErrorRecoveryResult(false, "FAILED", "MAX_ATTEMPTS_EXCEEDED",
+                "Recovery failed after " + maxRetryAttempts + " attempts",
+                Map.of("attempts", maxRetryAttempts, "strategy", strategyName), System.currentTimeMillis(), 0);
     }
 
     /**

@@ -26,6 +26,7 @@ alwaysApply: true
 - **Create tasks in BRAIN_PLAN.md** for any incomplete work
 - **Verify all method calls exist** before using them - no invented or guessed calls
 - **Never use full qualified class names**, but use simple names combined with valid imports
+- **Never create inner class structures like interfaces, enums or classes** but put them in separate files
 
 ### 4. **SDK Integration**
 - **Maximize use of official SDK classes** for MCP and A2A protocols
@@ -234,6 +235,10 @@ alwaysApply: true
 
 - **Documentation**
   - Add class-level Javadoc (purpose, constraints, usage) and method docs per standards (author/since)
+
+- **Other**
+  - First check existing classes, interfaces or enums before creating them
+  - Never use inner structures if they can be avoided
 
 ```java
 // Example (openHAB style): immutable value with nested builder

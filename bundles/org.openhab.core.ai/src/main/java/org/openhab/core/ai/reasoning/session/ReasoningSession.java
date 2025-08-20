@@ -8,7 +8,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.api.IntelligentToolClient;
-import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
+import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 
 /**
  * Represents a single multi-step reasoning session.

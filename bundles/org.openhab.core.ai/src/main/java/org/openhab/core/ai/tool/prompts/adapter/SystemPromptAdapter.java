@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.adapter.Adapter;
 import org.openhab.core.ai.tool.adapter.BaseAdapter;
-import org.openhab.core.ai.tool.api.Adapter;
 import org.openhab.core.ai.tool.prompts.api.PromptContext;
 import org.openhab.core.ai.tool.prompts.api.PromptResult;
 import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
@@ -100,6 +100,26 @@ public class SystemPromptAdapter extends BaseAdapter implements Adapter<Prompt, 
     @Override
     public String getAdapterType() {
         return "prompts/system";
+    }
+
+    @Override
+    public @Nullable PromptResult adapt(Prompt source, PromptContext context) {
+        return execute(source.getName(), "adapt", Map.of(), context);
+    }
+
+    @Override
+    public boolean canAdapt(Prompt source) {
+        return source != null && source.getName() != null;
+    }
+
+    @Override
+    public Class<Prompt> getSourceType() {
+        return Prompt.class;
+    }
+
+    @Override
+    public Class<PromptResult> getResultType() {
+        return PromptResult.class;
     }
 
     @Override

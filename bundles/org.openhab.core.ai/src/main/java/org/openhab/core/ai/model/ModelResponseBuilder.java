@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.response.ModelResponse;
 
 /**
  * Builder for creating ModelResponse objects.

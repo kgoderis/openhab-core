@@ -11,6 +11,7 @@ import org.eclipse.jdt.annotation.Nullable;
  * Context version snapshot.
  * 
  * Represents an immutable snapshot of a context's state at a particular time.
+ * This unified class combines functionality from both duplicate implementations.
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
@@ -108,7 +109,38 @@ public class ContextVersion {
         return new ContextVersionBuilder();
     }
 
+    /**
+     * Create a builder from this instance for modification.
+     * 
+     * @return a new builder instance initialized with current values
+     */
     public ContextVersionBuilder toBuilder() {
         return new ContextVersionBuilder(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        ContextVersion other = (ContextVersion) obj;
+        return Objects.equals(versionId, other.versionId) && Objects.equals(contextId, other.contextId)
+                && Objects.equals(agentId, other.agentId) && Objects.equals(timestamp, other.timestamp)
+                && Objects.equals(data, other.data) && Objects.equals(options, other.options);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(versionId, contextId, agentId, timestamp, data, options);
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "ContextVersion{versionId='%s', contextId='%s', agentId='%s', timestamp=%s, data=%s, options=%s}",
+                versionId, contextId, agentId, timestamp, data, options);
     }
 }

@@ -7,12 +7,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.builder.ServerConfigurationBuilder;
+import org.openhab.core.ai.common.configuration.ServerConfiguration;
+import org.openhab.core.ai.common.transport.TransportType;
 import org.openhab.core.ai.config.ConfigurationService;
 import org.openhab.core.ai.tool.logging.ToolLoggingManager;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.server.api.ToolServer;
 import org.openhab.core.ai.tool.server.api.ToolServerManager;
-import org.openhab.core.ai.tool.server.api.TransportType;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
 import org.osgi.framework.BundleContext;
@@ -161,7 +162,7 @@ public class DefaultToolServerManager implements ToolServerManager {
      * @return Created server instance
      * @throws Exception if creation fails
      */
-    public DefaultToolServer createServerInstance(String serverId, ServerConfiguration config) throws Exception {
+    public DefaultToolServer createServerInstance(String serverId, ToolServerConfiguration config) throws Exception {
         // Validate input parameters
         if (serverId == null) {
             throw new IllegalArgumentException("Server ID cannot be null");
@@ -444,7 +445,7 @@ public class DefaultToolServerManager implements ToolServerManager {
         String defaultServerId = "default";
 
         // Load configuration from AIConfigurationService
-        ServerConfiguration config = loadConfigurationFromService();
+        ToolServerConfiguration config = loadConfigurationFromService();
 
         createServerInstance(defaultServerId, config);
 
@@ -463,14 +464,14 @@ public class DefaultToolServerManager implements ToolServerManager {
      * 
      * @return MCP server configuration
      */
-    private ServerConfiguration loadConfigurationFromService() {
+    private ToolServerConfiguration loadConfigurationFromService() {
         if (configurationService == null) {
             logger.warn("AIConfigurationService not available, using default configuration");
             return createDefaultConfiguration();
         }
 
         try {
-            ServerConfigurationBuilder builder = ServerConfiguration.builder();
+            ServerConfigurationBuilder builder = ServerConfigurationBuilder.builder();
 
             // Server Identity
             builder.withName(configurationService.getConfigValue("mcp.server.name", "openHAB MCP Server"))
@@ -612,7 +613,7 @@ public class DefaultToolServerManager implements ToolServerManager {
                     .withSetting("dev.enable.configuration.reload", configurationService
                             .getConfigValue("mcp.dev.enable.configuration.reload", Boolean.class, true));
 
-            ServerConfiguration config = builder.build();
+            ToolServerConfiguration config = new ToolServerConfiguration(builder);
             logger.info("Loaded MCP configuration from AIConfigurationService");
             return config;
 
@@ -627,11 +628,12 @@ public class DefaultToolServerManager implements ToolServerManager {
      * 
      * @return Default MCP server configuration
      */
-    private ServerConfiguration createDefaultConfiguration() {
-        return ServerConfiguration.builder().withName("openHAB Tool Server").withVersion("1.0.0")
-                .withTransportType(TransportType.STDIO.name()).withSetting("enableTools", true)
+    private ToolServerConfiguration createDefaultConfiguration() {
+        ServerConfigurationBuilder builder = ServerConfiguration.builder().withName("openHAB Tool Server")
+                .withVersion("1.0.0").withTransportType(TransportType.STDIO.name()).withSetting("enableTools", true)
                 .withSetting("enableResources", true).withSetting("enablePrompts", true)
-                .withSetting("enableLogging", true).build();
+                .withSetting("enableLogging", true);
+        return new ToolServerConfiguration(builder);
     }
 
     /**

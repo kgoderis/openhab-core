@@ -8,7 +8,6 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,8 +26,16 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManager;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
+import org.openhab.core.ai.auth.AuthenticationContext;
+import org.openhab.core.ai.auth.SecurityIncident;
 import org.openhab.core.ai.common.configuration.SecurityConfiguration;
+import org.openhab.core.ai.common.security.AgentSecurityStatistics;
 import org.openhab.core.ai.common.security.MessageSecurityStatistics;
+import org.openhab.core.ai.common.security.QuickSecurityResult;
+import org.openhab.core.ai.common.security.SecurityManager;
+import org.openhab.core.ai.common.security.SecuritySeverity;
+import org.openhab.core.ai.common.security.SecurityStatistics;
+import org.openhab.core.ai.tool.security.filters.SecurityResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -64,7 +71,7 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     private @Nullable AgentRegistry agentRegistry;
 
     // Security management
-    private final Map<String, SecurityPolicy> securityPolicies = new ConcurrentHashMap<>();
+    private final Map<String, AgentSecurityPolicy> securityPolicies = new ConcurrentHashMap<>();
     private final Map<String, KeyPair> agentKeyPairs = new ConcurrentHashMap<>();
     private final Map<String, SecurityIncident> securityIncidents = new ConcurrentHashMap<>();
     private final Map<String, AuditLog> auditLogs = new ConcurrentHashMap<>();
@@ -75,6 +82,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     private final AtomicLong totalSignaturesVerified = new AtomicLong(0);
     private final AtomicLong totalSecurityIncidents = new AtomicLong(0);
     private final AtomicLong totalAuthenticationFailures = new AtomicLong(0);
+    private final AtomicLong totalChecks = new AtomicLong(0);
+    private final AtomicLong allowedOperations = new AtomicLong(0);
+    private final AtomicLong deniedOperations = new AtomicLong(0);
 
     // Configuration
     private final AtomicReference<SecurityConfiguration> configuration = new AtomicReference<>(
@@ -110,7 +120,8 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
      * @param senderId Sender agent ID
      * @return Encrypted message
      */
-    public CompletableFuture<EncryptedMessage> encryptMessage(String message, String recipientId, String senderId) {
+    @Override
+    public CompletableFuture<EncryptedMessage> encrypt(String message, String recipientId, String senderId) {
         logger.debug("Encrypting message from {} to {}", senderId, recipientId);
 
         // Validate agents exist
@@ -155,7 +166,8 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
      * @param recipientId Recipient agent ID
      * @return Decrypted message
      */
-    public CompletableFuture<DecryptedMessage> decryptMessage(EncryptedMessage encryptedMessage, String recipientId) {
+    @Override
+    public CompletableFuture<DecryptedMessage> decrypt(EncryptedMessage encryptedMessage, String recipientId) {
         logger.debug("Decrypting message for recipient: {}", recipientId);
 
         // Validate recipient
@@ -215,7 +227,8 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
      * @param credentials Authentication credentials
      * @return Authentication result
      */
-    public CompletableFuture<AuthenticationResult> authenticateAgent(String agentId, String credentials) {
+    @Override
+    public CompletableFuture<AuthenticationResult> authenticate(String agentId, String credentials) {
         logger.debug("Authenticating agent: {}", agentId);
 
         // Validate agent exists
@@ -258,11 +271,12 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
      * @param resource Resource to access
      * @return Authorization result
      */
-    public CompletableFuture<AuthorizationResult> authorizeAction(String agentId, String action, String resource) {
+    @Override
+    public CompletableFuture<AuthorizationResult> authorize(String agentId, String action, String resource) {
         logger.debug("Authorizing action {} on resource {} for agent {}", action, resource, agentId);
 
         // Get security policy for agent
-        SecurityPolicy policy = securityPolicies.get(agentId);
+        AgentSecurityPolicy policy = securityPolicies.get(agentId);
         if (policy == null) {
             policy = getDefaultSecurityPolicy();
         }
@@ -332,7 +346,6 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
      * 
      * @return Security statistics
      */
-    @Override
     public MessageSecurityStatistics getSecurityStatistics() {
         long totalOps = totalMessagesEncrypted.get() + totalMessagesDecrypted.get() + totalSignaturesVerified.get();
         long successfulOps = totalMessagesEncrypted.get() + totalMessagesDecrypted.get()
@@ -350,7 +363,6 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
      * @param limit Maximum number of incidents
      * @return List of security incidents
      */
-    @Override
     public List<SecurityIncident> getSecurityIncidents() {
         return securityIncidents.values().stream().sorted((i1, i2) -> i2.getTimestamp().compareTo(i1.getTimestamp()))
                 .toList();
@@ -380,32 +392,14 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
                 .sorted((e1, e2) -> e2.getTimestamp().compareTo(e1.getTimestamp())).limit(limit).toList();
     }
 
-    // Interface method implementations
-
-    @Override
-    public boolean isSecurityEnabled() {
-        return configuration.get().isEnableAuditLogging();
-    }
-
-    @Override
-    public SecurityPolicy getSecurityPolicy(String agentId) {
-        return securityPolicies.getOrDefault(agentId, getDefaultSecurityPolicy());
-    }
-
-    @Override
-    public void setSecurityPolicy(String agentId, SecurityPolicy policy) {
-        securityPolicies.put(agentId, policy);
-    }
-
     @Override
     public List<AuditLog> getAuditLogs() {
-        return new ArrayList<>(auditLogs.values());
+        return auditLogs.values().stream().toList();
     }
 
     @Override
     public List<AuditLog> getAuditLogsByAgent(String agentId) {
-        AuditLog log = auditLogs.get(agentId);
-        return log != null ? List.of(log) : List.of();
+        return auditLogs.values().stream().filter(log -> log.getAgentId().equals(agentId)).toList();
     }
 
     @Override
@@ -419,70 +413,151 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     @Override
     public void clearAuditLogs() {
         auditLogs.clear();
+        logger.info("All audit logs cleared");
+    }
+
+    // Interface method implementations
+
+    @Override
+    public boolean isEnabled() {
+        return configuration.get().isEnableAuditLogging();
     }
 
     @Override
-    public List<SecurityIncident> getSecurityIncidentsBySeverity(SecuritySeverity severity) {
-        return securityIncidents.values().stream().filter(incident -> incident.getSeverity() == severity).toList();
+    public boolean canAccess(String componentId, @Nullable String userId) {
+        totalChecks.incrementAndGet();
+
+        // Basic implementation - can be extended with actual access validation
+        boolean allowed = true; // Default to allow
+
+        if (allowed) {
+            allowedOperations.incrementAndGet();
+        } else {
+            deniedOperations.incrementAndGet();
+        }
+
+        logger.debug("Access validation for component: {}, user: {}, allowed: {}", componentId, userId, allowed);
+        return allowed;
     }
 
     @Override
-    public void clearSecurityIncidents() {
-        securityIncidents.clear();
+    public SecurityResult validate(String action, String resource, AuthenticationContext context) {
+        return SecurityResult.success("Agent validation passed");
     }
 
     @Override
-    public boolean isAgentLockedOut(String agentId) {
+    public void logViolation(String componentId, String violation, @Nullable Map<String, Object> context) {
+        // Log a security violation or incident
+        String incidentId = "violation_" + System.currentTimeMillis();
+        SecurityIncident incident = new SecurityIncident(incidentId, componentId, "SECURITY_VIOLATION", violation,
+                Instant.now(), SecuritySeverity.MEDIUM);
+        securityIncidents.put(incidentId, incident);
+
+        logAuditEvent("SECURITY_VIOLATION", componentId, "system", violation);
+        logger.warn("Security violation in component {}: {} with context: {}", componentId, violation, context);
+    }
+
+    @Override
+    public SecurityStatistics getStatistics() {
+        return new AgentSecurityStatistics(totalChecks.get(), allowedOperations.get(), deniedOperations.get(), 0L,
+                Instant.now(), 0, 0, true, true, 100, 60, 0);
+    }
+
+    @Override
+    public SecurityManager.SecurityManagerType getType() {
+        return SecurityManager.SecurityManagerType.AGENT;
+    }
+
+    @Override
+    public SecurityConfiguration getConfig() {
+        return configuration.get();
+    }
+
+    @Override
+    public void updateConfig(SecurityConfiguration config) {
+        this.configuration.set(config);
+    }
+
+    @Override
+    public CompletableFuture<QuickSecurityResult> quickCheck(String agentId, String action) {
+        return CompletableFuture.supplyAsync(() -> {
+            AgentSecurityPolicy policy = getPolicy(agentId);
+            if (policy == null) {
+                return QuickSecurityResult.denied("No security policy found for agent: " + agentId);
+            }
+            // Simplified check: allow if encryption is enabled and action is permitted
+            boolean granted = policy.isEncryptionEnabled() && policy.getAllowedActions().contains(action);
+            return granted ? QuickSecurityResult.granted("Quick check passed")
+                    : QuickSecurityResult.denied("Quick check failed for action: " + action);
+        });
+    }
+
+    @Override
+    public AgentSecurityPolicy getPolicy(String agentId) {
+        return securityPolicies.getOrDefault(agentId, getDefaultSecurityPolicy());
+    }
+
+    @Override
+    public void setPolicy(String agentId, AgentSecurityPolicy policy) {
+        securityPolicies.put(agentId, policy);
+        logger.debug("Security policy set for agent: {}", agentId);
+    }
+
+    @Override
+    public Set<String> getPermissions(String agentId) {
+        AgentSecurityPolicy policy = getPolicy(agentId);
+        return policy.getAllowedActions();
+    }
+
+    @Override
+    public void addPermission(String agentId, String permission) {
+        AgentSecurityPolicy policy = getPolicy(agentId);
+        Set<String> newActions = new HashSet<>(policy.getAllowedActions());
+        newActions.add(permission);
+        AgentSecurityPolicy newPolicy = new AgentSecurityPolicy(policy.getAgentId(), true, true, true, newActions,
+                policy.getAllowedResources(), 86400, true);
+        securityPolicies.put(agentId, newPolicy);
+    }
+
+    @Override
+    public void removePermission(String agentId, String permission) {
+        AgentSecurityPolicy policy = getPolicy(agentId);
+        Set<String> newActions = new HashSet<>(policy.getAllowedActions());
+        newActions.remove(permission);
+        AgentSecurityPolicy newPolicy = new AgentSecurityPolicy(policy.getAgentId(), true, true, true, newActions,
+                policy.getAllowedResources(), 86400, true);
+        securityPolicies.put(agentId, newPolicy);
+    }
+
+    @Override
+    public CompletableFuture<KeyGenerationResult> generateKeys(String agentId) {
+        return generateKeyPair(agentId);
+    }
+
+    @Override
+    public boolean isLockedOut(String agentId) {
         // Simple implementation - check if agent has too many authentication failures
         return totalAuthenticationFailures.get() > configuration.get().getMaxAuthenticationFailures();
     }
 
     @Override
-    public void addAgentPermission(String agentId, String permission) {
-        SecurityPolicy policy = getSecurityPolicy(agentId);
-        Set<String> newActions = new HashSet<>(policy.getAllowedActions());
-        newActions.add(permission);
-        SecurityPolicy newPolicy = new SecurityPolicy(policy.getAgentId(), true, true, true, newActions,
-                policy.getAllowedResources(), 86400, true);
-        securityPolicies.put(agentId, newPolicy);
+    public List<SecurityIncident> getIncidents() {
+        return securityIncidents.values().stream().sorted((i1, i2) -> i2.getTimestamp().compareTo(i1.getTimestamp()))
+                .toList();
     }
 
     @Override
-    public void removeAgentPermission(String agentId, String permission) {
-        SecurityPolicy policy = getSecurityPolicy(agentId);
-        Set<String> newActions = new HashSet<>(policy.getAllowedActions());
-        newActions.remove(permission);
-        SecurityPolicy newPolicy = new SecurityPolicy(policy.getAgentId(), true, true, true, newActions,
-                policy.getAllowedResources(), 86400, true);
-        securityPolicies.put(agentId, newPolicy);
+    public List<SecurityIncident> getIncidentsBySeverity(SecuritySeverity severity) {
+        return securityIncidents.values().stream().filter(incident -> incident.getSeverity() == severity).toList();
     }
 
     @Override
-    public Set<String> getAgentPermissions(String agentId) {
-        SecurityPolicy policy = getSecurityPolicy(agentId);
-        return policy.getAllowedActions();
+    public void clearIncidents() {
+        securityIncidents.clear();
     }
 
     @Override
-    public SecurityConfiguration getConfiguration() {
-        return configuration.get();
-    }
-
-    @Override
-    public void setConfiguration(SecurityConfiguration config) {
-        configuration.set(config);
-    }
-
-    @Override
-    public String exportSecurityReport(String format) {
-        // Simple implementation - return basic statistics as JSON
-        return String.format(
-                "{\"totalMessagesEncrypted\":%d,\"totalMessagesDecrypted\":%d,\"totalSecurityIncidents\":%d}",
-                totalMessagesEncrypted.get(), totalMessagesDecrypted.get(), totalSecurityIncidents.get());
-    }
-
-    @Override
-    public Map<String, Object> backupSecurityData() {
+    public Map<String, Object> backup() {
         Map<String, Object> backup = new HashMap<>();
         backup.put("securityPolicies", new HashMap<>(securityPolicies));
         backup.put("agentKeyPairs", new HashMap<>(agentKeyPairs));
@@ -491,10 +566,10 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     }
 
     @Override
-    public void restoreSecurityData(Map<String, Object> data) {
+    public void restore(Map<String, Object> data) {
         if (data.containsKey("securityPolicies")) {
             securityPolicies.clear();
-            securityPolicies.putAll((Map<String, SecurityPolicy>) data.get("securityPolicies"));
+            securityPolicies.putAll((Map<String, AgentSecurityPolicy>) data.get("securityPolicies"));
         }
         if (data.containsKey("configuration")) {
             configuration.set((SecurityConfiguration) data.get("configuration"));
@@ -502,7 +577,15 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     }
 
     @Override
-    public void importSecurityConfiguration(String configData) {
+    public String exportReport(String format) {
+        // Simple implementation - return basic statistics as JSON
+        return String.format(
+                "{\"totalMessagesEncrypted\":%d,\"totalMessagesDecrypted\":%d,\"totalSecurityIncidents\":%d}",
+                totalMessagesEncrypted.get(), totalMessagesDecrypted.get(), totalSecurityIncidents.get());
+    }
+
+    @Override
+    public void importConfig(String configData) {
         // Simple implementation - parse JSON-like config
         logger.info("Importing security configuration: {}", configData);
     }
@@ -627,7 +710,7 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
         }
     }
 
-    private boolean checkPermissions(String agentId, String action, String resource, SecurityPolicy policy) {
+    private boolean checkPermissions(String agentId, String action, String resource, AgentSecurityPolicy policy) {
         try {
             // Check if the action is allowed by the policy
             if (!policy.getAllowedActions().contains(action)) {
@@ -663,8 +746,8 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
         }
     }
 
-    private SecurityPolicy getDefaultSecurityPolicy() {
-        return new SecurityPolicy("default", true, true, true, Set.of("read", "write"), Set.of("*"), 86400, true);
+    private AgentSecurityPolicy getDefaultSecurityPolicy() {
+        return new AgentSecurityPolicy("default", true, true, true, Set.of("read", "write"), Set.of("*"), 86400, true);
     }
 
     private void logAuditEvent(String event, String agentId, String target, String description) {

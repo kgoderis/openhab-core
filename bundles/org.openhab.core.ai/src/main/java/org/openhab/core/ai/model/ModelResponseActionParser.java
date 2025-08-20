@@ -15,6 +15,7 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.metrics.ModelPerformanceMetrics;
+import org.openhab.core.ai.common.response.ModelResponse;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

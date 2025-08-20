@@ -6,7 +6,8 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionResult;
+import org.openhab.core.ai.agent.collaboration.ConflictResolutionResult;
+import org.openhab.core.ai.agent.collaboration.ConflictType;
 
 /**
  * Conflict resolution session data extracted from {@link AgentCoordinationManager}.

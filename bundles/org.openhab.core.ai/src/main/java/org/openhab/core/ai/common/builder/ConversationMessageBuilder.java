@@ -6,7 +6,7 @@ import java.util.Objects;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.communication.conversation.ConversationMessage;
-import org.openhab.core.ai.agent.communication.conversation.MessageType;
+import org.openhab.core.ai.agent.communication.conversation.ConversationMessageType;
 
 /**
  * Unified builder for ConversationMessage objects.
@@ -22,7 +22,7 @@ import org.openhab.core.ai.agent.communication.conversation.MessageType;
 @NonNullByDefault
 public final class ConversationMessageBuilder extends CommunicationBuilder<ConversationMessage> {
 
-    private @Nullable MessageType messageType;
+    private @Nullable ConversationMessageType messageType;
 
     /**
      * Set the message type.
@@ -30,7 +30,7 @@ public final class ConversationMessageBuilder extends CommunicationBuilder<Conve
      * @param messageType the message type
      * @return this builder
      */
-    public ConversationMessageBuilder withMessageType(@Nullable MessageType messageType) {
+    public ConversationMessageBuilder withMessageType(@Nullable ConversationMessageType messageType) {
         this.messageType = messageType;
         return this;
     }
@@ -60,7 +60,7 @@ public final class ConversationMessageBuilder extends CommunicationBuilder<Conve
         return content;
     }
 
-    public MessageType getMessageType() {
+    public ConversationMessageType getMessageType() {
         return messageType;
     }
 

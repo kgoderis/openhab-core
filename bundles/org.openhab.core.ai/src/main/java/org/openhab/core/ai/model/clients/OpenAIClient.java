@@ -16,11 +16,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.response.ModelResponse;
+import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
-import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
@@ -98,7 +99,7 @@ public class OpenAIClient implements ModelClient {
 
                 // Return regular text response
                 String content = response.choices().get(0).message().content().orElse("");
-                return ModelResponse.builder().withContent(content).withModelName(response.model())
+                return ModelResponseBuilder.builder().withContent(content).withModelName(response.model())
                         .withProviderType(ModelProviderType.OPENAI.name()).build();
 
             } catch (Exception e) {
@@ -148,7 +149,7 @@ public class OpenAIClient implements ModelClient {
                 long responseTime = System.currentTimeMillis() - startTime;
                 trackMetrics(responseTime, true, null);
 
-                ModelResponse response = ModelResponse.builder().withContent(content)
+                ModelResponse response = ModelResponseBuilder.builder().withContent(content)
                         .withModelName(finalResponse.model()).withProviderType(ModelProviderType.OPENAI.name()).build();
 
                 handler.onComplete(response);

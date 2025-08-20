@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.collaboration.ConflictType;
 
 /**
  * Conflict pattern analysis result.

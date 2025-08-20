@@ -2,7 +2,7 @@ package org.openhab.core.ai.tool.server;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.server.api.TransportType;
+import org.openhab.core.ai.common.transport.TransportType;
 
 /**
  * Transport statistics for a tool server transport.

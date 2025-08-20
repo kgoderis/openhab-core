@@ -15,11 +15,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.response.ModelResponse;
+import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
-import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
@@ -100,7 +101,7 @@ public class GoogleGenAIClient implements ModelClient {
                 long responseTime = System.currentTimeMillis() - startTime;
                 trackMetrics(responseTime, true, null);
 
-                return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
+                return ModelResponseBuilder.builder().withContent(responseContent).withModelName(config.getModelName())
                         .withProviderType(ModelProviderType.GOOGLE.name()).build();
 
             } catch (Exception e) {
@@ -153,7 +154,7 @@ public class GoogleGenAIClient implements ModelClient {
                     }
                 }
 
-                ModelResponse llmResponse = ModelResponse.builder().withContent(responseContent.toString())
+                ModelResponse llmResponse = ModelResponseBuilder.builder().withContent(responseContent.toString())
                         .withModelName(this.config.getModelName()).withProviderType(ModelProviderType.GOOGLE.name())
                         .build();
 

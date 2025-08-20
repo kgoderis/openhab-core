@@ -25,6 +25,7 @@ public class MessageResponse implements Response<String> {
     private final String source;
     private final Map<String, Object> metadata;
     private final @Nullable String errorMessage;
+    private final boolean acknowledged;
 
     /**
      * Create a new MessageResponse.
@@ -36,9 +37,10 @@ public class MessageResponse implements Response<String> {
      * @param source the source of the message
      * @param metadata additional metadata
      * @param errorMessage the error message if any
+     * @param acknowledged whether the message was acknowledged
      */
     public MessageResponse(String id, String message, long timestamp, String messageType, String source,
-            Map<String, Object> metadata, @Nullable String errorMessage) {
+            Map<String, Object> metadata, @Nullable String errorMessage, boolean acknowledged) {
         this.id = Objects.requireNonNull(id, "id");
         this.message = Objects.requireNonNull(message, "message");
         this.timestamp = timestamp;
@@ -46,6 +48,7 @@ public class MessageResponse implements Response<String> {
         this.source = Objects.requireNonNull(source, "source");
         this.metadata = Objects.requireNonNull(metadata, "metadata");
         this.errorMessage = errorMessage;
+        this.acknowledged = acknowledged;
     }
 
     @Override
@@ -110,6 +113,15 @@ public class MessageResponse implements Response<String> {
     }
 
     /**
+     * Check if the message was acknowledged.
+     * 
+     * @return true if acknowledged, false otherwise
+     */
+    public boolean isAcknowledged() {
+        return acknowledged;
+    }
+
+    /**
      * Create a successful message response.
      * 
      * @param message the message content
@@ -119,7 +131,7 @@ public class MessageResponse implements Response<String> {
      */
     public static MessageResponse success(String message, String messageType, String source) {
         return new MessageResponse(generateId(), message, System.currentTimeMillis(), messageType, source, Map.of(),
-                null);
+                null, true);
     }
 
     /**
@@ -132,7 +144,7 @@ public class MessageResponse implements Response<String> {
      */
     public static MessageResponse error(String errorMessage, String messageType, String source) {
         return new MessageResponse(generateId(), "", System.currentTimeMillis(), messageType, source, Map.of(),
-                errorMessage);
+                errorMessage, false);
     }
 
     /**
@@ -143,7 +155,8 @@ public class MessageResponse implements Response<String> {
      * @return an info MessageResponse
      */
     public static MessageResponse info(String message, String source) {
-        return new MessageResponse(generateId(), message, System.currentTimeMillis(), "INFO", source, Map.of(), null);
+        return new MessageResponse(generateId(), message, System.currentTimeMillis(), "INFO", source, Map.of(), null,
+                true);
     }
 
     /**
@@ -154,8 +167,8 @@ public class MessageResponse implements Response<String> {
      * @return a warning MessageResponse
      */
     public static MessageResponse warning(String message, String source) {
-        return new MessageResponse(generateId(), message, System.currentTimeMillis(), "WARNING", source, Map.of(),
-                null);
+        return new MessageResponse(generateId(), message, System.currentTimeMillis(), "WARNING", source, Map.of(), null,
+                true);
     }
 
     /**
@@ -166,7 +179,30 @@ public class MessageResponse implements Response<String> {
      * @return a debug MessageResponse
      */
     public static MessageResponse debug(String message, String source) {
-        return new MessageResponse(generateId(), message, System.currentTimeMillis(), "DEBUG", source, Map.of(), null);
+        return new MessageResponse(generateId(), message, System.currentTimeMillis(), "DEBUG", source, Map.of(), null,
+                true);
+    }
+
+    /**
+     * Create a simple success message response (for backward compatibility).
+     * 
+     * @param message the message content
+     * @return a successful MessageResponse
+     */
+    public static MessageResponse success(String message) {
+        return new MessageResponse(generateId(), message, System.currentTimeMillis(), "SUCCESS", "system", Map.of(),
+                null, true);
+    }
+
+    /**
+     * Create a simple failure message response (for backward compatibility).
+     * 
+     * @param error the error message
+     * @return a failure MessageResponse
+     */
+    public static MessageResponse failure(String error) {
+        return new MessageResponse(generateId(), "", System.currentTimeMillis(), "ERROR", "system", Map.of(), error,
+                false);
     }
 
     private static String generateId() {
@@ -184,18 +220,19 @@ public class MessageResponse implements Response<String> {
         MessageResponse other = (MessageResponse) obj;
         return Objects.equals(id, other.id) && Objects.equals(message, other.message) && timestamp == other.timestamp
                 && Objects.equals(messageType, other.messageType) && Objects.equals(source, other.source)
-                && Objects.equals(metadata, other.metadata) && Objects.equals(errorMessage, other.errorMessage);
+                && Objects.equals(metadata, other.metadata) && Objects.equals(errorMessage, other.errorMessage)
+                && acknowledged == other.acknowledged;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, message, timestamp, messageType, source, metadata, errorMessage);
+        return Objects.hash(id, message, timestamp, messageType, source, metadata, errorMessage, acknowledged);
     }
 
     @Override
     public String toString() {
         return "MessageResponse{" + "id='" + id + '\'' + ", message='" + message + '\'' + ", timestamp=" + timestamp
                 + ", messageType='" + messageType + '\'' + ", source='" + source + '\'' + ", metadata=" + metadata
-                + ", errorMessage='" + errorMessage + '\'' + '}';
+                + ", errorMessage='" + errorMessage + '\'' + ", acknowledged=" + acknowledged + '}';
     }
 }

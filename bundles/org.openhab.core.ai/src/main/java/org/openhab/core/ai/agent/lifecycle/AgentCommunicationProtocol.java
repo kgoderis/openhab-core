@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.response.MessageResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

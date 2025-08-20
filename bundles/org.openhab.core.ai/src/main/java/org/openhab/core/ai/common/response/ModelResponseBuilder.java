@@ -6,7 +6,6 @@ import java.util.Objects;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.builder.AbstractBuilder;
-import org.openhab.core.ai.model.ModelResponse;
 
 /**
  * Builder for {@link ModelResponse} in the unified response hierarchy.
@@ -21,6 +20,15 @@ import org.openhab.core.ai.model.ModelResponse;
  */
 @NonNullByDefault
 public final class ModelResponseBuilder extends AbstractBuilder<ModelResponse> {
+
+    /**
+     * Create a new ModelResponseBuilder instance.
+     * 
+     * @return a new builder instance
+     */
+    public static ModelResponseBuilder builder() {
+        return new ModelResponseBuilder();
+    }
 
     private @Nullable String id;
     private String content = "";

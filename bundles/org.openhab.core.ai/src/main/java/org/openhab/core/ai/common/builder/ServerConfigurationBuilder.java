@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.server.ServerConfiguration;
+import org.openhab.core.ai.common.configuration.ServerConfiguration;
 
 /**
  * Builder for ServerConfiguration.
@@ -17,20 +17,34 @@ import org.openhab.core.ai.tool.server.ServerConfiguration;
 @NonNullByDefault
 public final class ServerConfigurationBuilder extends CommunicationBuilder<ServerConfiguration> {
 
-    private String host = "localhost";
-    private int port = 8080;
-    private @Nullable String protocol;
-    private @Nullable Map<String, Object> settings;
-    private boolean enabled = true;
-    private @Nullable String name;
-    private @Nullable String version;
-    private @Nullable String description;
+    String host = "localhost";
+    int port = 8080;
+    @Nullable
+    String protocol;
+    @Nullable
+    Map<String, Object> settings;
+    boolean enabled = true;
+    @Nullable
+    String name;
+    @Nullable
+    String version;
+    @Nullable
+    String description;
 
     /**
      * Create a new ServerConfigurationBuilder.
      */
     public ServerConfigurationBuilder() {
         super();
+    }
+
+    /**
+     * Create a new ServerConfigurationBuilder with default values.
+     * 
+     * @return a new builder instance
+     */
+    public static ServerConfigurationBuilder builder() {
+        return new ServerConfigurationBuilder();
     }
 
     /**

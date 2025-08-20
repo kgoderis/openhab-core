@@ -7,8 +7,8 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.adapter.Adapter;
 import org.openhab.core.ai.tool.adapter.BaseAdapter;
-import org.openhab.core.ai.tool.api.Adapter;
 import org.openhab.core.ai.tool.completions.api.CompletionContext;
 import org.openhab.core.ai.tool.completions.api.CompletionResult;
 import org.openhab.core.ai.tool.completions.api.dto.Completion;
@@ -110,6 +110,30 @@ public class ConfigurationCompletionAdapter extends BaseAdapter
         return "openhab://completions/config/{configId}";
     }
 
+    @Override
+    public boolean canAdapt(Completion source) {
+        return source != null && source.getDescription().toLowerCase().contains("config");
+    }
+
+    @Override
+    public CompletionResult adapt(Completion source, CompletionContext context) {
+        if (!canAdapt(source)) {
+            return CompletionResult.failure("Cannot adapt source", 0);
+        }
+        return execute(source.getPromptReference(), "config", Map.of(), context);
+    }
+
+    @Override
+    public Class<Completion> getSourceType() {
+        return Completion.class;
+    }
+
+    @Override
+    public Class<CompletionResult> getResultType() {
+        return CompletionResult.class;
+    }
+
+    @Override
     public void close() {
         cleanup();
     }

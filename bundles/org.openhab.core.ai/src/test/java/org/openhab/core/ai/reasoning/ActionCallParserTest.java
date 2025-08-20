@@ -21,7 +21,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.common.context.ExecutionContext;
-import org.openhab.core.ai.model.ModelResponse;
+import org.openhab.core.ai.common.metrics.ModelPerformanceMetrics;
+import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelResponseActionParser;
 
 /**
@@ -324,8 +325,7 @@ class ActionCallParserTest {
     @Test
     void testPerformanceMetricsBuilder() {
         // Given - Test unified metrics construction
-        ModelPerformanceMetrics metrics = new org.openhab.core.ai.common.metrics.ModelPerformanceMetrics(10, 5, 3, 2, 8,
-                0, 0.0, null);
+        ModelPerformanceMetrics metrics = new ModelPerformanceMetrics(10, 5, 3, 2, 8, 0, 0.0, null);
 
         // Then
         assertNotNull(metrics);

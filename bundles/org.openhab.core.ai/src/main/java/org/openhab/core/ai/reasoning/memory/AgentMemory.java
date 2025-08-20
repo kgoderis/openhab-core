@@ -19,11 +19,9 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.reasoning.learning.LearningEntry;
 import org.openhab.core.ai.reasoning.learning.LearningHistory;
-import org.openhab.core.ai.reasoning.memory.api.MemoryConsolidationResult;
 import org.openhab.core.ai.reasoning.memory.api.MemoryManager;
 import org.openhab.core.ai.reasoning.memory.api.MemoryPerformanceMetrics;
 import org.openhab.core.ai.reasoning.memory.api.MemorySearchResult;
-import org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult;
 import org.openhab.core.ai.reasoning.patterns.PatternEntry;
 import org.openhab.core.ai.reasoning.session.MemoryReasoningSession;
 import org.openhab.core.ai.reasoning.session.ReasoningSessionResult;
@@ -567,23 +565,21 @@ public class AgentMemory implements MemoryManager {
 
     // MemoryManager interface implementation
     @Override
-    public CompletableFuture<org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult> storeShortTermMemory(
-            String agentId, String memory, @Nullable Map<String, Object> metadata) {
+    public CompletableFuture<MemoryStoreResult> storeShortTermMemory(String agentId, String memory,
+            @Nullable Map<String, Object> metadata) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 MemoryEntry entry = new MemoryEntry(generateMemoryId(), memory, "general", 0.5,
                         metadata != null ? metadata : new ConcurrentHashMap<>());
                 AgentMemoryStoreResult result = storeShortTermMemory(agentId, entry);
                 if (result.isSuccess()) {
-                    return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(true,
-                            result.getEntry().getId(), null);
+                    return MemoryStoreResult.success(result.getEntry().getId());
                 } else {
-                    return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(false, null,
-                            result.getError());
+                    return MemoryStoreResult.error(result.getError());
                 }
             } catch (Exception e) {
                 logger.error("Error storing short-term memory for agent: {}", agentId, e);
-                return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(false, null, e.getMessage());
+                return MemoryStoreResult.error(e.getMessage());
             }
         });
     }
@@ -597,15 +593,13 @@ public class AgentMemory implements MemoryManager {
                         metadata != null ? metadata : new ConcurrentHashMap<>());
                 AgentMemoryStoreResult result = storeLongTermMemory(agentId, entry);
                 if (result.isSuccess()) {
-                    return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(true,
-                            result.getEntry().getId(), null);
+                    return MemoryStoreResult.success(result.getEntry().getId());
                 } else {
-                    return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(false, null,
-                            result.getError());
+                    return MemoryStoreResult.error(result.getError());
                 }
             } catch (Exception e) {
                 logger.error("Error storing long-term memory for agent: {}", agentId, e);
-                return new org.openhab.core.ai.reasoning.memory.api.MemoryStoreResult(false, null, e.getMessage());
+                return MemoryStoreResult.error(e.getMessage());
             }
         });
     }

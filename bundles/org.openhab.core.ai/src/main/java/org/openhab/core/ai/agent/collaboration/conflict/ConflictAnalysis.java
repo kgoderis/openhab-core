@@ -1,6 +1,7 @@
 package org.openhab.core.ai.agent.collaboration.conflict;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.agent.collaboration.ConflictType;
 
 @NonNullByDefault
 public class ConflictAnalysis {

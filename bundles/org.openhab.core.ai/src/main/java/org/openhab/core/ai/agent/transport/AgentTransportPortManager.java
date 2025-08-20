@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.transport.api.TransportType;
+import org.openhab.core.ai.common.transport.TransportType;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +54,8 @@ public class AgentTransportPortManager {
             case JSON_RPC -> DEFAULT_JSON_RPC_PORT;
             case REST -> 0; // HTTP transport is client-side, no server port
             case GRPC -> DEFAULT_GRPC_PORT;
+            // Tool server transport types - return 0 as they handle their own ports
+            case STDIO, SSE, WEBSOCKET, HTTP, TCP, UNIX -> 0;
         };
     }
 

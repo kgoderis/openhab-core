@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.audit.AuditLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

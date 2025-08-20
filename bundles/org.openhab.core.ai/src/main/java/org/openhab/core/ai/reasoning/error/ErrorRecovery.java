@@ -12,9 +12,11 @@
  */
 package org.openhab.core.ai.reasoning.error;
 
+import java.util.Map;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.error.ErrorRecoveryResult;
 import org.openhab.core.ai.reasoning.error.api.ErrorContext;
-import org.openhab.core.ai.reasoning.error.api.ErrorRecoveryResult;
 
 /**
  * Provides basic recovery actions for reasoning errors.
@@ -30,7 +32,8 @@ public final class ErrorRecovery {
         boolean retriable = isTransient(error);
         String action = retriable ? "RETRY" : "ESCALATE";
         String msg = retriable ? "Retry suggested" : "Manual intervention required";
-        return new ErrorRecoveryResult(retriable, action, msg, System.currentTimeMillis());
+        return new ErrorRecoveryResult(retriable, retriable ? "RECOVERED" : "FAILED", action, msg, Map.of(),
+                System.currentTimeMillis(), 0);
     }
 
     private boolean isTransient(Throwable error) {

@@ -13,6 +13,8 @@
 package org.openhab.core.ai.reasoning.security.api;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.security.SecurityRequest;
+import org.openhab.core.ai.common.security.SecurityValidationResult;
 
 /**
  * Contract for pluggable security validators used by the reasoning system.

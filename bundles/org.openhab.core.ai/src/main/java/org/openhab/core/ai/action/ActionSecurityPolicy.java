@@ -12,10 +12,14 @@
  */
 package org.openhab.core.ai.action;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.api.SecurityLevel;
+import org.openhab.core.ai.common.security.SecurityLevel;
+import org.openhab.core.ai.common.security.SecurityPolicy;
+import org.openhab.core.ai.common.security.SecurityPolicyType;
 
 /**
  * Security policy for an action.
@@ -26,7 +30,7 @@ import org.openhab.core.ai.action.api.SecurityLevel;
  * @author Karel Goderis - Initial Contribution
  */
 @NonNullByDefault
-public class ActionSecurityPolicy {
+public class ActionSecurityPolicy implements SecurityPolicy {
 
     private final String actionId;
     private final Set<String> requiredPermissions;
@@ -133,7 +137,63 @@ public class ActionSecurityPolicy {
         return allowedOrigins.isEmpty() || allowedOrigins.contains(origin);
     }
 
-    // SecurityLevel extracted to org.openhab.core.ai.action.SecurityLevel
+    // Implementation of SecurityPolicy interface methods
+    @Override
+    public String getPolicyId() {
+        return actionId;
+    }
+
+    @Override
+    public String getPolicyName() {
+        return "Action Security Policy for " + actionId;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true; // Action policies are always enabled
+    }
+
+    @Override
+    public SecurityPolicyType getPolicyType() {
+        return SecurityPolicyType.ACTION_SECURITY;
+    }
+
+    @Override
+    public boolean validateContext(org.openhab.core.ai.common.security.SecurityContext context) {
+        // Check if the agent is allowed
+        if (!isAgentAllowed(context.getPrincipalId())) {
+            return false;
+        }
+
+        // Check if the action matches
+        if (!actionId.equals(context.getAction())) {
+            return false;
+        }
+
+        // Check if the resource is allowed (if specified)
+        if (context.getResourceId() != null && !context.getResourceId().isEmpty()) {
+            // Additional resource validation could be added here
+        }
+
+        return true;
+    }
+
+    @Override
+    public Map<String, Object> getPolicyMetadata() {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("actionId", actionId);
+        metadata.put("requiredPermissions", requiredPermissions);
+        metadata.put("allowedAgents", allowedAgents);
+        metadata.put("allowedRoles", allowedRoles);
+        metadata.put("requiresAuthentication", requiresAuthentication);
+        metadata.put("requiresAuthorization", requiresAuthorization);
+        metadata.put("requiresAuditLogging", requiresAuditLogging);
+        metadata.put("securityLevel", securityLevel);
+        metadata.put("restrictedParameters", restrictedParameters);
+        metadata.put("allowedOrigins", allowedOrigins);
+        metadata.put("policyType", getPolicyType());
+        return metadata;
+    }
 
     public static ActionSecurityPolicyBuilder builder() {
         return new ActionSecurityPolicyBuilder();

@@ -3,6 +3,7 @@ package org.openhab.core.ai.tool.error.recovery;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.error.ErrorRecoveryResult;
 
 /**
  * Strategy for recovering from tool errors.

@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.collaboration.ConflictResolutionResult;
+import org.openhab.core.ai.agent.collaboration.ConflictResolutionStrategy;
+import org.openhab.core.ai.agent.collaboration.ConflictType;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -189,10 +192,9 @@ public class AgentConflictResolutionEngine {
 
         try {
             // Apply resolution strategy
-            ConflictResolution resolution = strategy.resolve(conflict, mediator);
+            ConflictResolutionResult result = strategy.resolve(conflict, mediator);
 
-            // Update conflict with resolution
-            conflict.setResolution(resolution);
+            // Update conflict with resolution result
             conflict.setResolvedAt(Instant.now());
             conflict.setStatus(ConflictStatus.RESOLVED);
 
@@ -207,7 +209,7 @@ public class AgentConflictResolutionEngine {
             updateConflictHistory(conflict);
 
             totalConflictsResolved.incrementAndGet();
-            return CompletableFuture.completedFuture(ConflictResolutionResult.success(conflict, resolution));
+            return CompletableFuture.completedFuture(result);
 
         } catch (Exception e) {
             logger.error("Error resolving conflict: {}", conflictId, e);

@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.adapter.Adapter;
 import org.openhab.core.ai.tool.adapter.BaseAdapter;
-import org.openhab.core.ai.tool.api.Adapter;
 import org.openhab.core.ai.tool.prompts.api.PromptContext;
 import org.openhab.core.ai.tool.prompts.api.PromptResult;
 import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
@@ -119,6 +119,32 @@ public class RulePromptAdapter extends BaseAdapter implements Adapter<Prompt, Pr
         return "openhab://prompts/rules/{ruleUID}";
     }
 
+    @Override
+    public boolean canAdapt(org.openhab.core.ai.tool.prompts.api.dto.Prompt source) {
+        return source != null && source.getName().toLowerCase().contains("rule");
+    }
+
+    @Override
+    public org.openhab.core.ai.tool.prompts.api.PromptResult adapt(
+            org.openhab.core.ai.tool.prompts.api.dto.Prompt source,
+            org.openhab.core.ai.tool.prompts.api.PromptContext context) {
+        if (!canAdapt(source)) {
+            return PromptResult.failure("Cannot adapt source", 0);
+        }
+        return execute(source.getName(), "rule", Map.of(), context);
+    }
+
+    @Override
+    public Class<org.openhab.core.ai.tool.prompts.api.dto.Prompt> getSourceType() {
+        return Prompt.class;
+    }
+
+    @Override
+    public Class<org.openhab.core.ai.tool.prompts.api.PromptResult> getResultType() {
+        return PromptResult.class;
+    }
+
+    @Override
     public void close() {
         cleanup();
     }

@@ -5,11 +5,12 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.response.ModelResponse;
+import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
-import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
@@ -36,7 +37,7 @@ public class StubModelClient implements ModelClient {
 
     @Override
     public CompletableFuture<ModelResponse> complete(String prompt, ModelParameters params) {
-        return CompletableFuture.completedFuture(ModelResponse.builder()
+        return CompletableFuture.completedFuture(ModelResponseBuilder.builder()
                 .withContent("This is a stub response from " + providerType + " model " + modelName)
                 .withModelName(modelName).withProviderType(providerType.name()).build());
     }
@@ -46,7 +47,7 @@ public class StubModelClient implements ModelClient {
             ModelStreamHandler handler) {
         // Simulate streaming by calling onChunk and then onComplete
         handler.onChunk("This is a stub streaming response from " + providerType + " model " + modelName);
-        ModelResponse response = ModelResponse.builder()
+        ModelResponse response = ModelResponseBuilder.builder()
                 .withContent("This is a stub streaming response from " + providerType + " model " + modelName)
                 .withModelName(modelName).withProviderType(providerType.name()).build();
         handler.onComplete(response);

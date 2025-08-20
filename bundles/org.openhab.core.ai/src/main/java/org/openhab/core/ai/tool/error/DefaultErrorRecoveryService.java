@@ -9,7 +9,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.auth.AuditLogger;
+import org.openhab.core.ai.common.audit.AuditLogger;
+import org.openhab.core.ai.common.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.error.api.ErrorRecoveryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -184,6 +185,7 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
         return new ErrorRecoveryStatistics(totalErrors.get(), totalRecoveries.get(), totalFallbacks.get(), 0, // totalFailures
                                                                                                               // - TODO:
                                                                                                               // implement
+                0, // recoveryAttempts - TODO: implement
                 errorCountsByType, recoveryCountsByStrategy);
     }
 

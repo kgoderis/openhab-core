@@ -6,6 +6,8 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.services.LoadBalancingStrategy;
+import org.openhab.core.ai.common.statistics.HybridServiceMetrics;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**
@@ -92,7 +94,7 @@ public interface ToolExecutionService {
     /**
      * Get comprehensive metrics for the hybrid service
      * 
-     * @return HybridServiceMetrics containing all service metrics
+     * @return ServiceStatistics containing all service metrics
      */
     HybridServiceMetrics getMetrics();
 

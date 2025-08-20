@@ -12,6 +12,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.statistics.ServerStatistics;
 import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
 import org.openhab.core.ai.tool.api.ToolException;
@@ -1772,12 +1773,14 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
         long totalResponseTime = 0L;
         double averageResponseTime = 0.0;
         int activeConnections = (sync != null ? 1 : 0) + (async != null ? 1 : 0) + (registry != null ? 1 : 0);
-        return new ServerStatistics(totalRequests, successfulRequests, failedRequests, totalResponseTime,
-                averageResponseTime, activeConnections);
+        return ServerStatistics.builder("mcp-servlet").withServerId("mcp-servlet").withServerName("MCP Servlet")
+                .withServerType("HTTP").withProtocol("HTTP/SSE").withTotalRequests(totalRequests)
+                .withSuccessfulRequests(successfulRequests).withFailedRequests(failedRequests)
+                .withTotalResponseTime(totalResponseTime).withAverageResponseTime(averageResponseTime)
+                .withActiveConnections(activeConnections).withHealthy(isHealthy()).build();
     }
 
     /**
      * Server statistics.
      */
-    // Inner class extracted to top-level: org.openhab.core.ai.tool.server.transport.ServerStatistics
 }

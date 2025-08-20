@@ -18,6 +18,8 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.reasoning.memory.MemoryConsolidationResult;
+import org.openhab.core.ai.reasoning.memory.MemoryStoreResult;
 
 /**
  * Interface for memory management in the AI reasoning system.

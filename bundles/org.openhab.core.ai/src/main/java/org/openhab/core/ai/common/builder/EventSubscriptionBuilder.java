@@ -7,9 +7,9 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.communication.events.api.EventFilter;
 import org.openhab.core.ai.agent.communication.events.api.EventHandler;
 import org.openhab.core.ai.agent.communication.events.api.EventSubscription;
+import org.openhab.core.ai.common.events.EventFilter;
 
 /**
  * Unified builder for EventSubscription objects.

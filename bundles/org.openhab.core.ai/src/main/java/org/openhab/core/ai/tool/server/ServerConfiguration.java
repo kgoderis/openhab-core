@@ -6,7 +6,7 @@ import java.util.Objects;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.builder.ServerConfigurationBuilder;
-import org.openhab.core.ai.tool.server.api.TransportType;
+import org.openhab.core.ai.common.transport.TransportType;
 
 /**
  * Configuration for MCP server.

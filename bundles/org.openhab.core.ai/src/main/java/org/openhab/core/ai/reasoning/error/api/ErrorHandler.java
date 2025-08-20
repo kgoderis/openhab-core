@@ -15,6 +15,7 @@ package org.openhab.core.ai.reasoning.error.api;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.error.ErrorRecoveryResult;
 import org.openhab.core.ai.reasoning.api.TimeRange;
 
 /**

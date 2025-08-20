@@ -29,7 +29,7 @@ public class ToolMetricsEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(ToolMetricsEndpoint.class);
 
     private final DefaultToolServer serverInstance;
-    private final ServerConfiguration config;
+    private final ToolServerConfiguration config;
     private final HttpServer httpServer;
     private final ScheduledExecutorService executor;
 
@@ -38,7 +38,7 @@ public class ToolMetricsEndpoint {
     private final AtomicLong totalErrors = new AtomicLong(0);
     private final long startTime = System.currentTimeMillis();
 
-    public ToolMetricsEndpoint(DefaultToolServer serverInstance, ServerConfiguration config) throws IOException {
+    public ToolMetricsEndpoint(DefaultToolServer serverInstance, ToolServerConfiguration config) throws IOException {
         this.serverInstance = serverInstance;
         this.config = config;
 

@@ -13,7 +13,7 @@
 package org.openhab.core.ai.reasoning.security;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.reasoning.security.api.SecurityRequest;
+import org.openhab.core.ai.common.security.SecurityRequest;
 import org.openhab.core.ai.reasoning.security.api.ThreatLevel;
 
 /**

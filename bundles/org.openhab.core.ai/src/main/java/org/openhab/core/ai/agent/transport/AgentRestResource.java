@@ -22,7 +22,7 @@ import org.openhab.core.ai.agent.execution.AgentTaskManager;
 import org.openhab.core.ai.agent.execution.ListTasksParams;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.agent.transport.api.AgentTransport;
-import org.openhab.core.ai.agent.transport.api.TransportType;
+import org.openhab.core.ai.common.transport.TransportType;
 import org.openhab.core.ai.rest.SharedRestInfrastructure;
 import org.openhab.core.io.rest.RESTConstants;
 import org.openhab.core.io.rest.RESTResource;

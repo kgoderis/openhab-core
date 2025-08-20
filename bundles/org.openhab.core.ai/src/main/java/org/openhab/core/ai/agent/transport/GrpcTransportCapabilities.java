@@ -4,7 +4,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.agent.transport.api.TransportCapabilities;
-import org.openhab.core.ai.agent.transport.api.TransportType;
+import org.openhab.core.ai.common.transport.TransportType;
 
 /**
  * Top-level gRPC transport capabilities extracted from AgentGrpcTransport.

@@ -5,8 +5,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.adapter.Adapter;
 import org.openhab.core.ai.tool.adapter.BaseAdapter;
-import org.openhab.core.ai.tool.api.Adapter;
 import org.openhab.core.ai.tool.resources.api.ResourceContext;
 import org.openhab.core.ai.tool.resources.api.ResourceResult;
 import org.openhab.core.ai.tool.resources.api.dto.Resource;
@@ -251,6 +251,31 @@ public class RuleResourceAdapter extends BaseAdapter implements Adapter<Resource
     @Override
     public String getUriPattern() {
         return URI_PATTERN;
+    }
+
+    @Override
+    public boolean canAdapt(org.openhab.core.ai.tool.resources.api.dto.Resource source) {
+        return source != null && source.getName().toLowerCase().contains("rule");
+    }
+
+    @Override
+    public org.openhab.core.ai.tool.resources.api.ResourceResult adapt(
+            org.openhab.core.ai.tool.resources.api.dto.Resource source,
+            org.openhab.core.ai.tool.resources.api.ResourceContext context) {
+        if (!canAdapt(source)) {
+            return ResourceResult.failure("Cannot adapt source", 0);
+        }
+        return execute(source.getName(), "rule", Map.of(), context);
+    }
+
+    @Override
+    public Class<org.openhab.core.ai.tool.resources.api.dto.Resource> getSourceType() {
+        return Resource.class;
+    }
+
+    @Override
+    public Class<org.openhab.core.ai.tool.resources.api.ResourceResult> getResultType() {
+        return ResourceResult.class;
     }
 
     @Override

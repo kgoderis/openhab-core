@@ -3,6 +3,7 @@ package org.openhab.core.ai.tool.elicitation.input;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.validation.InputValidationResult;
 
 /**
  * Service for eliciting input from users.

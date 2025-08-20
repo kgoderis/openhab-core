@@ -4,7 +4,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -36,6 +38,15 @@ public class ToolUtils {
     /** Cache of generated tool specifications. */
     private static final Map<String, McpServerFeatures.SyncToolSpecification> syncSpecCache = new ConcurrentHashMap<>();
     private static final Map<String, McpServerFeatures.AsyncToolSpecification> asyncSpecCache = new ConcurrentHashMap<>();
+
+    // Cache for tool availability status
+    private static final Map<String, Boolean> toolAvailabilityCache = new ConcurrentHashMap<>();
+
+    // Cache for tool performance metrics
+    private static final Map<String, Long> toolPerformanceCache = new ConcurrentHashMap<>();
+
+    // Pattern for sanitizing input
+    private static final Pattern SANITIZE_PATTERN = Pattern.compile("[<>\"'&]");
 
     /**
      * Enhanced tool specification builder.
@@ -378,4 +389,256 @@ public class ToolUtils {
      * Tool performance metrics.
      */
     /* Extracted to top-level: org.openhab.core.ai.tool.util.ToolPerformanceMetrics */
+
+    /**
+     * Validate tool configuration.
+     * 
+     * @param config the tool configuration to validate
+     * @return true if the configuration is valid
+     */
+    public static boolean validateToolConfiguration(Map<String, Object> config) {
+        if (config == null || config.isEmpty()) {
+            return false;
+        }
+
+        // Check for required configuration fields
+        if (!config.containsKey("id") || !config.containsKey("name")) {
+            return false;
+        }
+
+        // Validate ID format
+        Object id = config.get("id");
+        if (!(id instanceof String) || ((String) id).trim().isEmpty()) {
+            return false;
+        }
+
+        // Validate name format
+        Object name = config.get("name");
+        if (!(name instanceof String) || ((String) name).trim().isEmpty()) {
+            return false;
+        }
+
+        // Validate version if present
+        if (config.containsKey("version")) {
+            Object version = config.get("version");
+            if (!(version instanceof String) || !isValidVersion((String) version)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Format tool parameters for display.
+     * 
+     * @param parameters the tool parameters to format
+     * @return formatted parameters string
+     */
+    public static String formatToolParameters(Map<String, Object> parameters) {
+        if (parameters == null || parameters.isEmpty()) {
+            return "{}";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{");
+
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+            if (!first) {
+                sb.append(", ");
+            }
+            sb.append(entry.getKey()).append("=");
+
+            Object value = entry.getValue();
+            if (value instanceof String) {
+                sb.append("\"").append(value).append("\"");
+            } else {
+                sb.append(value);
+            }
+
+            first = false;
+        }
+
+        sb.append("}");
+        return sb.toString();
+    }
+
+    /**
+     * Sanitize tool input.
+     * 
+     * @param input the input to sanitize
+     * @return sanitized input
+     */
+    public static String sanitizeToolInput(String input) {
+        if (input == null) {
+            return "";
+        }
+
+        return SANITIZE_PATTERN.matcher(input).replaceAll("");
+    }
+
+    /**
+     * Generate unique tool ID.
+     * 
+     * @param prefix the ID prefix
+     * @return unique tool ID
+     */
+    public static String generateToolId(String prefix) {
+        if (prefix == null || prefix.trim().isEmpty()) {
+            prefix = "tool";
+        }
+
+        return prefix + "-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    /**
+     * Check if tool is available.
+     * 
+     * @param toolId the tool ID
+     * @return true if the tool is available
+     */
+    public static boolean isToolAvailable(String toolId) {
+        if (toolId == null || toolId.trim().isEmpty()) {
+            return false;
+        }
+
+        // Check cache first
+        Boolean cached = toolAvailabilityCache.get(toolId);
+        if (cached != null) {
+            return cached;
+        }
+
+        // Basic availability check
+        boolean available = toolId.matches("^[a-zA-Z0-9_-]+$") && toolId.length() <= 100;
+
+        // Cache the result
+        toolAvailabilityCache.put(toolId, available);
+
+        return available;
+    }
+
+    /**
+     * Validate tool data.
+     * 
+     * @param data the data to validate
+     * @param schema the validation schema
+     * @return true if the data is valid according to the schema
+     */
+    public static boolean validateToolData(Object data, Map<String, Object> schema) {
+        if (schema == null || schema.isEmpty()) {
+            return true; // No schema means everything is valid
+        }
+
+        if (data == null) {
+            // Check if null is allowed
+            return !Boolean.TRUE.equals(schema.get("required"));
+        }
+
+        // Check type validation
+        String expectedType = (String) schema.get("type");
+        if (expectedType != null) {
+            switch (expectedType) {
+                case "string":
+                    if (!(data instanceof String)) {
+                        return false;
+                    }
+                    break;
+                case "number":
+                    if (!(data instanceof Number)) {
+                        return false;
+                    }
+                    break;
+                case "boolean":
+                    if (!(data instanceof Boolean)) {
+                        return false;
+                    }
+                    break;
+                case "object":
+                    if (!(data instanceof Map)) {
+                        return false;
+                    }
+                    break;
+                case "array":
+                    if (!(data instanceof List)) {
+                        return false;
+                    }
+                    break;
+            }
+        }
+
+        // Check string length constraints
+        if (data instanceof String && schema.containsKey("maxLength")) {
+            int maxLength = ((Number) schema.get("maxLength")).intValue();
+            if (((String) data).length() > maxLength) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Optimize tool performance.
+     * 
+     * @param toolId the tool ID
+     * @param executionTimeMs the execution time in milliseconds
+     */
+    public static void optimizeToolPerformance(String toolId, long executionTimeMs) {
+        if (toolId == null || toolId.trim().isEmpty()) {
+            return;
+        }
+
+        // Store performance metrics
+        toolPerformanceCache.put(toolId, executionTimeMs);
+
+        // If execution time is too high, log a warning
+        if (executionTimeMs > 5000) { // 5 seconds threshold
+            LOGGER.warn("Warning: Tool {} took {}ms to execute", toolId, executionTimeMs);
+        }
+    }
+
+    /**
+     * Get tool performance metrics.
+     * 
+     * @param toolId the tool ID
+     * @return the execution time in milliseconds, or -1 if not available
+     */
+    public static long getToolPerformance(String toolId) {
+        if (toolId == null || toolId.trim().isEmpty()) {
+            return -1;
+        }
+
+        return toolPerformanceCache.getOrDefault(toolId, -1L);
+    }
+
+    /**
+     * Clear tool caches.
+     * 
+     * @param toolId the tool ID to clear, or null to clear all
+     */
+    public static void clearToolCaches(String toolId) {
+        if (toolId == null) {
+            toolAvailabilityCache.clear();
+            toolPerformanceCache.clear();
+        } else {
+            toolAvailabilityCache.remove(toolId);
+            toolPerformanceCache.remove(toolId);
+        }
+    }
+
+    /**
+     * Check if a version string is valid.
+     * 
+     * @param version the version string to validate
+     * @return true if the version is valid
+     */
+    private static boolean isValidVersion(String version) {
+        if (version == null || version.trim().isEmpty()) {
+            return false;
+        }
+
+        // Basic semantic versioning validation
+        return version.matches("^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$");
+    }
 }

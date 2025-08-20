@@ -6,10 +6,8 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.openhab.core.ai.agent.infrastructure.synchronization.AgentResponse;
-import org.openhab.core.ai.agent.lifecycle.MessageResponse;
 import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.stub.StubResponse;
-import org.openhab.core.ai.tool.server.api.ToolResponse;
 
 /**
  * Comprehensive tests for the consolidated response hierarchy.
@@ -90,7 +88,7 @@ class ConsolidatedResponseTest {
 
         // Verify existing methods still work
         assertTrue(response.isAcknowledged());
-        assertEquals("Success message", response.getResponse());
+        assertEquals("Success message", response.getMessage());
     }
 
     @Test

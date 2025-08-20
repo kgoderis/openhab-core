@@ -1,0 +1,19 @@
+package org.openhab.core.ai.reasoning.validation;
+
+import java.util.List;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.reasoning.decision.DecisionContext;
+import org.openhab.core.ai.reasoning.results.DecisionResult;
+
+/**
+ * Validation Rule interface extracted from AgentModelDecisionValidator.
+ *
+ * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
+ */
+@NonNullByDefault
+@FunctionalInterface
+public interface DecisionValidationRule {
+    List<String> validate(DecisionResult decision, DecisionContext context);
+}

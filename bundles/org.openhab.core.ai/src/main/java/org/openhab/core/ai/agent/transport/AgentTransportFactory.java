@@ -11,7 +11,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.agent.transport.api.AgentTransport;
 import org.openhab.core.ai.agent.transport.api.TransportNegotiationResult;
 import org.openhab.core.ai.agent.transport.api.TransportSelectionStrategy;
-import org.openhab.core.ai.agent.transport.api.TransportType;
+import org.openhab.core.ai.common.transport.TransportType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;

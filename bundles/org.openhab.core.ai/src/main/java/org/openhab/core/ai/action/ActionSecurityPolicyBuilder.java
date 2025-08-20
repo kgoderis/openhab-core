@@ -3,7 +3,7 @@ package org.openhab.core.ai.action;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.action.api.SecurityLevel;
+import org.openhab.core.ai.common.security.SecurityLevel;
 
 /**
  * Builder for {@link ActionSecurityPolicy}.

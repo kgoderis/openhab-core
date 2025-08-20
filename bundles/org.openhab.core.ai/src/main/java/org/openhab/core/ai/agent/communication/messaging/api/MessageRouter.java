@@ -3,6 +3,7 @@ package org.openhab.core.ai.agent.communication.messaging.api;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.communication.MessageDeliveryResult;
 
 import io.a2a.spec.Message;
 

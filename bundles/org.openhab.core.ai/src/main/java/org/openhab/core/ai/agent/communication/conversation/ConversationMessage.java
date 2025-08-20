@@ -19,7 +19,7 @@ public class ConversationMessage {
     private final String conversationId;
     private final String fromAgentId;
     private final String content;
-    private final MessageType messageType;
+    private final ConversationMessageType messageType;
     private final Instant timestamp;
 
     public ConversationMessage(ConversationMessageBuilder builder) {
@@ -47,7 +47,7 @@ public class ConversationMessage {
         return content;
     }
 
-    public MessageType getMessageType() {
+    public ConversationMessageType getMessageType() {
         return messageType;
     }
 

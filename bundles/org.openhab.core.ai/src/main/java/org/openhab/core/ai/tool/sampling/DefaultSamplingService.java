@@ -6,9 +6,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.sampling.SamplingStatus;
 import org.openhab.core.ai.tool.sampling.models.DefaultSamplingRequest;
-import org.openhab.core.ai.tool.sampling.models.SamplingRequest;
-import org.openhab.core.ai.tool.sampling.models.SamplingStatus;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

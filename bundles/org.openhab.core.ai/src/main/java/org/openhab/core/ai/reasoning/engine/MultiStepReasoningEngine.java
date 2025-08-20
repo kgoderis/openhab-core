@@ -17,11 +17,11 @@ import org.openhab.core.ai.common.configuration.MultiStepReasoningConfiguration;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.common.metrics.ReasoningPerformanceMetrics;
+import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
-import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.ModelResponseActionParser;
 import org.openhab.core.ai.model.api.ModelClient;
-import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
+import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -178,8 +178,21 @@ public class MultiStepReasoningEngine {
             }
         }
 
+        // Convert engine ReasoningStep to MultiStepReasoningResult.ReasoningStep
+        List<MultiStepReasoningResult.ReasoningStep> convertedSteps = steps.stream()
+                .map(step -> new MultiStepReasoningResult.ReasoningStep(step.getStepNumber(), step.getReasoning(), "", // action
+                                                                                                                       // -
+                                                                                                                       // not
+                                                                                                                       // available
+                                                                                                                       // in
+                                                                                                                       // engine
+                                                                                                                       // step
+                        "", // result - not available in engine step
+                        step.getEndTime().toEpochMilli() - step.getStartTime().toEpochMilli() // durationMs
+                )).toList();
+
         // Create final result
-        MultiStepReasoningResult result = MultiStepReasoningResult.builder().sessionId(sessionId).steps(steps)
+        MultiStepReasoningResult result = MultiStepReasoningResult.builder().sessionId(sessionId).steps(convertedSteps)
                 .toolCalls(actions).finalReasoning(finalReasoning).confidence(confidence).completed(completed)
                 .context(context).startTime(startTime).endTime(Instant.now()).build();
 

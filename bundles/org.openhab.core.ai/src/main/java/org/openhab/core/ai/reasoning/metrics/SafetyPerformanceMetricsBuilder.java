@@ -60,8 +60,17 @@ public class SafetyPerformanceMetricsBuilder {
     }
 
     public SafetyPerformanceMetrics build() {
-        return new SafetyPerformanceMetrics(totalSafetyValidations, totalConstraintViolations, totalSafetyIncidents,
-                totalSafetyOverrides, safetyPolicyCount, userConstraintCount, constraintViolationCount,
+        // Calculate derived values
+        long successfulValidations = totalSafetyValidations - totalConstraintViolations;
+        long failedValidations = totalConstraintViolations;
+        long totalValidationTimeMs = 0; // Default value, should be calculated from actual timing data
+        double averageValidationTimeMs = totalSafetyValidations > 0
+                ? (double) totalValidationTimeMs / totalSafetyValidations
+                : 0.0;
+
+        return new SafetyPerformanceMetrics(totalSafetyValidations, successfulValidations, failedValidations,
+                totalConstraintViolations, totalSafetyIncidents, totalSafetyOverrides, totalValidationTimeMs,
+                averageValidationTimeMs, safetyPolicyCount, userConstraintCount, constraintViolationCount,
                 safetyIncidentCount);
     }
 }

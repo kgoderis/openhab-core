@@ -6,8 +6,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
-import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.server.DefaultToolServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

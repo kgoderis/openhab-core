@@ -1,11 +1,14 @@
 package org.openhab.core.ai.tool.sampling.models;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.sampling.SamplingStatus;
+import org.openhab.core.ai.tool.sampling.SamplingRequest;
 
 /**
  * Concrete implementation of SamplingRequest interface.
  * 
  * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
  */
 @NonNullByDefault
 public class DefaultSamplingRequest implements SamplingRequest {

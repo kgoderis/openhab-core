@@ -6,6 +6,7 @@ import java.util.Set;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.builder.EventSubscriptionBuilder;
+import org.openhab.core.ai.common.events.EventFilter;
 
 /**
  * Event subscription.

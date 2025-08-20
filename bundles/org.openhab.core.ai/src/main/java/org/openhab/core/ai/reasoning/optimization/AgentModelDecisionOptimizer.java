@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ReasoningContext;
+import org.openhab.core.ai.common.security.SecurityManager;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.openhab.core.ai.reasoning.configuration.api.ConfigurationManager;
 import org.openhab.core.ai.reasoning.decision.DecisionAnalysis;
@@ -33,10 +34,6 @@ import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.error.api.ErrorContext;
 import org.openhab.core.ai.reasoning.error.api.ErrorHandler;
 import org.openhab.core.ai.reasoning.memory.api.MemoryManager;
-import org.openhab.core.ai.reasoning.security.api.SecurityIssue;
-import org.openhab.core.ai.reasoning.security.api.SecurityManager;
-import org.openhab.core.ai.reasoning.security.api.SecurityRequest;
-import org.openhab.core.ai.reasoning.security.api.SecurityValidationResult;
 import org.openhab.core.ai.reasoning.strategies.EarlyTerminationStrategy;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -115,15 +112,9 @@ public class AgentModelDecisionOptimizer {
                 }
 
                 // Security validation
-                SecurityRequest securityRequest = new SecurityRequest("decision_opt_" + System.currentTimeMillis(),
-                        context.getSessionId(), "decision_optimizer", "DECISION_OPTIMIZATION",
-                        "Decision optimization request", "", System.currentTimeMillis());
-
-                SecurityValidationResult securityResult = securityManager.validateSecurity(securityRequest).get();
-                if (!securityResult.isValid()) {
-                    throw new SecurityException(
-                            "Access denied for decision optimization: " + securityResult.getSecurityIssues().stream()
-                                    .map(SecurityIssue::getDescription).findFirst().orElse("Unknown security issue"));
+                boolean securityValid = securityManager.canAccess("decision_optimizer", context.getSessionId());
+                if (!securityValid) {
+                    throw new SecurityException("Access denied for decision optimization");
                 }
 
                 // Analyze decision patterns

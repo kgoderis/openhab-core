@@ -4,9 +4,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,8 +16,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.lifecycle.api.ConfigurationChangeListener;
 import org.openhab.core.ai.agent.lifecycle.api.ConfigurationValidator;
+import org.openhab.core.ai.common.configuration.ConfigurationChangeListener;
+import org.openhab.core.ai.common.validation.ConfigurationValidationResult;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.annotations.Activate;
@@ -372,7 +375,8 @@ public class AgentConfigurationManager {
      * @return validation result
      */
     public ConfigurationValidationResult validateConfiguration() {
-        ConfigurationValidationResult result = new ConfigurationValidationResult();
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
         boolean isValid = true;
 
         for (Map.Entry<String, Object> entry : configuration.entrySet()) {
@@ -381,13 +385,12 @@ public class AgentConfigurationManager {
 
             ConfigurationValidator validator = validators.get(key);
             if (validator != null && !validator.validate(value)) {
-                result.addError(key, "Invalid value: " + value);
+                errors.add(key + ": Invalid value: " + value);
                 isValid = false;
             }
         }
 
-        result.setValid(isValid);
-        return result;
+        return new ConfigurationValidationResult(isValid, errors, warnings, Map.of());
     }
 
     /**

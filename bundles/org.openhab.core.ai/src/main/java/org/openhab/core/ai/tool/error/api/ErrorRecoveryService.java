@@ -3,8 +3,8 @@ package org.openhab.core.ai.tool.error.api;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.error.ErrorInfo;
-import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.error.RecoveryAction;
 
 /**

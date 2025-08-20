@@ -11,10 +11,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.collaboration.ConflictResolutionResult;
+import org.openhab.core.ai.agent.collaboration.ConflictResolutionStrategy;
+import org.openhab.core.ai.agent.collaboration.ConflictType;
 import org.openhab.core.ai.agent.collaboration.ContextAccessLevel;
 import org.openhab.core.ai.agent.collaboration.SharedContext;
-import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionResult;
-import org.openhab.core.ai.agent.collaboration.coordination.api.ConflictResolutionStrategy;
 import org.openhab.core.ai.agent.collaboration.coordination.api.CoordinationProtocol;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.osgi.service.component.annotations.Component;
@@ -128,17 +129,18 @@ public class AgentCoordinationManager {
 
         // Apply conflict resolution strategy
         ConflictResolutionStrategy strategy = selectConflictResolutionStrategy(conflictType);
-        return strategy.resolve(session).thenApply(result -> {
+        try {
+            ConflictResolutionResult result = strategy.resolve(session);
             session.setState(ConflictResolutionState.RESOLVED);
             session.setResolution(result);
             logger.debug("Conflict resolved: {}", conflictId);
-            return result;
-        }).exceptionally(throwable -> {
+            return CompletableFuture.completedFuture(result);
+        } catch (Exception e) {
             session.setState(ConflictResolutionState.FAILED);
-            session.setError(throwable.getMessage());
-            logger.error("Conflict resolution failed: {}", conflictId, throwable);
-            return ConflictResolutionResult.failure(throwable.getMessage());
-        });
+            session.setError(e.getMessage());
+            logger.error("Conflict resolution failed: {}", conflictId, e);
+            return CompletableFuture.completedFuture(ConflictResolutionResult.failure(e.getMessage()));
+        }
     }
 
     /**

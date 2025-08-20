@@ -12,11 +12,13 @@
  */
 package org.openhab.core.ai.reasoning.strategies;
 
+import java.util.Map;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.error.ErrorRecoveryResult;
 import org.openhab.core.ai.reasoning.error.ErrorRecovery;
 import org.openhab.core.ai.reasoning.error.FaultTolerance;
 import org.openhab.core.ai.reasoning.error.api.ErrorContext;
-import org.openhab.core.ai.reasoning.error.api.ErrorRecoveryResult;
 
 /**
  * Strategy wrapper that selects appropriate recovery path.
@@ -32,7 +34,8 @@ public final class RecoveryStrategy {
 
     public ErrorRecoveryResult recover(Throwable error, ErrorContext context) {
         if (faultTolerance.shouldFallback(error)) {
-            return new ErrorRecoveryResult(true, "FALLBACK", "Fallback strategy suggested", System.currentTimeMillis());
+            return new ErrorRecoveryResult(true, "RECOVERED", "FALLBACK", "Fallback strategy suggested", Map.of(),
+                    System.currentTimeMillis(), 0);
         }
         return errorRecovery.recover(error, context);
     }

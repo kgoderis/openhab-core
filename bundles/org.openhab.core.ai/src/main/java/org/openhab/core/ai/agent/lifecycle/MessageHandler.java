@@ -1,6 +1,7 @@
 package org.openhab.core.ai.agent.lifecycle;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.response.MessageResponse;
 
 /**
  * Message handler interface for agents

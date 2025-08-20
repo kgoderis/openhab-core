@@ -15,9 +15,9 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.security.RateLimitInfo;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.security.api.AccessLogEntry;
-import org.openhab.core.ai.tool.security.api.RateLimitInfo;
 import org.openhab.core.ai.tool.security.api.SpecificationPermissions;
 import org.openhab.core.ai.tool.security.api.ToolSecurityService;
 import org.openhab.core.ai.tool.security.api.UserRole;

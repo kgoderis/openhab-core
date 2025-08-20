@@ -23,6 +23,7 @@ public final class MessageResponseBuilder extends AbstractBuilder<MessageRespons
     private String source = "system";
     private Map<String, Object> metadata = Map.of();
     private @Nullable String errorMessage;
+    private boolean acknowledged = true;
 
     public MessageResponseBuilder withId(String id) {
         this.id = Objects.requireNonNull(id, "id");
@@ -59,6 +60,11 @@ public final class MessageResponseBuilder extends AbstractBuilder<MessageRespons
         return this;
     }
 
+    public MessageResponseBuilder withAcknowledged(boolean acknowledged) {
+        this.acknowledged = acknowledged;
+        return this;
+    }
+
     @Override
     protected void validate() {
         validateRequiredString(message, "message");
@@ -75,6 +81,7 @@ public final class MessageResponseBuilder extends AbstractBuilder<MessageRespons
         source = "system";
         metadata = Map.of();
         errorMessage = null;
+        acknowledged = true;
     }
 
     @Override
@@ -84,6 +91,7 @@ public final class MessageResponseBuilder extends AbstractBuilder<MessageRespons
         }
         String resolvedId = id != null ? id
                 : ("message-response-" + System.currentTimeMillis() + "-" + System.nanoTime());
-        return new MessageResponse(resolvedId, message, timestamp, messageType, source, metadata, errorMessage);
+        return new MessageResponse(resolvedId, message, timestamp, messageType, source, metadata, errorMessage,
+                acknowledged);
     }
 }

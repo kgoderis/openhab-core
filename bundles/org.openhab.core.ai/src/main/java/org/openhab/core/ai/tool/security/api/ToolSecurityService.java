@@ -7,6 +7,7 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.security.RateLimitInfo;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 
 /**

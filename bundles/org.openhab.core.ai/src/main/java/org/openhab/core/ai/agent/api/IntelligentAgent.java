@@ -10,8 +10,8 @@ import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.model.api.ModelClient;
+import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.engine.MultiStepReasoningEngine;
-import org.openhab.core.ai.reasoning.engine.api.MultiStepReasoningResult;
 
 /**
  * Intelligent Agent Interface

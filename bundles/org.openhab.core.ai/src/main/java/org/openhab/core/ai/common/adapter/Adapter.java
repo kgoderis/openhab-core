@@ -1,5 +1,7 @@
 package org.openhab.core.ai.common.adapter;
 
+import java.util.Map;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
@@ -28,6 +30,65 @@ public interface Adapter<T, C, R> {
      */
     @Nullable
     R adapt(T source, C context);
+
+    /**
+     * Create an entity from the given identifier and context.
+     * 
+     * @param identifier the identifier (item name, rule UID, etc.)
+     * @param context the execution context
+     * @return the created entity or null if creation fails
+     */
+    @Nullable
+    T createEntity(String identifier, C context);
+
+    /**
+     * Get content from the underlying entity.
+     * 
+     * @param identifier the identifier (item name, rule UID, etc.)
+     * @param context the execution context
+     * @return the content as a string or null if not available
+     */
+    @Nullable
+    String getContent(String identifier, C context);
+
+    /**
+     * Check if the entity is writable.
+     * 
+     * @param identifier the identifier (item name, rule UID, etc.)
+     * @param context the execution context
+     * @return true if the entity is writable
+     */
+    boolean isWritable(String identifier, C context);
+
+    /**
+     * Write content to the underlying entity.
+     * 
+     * @param identifier the identifier (item name, rule UID, etc.)
+     * @param content the content to write
+     * @param context the execution context
+     * @return true if successful
+     */
+    boolean writeContent(String identifier, @Nullable String content, C context);
+
+    /**
+     * Check if the entity exists.
+     * 
+     * @param identifier the identifier (item name, rule UID, etc.)
+     * @param context the execution context
+     * @return true if the entity exists
+     */
+    boolean exists(String identifier, C context);
+
+    /**
+     * Execute an operation on the entity.
+     * 
+     * @param identifier the identifier (item name, rule UID, etc.)
+     * @param operation the operation to perform
+     * @param parameters the operation parameters
+     * @param context the execution context
+     * @return the operation result
+     */
+    R execute(String identifier, String operation, Map<String, Object> parameters, C context);
 
     /**
      * Check if this adapter can handle the given source object.

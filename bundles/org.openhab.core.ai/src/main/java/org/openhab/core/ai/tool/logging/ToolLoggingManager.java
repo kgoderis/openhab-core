@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.tool.server.api.TransportType;
+import org.openhab.core.ai.common.transport.TransportType;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -12,7 +12,7 @@ package org.openhab.core.ai.agent.core;
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
-public enum MessageType {
+enum A2AMessageType {
 
     /**
      * Discovery messages for agent and capability discovery.

@@ -47,7 +47,7 @@ public class AgentModelDecisionValidator {
     private static final double HIGH_RISK_CONFIDENCE_THRESHOLD = 0.9;
     private static final double MAX_RISK_SCORE = 0.8;
 
-    private final Map<String, ValidationRule> validationRules = new ConcurrentHashMap<>();
+    private final Map<String, DecisionValidationRule> validationRules = new ConcurrentHashMap<>();
 
     /**
      * Validate a decision for safety and compliance.
@@ -144,7 +144,7 @@ public class AgentModelDecisionValidator {
      * @param ruleName The name of the rule
      * @param rule The validation rule
      */
-    public void addValidationRule(String ruleName, ValidationRule rule) {
+    public void addValidationRule(String ruleName, DecisionValidationRule rule) {
         validationRules.put(ruleName, rule);
         logger.debug("Added validation rule: {}", ruleName);
     }
@@ -322,9 +322,9 @@ public class AgentModelDecisionValidator {
      */
     private void applyCustomValidationRules(DecisionResult decision, DecisionContext context,
             DecisionValidationResult result) {
-        for (Map.Entry<String, ValidationRule> entry : validationRules.entrySet()) {
+        for (Map.Entry<String, DecisionValidationRule> entry : validationRules.entrySet()) {
             try {
-                ValidationRule rule = entry.getValue();
+                DecisionValidationRule rule = entry.getValue();
                 List<String> ruleIssues = rule.validate(decision, context);
                 for (String issue : ruleIssues) {
                     result.addValidationIssue("Rule '" + entry.getKey() + "': " + issue);

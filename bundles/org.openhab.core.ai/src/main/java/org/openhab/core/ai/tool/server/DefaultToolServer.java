@@ -5,15 +5,15 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
+import org.openhab.core.ai.common.transport.TransportType;
 import org.openhab.core.ai.tool.error.DefaultErrorRecoveryService;
 import org.openhab.core.ai.tool.error.ErrorInfo;
-import org.openhab.core.ai.tool.error.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.security.DefaultToolSecurityService;
 import org.openhab.core.ai.tool.server.api.ToolServer;
 import org.openhab.core.ai.tool.server.api.ToolServerState;
-import org.openhab.core.ai.tool.server.api.TransportType;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +44,7 @@ public class DefaultToolServer implements ToolServer {
     private static final Logger logger = LoggerFactory.getLogger(DefaultToolServer.class);
 
     private final String serverId;
-    private final ServerConfiguration configuration;
+    private final ToolServerConfiguration configuration;
     private final ObjectMapper objectMapper;
     private final @Nullable BundleContext bundleContext;
     private final ToolRegistry toolRegistry;
@@ -77,7 +77,7 @@ public class DefaultToolServer implements ToolServer {
      * @param configuration Server configuration
      * @param toolRegistry Tool registry
      */
-    public DefaultToolServer(String serverId, ServerConfiguration configuration, ToolRegistry toolRegistry) {
+    public DefaultToolServer(String serverId, ToolServerConfiguration configuration, ToolRegistry toolRegistry) {
         this.serverId = serverId;
         this.configuration = configuration;
         this.toolRegistry = toolRegistry;
@@ -181,7 +181,7 @@ public class DefaultToolServer implements ToolServer {
      * 
      * @return the server configuration
      */
-    public ServerConfiguration getConfiguration() {
+    public ToolServerConfiguration getConfiguration() {
         return configuration;
     }
 

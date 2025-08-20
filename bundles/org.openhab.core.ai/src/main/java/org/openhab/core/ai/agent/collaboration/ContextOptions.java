@@ -10,6 +10,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * Options for shared context operations.
  * 
  * Immutable set of options controlling persistence, TTL and metadata for context operations.
+ * This unified class combines functionality from both duplicate implementations.
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
@@ -82,7 +83,36 @@ public class ContextOptions {
         return new ContextOptionsBuilder();
     }
 
+    /**
+     * Create a builder from this instance for modification.
+     * 
+     * @return a new builder instance initialized with current values
+     */
     public ContextOptionsBuilder toBuilder() {
         return new ContextOptionsBuilder(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        ContextOptions other = (ContextOptions) obj;
+        return expectedVersion == other.expectedVersion && persistent == other.persistent
+                && Objects.equals(ttl, other.ttl) && Objects.equals(metadata, other.metadata);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(expectedVersion, persistent, ttl, metadata);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("ContextOptions{expectedVersion=%d, persistent=%s, ttl=%s, metadata=%s}", expectedVersion,
+                persistent, ttl, metadata);
     }
 }

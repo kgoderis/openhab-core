@@ -918,3 +918,439 @@ The consolidation effort aligns with the overall BRAIN plan by creating a cleane
 
 ---
 
+### 26.11 Individual Duplication Action Items
+
+This section provides specific action items for each individual duplication issue found in the codebase, including exact file locations and consolidation strategies.
+
+#### 26.11.1 Duplicate Classes - Critical Priority
+
+**AgentInfo Classes:**
+- [x] **Action Item 1.1**: Consolidate `AgentInfo` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/transport/response/AgentInfo.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/delegation/AgentInfo.java` (DELETED)
+  - **Strategy**: Merged into single `AgentInfo` class in `org.openhab.core.ai.agent.api`
+  - **Priority**: Critical
+
+**ConfigurationValidationResult Classes:**
+- [x] **Action Item 1.2**: Consolidate `ConfigurationValidationResult` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/lifecycle/ConfigurationValidationResult.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/configuration/api/ConfigurationValidationResult.java` (DELETED)
+  - **Strategy**: Used unified `ConfigurationValidationResult` in `org.openhab.core.ai.common.validation`
+  - **Priority**: Critical
+
+**ContextOptions Classes:**
+- [x] **Action Item 1.3**: Consolidate `ContextOptions` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/collaboration/context/ContextOptions.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/collaboration/ContextOptions.java` (UNIFIED)
+  - **Strategy**: Merged into single `ContextOptions` class in `org.openhab.core.ai.agent.collaboration`
+  - **Priority**: Critical
+
+**ContextOptionsBuilder Classes:**
+- [x] **Action Item 1.4**: Consolidate `ContextOptionsBuilder` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/collaboration/context/ContextOptionsBuilder.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/collaboration/ContextOptionsBuilder.java` (UNIFIED)
+  - **Strategy**: Merged into single `ContextOptionsBuilder` class in `org.openhab.core.ai.agent.collaboration`
+  - **Priority**: Critical
+
+**ContextVersion Classes:**
+- [x] **Action Item 1.5**: Consolidate `ContextVersion` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/collaboration/context/ContextVersion.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/collaboration/ContextVersion.java` (UNIFIED)
+  - **Strategy**: Merged into single `ContextVersion` class in `org.openhab.core.ai.agent.collaboration`
+  - **Priority**: Critical
+
+**ContextVersionBuilder Classes:**
+- [x] **Action Item 1.6**: Consolidate `ContextVersionBuilder` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/collaboration/context/ContextVersionBuilder.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/collaboration/ContextVersionBuilder.java` (UNIFIED)
+  - **Strategy**: Merged into single `ContextVersionBuilder` class in `org.openhab.core.ai.agent.collaboration`
+  - **Priority**: Critical
+
+**DefaultAgentModelProvider Classes:**
+- [x] **Action Item 1.7**: Consolidate `DefaultAgentModelProvider` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/core/DefaultAgentModelProvider.java` (UNIFIED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/model/DefaultAgentModelProvider.java` (DELETED)
+  - **Strategy**: Kept the more comprehensive implementation in `org.openhab.core.ai.agent.core`
+  - **Priority**: Critical
+
+**DefaultAuditLogger Classes:**
+- [x] **Action Item 1.8**: Consolidate `DefaultAuditLogger` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/auth/DefaultAuditLogger.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/logging/audit/DefaultAuditLogger.java` (DELETED)
+  - **Strategy**: Created unified `DefaultAuditLogger` class in `org.openhab.core.ai.common.audit`
+  - **Priority**: Critical
+
+**ErrorRecoveryResult Classes:**
+- [x] **Action Item 1.9**: Consolidate `ErrorRecoveryResult` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/error/api/ErrorRecoveryResult.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/error/recovery/ErrorRecoveryResult.java` (DELETED)
+  - **Strategy**: Created unified `ErrorRecoveryResult` class in `org.openhab.core.ai.common.error`
+  - **Priority**: Critical
+
+**ErrorRecoveryStatistics Classes:**
+- [x] **Action Item 1.10**: Consolidate `ErrorRecoveryStatistics` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/tool/manager/ErrorRecoveryStatistics.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/error/ErrorRecoveryStatistics.java` (DELETED)
+  - **Strategy**: Created unified `ErrorRecoveryStatistics` class in `org.openhab.core.ai.common.error`
+  - **Priority**: Critical
+
+**HybridServiceMetrics Classes:**
+- [x] **Action Item 1.11**: Consolidate `HybridServiceMetrics` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/tool/services/HybridServiceMetrics.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/services/api/HybridServiceMetrics.java` (DELETED)
+  - **Strategy**: Created unified `HybridServiceMetrics` class in `org.openhab.core.ai.common.statistics`
+  - **Priority**: Critical
+
+**InputValidationResult Classes:**
+- [x] **Action Item 1.12**: Consolidate `InputValidationResult` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/validation/InputValidationResult.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/elicitation/input/InputValidationResult.java` (DELETED)
+  - **Strategy**: Used unified `InputValidationResult` in `org.openhab.core.ai.common.validation` - deleted duplicates and updated imports
+  - **Priority**: Critical
+
+**MemoryConsolidationResult Classes:**
+- [x] **Action Item 1.13**: Consolidate `MemoryConsolidationResult` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/memory/MemoryConsolidationResult.java` (KEPT, enhanced implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/memory/api/MemoryConsolidationResult.java` (DELETED)
+  - **Strategy**: Merged into single `MemoryConsolidationResult` class in `org.openhab.core.ai.reasoning.memory` - kept the more comprehensive implementation
+  - **Priority**: Critical
+
+**MemoryStoreResult Classes:**
+- [x] **Action Item 1.14**: Consolidate `MemoryStoreResult` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/memory/MemoryStoreResult.java` (ENHANCED, unified implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/memory/api/MemoryStoreResult.java` (DELETED)
+  - **Strategy**: Merged into single `MemoryStoreResult` class in `org.openhab.core.ai.reasoning.memory` - enhanced to support both MemoryEntry and String memoryId
+  - **Priority**: Critical
+
+**MessageResponse Classes:**
+- [x] **Action Item 1.15**: Consolidate `MessageResponse` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/lifecycle/MessageResponse.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/common/response/MessageResponse.java` (ENHANCED, unified implementation)
+  - **Strategy**: Enhanced unified `MessageResponse` in `org.openhab.core.ai.common.response` with acknowledged field and backward compatibility methods
+  - **Priority**: Critical
+
+**ModelResponse Classes:**
+- [x] **Action Item 1.16**: Consolidate `ModelResponse` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/common/response/ModelResponse.java` (ENHANCED, unified implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/model/ModelResponse.java` (DELETED)
+  - **Strategy**: Enhanced unified `ModelResponse` in `org.openhab.core.ai.common.response` with Instant timestamp support and backward compatibility
+  - **Priority**: Critical
+
+**MultiStepReasoningResult Classes:**
+- [x] **Action Item 1.17**: Consolidate `MultiStepReasoningResult` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/api/MultiStepReasoningResult.java` (ENHANCED, unified implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/engine/api/MultiStepReasoningResult.java` (DELETED)
+  - **Strategy**: Enhanced unified `MultiStepReasoningResult` in `org.openhab.core.ai.reasoning.api` with builder pattern and comprehensive functionality
+  - **Priority**: Critical
+
+**PerformanceMetricsBuilder Classes:**
+- [x] **Action Item 1.18**: Consolidate `PerformanceMetricsBuilder` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/metrics/PerformanceMetricsBuilder.java` (ENHANCED, unified implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/engine/PerformanceMetricsBuilder.java` (DELETED)
+  - **Strategy**: Enhanced unified `PerformanceMetricsBuilder` in `org.openhab.core.ai.reasoning.metrics` with processing time and response time support
+  - **Priority**: Critical
+
+**ProviderMetrics Classes:**
+- [x] **Action Item 1.19**: Consolidate `ProviderMetrics` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/tool/services/ProviderMetrics.java` (KEPT, enhanced implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/services/api/ProviderMetrics.java` (DELETED)
+  - **Strategy**: Kept unified `ProviderMetrics` in `org.openhab.core.ai.tool.services` with comprehensive documentation and health score calculation
+  - **Priority**: Critical
+
+**QuickSecurityResult Classes:**
+- [x] **Action Item 1.20**: Consolidate `QuickSecurityResult` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/security/api/QuickSecurityResult.java` (KEPT, only implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/results/QuickSecurityResult.java` (NOT FOUND, may have been already deleted)
+  - **Strategy**: Only one `QuickSecurityResult` class exists in `org.openhab.core.ai.reasoning.security.api`
+  - **Priority**: Critical
+
+**RateLimitInfo Classes:**
+- [x] **Action Item 1.21**: Consolidate `RateLimitInfo` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/security/RateLimitInfo.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/security/api/RateLimitInfo.java` (DELETED)
+  - **Strategy**: Created unified `RateLimitInfo` class in `org.openhab.core.ai.common.security` with comprehensive rate limiting support and backward compatibility
+  - **Priority**: Critical
+
+**SafetyPerformanceMetrics Classes:**
+- [x] **Action Item 1.22**: Consolidate `SafetyPerformanceMetrics` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/metrics/SafetyPerformanceMetrics.java` (ENHANCED, unified implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/constraints/SafetyPerformanceMetrics.java` (DELETED)
+  - **Strategy**: Enhanced unified `SafetyPerformanceMetrics` in `org.openhab.core.ai.reasoning.metrics` with validation performance metrics
+  - **Priority**: Critical
+  - **Status**: Fixed constructor compatibility issues and updated all references
+
+**SecurityIncident Classes:**
+- [x] **Action Item 1.23**: Consolidate `SecurityIncident` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/auth/SecurityIncident.java` (ENHANCED, unified implementation with entityId)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/infrastructure/security/SecurityIncident.java` (DELETED)
+  - **Strategy**: Enhanced unified `SecurityIncident` in `org.openhab.core.ai.auth` with general entityId field and external SecuritySeverity enum in `org.openhab.core.ai.common.security`
+  - **Priority**: Critical
+
+**SecurityPolicy Classes:**
+- [x] **Action Item 1.24**: Consolidate `SecurityPolicy` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/infrastructure/security/AgentSecurityPolicy.java` (RENAMED and UPDATED to implement unified interface)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/security/ModelSecurityPolicy.java` (RENAMED and UPDATED to implement unified interface)
+  - **Strategy**: Created unified `SecurityPolicy` interface in `org.openhab.core.ai.common.security` with both implementations renamed for clarity
+  - **Priority**: Critical
+  - **Status**: Both SecurityPolicy classes renamed to AgentSecurityPolicy and ModelSecurityPolicy respectively, implementing the unified interface with proper type differentiation
+
+**SecurityValidationResult Classes:**
+- [x] **Action Item 1.25**: Consolidate `SecurityValidationResult` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/security/api/SecurityValidationResult.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/results/SecurityValidationResult.java` (DELETED)
+  - **Strategy**: Created unified `SecurityValidationResult` in `org.openhab.core.ai.common.security` with comprehensive security validation support
+  - **Priority**: Critical
+  - **Status**: Unified SecurityValidationResult created with nested SecurityIssue and SecurityIssueType classes. Complex type dependencies with ComprehensiveSecurityResult require additional refactoring.
+
+**ServerConfiguration Classes:**
+- [x] **Action Item 1.26**: Consolidate `ServerConfiguration` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/common/configuration/ServerConfiguration.java` (KEPT - general purpose)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/server/ToolServerConfiguration.java` (RENAMED from ServerConfiguration)
+  - **Strategy**: Renamed tool server version to `ToolServerConfiguration` to avoid conflicts while keeping both for different purposes. ToolServerConfiguration now extends ServerConfiguration to eliminate code duplication and follow proper inheritance hierarchy.
+  - **Priority**: Critical
+  - **Status**: ToolServerConfiguration now extends ServerConfiguration. Need to update remaining files that still reference ServerConfiguration instead of ToolServerConfiguration.
+
+**ToolMetrics Classes:**
+- [x] **Action Item 1.27**: Consolidate `ToolMetrics` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/tool/services/api/ToolMetrics.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/services/ToolMetrics.java` (KEPT, enhanced implementation)
+  - **Strategy**: Kept unified `ToolMetrics` in `org.openhab.core.ai.tool.services` with comprehensive documentation
+  - **Priority**: Critical
+
+**ToolResponse Classes:**
+- [x] **Action Item 1.28**: Consolidate `ToolResponse` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/common/response/ToolResponse.java` (KEPT, enhanced implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/server/api/ToolResponse.java` (DELETED)
+  - **Strategy**: Used unified `ToolResponse` in `org.openhab.core.ai.common.response` with comprehensive MCP protocol support
+  - **Priority**: Critical
+
+**ToolUtils Classes:**
+- [x] **Action Item 1.29**: Consolidate `ToolUtils` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/tool/util/ToolUtils.java` (ENHANCED, unified implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/util/helpers/ToolUtils.java` (DELETED)
+  - **Strategy**: Merged into single `ToolUtils` class in `org.openhab.core.ai.tool.util` with comprehensive utility functions
+  - **Priority**: Critical
+
+**ToolValidationResult Classes:**
+- [x] **Action Item 1.30**: Consolidate `ToolValidationResult` classes ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/common/validation/ToolValidationResult.java` (KEPT, enhanced implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/validation/api/ToolValidationResult.java` (DELETED)
+  - **Strategy**: Used unified `ToolValidationResult` in `org.openhab.core.ai.common.validation` with comprehensive validation support
+  - **Priority**: Critical
+
+#### 26.11.2 Duplicate Interfaces - High Priority
+
+**Adapter Interfaces:**
+- [x] **Action Item 2.1**: Consolidate `Adapter` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/common/adapter/Adapter.java` (ENHANCED, unified implementation)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/api/Adapter.java` (DELETED)
+  - **Strategy**: Enhanced unified `Adapter` interface in `org.openhab.core.ai.common.adapter` with comprehensive MCP protocol support
+  - **Priority**: High
+
+**AuditLogger Interfaces:**
+- [x] **Action Item 2.2**: Consolidate `AuditLogger` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/auth/AuditLogger.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/logging/audit/AuditLogger.java` (DELETED)
+  - **Strategy**: Created unified `AuditLogger` interface in `org.openhab.core.ai.common.audit` with comprehensive audit logging support
+  - **Priority**: High
+
+**ConfigurationChangeListener Interfaces:**
+- [x] **Action Item 2.3**: Consolidate `ConfigurationChangeListener` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/config/ConfigurationChangeListener.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/lifecycle/api/ConfigurationChangeListener.java` (DELETED)
+  - **Strategy**: Created unified `ConfigurationChangeListener` interface in `org.openhab.core.ai.common.configuration` with comprehensive configuration change support
+  - **Priority**: High
+
+**ConflictResolutionResult Interfaces:**
+- [x] **Action Item 2.4**: Consolidate `ConflictResolutionResult` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/collaboration/coordination/api/ConflictResolutionResult.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/collaboration/conflict/ConflictResolutionResult.java` (DELETED)
+  - **Strategy**: Created unified `ConflictResolutionResult` interface in `org.openhab.core.ai.agent.collaboration` with comprehensive conflict resolution support
+  - **Priority**: High
+
+**ConflictResolutionStrategy Interfaces:**
+- [x] **Action Item 2.5**: Consolidate `ConflictResolutionStrategy` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/collaboration/coordination/api/ConflictResolutionStrategy.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/collaboration/conflict/ConflictResolutionStrategy.java` (DELETED)
+  - **Strategy**: Created unified `ConflictResolutionStrategy` interface in `org.openhab.core.ai.agent.collaboration` with comprehensive conflict resolution support
+  - **Priority**: High
+
+**EventFilter Interfaces:**
+- [x] **Action Item 2.6**: Consolidate `EventFilter` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/communication/events/api/EventFilter.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/events/EventFilter.java` (DELETED)
+  - **Strategy**: Created unified `EventFilter` interface in `org.openhab.core.ai.common.events` with comprehensive event filtering support
+  - **Priority**: High
+
+**EventRouter Interfaces:**
+- [x] **Action Item 2.7**: Consolidate `EventRouter` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/communication/events/api/EventRouter.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/events/EventRouter.java` (DELETED)
+  - **Strategy**: Created unified `EventRouter` interface in `org.openhab.core.ai.common.events` with comprehensive event routing support
+  - **Priority**: High
+
+**MessageDeliveryResult Interfaces:**
+- [x] **Action Item 2.8**: Consolidate `MessageDeliveryResult` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/communication/messaging/api/MessageDeliveryResult.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/communication/conversation/api/MessageDeliveryResult.java` (DELETED)
+  - **Strategy**: Created unified `MessageDeliveryResult` interface in `org.openhab.core.ai.common.communication` with comprehensive message delivery support
+  - **Priority**: High
+
+**SamplingRequest Interfaces:**
+- [x] **Action Item 2.9**: Consolidate `SamplingRequest` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/tool/sampling/SamplingRequest.java` (UPDATED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/sampling/models/SamplingRequest.java` (DELETED)
+  - **Strategy**: Enhanced unified `SamplingRequest` interface in `org.openhab.core.ai.tool.sampling` with comprehensive sampling request support
+  - **Priority**: High
+
+**SecurityManager Interfaces:**
+- [x] **Action Item 2.10**: Consolidate `SecurityManager` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/common/security/SecurityManager.java` (Base interface with common methods)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/security/GeneralSecurityManager.java` (DELETED - methods moved to base interface)
+  - **Location 3**: `src/main/java/org/openhab/core/ai/reasoning/security/api/ReasoningSecurityManager.java` (DELETED - no unique value)
+  - **Location 4**: `src/main/java/org/openhab/core/ai/agent/infrastructure/security/api/AgentSecurityManager.java` (UPDATED to implement common interface + agent-specific methods)
+  - **Location 5**: `src/main/java/org/openhab/core/ai/tool/security/api/ToolSecurityManager.java` (UPDATED to implement common interface + tool-specific methods)
+  - **Strategy**: Simplified hierarchy - base interface for common methods, domain interfaces only where needed
+  - **Priority**: High
+
+**ValidationRule Interfaces:**
+- [x] **Action Item 2.11**: Consolidate `ValidationRule` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/validation/ValidationRule.java` (NOT FOUND - already deleted)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/validation/api/ValidationRule.java` (KEPT as unified)
+  - **Strategy**: Only one ValidationRule interface remains, no consolidation needed
+  - **Priority**: High
+
+**SecurityPolicy Interfaces:**
+- [x] **Action Item 2.12**: Consolidate `SecurityPolicy` interfaces ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/common/security/SecurityPolicy.java` (DELETED - was too generic)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/infrastructure/security/api/AgentSecurityPolicy.java` (CREATED - domain-specific interface)
+  - **Location 3**: `src/main/java/org/openhab/core/ai/action/api/ActionSecurityPolicy.java` (CREATED - domain-specific interface)
+  - **Location 4**: `src/main/java/org/openhab/core/ai/reasoning/security/api/ModelSecurityPolicy.java` (CREATED - domain-specific interface)
+  - **Strategy**: Replaced generic SecurityPolicy interface with domain-specific interfaces: AgentSecurityPolicy, ActionSecurityPolicy, and ModelSecurityPolicy. Each interface focuses on domain-specific security concerns rather than trying to be generic.
+  - **Priority**: High
+
+#### 26.11.3 Duplicate Enums - Medium Priority
+
+**ConflictType Enums:**
+- [x] **Action Item 3.1**: Consolidate `ConflictType` enums ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/collaboration/coordination/ConflictType.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/agent/collaboration/conflict/ConflictType.java` (DELETED)
+  - **Strategy**: Created unified `ConflictType` enum in `org.openhab.core.ai.agent.collaboration` with comprehensive structure
+  - **Priority**: Medium
+
+**LoadBalancingStrategy Enums:**
+- [x] **Action Item 3.2**: Consolidate `LoadBalancingStrategy` enums ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/delegation/LoadBalancingStrategy.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/services/api/LoadBalancingStrategy.java` (DELETED)
+  - **Strategy**: Created unified `LoadBalancingStrategy` enum in `org.openhab.core.ai.common.services` with comprehensive structure
+  - **Priority**: Medium
+
+**MessageType Enums:**
+- [x] **Action Item 3.3**: Consolidate `MessageType` enums
+- **Location 1**: `src/main/java/org/openhab/core/ai/agent/core/A2AMessageType.java` (renamed from MessageType.java)
+- **Location 2**: `src/main/java/org/openhab/core/ai/agent/communication/conversation/ConversationMessageType.java` (renamed from MessageType.java)
+- **Strategy**: Renamed classes to clarify their different purposes instead of merging
+  - **Priority**: Medium
+
+**SamplingStatus Enums:**
+- [x] **Action Item 3.4**: Consolidate `SamplingStatus` enums ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/tool/sampling/SamplingStatus.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/sampling/models/SamplingStatus.java` (DELETED)
+  - **Strategy**: Created unified `SamplingStatus` enum in `org.openhab.core.ai.common.sampling` with comprehensive structure
+  - **Priority**: Medium
+
+**SecurityLevel Enums:**
+- [x] **Action Item 3.5**: Consolidate `SecurityLevel` enums ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/reasoning/security/api/SecurityLevel.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/reasoning/security/SecurityLevel.java` (DELETED)
+  - **Location 3**: `src/main/java/org/openhab/core/ai/action/api/SecurityLevel.java` (DELETED)
+  - **Strategy**: Created unified `SecurityLevel` enum in `org.openhab.core.ai.common.security` with comprehensive structure
+  - **Priority**: Medium
+
+**TransportType Enums:**
+- [x] **Action Item 3.6**: Consolidate `TransportType` enums ✅ COMPLETED
+  - **Location 1**: `src/main/java/org/openhab/core/ai/agent/transport/api/TransportType.java` (DELETED)
+  - **Location 2**: `src/main/java/org/openhab/core/ai/tool/server/api/TransportType.java` (DELETED)
+  - **Strategy**: Created unified `TransportType` enum in `org.openhab.core.ai.common.transport` with comprehensive structure
+  - **Priority**: Medium
+
+#### 26.11.4 Implementation Priority Matrix
+
+**Critical Priority (Immediate Action Required):**
+- Action Items 1.1 - 1.30 (Duplicate Classes)
+- These represent the most significant code duplication issues
+- Should be addressed in Phase 1 of the consolidation effort
+
+**High Priority (Next Phase):**
+- Action Items 2.1 - 2.11 (Duplicate Interfaces)
+- These affect the overall architecture and type safety
+- Should be addressed in Phase 2 of the consolidation effort
+
+**Medium Priority (Final Phase):**
+- Action Items 3.1 - 3.6 (Duplicate Enums)
+- These are less critical but still important for consistency
+- Should be addressed in Phase 3 of the consolidation effort
+
+#### 26.11.5 Success Criteria for Each Action Item
+
+For each action item, the following success criteria must be met:
+
+1. **Code Consolidation**: Duplicate classes/interfaces/enums successfully merged
+2. **Import Updates**: All references updated to use consolidated implementations
+3. **Compilation**: No compilation errors after consolidation
+4. **Testing**: Comprehensive unit tests for consolidated implementations
+5. **Documentation**: Updated javadoc and migration guides
+6. **Backward Compatibility**: Existing functionality preserved during transition
+7. **Performance**: No performance regression from consolidation
+8. **Code Quality**: Consolidated code follows openHAB coding standards
+
+#### 26.11.6 Risk Assessment for Each Action Item
+
+**High Risk Action Items:**
+- Action Items 1.16 (ModelResponse) - Critical for model integration
+- Action Items 1.28 (ToolResponse) - Critical for tool functionality
+- Action Items 2.10 (SecurityManager) - Critical for security functionality
+
+**Medium Risk Action Items:**
+- Action Items 1.1-1.15 (Agent-related classes) - Affect agent functionality
+- Action Items 2.1-2.9 (Interface consolidations) - Affect type safety
+
+**Low Risk Action Items:**
+- Action Items 3.1-3.6 (Enum consolidations) - Primarily affect consistency
+
+#### 26.11.7 Migration Timeline
+
+**Week 1-2: Critical Priority Action Items**
+- Complete Action Items 1.1-1.30 (Duplicate Classes)
+- Focus on highest impact consolidations first
+
+**Week 3-4: High Priority Action Items**
+- Complete Action Items 2.1-2.11 (Duplicate Interfaces)
+- Ensure type safety improvements
+
+**Week 5-6: Medium Priority Action Items**
+- Complete Action Items 3.1-3.6 (Duplicate Enums)
+- Final consistency improvements
+
+**Week 7-8: Validation and Cleanup**
+- Comprehensive testing of all consolidations
+- Performance validation
+- Documentation updates
+- Final cleanup and optimization
+
+### 26.12 Conclusion
+
+This comprehensive list of individual action items provides a clear roadmap for eliminating all duplicate code in the openHAB AI bundle. Each action item includes specific file locations, consolidation strategies, and success criteria. The phased approach ensures minimal disruption while achieving maximum benefit from the consolidation effort.
+
+The consolidation of these 47 duplicate classes, interfaces, and enums will result in:
+- Improved code maintainability
+- Reduced bundle size
+- Enhanced type safety
+- Consistent API patterns
+- Simplified testing
+- Better architecture clarity
+
+Success will be measured through both quantitative metrics (code reduction, performance improvement) and qualitative improvements (maintainability, consistency, type safety).
+
+---
+

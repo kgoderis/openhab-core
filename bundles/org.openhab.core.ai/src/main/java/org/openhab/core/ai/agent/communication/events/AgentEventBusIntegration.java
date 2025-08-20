@@ -14,15 +14,15 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.communication.events.api.EventFilter;
 import org.openhab.core.ai.agent.communication.events.api.EventHandler;
 import org.openhab.core.ai.agent.communication.events.api.EventOptions;
 import org.openhab.core.ai.agent.communication.events.api.EventPublishResult;
-import org.openhab.core.ai.agent.communication.events.api.EventRouter;
 import org.openhab.core.ai.agent.communication.events.api.EventSchema;
 import org.openhab.core.ai.agent.communication.events.api.EventSubscription;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.common.builder.EventSubscriptionBuilder;
+import org.openhab.core.ai.common.events.EventFilter;
+import org.openhab.core.ai.common.events.EventRouter;
 import org.openhab.core.events.Event;
 import org.openhab.core.events.EventPublisher;
 import org.openhab.core.events.EventSubscriber;

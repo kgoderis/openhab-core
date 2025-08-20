@@ -18,8 +18,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.communication.conversation.api.ConversationEndResult;
 import org.openhab.core.ai.agent.communication.conversation.api.ConversationPattern;
 import org.openhab.core.ai.agent.communication.conversation.api.ConversationTemplate;
-import org.openhab.core.ai.agent.communication.conversation.api.MessageDeliveryResult;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
+import org.openhab.core.ai.common.communication.MessageDeliveryResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -162,7 +162,7 @@ public class AgentConversationService {
      * @return Message delivery result
      */
     public CompletableFuture<MessageDeliveryResult> sendMessage(String conversationId, String fromAgentId,
-            String message, MessageType messageType) {
+            String message, ConversationMessageType messageType) {
         logger.debug("Sending message in conversation {} from {}: {}", conversationId, fromAgentId, message);
 
         Conversation conversation = activeConversations.get(conversationId);

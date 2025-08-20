@@ -19,6 +19,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationPreset;
 import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationTemplate;
+import org.openhab.core.ai.common.validation.ConfigurationValidationResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -239,12 +240,12 @@ public class AgentCommunicationConfigurationManager {
                 }
 
                 boolean isValid = errors.isEmpty();
-                return new ConfigurationValidationResult(isValid, errors, warnings);
+                return new ConfigurationValidationResult(isValid, errors, warnings, Map.of());
 
             } catch (Exception e) {
                 logger.error("Error validating configuration", e);
                 return new ConfigurationValidationResult(false, List.of("Validation error: " + e.getMessage()),
-                        List.of());
+                        List.of(), Map.of());
             }
         });
     }
@@ -268,7 +269,7 @@ public class AgentCommunicationConfigurationManager {
                 ConfigurationValidationResult validation = validateConfiguration(config).get();
                 if (!validation.isValid()) {
                     throw new ConfigurationException(
-                            "Invalid configuration created from template: " + validation.errors());
+                            "Invalid configuration created from template: " + validation.getErrors());
                 }
 
                 // Store configuration
@@ -308,7 +309,7 @@ public class AgentCommunicationConfigurationManager {
                 ConfigurationValidationResult validation = validateConfiguration(updatedConfig).get();
                 if (!validation.isValid()) {
                     throw new ConfigurationException(
-                            "Invalid configuration after applying preset: " + validation.errors());
+                            "Invalid configuration after applying preset: " + validation.getErrors());
                 }
 
                 // Update configuration
@@ -421,7 +422,7 @@ public class AgentCommunicationConfigurationManager {
                 // Validate imported configuration
                 ConfigurationValidationResult validation = validateConfiguration(config).get();
                 if (!validation.isValid()) {
-                    throw new ConfigurationException("Invalid imported configuration: " + validation.errors());
+                    throw new ConfigurationException("Invalid imported configuration: " + validation.getErrors());
                 }
 
                 // Store configuration

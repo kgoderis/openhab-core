@@ -12,7 +12,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.transport.response.AgentInfo;
+import org.openhab.core.ai.agent.api.AgentInfo;
 import org.openhab.core.ai.rest.SharedRestInfrastructure;
 import org.openhab.core.io.rest.RESTConstants;
 import org.openhab.core.io.rest.RESTResource;
@@ -47,8 +47,9 @@ public class AgentRestExtensions implements RESTResource {
             return SharedRestInfrastructure.applyStandardHeaders(Response.status(Response.Status.NOT_MODIFIED))
                     .tag(etag).build();
         }
-        return SharedRestInfrastructure.applyStandardHeaders(Response.ok(new AgentInfo("ok", "ai extensions ready")))
-                .tag(etag).type(MediaType.APPLICATION_JSON_TYPE).build();
+        return SharedRestInfrastructure
+                .applyStandardHeaders(Response.ok(new AgentInfo("extensions", "ok", "ai extensions ready"))).tag(etag)
+                .type(MediaType.APPLICATION_JSON_TYPE).build();
     }
 
     @GET

@@ -7,189 +7,121 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.infrastructure.security.AgentSecurityPolicy;
 import org.openhab.core.ai.agent.infrastructure.security.AuditLog;
 import org.openhab.core.ai.agent.infrastructure.security.AuthenticationResult;
 import org.openhab.core.ai.agent.infrastructure.security.AuthorizationResult;
 import org.openhab.core.ai.agent.infrastructure.security.DecryptedMessage;
 import org.openhab.core.ai.agent.infrastructure.security.EncryptedMessage;
 import org.openhab.core.ai.agent.infrastructure.security.KeyGenerationResult;
-import org.openhab.core.ai.agent.infrastructure.security.SecurityIncident;
-import org.openhab.core.ai.agent.infrastructure.security.SecurityPolicy;
-import org.openhab.core.ai.agent.infrastructure.security.SecuritySeverity;
+import org.openhab.core.ai.auth.SecurityIncident;
 import org.openhab.core.ai.common.configuration.SecurityConfiguration;
-import org.openhab.core.ai.common.security.MessageSecurityStatistics;
+import org.openhab.core.ai.common.security.QuickSecurityResult;
+import org.openhab.core.ai.common.security.SecurityManager;
+import org.openhab.core.ai.common.security.SecuritySeverity;
 
 /**
  * Agent Security Manager Interface
  * 
- * <p>
- * This interface defines the contract for agent security management implementations that provide:
- * - Message encryption and decryption
- * - Digital signature verification
- * - Authentication and authorization
- * - Access control and permissions
- * - Audit logging and monitoring
- * - Security policy enforcement
- * - Security incident detection
- * - Security performance monitoring
- * - Security key management
- * - Security compliance and reporting
- * </p>
+ * This interface implements the common SecurityManager interface and defines the contract for agent security management
+ * including message encryption/decryption, authentication, authorization, and audit logging.
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
-public interface AgentSecurityManager {
+public interface AgentSecurityManager extends SecurityManager {
+
+    // Message Security Operations
 
     /**
-     * Encrypt message for secure transmission
+     * Encrypt message for secure transmission.
      * 
      * @param message Message to encrypt
      * @param recipientId Recipient agent ID
      * @param senderId Sender agent ID
      * @return Encrypted message
      */
-    CompletableFuture<EncryptedMessage> encryptMessage(String message, String recipientId, String senderId);
+    CompletableFuture<EncryptedMessage> encrypt(String message, String recipientId, String senderId);
 
     /**
-     * Decrypt message from secure transmission
+     * Decrypt message from secure transmission.
      * 
      * @param encryptedMessage Encrypted message to decrypt
      * @param recipientId Recipient agent ID
      * @return Decrypted message
      */
-    CompletableFuture<DecryptedMessage> decryptMessage(EncryptedMessage encryptedMessage, String recipientId);
+    CompletableFuture<DecryptedMessage> decrypt(EncryptedMessage encryptedMessage, String recipientId);
+
+    // Authentication and Authorization
 
     /**
-     * Authenticate agent
+     * Authenticate agent.
      * 
-     * @param agentId Agent ID to authenticate
+     * @param agentId Agent ID
      * @param credentials Authentication credentials
      * @return Authentication result
      */
-    CompletableFuture<AuthenticationResult> authenticateAgent(String agentId, String credentials);
+    CompletableFuture<AuthenticationResult> authenticate(String agentId, String credentials);
 
     /**
-     * Authorize action for agent
+     * Authorize action for agent.
      * 
      * @param agentId Agent ID
      * @param action Action to authorize
      * @param resource Resource to access
      * @return Authorization result
      */
-    CompletableFuture<AuthorizationResult> authorizeAction(String agentId, String action, String resource);
+    CompletableFuture<AuthorizationResult> authorize(String agentId, String action, String resource);
 
     /**
-     * Generate key pair for agent
+     * Quick security check for agent action.
+     * 
+     * @param agentId Agent ID
+     * @param action Action to check
+     * @return Quick security result
+     */
+    CompletableFuture<QuickSecurityResult> quickCheck(String agentId, String action);
+
+    // Key Management
+
+    /**
+     * Generate key pair for agent.
      * 
      * @param agentId Agent ID
      * @return Key generation result
      */
-    CompletableFuture<KeyGenerationResult> generateKeyPair(String agentId);
+    CompletableFuture<KeyGenerationResult> generateKeys(String agentId);
+
+    // Security Policy Management
 
     /**
-     * Set security policy for agent
+     * Get security policy for agent.
+     * 
+     * @param agentId Agent ID
+     * @return Security policy
+     */
+    AgentSecurityPolicy getPolicy(String agentId);
+
+    /**
+     * Set security policy for agent.
      * 
      * @param agentId Agent ID
      * @param policy Security policy
      */
-    void setSecurityPolicy(String agentId, SecurityPolicy policy);
+    void setPolicy(String agentId, AgentSecurityPolicy policy);
+
+    // Audit Logging
 
     /**
-     * Get security policy for agent
-     * 
-     * @param agentId Agent ID
-     * @return Security policy or null if not found
-     */
-    @Nullable
-    SecurityPolicy getSecurityPolicy(String agentId);
-
-    /**
-     * Get security statistics
-     * 
-     * @return Security statistics
-     */
-    MessageSecurityStatistics getSecurityStatistics();
-
-    /**
-     * Get security configuration
-     * 
-     * @return Security configuration
-     */
-    SecurityConfiguration getConfiguration();
-
-    /**
-     * Set security configuration
-     * 
-     * @param configuration Security configuration
-     */
-    void setConfiguration(SecurityConfiguration configuration);
-
-    /**
-     * Get security incidents
-     * 
-     * @return List of security incidents
-     */
-    List<SecurityIncident> getSecurityIncidents();
-
-    /**
-     * Get audit logs
+     * Get all audit logs.
      * 
      * @return List of audit logs
      */
     List<AuditLog> getAuditLogs();
 
     /**
-     * Check if security is enabled
-     * 
-     * @return true if security is enabled
-     */
-    boolean isSecurityEnabled();
-
-    /**
-     * Check if agent is locked out
-     * 
-     * @param agentId Agent ID
-     * @return true if agent is locked out
-     */
-    boolean isAgentLockedOut(String agentId);
-
-    /**
-     * Get agent permissions
-     * 
-     * @param agentId Agent ID
-     * @return Set of permissions
-     */
-    Set<String> getAgentPermissions(String agentId);
-
-    /**
-     * Add agent permission
-     * 
-     * @param agentId Agent ID
-     * @param permission Permission to add
-     */
-    void addAgentPermission(String agentId, String permission);
-
-    /**
-     * Remove agent permission
-     * 
-     * @param agentId Agent ID
-     * @param permission Permission to remove
-     */
-    void removeAgentPermission(String agentId, String permission);
-
-    /**
-     * Get security incidents by severity
-     * 
-     * @param severity Security severity
-     * @return List of security incidents
-     */
-    List<SecurityIncident> getSecurityIncidentsBySeverity(SecuritySeverity severity);
-
-    /**
-     * Get audit logs by agent
+     * Get audit logs for specific agent.
      * 
      * @param agentId Agent ID
      * @return List of audit logs
@@ -197,7 +129,7 @@ public interface AgentSecurityManager {
     List<AuditLog> getAuditLogsByAgent(String agentId);
 
     /**
-     * Get audit logs by time range
+     * Get audit logs by time range.
      * 
      * @param startTime Start time
      * @param endTime End time
@@ -206,41 +138,112 @@ public interface AgentSecurityManager {
     List<AuditLog> getAuditLogsByTimeRange(Instant startTime, Instant endTime);
 
     /**
-     * Clear security incidents
-     */
-    void clearSecurityIncidents();
-
-    /**
-     * Clear audit logs
+     * Clear all audit logs.
      */
     void clearAuditLogs();
 
+    // Security Incidents
+
     /**
-     * Export security report
+     * Get security incidents.
+     * 
+     * @return List of security incidents
+     */
+    List<SecurityIncident> getIncidents();
+
+    /**
+     * Get security incidents by severity.
+     * 
+     * @param severity Security severity
+     * @return List of security incidents
+     */
+    List<SecurityIncident> getIncidentsBySeverity(SecuritySeverity severity);
+
+    /**
+     * Clear all security incidents.
+     */
+    void clearIncidents();
+
+    // Agent Management
+
+    /**
+     * Check if agent is locked out.
+     * 
+     * @param agentId Agent ID
+     * @return true if agent is locked out
+     */
+    boolean isLockedOut(String agentId);
+
+    /**
+     * Add permission to agent.
+     * 
+     * @param agentId Agent ID
+     * @param permission Permission to add
+     */
+    void addPermission(String agentId, String permission);
+
+    /**
+     * Remove permission from agent.
+     * 
+     * @param agentId Agent ID
+     * @param permission Permission to remove
+     */
+    void removePermission(String agentId, String permission);
+
+    /**
+     * Get agent permissions.
+     * 
+     * @param agentId Agent ID
+     * @return Set of permissions
+     */
+    Set<String> getPermissions(String agentId);
+
+    // Configuration Management
+
+    /**
+     * Get security configuration.
+     * 
+     * @return Security configuration
+     */
+    @Override
+    SecurityConfiguration getConfig();
+
+    /**
+     * Set security configuration.
+     * 
+     * @param config Security configuration
+     */
+    @Override
+    void updateConfig(SecurityConfiguration config);
+
+    // Reporting and Backup
+
+    /**
+     * Export security report.
      * 
      * @param format Report format
      * @return Security report
      */
-    String exportSecurityReport(String format);
+    String exportReport(String format);
 
     /**
-     * Import security configuration
+     * Backup security data.
      * 
-     * @param configuration Configuration to import
+     * @return Security data backup
      */
-    void importSecurityConfiguration(String configuration);
+    Map<String, Object> backup();
 
     /**
-     * Backup security data
+     * Restore security data.
      * 
-     * @return Backup data
+     * @param data Security data to restore
      */
-    Map<String, Object> backupSecurityData();
+    void restore(Map<String, Object> data);
 
     /**
-     * Restore security data
+     * Import security configuration.
      * 
-     * @param backupData Backup data to restore
+     * @param configData Configuration data
      */
-    void restoreSecurityData(Map<String, Object> backupData);
+    void importConfig(String configData);
 }

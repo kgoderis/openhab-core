@@ -17,11 +17,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.response.ModelResponse;
+import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
-import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
@@ -123,7 +124,7 @@ public class VModelClient implements ModelClient {
                     }
                 }
 
-                return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
+                return ModelResponseBuilder.builder().withContent(responseContent).withModelName(config.getModelName())
                         .withProviderType(ModelProviderType.VLLM.name()).build();
 
             } catch (Exception e) {
@@ -207,7 +208,7 @@ public class VModelClient implements ModelClient {
                 }
 
                 String finalContent = contentBuilder.toString();
-                ModelResponse llmResponse = ModelResponse.builder().withContent(finalContent)
+                ModelResponse llmResponse = ModelResponseBuilder.builder().withContent(finalContent)
                         .withModelName(config.getModelName()).withProviderType(ModelProviderType.VLLM.name()).build();
 
                 handler.onComplete(llmResponse);

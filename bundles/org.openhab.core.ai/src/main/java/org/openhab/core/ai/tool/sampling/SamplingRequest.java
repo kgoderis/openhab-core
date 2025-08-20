@@ -1,72 +1,77 @@
 package org.openhab.core.ai.tool.sampling;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.sampling.SamplingStatus;
 
 /**
- * Interface for sampling request data.
- * 
- * Represents a request for AI model interaction that requires human approval.
+ * Interface for sampling requests in the AI tool system.
  * 
  * @author Karel Goderis - Initial Contribution
+ * @since 1.0.0
  */
 @NonNullByDefault
 public interface SamplingRequest {
 
     /**
-     * Get the request ID.
+     * Get the unique identifier for this sampling request.
      * 
      * @return the request ID
      */
     String getId();
 
     /**
-     * Get the AI model name.
+     * Get the model name for this sampling request.
      * 
      * @return the model name
      */
     String getModelName();
 
     /**
-     * Get the message content.
+     * Get the message content for this sampling request.
      * 
      * @return the message content
      */
     String getMessage();
 
     /**
-     * Check if conversation context should be included.
+     * Check if context should be included in the sampling.
      * 
      * @return true if context should be included
      */
     boolean isIncludeContext();
 
     /**
-     * Get the request status.
+     * Get the current status of this sampling request.
      * 
-     * @return the request status
+     * @return the sampling status
      */
     SamplingStatus getStatus();
 
     /**
-     * Get the rejection reason if rejected.
+     * Set the sampling status.
      * 
-     * @return the rejection reason or null if not rejected
+     * @param status the new sampling status
      */
-    @Nullable
+    void setStatus(SamplingStatus status);
+
+    /**
+     * Get the rejection reason if the request was rejected.
+     * 
+     * @return the rejection reason, or null if not rejected
+     */
     String getRejectionReason();
 
     /**
-     * Set the rejection reason.
+     * Set the rejection reason for this request.
      * 
-     * @param reason the rejection reason
+     * @param rejectionReason the reason for rejection
      */
-    void setRejectionReason(String reason);
+    void setRejectionReason(String rejectionReason);
 
     /**
-     * Get the creation timestamp.
+     * Get the timestamp when this request was created.
      * 
-     * @return the creation timestamp
+     * @return the creation timestamp in milliseconds
      */
     long getCreatedAt();
 }

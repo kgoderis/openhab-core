@@ -584,7 +584,7 @@ public class AgentTaskExecutor implements AgentExecutor {
         String credentials = extractCredentialsFromMessage(message);
 
         try {
-            AuthenticationResult result = security.authenticateAgent(agentId, credentials).get();
+            AuthenticationResult result = security.authenticate(agentId, credentials).get();
             if (result.isSuccess()) {
                 return new AuthenticationContext(agentId, "a2a", Map.of(), Set.of("a2a:execute"), Instant.now(), null,
                         "a2a-session-" + System.currentTimeMillis());
@@ -610,7 +610,7 @@ public class AgentTaskExecutor implements AgentExecutor {
         }
 
         try {
-            AuthorizationResult result = security.authorizeAction(agentId, "execute", "a2a:task").get();
+            AuthorizationResult result = security.authorize(agentId, "execute", "a2a:task").get();
             return result.isGranted();
         } catch (Exception e) {
             logger.error("Authorization failed for agent: {}", agentId, e);
