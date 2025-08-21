@@ -5,7 +5,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,9 +16,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.common.response.ModelResponseBuilder;
-import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -27,6 +26,7 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.configuration.LMStudioConfiguration;
+import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -241,21 +241,15 @@ public class LMStudioClient implements ModelClient {
     }
 
     @Override
-    public ModelHealthStatus getHealthStatus() {
+    public ModelHealthMetrics getHealthStatus() {
         try {
             boolean available = isAvailable();
-            return ModelHealthStatus.builder().withId("lmstudio-client")
-                    .withOverallHealth(
-                            available ? ModelHealthStatus.HealthState.HEALTHY : ModelHealthStatus.HealthState.UNHEALTHY)
-                    .withPrimaryModelAvailable(available).withResponseTimeMs(available ? 100L : 0L)
-                    .withErrorRate(available ? 0.0 : 100.0).withTotalRequests(0).withFailedRequests(0)
-                    .withLastHealthCheck(Instant.now()).build();
+            return ModelHealthMetrics.builder("lmstudio-client")
+                    .withStatus(available ? HealthStatus.HEALTHY : HealthStatus.UNHEALTHY).withAvailable(available)
+                    .withAverageResponseTimeMs(available ? 100L : 0L).withSuccessRate(available ? 1.0 : 0.0).build();
         } catch (Exception e) {
-            return ModelHealthStatus.builder().withId("lmstudio-client")
-                    .withOverallHealth(ModelHealthStatus.HealthState.UNHEALTHY).withPrimaryModelAvailable(false)
-                    .withResponseTimeMs(0L).withErrorRate(100.0).withTotalRequests(0).withFailedRequests(1)
-                    .withLastError(e.getMessage()).withLastHealthCheck(Instant.now())
-                    .withLastFailedRequest(Instant.now()).build();
+            return ModelHealthMetrics.builder("lmstudio-client").withStatus(HealthStatus.UNHEALTHY).withAvailable(false)
+                    .withAverageResponseTimeMs(0L).withSuccessRate(0.0).withLastError(e.getMessage()).build();
         }
     }
 

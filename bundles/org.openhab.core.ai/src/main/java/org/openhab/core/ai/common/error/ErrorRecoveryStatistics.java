@@ -4,8 +4,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.statistics.BaseStatistics;
-import org.openhab.core.ai.common.statistics.StatisticsType;
+import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
+import org.openhab.core.ai.common.monitoring.base.AbstractStatistics;
 
 /**
  * Unified error recovery statistics.
@@ -18,7 +18,7 @@ import org.openhab.core.ai.common.statistics.StatisticsType;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class ErrorRecoveryStatistics extends BaseStatistics {
+public class ErrorRecoveryStatistics extends AbstractStatistics implements CountsMetrics {
     private final long totalErrors;
     private final long totalRecoveries;
     private final long totalFallbacks;
@@ -40,7 +40,10 @@ public class ErrorRecoveryStatistics extends BaseStatistics {
      */
     public ErrorRecoveryStatistics(long totalErrors, long totalRecoveries, long totalFallbacks, long totalFailures,
             long recoveryAttempts, Map<String, Long> errorCountsByType, Map<String, Long> recoveryCountsByStrategy) {
-        super("error-recovery-statistics", StatisticsType.ERROR);
+        super("error-recovery-statistics", java.time.Instant.now(), "error", "recovery", "Error recovery statistics",
+                Map.of("errorCountsByType", errorCountsByType, "recoveryCountsByStrategy", recoveryCountsByStrategy),
+                totalErrors + totalRecoveries + totalFallbacks + totalFailures, totalRecoveries, totalFailures, null,
+                null, null);
         this.totalErrors = totalErrors;
         this.totalRecoveries = totalRecoveries;
         this.totalFallbacks = totalFallbacks;
@@ -48,15 +51,6 @@ public class ErrorRecoveryStatistics extends BaseStatistics {
         this.recoveryAttempts = recoveryAttempts;
         this.errorCountsByType = Objects.requireNonNull(errorCountsByType, "errorCountsByType");
         this.recoveryCountsByStrategy = Objects.requireNonNull(recoveryCountsByStrategy, "recoveryCountsByStrategy");
-
-        // Add metrics to the base class
-        addMetric("totalErrors", totalErrors);
-        addMetric("totalRecoveries", totalRecoveries);
-        addMetric("totalFallbacks", totalFallbacks);
-        addMetric("totalFailures", totalFailures);
-        addMetric("recoveryAttempts", recoveryAttempts);
-        addMetric("errorCountsByType", errorCountsByType);
-        addMetric("recoveryCountsByStrategy", recoveryCountsByStrategy);
     }
 
     /**
@@ -156,6 +150,22 @@ public class ErrorRecoveryStatistics extends BaseStatistics {
      */
     public double getAverageRecoveryAttempts() {
         return totalErrors > 0 ? (double) recoveryAttempts / totalErrors : 0.0;
+    }
+
+    // CountsMetrics interface implementation
+    @Override
+    public long total() {
+        return getTotalCount();
+    }
+
+    @Override
+    public long success() {
+        return getSuccessCount();
+    }
+
+    @Override
+    public long failure() {
+        return getFailureCount();
     }
 
     @Override

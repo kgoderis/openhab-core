@@ -11,7 +11,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.audit.AuditLogger;
-import org.openhab.core.ai.reasoning.metrics.SafetyPerformanceMetrics;
+import org.openhab.core.ai.reasoning.monitoring.SafetyPerformanceMetrics;
 import org.openhab.core.ai.reasoning.policies.PolicyResult;
 import org.openhab.core.ai.reasoning.policies.SafetyPolicy;
 import org.openhab.core.ai.reasoning.policies.SafetyValidationResult;
@@ -305,9 +305,17 @@ public class SafetyConstraintManager {
         int constraintViolationCount = constraintViolations.size();
         int safetyIncidentCount = safetyIncidents.size();
 
-        return new SafetyPerformanceMetrics(totalValidations, successfulValidations, failedValidations,
-                totalConstraintViolationsCount, totalSafetyIncidentsCount, totalSafetyOverridesCount, totalTime,
-                avgTime, safetyPolicyCount, userConstraintCount, constraintViolationCount, safetyIncidentCount);
+        return new SafetyPerformanceMetrics("safety-constraint-manager", totalValidations, successfulValidations,
+                failedValidations, totalTime, // totalProcessingTime
+                avgTime, // averageResponseTime
+                totalConstraintViolationsCount, // totalConstraintViolations
+                totalSafetyIncidentsCount, // totalSafetyIncidents
+                totalSafetyOverridesCount, // totalSafetyOverrides
+                safetyPolicyCount, // safetyPolicyCount
+                userConstraintCount, // userConstraintCount
+                constraintViolationCount, // constraintViolationCount
+                safetyIncidentCount // safetyIncidentCount
+        );
     }
 
     // Configuration methods

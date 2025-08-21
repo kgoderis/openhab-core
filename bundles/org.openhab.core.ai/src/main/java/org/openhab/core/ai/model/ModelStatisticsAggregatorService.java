@@ -11,7 +11,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.core.AgentClientSession;
-import org.openhab.core.ai.common.statistics.AgentModelStatistics;
+import org.openhab.core.ai.agent.monitoring.AgentStatistics;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -82,7 +82,7 @@ public class ModelStatisticsAggregatorService {
      */
     public SystemAggregatedStatistics getSystemStatistics() {
         // Aggregate agent statistics
-        List<AgentModelStatistics> agentStats = new ArrayList<>();
+        List<AgentStatistics> agentStats = new ArrayList<>();
         long totalAgentRequests = 0;
         long totalAgentSuccessfulRequests = 0;
         long totalAgentFailedRequests = 0;
@@ -92,15 +92,16 @@ public class ModelStatisticsAggregatorService {
 
         for (AgentModelProvider provider : agentProviders.values()) {
             try {
-                AgentModelStatistics stats = provider.getStatistics();
+                AgentStatistics stats = provider.getStatistics();
                 agentStats.add(stats);
 
-                totalAgentRequests += stats.getTotalRequests();
-                totalAgentSuccessfulRequests += stats.getSuccessfulRequests();
-                totalAgentFailedRequests += stats.getFailedRequests();
-                totalAgentResponseTime += stats.getTotalResponseTimeMs();
-                totalAgentTokens += stats.getTotalTokensUsed();
-                totalAgentCost += stats.getTotalCost();
+                totalAgentRequests += stats.total();
+                totalAgentSuccessfulRequests += stats.success();
+                totalAgentFailedRequests += stats.failure();
+                totalAgentResponseTime += stats.totalDurationNanos() / 1_000_000; // Convert nanoseconds to milliseconds
+                // Note: AgentStatistics doesn't have token and cost tracking, using 0
+                totalAgentTokens += 0;
+                totalAgentCost += 0.0;
             } catch (Exception e) {
                 logger.warn("Failed to get statistics for agent: {}", provider.getAgentId(), e);
             }
@@ -124,7 +125,7 @@ public class ModelStatisticsAggregatorService {
      * @param agentId The agent ID
      * @return Agent statistics, or null if not found
      */
-    public @Nullable AgentModelStatistics getAgentStatistics(String agentId) {
+    public @Nullable AgentStatistics getAgentStatistics(String agentId) {
         AgentModelProvider provider = agentProviders.get(agentId);
         if (provider != null) {
             try {

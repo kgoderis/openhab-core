@@ -16,13 +16,13 @@ import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.configuration.MultiStepReasoningConfiguration;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ReasoningContext;
-import org.openhab.core.ai.common.metrics.ReasoningPerformanceMetrics;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponseActionParser;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
+import org.openhab.core.ai.reasoning.monitoring.OrchestrationPerformanceMetrics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -490,12 +490,13 @@ public class MultiStepReasoningEngine {
     /**
      * Get performance metrics
      */
-    public ReasoningPerformanceMetrics getPerformanceMetrics() {
-        return new ReasoningPerformanceMetrics(totalReasoningSessions.get(), successfulReasoningSessions.get(),
-                failedReasoningSessions.get(), totalReasoningSteps.get(), totalActions.get(),
-                calculateAverageSessionDuration(), 0, // totalProcessingTime - not tracked in this implementation
-                0.0, // averageResponseTime - not tracked in this implementation
-                null // lastOperationTime - not tracked in this implementation
+    public OrchestrationPerformanceMetrics getPerformanceMetrics() {
+        return new OrchestrationPerformanceMetrics("multi-step-reasoning-engine", totalReasoningSessions.get(),
+                successfulReasoningSessions.get(), failedReasoningSessions.get(), 0, // totalProcessingTime - not
+                                                                                     // tracked yet
+                calculateAverageSessionDuration(), // averageResponseTime
+                0, // activeSessions - not tracked yet
+                totalReasoningSessions.get() // totalSessions
         );
     }
 

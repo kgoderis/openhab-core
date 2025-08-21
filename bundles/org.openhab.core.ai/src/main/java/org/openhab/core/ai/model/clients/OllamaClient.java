@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,9 +23,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.common.response.ModelResponseBuilder;
-import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -34,6 +33,7 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.configuration.OllamaConfiguration;
+import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -708,15 +708,12 @@ public class OllamaClient implements ModelClient {
     }
 
     @Override
-    public ModelHealthStatus getHealthStatus() {
+    public ModelHealthMetrics getHealthStatus() {
         boolean available = isAvailable();
-        return ModelHealthStatus.builder().withId("ollama-client")
-                .withOverallHealth(
-                        available ? ModelHealthStatus.HealthState.HEALTHY : ModelHealthStatus.HealthState.UNHEALTHY)
-                .withPrimaryModelAvailable(available).withResponseTimeMs(available ? 100L : 0L)
-                .withErrorRate(available ? 0.0 : 100.0).withTotalRequests(0).withFailedRequests(available ? 0 : 1)
-                .withLastError(available ? null : "Connection failed").withLastHealthCheck(Instant.now())
-                .withLastFailedRequest(available ? null : Instant.now()).build();
+        return ModelHealthMetrics.builder("ollama-client")
+                .withStatus(available ? HealthStatus.HEALTHY : HealthStatus.UNHEALTHY).withAvailable(available)
+                .withAverageResponseTimeMs(available ? 100L : 0L).withSuccessRate(available ? 1.0 : 0.0)
+                .withLastError(available ? null : "Connection failed").build();
     }
 
     @Override

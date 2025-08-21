@@ -5,15 +5,16 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.common.response.ModelResponseBuilder;
-import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
+import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
 
 /**
  * Stub implementation of ModelClient for testing and development.
@@ -65,11 +66,9 @@ public class StubModelClient implements ModelClient {
     }
 
     @Override
-    public ModelHealthStatus getHealthStatus() {
-        return ModelHealthStatus.builder().withId("stub-client")
-                .withOverallHealth(ModelHealthStatus.HealthState.HEALTHY).withPrimaryModelAvailable(true)
-                .withResponseTimeMs(0).withErrorRate(0.0).withTotalRequests(0).withFailedRequests(0)
-                .withLastHealthCheck(Instant.now()).build();
+    public ModelHealthMetrics getHealthStatus() {
+        return ModelHealthMetrics.builder("stub-client").withStatus(HealthStatus.HEALTHY).withAvailable(true)
+                .withAverageResponseTimeMs(0).withSuccessRate(1.0 - 0.0).build();
     }
 
     @Override

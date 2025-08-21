@@ -5,11 +5,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.monitoring.AgentStatistics;
 import org.openhab.core.ai.common.configuration.AgentModelConfiguration;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.openhab.core.ai.common.statistics.AgentModelStatistics;
-import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
 
 /**
  * Agent-specific model provider interface
@@ -107,14 +107,14 @@ public interface AgentModelProvider {
      * 
      * @return the agent-specific model statistics
      */
-    AgentModelStatistics getStatistics();
+    AgentStatistics getStatistics();
 
     /**
      * Get agent-specific model health status
      * 
      * @return the agent-specific model health status
      */
-    ModelHealthStatus getHealthStatus();
+    ModelHealthMetrics getHealthStatus();
 
     /**
      * Update agent-specific configuration

@@ -18,10 +18,12 @@ import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
 import org.openhab.core.ai.common.services.LoadBalancingStrategy;
-import org.openhab.core.ai.common.statistics.HybridServiceMetrics;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.tool.monitoring.DefaultSystemHealthMonitor;
+import org.openhab.core.ai.tool.monitoring.HybridServiceMetrics;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.resources.ResourceManager;
 import org.openhab.core.ai.tool.services.api.ToolExecutionService;
@@ -93,6 +95,9 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
     @Reference
     private @Nullable ResourceManager resourceManager;
+
+    @Reference
+    private @Nullable MonitoringRegistry monitoringRegistry;
 
     @Override
     public CompletableFuture<ActionResult> executeTool(ExecutionContext actionContext,
@@ -685,15 +690,29 @@ public class HybridToolExecutionService implements ToolExecutionService {
             Instant startTime) {
         long executionTime = Duration.between(startTime, Instant.now()).toMillis();
 
-        // Update provider metrics
-        ProviderMetrics providerMetrics = getProviderMetrics(provider);
-        providerMetrics.recordExecution(result.isSuccess(), executionTime);
+        // Update metrics using the new registry if available
+        MonitoringRegistry registry = monitoringRegistry;
+        if (registry != null) {
+            try {
+                // Record provider metrics
+                var providerCollector = registry.executionCollector(MetricKeys.provider(provider.name()));
+                providerCollector.recordExecution(result.isSuccess(), executionTime * 1_000_000); // Convert to
+                                                                                                  // nanoseconds
 
-        // Update tool metrics
-        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
-        if (actionName != null) {
-            ToolMetrics toolMetrics = getToolMetrics(actionName);
-            toolMetrics.recordExecution(result.isSuccess(), executionTime);
+                // Record tool metrics
+                String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
+                if (actionName != null) {
+                    var toolCollector = registry.executionCollector(MetricKeys.tool(actionName));
+                    toolCollector.recordExecution(result.isSuccess(), executionTime * 1_000_000); // Convert to
+                                                                                                  // nanoseconds
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to record metrics using registry, falling back to legacy metrics", e);
+                updateLegacyMetrics(provider, actionContext, result, executionTime);
+            }
+        } else {
+            // Fallback to legacy metrics
+            updateLegacyMetrics(provider, actionContext, result, executionTime);
         }
 
         // Update global metrics
@@ -705,10 +724,56 @@ public class HybridToolExecutionService implements ToolExecutionService {
         totalExecutionTime.addAndGet(executionTime);
     }
 
+    /**
+     * Update metrics using legacy approach for fallback scenarios.
+     */
+    private void updateLegacyMetrics(ModelProviderType provider, ExecutionContext actionContext, ActionResult result,
+            long executionTime) {
+        // Update provider metrics
+        ProviderMetrics providerMetrics = getProviderMetrics(provider);
+        providerMetrics.recordExecution(result.isSuccess(), executionTime);
+
+        // Update tool metrics
+        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
+        if (actionName != null) {
+            ToolMetrics toolMetrics = getToolMetrics(actionName);
+            toolMetrics.recordExecution(result.isSuccess(), executionTime);
+        }
+    }
+
     private void updateFailureMetrics(ModelProviderType provider, ExecutionContext actionContext, Exception error,
             Instant startTime) {
         long executionTime = Duration.between(startTime, Instant.now()).toMillis();
 
+        // Update metrics using the new registry if available
+        MonitoringRegistry registry = monitoringRegistry;
+        if (registry != null) {
+            try {
+                // Record provider metrics
+                var providerCollector = registry.executionCollector(MetricKeys.provider(provider.name()));
+                providerCollector.recordExecution(false, executionTime * 1_000_000); // Convert to nanoseconds
+
+                // Record tool metrics
+                String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
+                if (actionName != null) {
+                    var toolCollector = registry.executionCollector(MetricKeys.tool(actionName));
+                    toolCollector.recordExecution(false, executionTime * 1_000_000); // Convert to nanoseconds
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to record failure metrics using registry, falling back to legacy metrics", e);
+                updateLegacyFailureMetrics(provider, actionContext, executionTime);
+            }
+        } else {
+            // Fallback to legacy metrics
+            updateLegacyFailureMetrics(provider, actionContext, executionTime);
+        }
+    }
+
+    /**
+     * Update failure metrics using legacy approach for fallback scenarios.
+     */
+    private void updateLegacyFailureMetrics(ModelProviderType provider, ExecutionContext actionContext,
+            long executionTime) {
         ProviderMetrics providerMetrics = getProviderMetrics(provider);
         providerMetrics.recordExecution(false, executionTime);
 
@@ -766,6 +831,61 @@ public class HybridToolExecutionService implements ToolExecutionService {
     // Metrics retrieval
     @Override
     public HybridServiceMetrics getMetrics() {
+        MonitoringRegistry registry = monitoringRegistry;
+        if (registry == null) {
+            // Fallback to legacy metrics if registry is not available
+            return getLegacyMetrics();
+        }
+
+        // Get aggregated snapshots from the registry
+        var metricsSnapshots = registry.getMetricsSnapshots();
+        var healthSnapshots = registry.getHealthSnapshots();
+
+        // Convert snapshots to legacy format for backward compatibility
+        Map<ModelProviderType, ProviderMetrics> interfaceProviderMetrics = new ConcurrentHashMap<>();
+        Map<String, ToolMetrics> interfaceToolMetrics = new ConcurrentHashMap<>();
+
+        // Process metrics snapshots to extract provider and tool metrics
+        for (var snapshot : metricsSnapshots) {
+            if ("provider".equals(snapshot.getDomain())) {
+                ModelProviderType provider = ModelProviderType.valueOf(snapshot.getSource());
+                ProviderMetrics legacyMetrics = new ProviderMetrics();
+                // Convert snapshot data to legacy format
+                for (int i = 0; i < snapshot.getSuccessfulOperations(); i++) {
+                    legacyMetrics.recordExecution(true, 0);
+                }
+                for (int i = 0; i < snapshot.getFailedOperations(); i++) {
+                    legacyMetrics.recordExecution(false, 0);
+                }
+                interfaceProviderMetrics.put(provider, legacyMetrics);
+            } else if ("tool".equals(snapshot.getDomain())) {
+                String toolName = snapshot.getSource();
+                ToolMetrics legacyMetrics = new ToolMetrics();
+                // Convert snapshot data to legacy format
+                for (int i = 0; i < snapshot.getSuccessfulOperations(); i++) {
+                    legacyMetrics.recordExecution(true, 0);
+                }
+                for (int i = 0; i < snapshot.getFailedOperations(); i++) {
+                    legacyMetrics.recordExecution(false, 0);
+                }
+                interfaceToolMetrics.put(toolName, legacyMetrics);
+            }
+        }
+
+        // Calculate aggregate metrics from snapshots
+        long totalExecutions = metricsSnapshots.stream().mapToLong(s -> s.getTotalOperations()).sum();
+        long successfulExecutions = metricsSnapshots.stream().mapToLong(s -> s.getSuccessfulOperations()).sum();
+        long failedExecutions = metricsSnapshots.stream().mapToLong(s -> s.getFailedOperations()).sum();
+        long totalTime = metricsSnapshots.stream().mapToLong(s -> s.getTotalProcessingTime()).sum();
+
+        return new HybridServiceMetrics(totalExecutions, successfulExecutions, failedExecutions,
+                fallbackExecutions.get(), totalTime, totalCost.get(), interfaceProviderMetrics, interfaceToolMetrics);
+    }
+
+    /**
+     * Legacy metrics retrieval for backward compatibility.
+     */
+    private HybridServiceMetrics getLegacyMetrics() {
         Map<ModelProviderType, ProviderMetrics> interfaceProviderMetrics = new ConcurrentHashMap<>();
         providerMetrics.forEach((provider, metrics) -> {
             ProviderMetrics interfaceMetrics = new ProviderMetrics();

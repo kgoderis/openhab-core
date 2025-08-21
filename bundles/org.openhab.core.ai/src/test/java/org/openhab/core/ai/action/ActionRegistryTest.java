@@ -27,7 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.common.metrics.ActionPerformanceMetrics;
+import org.openhab.core.ai.action.monitoring.ActionPerformanceMetrics;
 import org.osgi.framework.BundleContext;
 
 /**

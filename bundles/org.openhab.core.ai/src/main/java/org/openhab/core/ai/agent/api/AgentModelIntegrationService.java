@@ -6,12 +6,12 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.agent.monitoring.AgentStatistics;
 import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.openhab.core.ai.common.statistics.AgentModelStatistics;
-import org.openhab.core.ai.common.statistics.ModelHealthStatus;
-import org.openhab.core.ai.common.statistics.ModelIntegrationStatistics;
 import org.openhab.core.ai.model.ModelParameters;
+import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
+import org.openhab.core.ai.model.monitoring.ModelIntegrationStatistics;
 
 /**
  * Service for integrating AI models directly into autonomous agents
@@ -88,7 +88,7 @@ public interface AgentModelIntegrationService {
      * @param agentId the agent ID
      * @return the model integration statistics
      */
-    AgentModelStatistics getAgentStatistics(String agentId);
+    AgentStatistics getAgentStatistics(String agentId);
 
     /**
      * Get overall model integration statistics
@@ -150,7 +150,7 @@ public interface AgentModelIntegrationService {
      * 
      * @return the model health status
      */
-    ModelHealthStatus getModelHealthStatus();
+    ModelHealthMetrics getModelHealthMetrics();
 
     /**
      * Force model fallback for testing or emergency situations

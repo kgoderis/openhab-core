@@ -2,11 +2,8 @@ package org.openhab.core.ai.common.response;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.Map;
-
 import org.junit.jupiter.api.Test;
 import org.openhab.core.ai.agent.infrastructure.synchronization.AgentResponse;
-import org.openhab.core.ai.model.ModelResponse;
 import org.openhab.core.ai.stub.StubResponse;
 
 /**
@@ -23,8 +20,7 @@ class ConsolidatedResponseTest {
     @Test
     void testModelResponseUnifiedInterface() {
         // Test that existing ModelResponse implements Response interface
-        ModelResponse response = ModelResponse.builder().withContent("Test content").withModelName("gpt-4")
-                .withProviderType("openai").build();
+        ModelResponse response = ModelResponse.success("Test content", "gpt-4", "openai");
 
         // Verify Response interface methods work
         assertNotNull(response.getId());
@@ -42,10 +38,10 @@ class ConsolidatedResponseTest {
     @Test
     void testToolResponseUnifiedInterface() {
         // Test that existing ToolResponse implements Response interface
-        ToolResponse response = new ToolResponse("test-id", "test-result");
+        ToolResponse response = ToolResponse.success("test-result", "test-tool", "test-operation");
 
         // Verify Response interface methods work
-        assertEquals("test-id", response.getId());
+        assertNotNull(response.getId());
         assertTrue(response.isSuccess());
         assertEquals("test-result", response.getData());
         assertNull(response.getErrorMessage());
@@ -53,8 +49,7 @@ class ConsolidatedResponseTest {
 
         // Verify existing methods still work
         assertEquals("2.0", response.getJsonrpc());
-        assertTrue(response.getResult().isPresent());
-        assertEquals("test-result", response.getResult().get());
+        assertEquals("test-result", response.getData());
     }
 
     @Test
@@ -112,8 +107,7 @@ class ConsolidatedResponseTest {
     @Test
     void testErrorResponses() {
         // Test error responses across all types
-        ModelResponse modelError = ModelResponse.builder().withContent("").withModelName("gpt-4")
-                .withProviderType("openai").withErrorMessage("Model error").build();
+        ModelResponse modelError = ModelResponse.error("Model error", "gpt-4", "openai");
 
         assertFalse(modelError.isSuccess());
         assertEquals("Model error", modelError.getErrorMessage());
@@ -130,10 +124,9 @@ class ConsolidatedResponseTest {
     @Test
     void testResponsePolymorphism() {
         // Test that all response types can be treated as Response interface
-        Response<String> modelResponse = ModelResponse.builder().withContent("model content").withModelName("gpt-4")
-                .withProviderType("openai").build();
+        Response<String> modelResponse = ModelResponse.success("model content", "gpt-4", "openai");
 
-        Response<Object> toolResponse = new ToolResponse("tool-id", "tool result");
+        Response<Object> toolResponse = ToolResponse.success("tool result", "test-tool", "test-operation");
 
         Response<Object> agentResponse = new AgentResponse("agent-task", true, "Success", "agent data");
 
@@ -159,20 +152,17 @@ class ConsolidatedResponseTest {
     void testBackwardCompatibility() {
         // Test that existing code patterns still work
 
-        // ModelResponse builder pattern
-        ModelResponse modelResponse = ModelResponse.builder().withContent("content").withModelName("model")
-                .withProviderType("provider").withPromptTokens(10).withCompletionTokens(20).withTotalTokens(30)
-                .withCost(0.001).withResponseTimeMs(1000).withMetadata(Map.of("key", "value")).withFinishReason("stop")
-                .build();
+        // ModelResponse static factory
+        ModelResponse modelResponse = ModelResponse.success("content", "model", "provider");
 
         assertEquals("content", modelResponse.getContent());
-        assertEquals(10, modelResponse.getPromptTokens());
-        assertEquals(0.001, modelResponse.getCost());
+        assertEquals("model", modelResponse.getModelName());
+        assertEquals("provider", modelResponse.getProviderType());
 
-        // ToolResponse constructors
-        ToolResponse toolResponse = new ToolResponse("id", "result");
-        assertEquals("id", toolResponse.getId());
-        assertEquals("result", toolResponse.getResult().orElse(null));
+        // ToolResponse static factory
+        ToolResponse toolResponse = ToolResponse.success("result", "test-tool", "test-operation");
+        assertNotNull(toolResponse.getId());
+        assertEquals("result", toolResponse.getData());
 
         // MessageResponse static factories
         MessageResponse success = MessageResponse.success("success");

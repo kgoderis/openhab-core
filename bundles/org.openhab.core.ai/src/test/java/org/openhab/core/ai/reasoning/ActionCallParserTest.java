@@ -21,9 +21,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.common.context.ExecutionContext;
-import org.openhab.core.ai.common.metrics.ModelPerformanceMetrics;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelResponseActionParser;
+import org.openhab.core.ai.model.monitoring.ClientPerformanceMetrics;
 
 /**
  * Unit tests for ActionCallParser
@@ -289,15 +289,13 @@ class ActionCallParserTest {
 
         // When
         actionCallParser.parseActionCalls(response, "test-session");
-        org.openhab.core.ai.common.metrics.ModelPerformanceMetrics metrics = actionCallParser.getPerformanceMetrics();
+        ClientPerformanceMetrics metrics = actionCallParser.getPerformanceMetrics();
 
         // Then
         assertNotNull(metrics);
-        assertEquals(1, metrics.getTotalParsingAttempts());
-        assertEquals(1, metrics.getSuccessfulRegexParses());
-        assertEquals(0, metrics.getSuccessfulJsonParses());
-        assertEquals(0, metrics.getFailedParses());
-        assertEquals(1, metrics.getTotalActionCalls());
+        assertEquals(1, metrics.getTotalOperations());
+        assertEquals(1, metrics.getSuccessfulOperations());
+        assertEquals(0, metrics.getFailedOperations());
     }
 
     @Test
@@ -311,34 +309,28 @@ class ActionCallParserTest {
         // When
         actionCallParser.parseActionCalls(response1, "session-1");
         actionCallParser.parseActionCalls(response2, "session-2");
-        org.openhab.core.ai.common.metrics.ModelPerformanceMetrics metrics = actionCallParser.getPerformanceMetrics();
+        ClientPerformanceMetrics metrics = actionCallParser.getPerformanceMetrics();
 
         // Then
         assertNotNull(metrics);
-        assertEquals(2, metrics.getTotalParsingAttempts());
-        assertEquals(2, metrics.getSuccessfulRegexParses());
-        assertEquals(0, metrics.getSuccessfulJsonParses());
-        assertEquals(0, metrics.getFailedParses());
-        assertEquals(2, metrics.getTotalActionCalls());
+        assertEquals(2, metrics.getTotalOperations());
+        assertEquals(2, metrics.getSuccessfulOperations());
+        assertEquals(0, metrics.getFailedOperations());
     }
 
     @Test
     void testPerformanceMetricsBuilder() {
         // Given - Test unified metrics construction
-        ModelPerformanceMetrics metrics = new ModelPerformanceMetrics(10, 5, 3, 2, 8, 0, 0.0, null);
+        ClientPerformanceMetrics metrics = new ClientPerformanceMetrics("test", 10, 5, 2, 0, 0.0, 0, 0, 0.2);
 
         // Then
         assertNotNull(metrics);
-        assertEquals(10, metrics.getTotalParsingAttempts());
-        assertEquals(5, metrics.getSuccessfulJsonParses());
-        assertEquals(3, metrics.getSuccessfulRegexParses());
-        assertEquals(2, metrics.getFailedParses());
-        assertEquals(8, metrics.getTotalActionCalls());
+        assertEquals(10, metrics.getTotalOperations());
+        assertEquals(5, metrics.getSuccessfulOperations());
+        assertEquals(2, metrics.getFailedOperations());
     }
 
     private ModelResponse createMockModelResponse(String content) {
-        return ModelResponse.builder().withContent(content != null ? content : "").withModelName("test-model")
-                .withProviderType("test-provider").withPromptTokens(50).withCompletionTokens(50).withTotalTokens(100)
-                .withCost(0.0).withResponseTimeMs(100).build();
+        return ModelResponse.success(content != null ? content : "", "test-model", "test-provider");
     }
 }

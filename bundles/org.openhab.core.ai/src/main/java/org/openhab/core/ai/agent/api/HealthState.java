@@ -3,7 +3,7 @@ package org.openhab.core.ai.agent.api;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * Extracted from ModelHealthStatus.
+ * Extracted from ModelHealthMetrics.
  */
 @NonNullByDefault
 public enum HealthState {

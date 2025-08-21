@@ -219,6 +219,15 @@ public class ModelResponse implements Response<String> {
     }
 
     /**
+     * Create a new ModelResponseBuilder instance.
+     * 
+     * @return a new ModelResponseBuilder
+     */
+    public static ModelResponseBuilder builder() {
+        return ModelResponseBuilder.builder();
+    }
+
+    /**
      * Create a successful response.
      * 
      * @param content the response content

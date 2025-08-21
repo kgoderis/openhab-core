@@ -27,7 +27,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.common.statistics.AgentModelStatistics;
-import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.common.statistics.ModelIntegrationStatistics;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.api.ModelConfigurationService;

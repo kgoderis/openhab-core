@@ -1,8 +1,8 @@
 package org.openhab.core.ai.agent.execution;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.statistics.BaseStatistics;
-import org.openhab.core.ai.common.statistics.StatisticsType;
+import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
+import org.openhab.core.ai.common.monitoring.base.AbstractStatistics;
 
 /**
  * Execution statistics for agent operations.
@@ -16,7 +16,11 @@ import org.openhab.core.ai.common.statistics.StatisticsType;
  * @since 1.0.0
  */
 @NonNullByDefault
-public final class ExecutionStatistics extends BaseStatistics {
+public final class ExecutionStatistics extends AbstractStatistics implements CountsMetrics {
+
+    private final long totalExecutions;
+    private final long successfulExecutions;
+    private final long failedExecutions;
 
     /**
      * Create a new ExecutionStatistics instance.
@@ -26,15 +30,11 @@ public final class ExecutionStatistics extends BaseStatistics {
      * @param failedExecutions the number of failed executions
      */
     public ExecutionStatistics(long totalExecutions, long successfulExecutions, long failedExecutions) {
-        super("execution-stats", StatisticsType.EXECUTION);
-
-        // Add execution-specific metrics
-        addMetric("totalExecutions", totalExecutions);
-        addMetric("successfulExecutions", successfulExecutions);
-        addMetric("failedExecutions", failedExecutions);
-        addMetric("totalCount", totalExecutions);
-        addMetric("successCount", successfulExecutions);
-        addMetric("failureCount", failedExecutions);
+        super("execution-stats", java.time.Instant.now(), "agent", "execution", "Agent execution statistics", null,
+                totalExecutions, successfulExecutions, failedExecutions, null, null, null);
+        this.totalExecutions = totalExecutions;
+        this.successfulExecutions = successfulExecutions;
+        this.failedExecutions = failedExecutions;
     }
 
     /**
@@ -43,7 +43,7 @@ public final class ExecutionStatistics extends BaseStatistics {
      * @return total executions count
      */
     public long getTotalExecutions() {
-        return (Long) getMetric("totalExecutions");
+        return totalExecutions;
     }
 
     /**
@@ -52,7 +52,7 @@ public final class ExecutionStatistics extends BaseStatistics {
      * @return successful executions count
      */
     public long getSuccessfulExecutions() {
-        return (Long) getMetric("successfulExecutions");
+        return successfulExecutions;
     }
 
     /**
@@ -61,15 +61,22 @@ public final class ExecutionStatistics extends BaseStatistics {
      * @return failed executions count
      */
     public long getFailedExecutions() {
-        return (Long) getMetric("failedExecutions");
+        return failedExecutions;
     }
 
-    /**
-     * Get the success rate as a percentage.
-     * 
-     * @return success rate (0.0 to 100.0)
-     */
-    public double getSuccessRate() {
-        return super.getSuccessRate();
+    // CountsMetrics interface implementation
+    @Override
+    public long total() {
+        return getTotalCount();
+    }
+
+    @Override
+    public long success() {
+        return getSuccessCount();
+    }
+
+    @Override
+    public long failure() {
+        return getFailureCount();
     }
 }

@@ -34,7 +34,7 @@ import org.openhab.core.ai.reasoning.constraints.SafetyConstraintManager;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningPlanStep;
 import org.openhab.core.ai.reasoning.learning.LearningAdaptationSystem;
 import org.openhab.core.ai.reasoning.memory.AgentMemory;
-import org.openhab.core.ai.reasoning.metrics.OrchestrationMetrics;
+import org.openhab.core.ai.reasoning.monitoring.OrchestrationPerformanceMetrics;
 import org.openhab.core.ai.reasoning.session.ReasoningSession;
 import org.openhab.core.ai.reasoning.strategies.ParallelReasoningStrategy;
 import org.openhab.core.ai.reasoning.strategies.SequentialReasoningStrategy;
@@ -247,8 +247,16 @@ public class ReasoningOrchestrationService {
      * 
      * @return Performance metrics
      */
-    public OrchestrationMetrics getMetrics() {
-        return new OrchestrationMetrics(activeSessions.size(), sessionCounter.get());
+    public OrchestrationPerformanceMetrics getMetrics() {
+        return new OrchestrationPerformanceMetrics("reasoning-orchestration-service", 0, // totalOperations - not
+                                                                                         // tracked yet
+                0, // successfulOperations - not tracked yet
+                0, // failedOperations - not tracked yet
+                0, // totalProcessingTime - not tracked yet
+                0.0, // averageResponseTime - not tracked yet
+                activeSessions.size(), // activeSessions
+                sessionCounter.get() // totalSessions
+        );
     }
 
     /**

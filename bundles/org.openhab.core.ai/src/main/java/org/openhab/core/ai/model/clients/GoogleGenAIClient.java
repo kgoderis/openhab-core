@@ -15,9 +15,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.common.response.ModelResponseBuilder;
-import org.openhab.core.ai.common.statistics.ModelHealthStatus;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -25,6 +25,7 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.configuration.GoogleGenAIConfiguration;
+import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,27 +195,21 @@ public class GoogleGenAIClient implements ModelClient {
     }
 
     @Override
-    public ModelHealthStatus getHealthStatus() {
+    public ModelHealthMetrics getHealthStatus() {
         try {
             boolean available = isAvailable();
             long avgResponseTime = totalRequests.get() > 0 ? totalResponseTime.get() / totalRequests.get() : -1;
             double successRate = totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get()
                     : 0.0;
 
-            return ModelHealthStatus.builder().withId("google-genai-client")
-                    .withOverallHealth(
-                            available ? ModelHealthStatus.HealthState.HEALTHY : ModelHealthStatus.HealthState.UNHEALTHY)
-                    .withPrimaryModelAvailable(available).withResponseTimeMs(avgResponseTime)
-                    .withErrorRate(100.0 - successRate).withTotalRequests(totalRequests.get())
-                    .withFailedRequests(errorCount.get()).withLastError(lastError.get())
-                    .withLastHealthCheck(Instant.now()).withLastFailedRequest(lastErrorTime.get()).build();
+            return ModelHealthMetrics.builder("google-genai-client")
+                    .withStatus(available ? HealthStatus.HEALTHY : HealthStatus.UNHEALTHY).withAvailable(available)
+                    .withAverageResponseTimeMs(avgResponseTime).withSuccessRate(successRate)
+                    .withLastError(lastError.get()).build();
         } catch (Exception e) {
-            return ModelHealthStatus.builder().withId("google-genai-client")
-                    .withOverallHealth(ModelHealthStatus.HealthState.UNHEALTHY).withPrimaryModelAvailable(false)
-                    .withResponseTimeMs(-1).withErrorRate(100.0).withTotalRequests(totalRequests.get())
-                    .withFailedRequests(errorCount.get() + 1)
-                    .withLastError(e.getMessage() != null ? e.getMessage() : "Unknown error")
-                    .withLastHealthCheck(Instant.now()).withLastFailedRequest(Instant.now()).build();
+            return ModelHealthMetrics.builder("google-genai-client").withStatus(HealthStatus.UNHEALTHY)
+                    .withAvailable(false).withAverageResponseTimeMs(-1).withSuccessRate(0.0)
+                    .withLastError(e.getMessage() != null ? e.getMessage() : "Unknown error").build();
         }
     }
 

@@ -14,8 +14,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.common.context.ExecutionContext;
-import org.openhab.core.ai.common.metrics.ModelPerformanceMetrics;
 import org.openhab.core.ai.common.response.ModelResponse;
+import org.openhab.core.ai.model.monitoring.ClientPerformanceMetrics;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -385,16 +385,18 @@ public class ModelResponseActionParser {
     /**
      * Get performance metrics
      */
-    public ModelPerformanceMetrics getPerformanceMetrics() {
-        return new ModelPerformanceMetrics(totalParsingAttempts.get(), successfulJsonParses.get(),
-                successfulRegexParses.get(), failedParses.get(), totalActionCalls.get(), 0, // totalProcessingTime
-                                                                                            // -
-                                                                                            // not
-                                                                                            // tracked
-                                                                                            // yet
+    public ClientPerformanceMetrics getPerformanceMetrics() {
+        long totalRequests = totalParsingAttempts.get();
+        long totalErrors = failedParses.get();
+        double errorRate = totalRequests > 0 ? (double) totalErrors / totalRequests : 0.0;
+
+        return new ClientPerformanceMetrics("model-response-parser", totalRequests, totalRequests - totalErrors, // successfulOperations
+                totalErrors, // failedOperations
+                0, // totalProcessingTime - not tracked yet
                 0.0, // averageResponseTime - not tracked yet
-                null // lastOperationTime - not tracked yet
-        );
+                0, // minResponseTime - not tracked yet
+                0, // maxResponseTime - not tracked yet
+                errorRate);
     }
 
     /**

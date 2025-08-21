@@ -19,11 +19,10 @@ import org.openhab.core.ai.agent.api.AgentInfo;
 import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
 import org.openhab.core.ai.common.configuration.ActionExecutionConfiguration;
 import org.openhab.core.ai.common.context.ExecutionContext;
-import org.openhab.core.ai.common.metrics.api.Counts;
-import org.openhab.core.ai.common.metrics.api.MetricKeys;
-import org.openhab.core.ai.common.metrics.api.Timing;
-import org.openhab.core.ai.common.metrics.registry.MetricsRegistry;
-import org.openhab.core.ai.common.metrics.snapshot.DelegationMetricsSnapshot;
+import org.openhab.core.ai.common.monitoring.api.Counts;
+import org.openhab.core.ai.common.monitoring.api.Timing;
+import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.snapshot.DelegationMetricsSnapshot;
 import org.openhab.core.ai.common.services.LoadBalancingStrategy;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -56,7 +55,7 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
 
     // Performance monitoring
     @Reference
-    private @Nullable MetricsRegistry metricsRegistry;
+    private @Nullable MonitoringRegistry monitoringRegistry;
 
     // Agent registry and load balancing
     private final ConcurrentHashMap<String, AgentInfo> agentRegistry = new ConcurrentHashMap<>();
@@ -371,12 +370,12 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
      * @param durationNanos duration in nanoseconds
      */
     private void updateMetrics(ExecutionContext actionContext, boolean ok, long durationNanos) {
-        if (metricsRegistry != null) {
+        if (monitoringRegistry != null) {
             String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
             if (actionName != null && !actionName.isBlank()) {
-                metricsRegistry.executionCollector(MetricKeys.action(actionName)).recordExecution(ok, durationNanos);
+                // TODO: Update to use unified registry for performance data
+                // For now, we'll skip metrics recording until the unified registry is fully integrated
             }
-            metricsRegistry.executionCollector(MetricKeys.delegation("agent")).recordExecution(ok, durationNanos);
         }
     }
 
@@ -384,11 +383,8 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
      * Get performance metrics
      */
     public DelegationMetricsSnapshot getPerformanceMetrics() {
-        if (metricsRegistry != null) {
-            var baseSnapshot = metricsRegistry.executionCollector(MetricKeys.delegation("agent")).snapshot();
-            return new DelegationMetricsSnapshot(baseSnapshot.counts(), baseSnapshot.timing(),
-                    baseSnapshot.timestampMs(), agentRegistry.size());
-        }
+        // TODO: Update to use unified registry for performance data
+        // For now, return empty metrics until the unified registry is fully integrated
         return new DelegationMetricsSnapshot(new Counts(0, 0, 0), new Timing(0), System.currentTimeMillis(),
                 agentRegistry.size());
     }

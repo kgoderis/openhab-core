@@ -12,12 +12,11 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
+import org.openhab.core.ai.agent.monitoring.AgentStatistics;
 import org.openhab.core.ai.common.configuration.AgentModelConfiguration;
 import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.openhab.core.ai.common.statistics.AgentModelStatistics;
-import org.openhab.core.ai.common.statistics.ModelHealthStatus;
-import org.openhab.core.ai.common.statistics.ModelHealthStatus.HealthState;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelTrackingService;
 import org.openhab.core.ai.model.api.ModelClient;
@@ -27,6 +26,7 @@ import org.openhab.core.ai.model.clients.AnthropicClient;
 import org.openhab.core.ai.model.clients.GoogleGenAIClient;
 import org.openhab.core.ai.model.clients.OpenAIClient;
 import org.openhab.core.ai.model.clients.StubModelClient;
+import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -289,36 +289,31 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
     }
 
     @Override
-    public AgentModelStatistics getStatistics() {
-        return AgentModelStatistics.builder().withAgentId(agentId).withTotalRequests(totalRequests)
-                .withSuccessfulRequests(successfulRequests).withFailedRequests(failedRequests).withCacheHits(cacheHits)
-                .withCacheMisses(cacheMisses).withTotalResponseTimeMs(totalResponseTimeMs)
-                .withAverageResponseTimeMs(calculateAverageResponseTime())
-                .withMinResponseTimeMs(minResponseTimeMs == Long.MAX_VALUE ? 0 : minResponseTimeMs)
-                .withMaxResponseTimeMs(maxResponseTimeMs).withTotalTokensUsed(totalTokensUsed).withTotalCost(totalCost)
-                .withLastRequestTime(lastRequestTime).withLastSuccessTime(lastSuccessTime)
-                .withLastFailureTime(lastFailureTime).withLastError(lastError).build();
+    public AgentStatistics getStatistics() {
+        return new AgentStatistics("agent-" + agentId, agentId, AgentState.RUNNING, totalRequests, successfulRequests,
+                failedRequests, totalResponseTimeMs * 1_000_000); // Convert to nanoseconds
     }
 
     @Override
-    public ModelHealthStatus getHealthStatus() {
+    public ModelHealthMetrics getHealthStatus() {
         double errorRate = totalRequests > 0 ? (double) failedRequests / totalRequests : 0.0;
         double avgResponseTime = calculateAverageResponseTime();
 
-        HealthState healthState;
+        HealthStatus healthStatus;
         if (errorRate < 0.05 && avgResponseTime < 5000) {
-            healthState = HealthState.HEALTHY;
+            healthStatus = HealthStatus.HEALTHY;
         } else if (errorRate < 0.15 && avgResponseTime < 10000) {
-            healthState = HealthState.DEGRADED;
+            healthStatus = HealthStatus.DEGRADED;
         } else {
-            healthState = HealthState.UNHEALTHY;
+            healthStatus = HealthStatus.UNHEALTHY;
         }
 
-        return ModelHealthStatus.builder().withOverallHealth(healthState).withPrimaryModelAvailable(!fallbackActive)
-                .withFallbackModelAvailable(fallbackActive).withErrorRate(errorRate).withResponseTimeMs(avgResponseTime)
-                .withTotalRequests(totalRequests).withFailedRequests(failedRequests).withLastError(lastError)
-                .withLastHealthCheck(Instant.now()).withLastSuccessfulRequest(lastSuccessTime)
-                .withLastFailedRequest(lastFailureTime).build();
+        return ModelHealthMetrics.builder("agent-" + agentId).withStatus(healthStatus)
+                .withStatusMessage("Agent health status")
+                .withHealthIndicators(Map.of("errorRate", errorRate, "avgResponseTime", avgResponseTime))
+                .withAvailable(!fallbackActive).withAverageResponseTimeMs((long) avgResponseTime)
+                .withSuccessRate(1.0 - errorRate).withErrorCount((int) failedRequests).withLastError(lastError)
+                .withLastErrorTime(lastFailureTime).build();
     }
 
     @Override

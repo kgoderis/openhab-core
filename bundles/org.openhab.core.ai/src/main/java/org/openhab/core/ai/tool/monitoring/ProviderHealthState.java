@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**
@@ -78,9 +79,14 @@ final class ProviderHealthState {
     }
 
     ProviderHealthMetrics getHealthMetrics() {
-        return new ProviderHealthMetrics(totalRequests.get(), successfulRequests.get(), failedRequests.get(),
-                totalResponseTime.get(), getSuccessRate(), getAverageResponseTime(), circuitBreakerState.get(),
-                isHealthy());
+        String id = "provider-health-" + provider.name();
+        HealthStatus status = isHealthy() ? HealthStatus.HEALTHY : HealthStatus.UNHEALTHY;
+        String circuitBreakerStateStr = circuitBreakerState.get().name();
+        boolean isOpen = circuitBreakerState.get() == CircuitBreakerState.OPEN;
+        long failureCount = failedRequests.get();
+
+        return new ProviderHealthMetrics(id, status, circuitBreakerStateStr, isOpen, failureCount, totalRequests.get(),
+                successfulRequests.get(), failedRequests.get());
     }
 
     double getSuccessRate() {

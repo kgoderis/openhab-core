@@ -1,6 +1,6 @@
 package org.openhab.core.ai.tool.services;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -17,10 +17,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public class ProviderMetrics {
-    private final AtomicLong totalExecutions = new AtomicLong(0);
-    private final AtomicLong successfulExecutions = new AtomicLong(0);
-    private final AtomicLong totalExecutionTime = new AtomicLong(0);
-    private final AtomicLong totalFailures = new AtomicLong(0);
+    private final LongAdder totalExecutions = new LongAdder();
+    private final LongAdder successfulExecutions = new LongAdder();
+    private final LongAdder totalExecutionTime = new LongAdder();
+    private final LongAdder totalFailures = new LongAdder();
 
     /**
      * Record an execution with its result and timing.
@@ -29,13 +29,13 @@ public class ProviderMetrics {
      * @param executionTime execution time in milliseconds
      */
     public void recordExecution(boolean success, long executionTime) {
-        totalExecutions.incrementAndGet();
-        totalExecutionTime.addAndGet(executionTime);
+        totalExecutions.increment();
+        totalExecutionTime.add(executionTime);
 
         if (success) {
-            successfulExecutions.incrementAndGet();
+            successfulExecutions.increment();
         } else {
-            totalFailures.incrementAndGet();
+            totalFailures.increment();
         }
     }
 
@@ -45,7 +45,7 @@ public class ProviderMetrics {
      * @return total executions
      */
     public long getTotalExecutions() {
-        return totalExecutions.get();
+        return totalExecutions.sum();
     }
 
     /**
@@ -54,7 +54,7 @@ public class ProviderMetrics {
      * @return successful executions
      */
     public long getSuccessfulExecutions() {
-        return successfulExecutions.get();
+        return successfulExecutions.sum();
     }
 
     /**
@@ -63,7 +63,7 @@ public class ProviderMetrics {
      * @return total execution time
      */
     public long getTotalExecutionTime() {
-        return totalExecutionTime.get();
+        return totalExecutionTime.sum();
     }
 
     /**
@@ -72,7 +72,7 @@ public class ProviderMetrics {
      * @return total failures
      */
     public long getTotalFailures() {
-        return totalFailures.get();
+        return totalFailures.sum();
     }
 
     /**
@@ -81,7 +81,7 @@ public class ProviderMetrics {
      * @return success rate as a percentage
      */
     public double getSuccessRate() {
-        return totalExecutions.get() > 0 ? (double) successfulExecutions.get() / totalExecutions.get() : 0.0;
+        return totalExecutions.sum() > 0 ? (double) successfulExecutions.sum() / totalExecutions.sum() : 0.0;
     }
 
     /**
@@ -90,7 +90,7 @@ public class ProviderMetrics {
      * @return average response time in milliseconds
      */
     public double getAverageResponseTime() {
-        return totalExecutions.get() > 0 ? (double) totalExecutionTime.get() / totalExecutions.get() : 0.0;
+        return totalExecutions.sum() > 0 ? (double) totalExecutionTime.sum() / totalExecutions.sum() : 0.0;
     }
 
     /**
