@@ -1,6 +1,7 @@
 package org.openhab.core.ai.common.context;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -204,8 +205,17 @@ public class ReasoningContext extends BaseContext {
      * 
      * @return a new ReasoningContextBuilder instance
      */
-    public static ReasoningContextBuilder builder() {
-        return new ReasoningContextBuilder();
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Create a builder from this instance for modification.
+     * 
+     * @return a new builder with current values
+     */
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     @Override
@@ -242,5 +252,145 @@ public class ReasoningContext extends BaseContext {
                 "ReasoningContext{id='%s', initialContext='%s', currentContext='%s', domain='%s', userId='%s', sessionId='%s', reasoningTime=%dms, steps=%d, active=%s}",
                 getContextId(), initialContext, currentContext, domain, userId, sessionId, getReasoningDuration(),
                 reasoningStepCount, isActive);
+    }
+
+    /**
+     * Builder for creating ReasoningContext objects.
+     * 
+     * <p>
+     * Provides a fluent API with validation for constructing ReasoningContext
+     * instances.
+     * </p>
+     * 
+     * @author Karel Goderis - Initial Contribution
+     * @since 1.0.0
+     */
+    public static final class Builder {
+        private String contextId;
+        private String initialContext = "";
+        private String currentContext = "";
+        private @Nullable String domain;
+        private @Nullable String userId;
+        private @Nullable String sessionId;
+        private Map<String, Object> values = new HashMap<>();
+        private Map<String, Object> metadata = new HashMap<>();
+        private Instant createdAt = Instant.now();
+        private Instant lastModifiedAt = Instant.now();
+        private long reasoningStartTime = System.currentTimeMillis();
+        private int reasoningStepCount = 0;
+        private boolean isActive = true;
+
+        public Builder() {
+            this.contextId = java.util.UUID.randomUUID().toString();
+        }
+
+        public Builder(ReasoningContext source) {
+            this.contextId = source.getContextId();
+            this.initialContext = source.initialContext;
+            this.currentContext = source.currentContext;
+            this.domain = source.domain;
+            this.userId = source.userId;
+            this.sessionId = source.sessionId;
+            this.values = new HashMap<>(source.getAllValues());
+            this.metadata = new HashMap<>(source.getMetadata());
+            this.createdAt = source.getCreatedAt();
+            this.lastModifiedAt = source.getLastModifiedAt();
+            this.reasoningStartTime = source.reasoningStartTime;
+            this.reasoningStepCount = source.reasoningStepCount;
+            this.isActive = source.isActive;
+        }
+
+        public Builder withContextId(String contextId) {
+            this.contextId = Objects.requireNonNull(contextId, "contextId");
+            return this;
+        }
+
+        public Builder withInitialContext(String initialContext) {
+            this.initialContext = Objects.requireNonNull(initialContext, "initialContext");
+            return this;
+        }
+
+        public Builder withCurrentContext(String currentContext) {
+            this.currentContext = Objects.requireNonNull(currentContext, "currentContext");
+            return this;
+        }
+
+        public Builder withDomain(@Nullable String domain) {
+            this.domain = domain;
+            return this;
+        }
+
+        public Builder withUserId(@Nullable String userId) {
+            this.userId = userId;
+            return this;
+        }
+
+        public Builder withSessionId(@Nullable String sessionId) {
+            this.sessionId = sessionId;
+            return this;
+        }
+
+        public Builder withValues(Map<String, Object> values) {
+            this.values = Objects.requireNonNull(values, "values");
+            return this;
+        }
+
+        public Builder withValue(String key, Object value) {
+            this.values.put(Objects.requireNonNull(key, "key"), Objects.requireNonNull(value, "value"));
+            return this;
+        }
+
+        public Builder withMetadata(Map<String, Object> metadata) {
+            this.metadata = Objects.requireNonNull(metadata, "metadata");
+            return this;
+        }
+
+        public Builder withMetadata(String key, Object value) {
+            this.metadata.put(Objects.requireNonNull(key, "key"), Objects.requireNonNull(value, "value"));
+            return this;
+        }
+
+        public Builder withCreatedAt(Instant createdAt) {
+            this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+            return this;
+        }
+
+        public Builder withLastModifiedAt(Instant lastModifiedAt) {
+            this.lastModifiedAt = Objects.requireNonNull(lastModifiedAt, "lastModifiedAt");
+            return this;
+        }
+
+        public Builder withReasoningStartTime(long reasoningStartTime) {
+            this.reasoningStartTime = reasoningStartTime;
+            return this;
+        }
+
+        public Builder withReasoningStepCount(int reasoningStepCount) {
+            this.reasoningStepCount = reasoningStepCount;
+            return this;
+        }
+
+        public Builder withActive(boolean isActive) {
+            this.isActive = isActive;
+            return this;
+        }
+
+        public ReasoningContext build() {
+            if (contextId.isBlank()) {
+                throw new IllegalArgumentException("contextId must not be blank");
+            }
+            if (initialContext.isBlank()) {
+                throw new IllegalArgumentException("initialContext must not be blank");
+            }
+            if (currentContext.isBlank()) {
+                throw new IllegalArgumentException("currentContext must not be blank");
+            }
+            if (reasoningStepCount < 0) {
+                throw new IllegalArgumentException("reasoningStepCount must be non-negative");
+            }
+            return new ReasoningContext(contextId, initialContext, currentContext, domain, userId, sessionId,
+                    Map.copyOf(values), Map.copyOf(metadata), createdAt, lastModifiedAt, reasoningStartTime,
+                    reasoningStepCount, isActive);
+        }
     }
 }

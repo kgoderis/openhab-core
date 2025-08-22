@@ -18,7 +18,6 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -100,7 +99,7 @@ public class OpenAIClient implements ModelClient {
 
                 // Return regular text response
                 String content = response.choices().get(0).message().content().orElse("");
-                return ModelResponseBuilder.builder().withContent(content).withModelName(response.model())
+                return ModelResponse.builder().withContent(content).withModelName(response.model())
                         .withProviderType(ModelProviderType.OPENAI.name()).build();
 
             } catch (Exception e) {
@@ -150,7 +149,7 @@ public class OpenAIClient implements ModelClient {
                 long responseTime = System.currentTimeMillis() - startTime;
                 trackMetrics(responseTime, true, null);
 
-                ModelResponse response = ModelResponseBuilder.builder().withContent(content)
+                ModelResponse response = ModelResponse.builder().withContent(content)
                         .withModelName(finalResponse.model()).withProviderType(ModelProviderType.OPENAI.name()).build();
 
                 handler.onComplete(response);

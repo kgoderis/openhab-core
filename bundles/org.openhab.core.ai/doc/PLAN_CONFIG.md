@@ -1,494 +1,617 @@
-# Configuration Management Refactoring Implementation Plan
+# openHAB AI Bundle Configuration Management Plan
 
-## 17.1 Overview
+## Overview
 
-This chapter implements the comprehensive configuration management refactoring outlined in Section 28 of the AI Development Rules. The refactoring establishes a modern, type-safe configuration system using OSGi Declarative Services (DS) with MetaType, file-backed resources, and hot-reload capabilities.
+This plan outlines the configuration management strategy for the openHAB AI bundle, following openHAB standards and patterns. The goal is to provide a comprehensive configuration system that combines the reliability of OSGi Config Admin (.cfg files) with the flexibility of YAML for complex structured data.
 
-## 17.2 Implementation Phases
+## Current State Analysis
 
-### 17.2.1 Phase 1: Core Configuration Infrastructure (2-3 weeks)
+### ✅ What's Already Implemented (Following openHAB Standards)
 
-#### 17.2.1.1 Create Configuration Service Foundation
-- [ ] **Create Base Configuration Service Interface** (`org.openhab.core.ai.config.api.ConfigurationService.java`)
-  - [ ] Define core configuration service contract
-  - [ ] Add configuration change notification support
-  - [ ] Create configuration validation interface
-  - [ ] Add configuration persistence methods
-  - [ ] Implement configuration versioning support
+- **OSGi DS Integration**: Proper `@Component` with `configurationPid`
+- **Lifecycle Management**: `@Activate`, `@Modified`, `@Deactivate` methods
+- **File-Based Configuration**: `.cfg` files in `OH-INF/config/`
+- **Hot-Reload**: WatchService integration for configuration changes
+- **Configuration Precedence**: Environment variables > Config Admin > File-backed
+- **Basic Structure**: Separate config files for different domains (a2a.cfg, mcp.cfg, ai-common.cfg)
 
-- [ ] **Create Configuration Change Listener** (`org.openhab.core.ai.config.api.ConfigurationChangeListener.java`)
-  - [ ] Define configuration change event interface
-  - [ ] Add change type enumeration (ADDED, MODIFIED, DELETED)
-  - [ ] Create change notification methods
-  - [ ] Add change validation support
+### ❌ What Needs Enhancement
 
-- [ ] **Create Configuration Validation Framework** (`org.openhab.core.ai.config.validation.ConfigurationValidator.java`)
-  - [ ] Implement validation rule interface
-  - [ ] Add validation result data structures
-  - [ ] Create validation error reporting
-  - [ ] Add validation rule composition
+- **Limited Validation**: No comprehensive configuration validation
+- **No YAML Support**: Complex structured data still uses properties format
+- **No Typed Repositories**: Prompts, policies, and model presets lack structured storage
+- **Basic Error Handling**: Limited error recovery and user feedback
+- **No Configuration UI**: No integration with openHAB Paper UI or Main UI
 
-#### 17.2.1.2 Implement OSGi DS Configuration Services
-- [ ] **Create Tool Configuration Service** (`org.openhab.core.ai.config.tool.ToolConfigurationService.java`)
-  - [ ] Define `@ObjectClassDefinition` for Tool configuration
-  - [ ] Implement `@Component` with `@Designate` binding
-  - [ ] Add `@Activate`, `@Modified`, `@Deactivate` lifecycle methods
-  - [ ] Create immutable configuration objects with builder pattern
-  - [ ] Implement configuration validation and error handling
-  - [ ] Add configuration change event publishing
+## Configuration Strategy
 
-- [ ] **Create Agent Configuration Service** (`org.openhab.core.ai.config.agent.AgentConfigurationService.java`)
-  - [ ] Define `@ObjectClassDefinition` for Agent configuration
-  - [ ] Implement OSGi DS lifecycle management
-  - [ ] Create agent-specific configuration objects
-  - [ ] Add agent configuration validation
-  - [ ] Implement agent configuration change notifications
+### 1. Configuration Naming Convention
 
-- [ ] **Create MCP Configuration Service** (`org.openhab.core.ai.config.mcp.MCPConfigurationService.java`)
-  - [ ] Define `@ObjectClassDefinition` for MCP configuration
-  - [ ] Implement MCP-specific configuration management
-  - [ ] Create MCP configuration validation
-  - [ ] Add MCP configuration change handling
+All configuration keys follow the consistent pattern: `ai.{domain}.{setting}=value`
 
-#### 17.2.1.3 Create Configuration Precedence System
-- [ ] **Create Configuration Precedence Manager** (`org.openhab.core.ai.config.precedence.ConfigurationPrecedenceManager.java`)
-  - [ ] Implement precedence order: Environment > Config Admin > /conf/ai files > defaults
-  - [ ] Create configuration merging logic
-  - [ ] Add configuration conflict resolution
-  - [ ] Implement atomic configuration snapshot publishing
-  - [ ] Add configuration change event propagation
+**Domain Structure**:
+- `ai.common.*` - Core AI bundle settings (ai-common.cfg)
+- `ai.model.*` - Model provider settings (model.cfg)
+- `ai.agent.*` - Agent protocol settings (agent.cfg)
+- `ai.tool.*` - Tool protocol settings (tool.cfg)
 
-- [ ] **Create Environment Variable Configuration Loader** (`org.openhab.core.ai.config.env.EnvironmentConfigurationLoader.java`)
-  - [ ] Implement environment variable parsing
-  - [ ] Add environment variable validation
-  - [ ] Create environment variable to configuration mapping
-  - [ ] Add environment variable change detection
+**Benefits**:
+- **Namespace Separation**: Prevents conflicts between different configuration domains
+- **Consistency**: All keys follow the same pattern
+- **Clarity**: Easy to identify which domain a setting belongs to
+- **Maintainability**: Clear structure for adding new configuration domains
+- **openHAB Integration**: Aligns with openHAB's configuration patterns
 
-### 17.2.2 Phase 2: File-Backed Configuration Resources (2-3 weeks)
+### 2. Configuration File Structure
 
-#### 17.2.2.1 Create File Repository Infrastructure
-- [ ] **Create Configuration Repository Interface** (`org.openhab.core.ai.config.repo.ConfigurationRepository.java`)
-  - [ ] Define repository contract for file-backed configuration
-  - [ ] Add repository lifecycle management
-  - [ ] Create repository validation interface
-  - [ ] Add repository change notification support
-
-- [ ] **Create Prompt Repository** (`org.openhab.core.ai.config.repo.PromptRepository.java`)
-  - [ ] Implement YAML-based prompt storage
-  - [ ] Add prompt validation and schema checking
-  - [ ] Create prompt versioning and compatibility
-  - [ ] Implement prompt caching and performance optimization
-  - [ ] Add prompt security and access controls
-
-- [ ] **Create Policy Repository** (`org.openhab.core.ai.config.repo.PolicyRepository.java`)
-  - [ ] Implement YAML-based policy storage
-  - [ ] Add policy validation and schema checking
-  - [ ] Create policy versioning and compatibility
-  - [ ] Implement policy caching and performance optimization
-  - [ ] Add policy security and access controls
-
-- [ ] **Create Model Preset Repository** (`org.openhab.core.ai.config.repo.ModelPresetRepository.java`)
-  - [ ] Implement YAML-based model preset storage
-  - [ ] Add model preset validation and schema checking
-  - [ ] Create model preset versioning and compatibility
-  - [ ] Implement model preset caching and performance optimization
-  - [ ] Add model preset security and access controls
-
-#### 17.2.2.2 Implement File System Layout
-- [ ] **Create Configuration Directory Structure**
-  - [ ] Implement `/conf/ai/` base directory creation
-  - [ ] Create `/conf/ai/agents.cfg` for agent configuration
-  - [ ] Create `/conf/ai/prompts/` directory structure
-  - [ ] Create `/conf/ai/policies/` directory structure
-  - [ ] Create `/conf/ai/models/` directory structure
-  - [ ] Add directory permission and security setup
-
-- [ ] **Create Configuration File Templates**
-  - [ ] Create `agents.cfg` template with all agent settings
-  - [ ] Create prompt YAML templates for each agent type
-  - [ ] Create policy YAML templates for different policy types
-  - [ ] Create model preset YAML templates
-  - [ ] Add comprehensive documentation and examples
-
-#### 17.2.2.3 Implement Hot-Reload with WatchService
-- [ ] **Create Configuration Watch Service** (`org.openhab.core.ai.config.watch.ConfigurationWatchService.java`)
-  - [ ] Implement openHAB WatchService integration
-  - [ ] Add file change detection for `/conf/ai` subtrees
-  - [ ] Create selective repository re-parsing
-  - [ ] Implement atomic configuration snapshot rebuilding
-  - [ ] Add configuration change event publishing
-  - [ ] Create configuration reload performance monitoring
-
-- [ ] **Create File Change Handler** (`org.openhab.core.ai.config.watch.FileChangeHandler.java`)
-  - [ ] Implement file change event processing
-  - [ ] Add file validation before reload
-  - [ ] Create file change conflict resolution
-  - [ ] Implement file change rollback on errors
-  - [ ] Add file change logging and audit trail
-
-### 17.2.3 Phase 3: Configuration Validation and Safety (1-2 weeks)
-
-#### 17.2.3.1 Implement Configuration Validation
-- [ ] **Create Configuration Schema Validator** (`org.openhab.core.ai.config.validation.ConfigurationSchemaValidator.java`)
-  - [ ] Implement JSON Schema validation for configuration files
-  - [ ] Add YAML schema validation
-  - [ ] Create configuration format validation
-  - [ ] Implement configuration content validation
-  - [ ] Add validation error reporting and recovery
-
-- [ ] **Create Configuration Security Validator** (`org.openhab.core.ai.config.validation.ConfigurationSecurityValidator.java`)
-  - [ ] Implement secret validation and masking
-  - [ ] Add configuration access control validation
-  - [ ] Create configuration integrity checking
-  - [ ] Implement configuration audit logging
-  - [ ] Add configuration security monitoring
-
-#### 17.2.3.2 Implement Configuration Safety Features
-- [ ] **Create Configuration Backup Service** (`org.openhab.core.ai.config.backup.ConfigurationBackupService.java`)
-  - [ ] Implement automatic configuration backup
-  - [ ] Add configuration version history
-  - [ ] Create configuration restore functionality
-  - [ ] Implement configuration rollback on errors
-  - [ ] Add configuration backup validation
-
-- [ ] **Create Configuration Error Recovery** (`org.openhab.core.ai.config.recovery.ConfigurationErrorRecovery.java`)
-  - [ ] Implement configuration error detection
-  - [ ] Add automatic error recovery mechanisms
-  - [ ] Create configuration fallback strategies
-  - [ ] Implement configuration error notification
-  - [ ] Add configuration error logging and monitoring
-
-### 17.2.4 Phase 4: Configuration Integration and Testing (1-2 weeks)
-
-#### 17.2.4.1 Integrate with Existing Services
-- [ ] **Update Tool Configuration Service** (`org.openhab.core.ai.tool.ToolConfigurationService.java`)
-  - [ ] Integrate with new configuration infrastructure
-  - [ ] Update to use immutable configuration objects
-  - [ ] Add configuration change event handling
-  - [ ] Implement configuration validation integration
-  - [ ] Add configuration performance monitoring
-
-- [ ] **Update Agent Configuration Service** (`org.openhab.core.ai.agent.AgentConfigurationService.java`)
-  - [ ] Integrate with new configuration infrastructure
-  - [ ] Update to use immutable configuration objects
-  - [ ] Add configuration change event handling
-  - [ ] Implement configuration validation integration
-  - [ ] Add configuration performance monitoring
-
-- [ ] **Update MCP Configuration Service** (`org.openhab.core.ai.mcp.MCPConfigurationService.java`)
-  - [ ] Integrate with new configuration infrastructure
-  - [ ] Update to use immutable configuration objects
-  - [ ] Add configuration change event handling
-  - [ ] Implement configuration validation integration
-  - [ ] Add configuration performance monitoring
-
-#### 17.2.4.2 Create Configuration Testing Framework
-- [ ] **Create Configuration Unit Tests**
-  - [ ] Test configuration loading and validation
-  - [ ] Test configuration precedence rules
-  - [ ] Test configuration change handling
-  - [ ] Test configuration error recovery
-  - [ ] Test configuration performance
-
-- [ ] **Create Configuration Integration Tests**
-  - [ ] Test configuration service integration
-  - [ ] Test file-backed configuration reload
-  - [ ] Test configuration change propagation
-  - [ ] Test configuration validation integration
-  - [ ] Test configuration error handling
-
-- [ ] **Create Configuration Performance Tests**
-  - [ ] Test configuration loading performance
-  - [ ] Test configuration change performance
-  - [ ] Test configuration validation performance
-  - [ ] Test configuration memory usage
-  - [ ] Test configuration scalability
-
-## 17.3 Configuration File Structure
-
-### 17.3.1 Directory Layout
 ```
-/conf/ai/
-├── agents.cfg                    # Agent configuration (namespaced keys)
-├── prompts/                      # Prompt templates
-│   ├── energy/                   # Energy agent prompts
-│   │   ├── optimization.yaml
-│   │   ├── monitoring.yaml
-│   │   └── analysis.yaml
-│   ├── security/                 # Security agent prompts
-│   │   ├── threat-detection.yaml
-│   │   ├── response.yaml
-│   │   └── analysis.yaml
-│   └── comfort/                  # Comfort agent prompts
-│       ├── optimization.yaml
-│       ├── learning.yaml
-│       └── adaptation.yaml
-├── policies/                     # Policy definitions
-│   ├── energy-policies.yaml      # Energy optimization policies
-│   ├── security-policies.yaml    # Security policies
-│   ├── comfort-policies.yaml     # Comfort policies
-│   └── system-policies.yaml      # System management policies
-└── models/                       # Model presets
-    ├── openai-presets.yaml       # OpenAI model configurations
-    ├── anthropic-presets.yaml    # Anthropic model configurations
-    ├── local-presets.yaml        # Local model configurations
-    └── hybrid-presets.yaml       # Hybrid model configurations
+src/main/resources/OH-INF/config/
+├── ai-common.cfg          # Core AI settings (OSGi Config Admin)
+├── agent.cfg              # Agent protocol settings (OSGi Config Admin)
+├── tool.cfg               # Tool protocol settings (OSGi Config Admin)
+└── model.cfg              # Model provider settings (OSGi Config Admin)
+
+conf/ai/
+├── prompts/              # YAML prompt templates
+│   ├── agents/
+│   │   ├── energy-agent.yaml
+│   │   ├── security-agent.yaml
+│   │   └── comfort-agent.yaml
+│   └── tools/
+│       ├── discovery.yaml
+│       └── automation.yaml
+├── policies/             # YAML policy definitions
+│   ├── safety-policies.yaml
+│   ├── privacy-policies.yaml
+│   └── compliance-policies.yaml
+├── models/               # YAML model presets
+│   ├── openai-presets.yaml
+│   ├── anthropic-presets.yaml
+│   └── ollama-presets.yaml
+└── agents/               # YAML agent configurations
+    ├── energy-agent.yaml
+    ├── security-agent.yaml
+    └── comfort-agent.yaml
 ```
 
-### 17.3.2 Configuration File Examples
+### 3. Configuration Separation Strategy
 
-#### 17.3.2.1 agents.cfg Example
+#### **OSGi Config Admin (.cfg files) - Simple Key-Value Settings**
+
+**Purpose**: Core system settings, provider credentials, basic flags, and performance parameters that need OSGi integration.
+
+**Characteristics**:
+- Simple key-value pairs
+- Environment variable overrides
+- Hot-reload via OSGi Config Admin
+- UI integration through Paper UI/Main UI
+- Manual validation through configuration validators
+
+**Examples**:
 ```properties
-# Agent Configuration (namespaced keys)
-ai.agents.energy.enabled=true
-ai.agents.energy.autonomy=HIGH
-ai.agents.energy.confidence.threshold=0.7
-ai.agents.energy.max.actions.per.hour=10
-ai.agents.energy.optimization.target.savings=15
+# ai-common.cfg
+ai.enabled=true
+ai.debug.mode=false
+ai.default.timeout=30000
+ai.max.concurrent.requests=10
+ai.security.enabled=true
 
-ai.agents.security.enabled=true
-ai.agents.security.autonomy=MEDIUM
-ai.agents.security.confidence.threshold=0.9
-ai.agents.security.require.confirmation=true
-ai.agents.security.max.actions.per.hour=5
+# model.cfg
+ai.model.primary.provider=ollama
+ai.model.fallback.provider=openai
+ai.model.default.temperature=0.3
+ai.model.default.max.tokens=1000
+ai.model.openai.api.key=${OPENAI_API_KEY}
+ai.model.anthropic.api.key=${ANTHROPIC_API_KEY}
+ai.model.ollama.base.url=http://localhost:11434
 
-ai.agents.comfort.enabled=true
-ai.agents.comfort.autonomy=HIGH
-ai.agents.comfort.confidence.threshold=0.6
-ai.agents.comfort.learning.rate=0.1
-ai.agents.comfort.max.actions.per.hour=12
+# agent.cfg
+ai.agent.server.enabled=true
+ai.agent.server.port=8080
+ai.agent.persistence.enabled=true
+ai.agent.max.agents=50
+ai.agent.execution.timeout=300s
+
+# tool.cfg
+ai.tool.server.enabled=true
+ai.tool.server.port=8081
+ai.tool.authentication.enabled=true
+ai.tool.max.tools=100
 ```
 
-#### 17.3.2.2 Prompt YAML Example
+#### **YAML Configuration - Complex Structured Data**
+
+**Purpose**: Complex configurations that benefit from structured data, hierarchical organization, and rich content.
+
+**Characteristics**:
+- Hierarchical structure
+- Rich content (prompts, policies, model configurations)
+- File-backed with WatchService monitoring
+- No direct OSGi integration
+- Validation through schema or programmatic validation
+
+**Examples**:
+
+**Prompt Templates (conf/ai/prompts/agents/energy-agent.yaml)**:
 ```yaml
-# /conf/ai/prompts/energy/optimization.yaml
-version: "1.0"
-agent: "energy"
-intent: "optimization"
-prompt: |
-  You are an energy optimization agent for a smart home system.
+agent:
+  name: "energy-agent"
+  version: "1.0.0"
+  description: "Energy management and optimization agent"
   
-  Current Context:
-  - Energy Usage: {{energy_usage}}
-  - Time of Day: {{time_of_day}}
-  - Occupancy: {{occupancy}}
-  - Weather: {{weather}}
-  - Energy Prices: {{energy_prices}}
-  
-  Optimization Goals:
-  - Reduce energy consumption by {{target_savings}}%
-  - Maintain comfort levels above {{comfort_threshold}}
-  - Avoid peak energy pricing when possible
-  
-  Available Actions:
-  {{available_actions}}
-  
-  Analyze the current situation and determine optimal energy-saving actions.
-  Consider user preferences, current conditions, and system constraints.
-  
-  Return your analysis and recommended actions in JSON format.
-parameters:
-  energy_usage: "current_energy_usage"
-  time_of_day: "current_time"
-  occupancy: "occupancy_status"
-  weather: "weather_conditions"
-  energy_prices: "energy_pricing"
-  target_savings: "optimization_target"
-  comfort_threshold: "comfort_threshold"
-  available_actions: "energy_actions"
+prompts:
+  system:
+    role: "You are an energy management AI agent for openHAB"
+    capabilities:
+      - "Monitor energy consumption"
+      - "Optimize device schedules"
+      - "Provide energy-saving recommendations"
+    
+  tasks:
+    energy_analysis:
+      instruction: |
+        Analyze the current energy consumption patterns and identify optimization opportunities.
+        Consider:
+        - Peak usage times
+        - Device efficiency
+        - Renewable energy availability
+        - Cost optimization
+      examples:
+        - "Device X is consuming 20% more energy during peak hours"
+        - "Solar panels are producing excess energy that could be stored"
+    
+    schedule_optimization:
+      instruction: |
+        Create an optimized schedule for energy-consuming devices based on:
+        - Energy prices
+        - Renewable energy availability
+        - User preferences
+        - Device capabilities
+      constraints:
+        - "Never compromise user comfort"
+        - "Respect device operational limits"
+        - "Consider battery storage capacity"
 ```
 
-#### 17.3.2.3 Policy YAML Example
+**Policy Definitions (conf/ai/policies/safety-policies.yaml)**:
 ```yaml
-# /conf/ai/policies/energy-policies.yaml
-version: "1.0"
 policies:
-  energy_optimization:
-    name: "Energy Optimization Policy"
-    description: "Policy for energy optimization while maintaining comfort"
-    rules:
-      - name: "peak_avoidance"
-        condition: "energy_price > peak_threshold"
-        action: "reduce_non_essential_loads"
-        priority: "HIGH"
-        constraints:
-          - "comfort_level >= minimum_comfort"
-          - "security_systems_unchanged"
-      
-      - name: "pre_cooling"
-        condition: "time_before_peak < 2_hours"
-        action: "pre_cool_home"
-        priority: "MEDIUM"
-        constraints:
-          - "current_temperature < max_pre_cool_temp"
-          - "occupancy_expected_soon"
-      
-      - name: "load_scheduling"
-        condition: "appliance_usage_scheduled"
-        action: "schedule_off_peak"
-        priority: "LOW"
-        constraints:
-          - "appliance_flexible_timing"
-          - "user_preference_allows"
+  safety:
+    version: "1.0.0"
+    description: "Safety policies for AI agent operations"
     
     constraints:
-      global:
-        - "never_compromise_security"
-        - "maintain_minimum_comfort"
-        - "respect_user_preferences"
-        - "avoid_equipment_damage"
-      
-      temperature:
-        min_adjustment: -3.0
-        max_adjustment: 3.0
-        quiet_hours_start: "22:00"
-        quiet_hours_end: "07:00"
+      device_control:
+        max_power_change: "10%"
+        max_temperature_change: "5°C"
+        require_confirmation: true
+        emergency_override: true
+        
+      system_access:
+        require_authentication: true
+        audit_all_changes: true
+        max_concurrent_operations: 5
+        
+      data_privacy:
+        anonymize_user_data: true
+        encrypt_sensitive_data: true
+        retention_period: "30 days"
+        
+    rules:
+      - name: "temperature_safety"
+        condition: "temperature_change > 5°C"
+        action: "require_confirmation"
+        priority: "high"
+        
+      - name: "power_safety"
+        condition: "power_change > 10%"
+        action: "require_confirmation"
+        priority: "high"
+        
+      - name: "emergency_override"
+        condition: "emergency_detected"
+        action: "allow_override"
+        priority: "critical"
 ```
 
-#### 17.3.2.4 Model Preset YAML Example
+**Model Presets (conf/ai/models/openai-presets.yaml)**:
 ```yaml
-# /conf/ai/models/openai-presets.yaml
-version: "1.0"
-presets:
-  gpt4_optimization:
-    name: "GPT-4 Optimization"
-    description: "Optimized for complex reasoning and optimization tasks"
-    model: "gpt-4o-mini"
-    temperature: 0.2
-    max_tokens: 2000
-    system_prompt: |
-      You are an expert energy optimization agent. Focus on practical, 
-      implementable solutions that balance energy savings with user comfort.
-    use_cases:
-      - "energy_optimization"
-      - "complex_analysis"
-      - "strategic_planning"
-  
-  gpt4_security:
-    name: "GPT-4 Security"
-    description: "Optimized for security analysis and threat detection"
-    model: "gpt-4o-mini"
-    temperature: 0.1
-    max_tokens: 1500
-    system_prompt: |
-      You are a security analysis agent. Be conservative and thorough 
-      in your analysis. Prioritize safety and security over convenience.
-    use_cases:
-      - "security_analysis"
-      - "threat_detection"
-      - "incident_response"
-  
-  gpt4_comfort:
-    name: "GPT-4 Comfort"
-    description: "Optimized for comfort optimization and user experience"
-    model: "gpt-4o-mini"
-    temperature: 0.4
-    max_tokens: 1200
-    system_prompt: |
-      You are a comfort optimization agent. Focus on enhancing user 
-      experience while maintaining energy efficiency.
-    use_cases:
-      - "comfort_optimization"
-      - "user_experience"
-      - "learning_adaptation"
+models:
+  openai:
+    version: "1.0.0"
+    description: "OpenAI model configurations"
+    
+    presets:
+      gpt4_analysis:
+        model: "gpt-4"
+        temperature: 0.1
+        max_tokens: 2000
+        top_p: 0.9
+        frequency_penalty: 0.0
+        presence_penalty: 0.0
+        system_prompt: "You are an analytical AI assistant"
+        
+      gpt4_creative:
+        model: "gpt-4"
+        temperature: 0.8
+        max_tokens: 1500
+        top_p: 0.95
+        frequency_penalty: 0.1
+        presence_penalty: 0.1
+        system_prompt: "You are a creative AI assistant"
+        
+      gpt4o_mini_fast:
+        model: "gpt-4o-mini"
+        temperature: 0.3
+        max_tokens: 1000
+        top_p: 0.9
+        frequency_penalty: 0.0
+        presence_penalty: 0.0
+        system_prompt: "You are a fast, efficient AI assistant"
 ```
 
-## 17.4 Implementation Guidelines
+## Implementation Plan
 
-### 17.4.1 OSGi DS Configuration Best Practices
-- **Use `@ObjectClassDefinition` for all configuration classes**
-- **Implement proper lifecycle methods (`@Activate`, `@Modified`, `@Deactivate`)**
-- **Use `@Designate` binding for configuration classes**
-- **Create immutable configuration objects with builder pattern**
-- **Implement comprehensive validation in configuration builders**
-- **Add configuration change event publishing**
+### Phase 1: Enhanced OSGi Configuration (Week 1-2)
 
-### 17.4.2 File-Backed Configuration Best Practices
-- **Use YAML for complex configuration structures**
-- **Implement schema validation for all configuration files**
-- **Create typed repositories for different configuration types**
-- **Implement caching for performance optimization**
-- **Add security controls for sensitive configuration**
-- **Create comprehensive documentation and examples**
+#### 1.1 Enhance Configuration Services
+- [ ] **Update DefaultConfigurationService** with improved validation and error handling
+- [ ] **Update DefaultModelConfigurationService** with enhanced provider validation and `ai.model.*` key support
+- [ ] **Update AgentConfigurationManager** with better configuration parsing and `ai.agent.*` key support
+- [ ] **Create ToolConfigurationService** following openHAB patterns with `ai.tool.*` key support
 
-### 17.4.3 Configuration Validation Best Practices
-- **Validate all configuration at load time**
-- **Implement schema validation for YAML/JSON files**
-- **Add range and format validation for configuration values**
-- **Create cross-field validation for related configuration**
-- **Implement configuration error recovery mechanisms**
-- **Add configuration audit logging**
+#### 1.2 Implement Configuration Validation
+- [ ] **Create ConfigurationValidator** for manual validation of configuration maps
+- [ ] **Create ModelConfigurationValidator** for provider-specific validation with `ai.model.*` keys
+- [ ] **Create AgentConfigurationValidator** for agent-specific validation with `ai.agent.*` keys
+- [ ] **Create ToolConfigurationValidator** for tool-specific validation with `ai.tool.*` keys
+- [ ] **Add validation to all @Activate and @Modified methods**
+- [ ] **Implement configuration error recovery and logging**
 
-### 17.4.4 Configuration Performance Best Practices
-- **Implement configuration caching for frequently accessed values**
-- **Use lazy loading for large configuration files**
-- **Implement incremental configuration updates**
-- **Add configuration change batching for multiple changes**
-- **Monitor configuration loading and change performance**
-- **Optimize configuration memory usage**
+### Phase 2: YAML Configuration Infrastructure (Week 2-3)
 
-## 17.5 Success Criteria
+#### 2.1 Create YAML Configuration Services
+- [ ] **Create PromptRepository** for YAML prompt templates
+- [ ] **Create PolicyRepository** for YAML policy definitions
+- [ ] **Create ModelPresetRepository** for YAML model configurations
+- [ ] **Create AgentConfigurationRepository** for YAML agent configs
 
-### 17.5.1 Functional Requirements
-- [ ] All configuration uses OSGi DS with MetaType
-- [ ] File-backed configuration supports hot-reload
-- [ ] Configuration validation prevents invalid configurations
-- [ ] Configuration precedence rules work correctly
-- [ ] Configuration change events propagate properly
-- [ ] Configuration error recovery works reliably
+#### 2.2 Implement File Monitoring
+- [ ] **Extend WatchService integration** for YAML files
+- [ ] **Add YAML file change detection** and reload
+- [ ] **Implement YAML validation** with error reporting
+- [ ] **Add YAML schema validation** for complex structures
 
-### 17.5.2 Performance Requirements
-- [ ] Configuration loading completes within 5 seconds
-- [ ] Configuration changes apply within 1 second
-- [ ] Configuration validation completes within 500ms
-- [ ] Configuration memory usage stays under 50MB
-- [ ] Configuration hot-reload works without service interruption
+#### 2.3 Create YAML Parsers
+- [ ] **Create PromptYamlParser** with template support
+- [ ] **Create PolicyYamlParser** with rule validation
+- [ ] **Create ModelPresetYamlParser** with provider mapping
+- [ ] **Create AgentConfigYamlParser** with dependency resolution
 
-### 17.5.3 Quality Requirements
-- [ ] 90%+ code coverage for configuration services
-- [ ] All configuration validation rules tested
-- [ ] Configuration error scenarios tested
-- [ ] Configuration performance benchmarks established
-- [ ] Configuration documentation complete and accurate
+### Phase 3: Configuration Integration (Week 3-4)
 
-## 17.6 Risk Mitigation
+#### 3.1 Unified Configuration Access
+- [ ] **Create ConfigurationManager** as unified access point
+- [ ] **Implement configuration precedence** (env > cfg > yaml > defaults)
+- [ ] **Add configuration caching** for performance
+- [ ] **Create configuration change events**
 
-### 17.6.1 Technical Risks
-- **Configuration Loading Performance**: Implement caching and lazy loading
-- **Configuration Validation Complexity**: Use schema validation and incremental validation
-- **Configuration Change Conflicts**: Implement conflict resolution and rollback
-- **Configuration Security**: Add access controls and audit logging
+#### 3.2 openHAB UI Integration
+- [ ] **Add configuration to Paper UI** (for .cfg settings)
+- [ ] **Create Main UI configuration pages** for YAML files
+- [ ] **Implement configuration validation UI**
+- [ ] **Add configuration backup/restore functionality**
 
-### 17.6.2 Operational Risks
-- **Configuration Error Recovery**: Implement automatic backup and restore
-- **Configuration Change Management**: Add change validation and approval workflows
-- **Configuration Documentation**: Create comprehensive documentation and examples
-- **Configuration Testing**: Implement comprehensive testing framework
+#### 3.3 Configuration Documentation
+- [ ] **Create configuration schema documentation**
+- [ ] **Add configuration examples** for all YAML files
+- [ ] **Create configuration troubleshooting guide**
+- [ ] **Add configuration migration guide**
 
-## 17.7 Timeline and Dependencies
+### Phase 4: Testing and Validation (Week 4-5)
 
-### 17.7.1 Phase Dependencies
-- **Phase 1** (Core Infrastructure): No dependencies
-- **Phase 2** (File Resources): Depends on Phase 1 completion
-- **Phase 3** (Validation): Depends on Phase 2 completion
-- **Phase 4** (Integration): Depends on Phase 3 completion
+#### 4.1 Configuration Testing
+- [ ] **Create unit tests** for all configuration services
+- [ ] **Create integration tests** for configuration loading
+- [ ] **Create YAML validation tests**
+- [ ] **Create configuration precedence tests**
 
-### 17.7.2 External Dependencies
-- **openHAB WatchService**: For file change detection
-- **OSGi Configuration Admin**: For configuration management
-- **OSGi MetaType**: For configuration metadata
-- **YAML Parser**: For YAML configuration files
-- **JSON Schema Validator**: For configuration validation
+#### 4.2 Error Handling Testing
+- [ ] **Test configuration error recovery**
+- [ ] **Test YAML parsing error handling**
+- [ ] **Test configuration validation errors**
+- [ ] **Test configuration change events**
 
-### 17.7.3 Estimated Timeline
-- **Phase 1**: 2-3 weeks
-- **Phase 2**: 2-3 weeks
-- **Phase 3**: 1-2 weeks
-- **Phase 4**: 1-2 weeks
-- **Total**: 6-10 weeks
+## Configuration Examples
 
-## 17.8 Conclusion
+### OSGi Config Admin Examples
 
-This configuration management refactoring establishes a modern, type-safe, and maintainable configuration system for the openHAB AI bundle. The implementation follows openHAB best practices while providing the flexibility and performance required for AI system configuration.
+**Enhanced Configuration Service Example**:
+```java
+@Component(service = ModelConfigurationService.class, configurationPid = "org.openhab.ai.model")
+public class DefaultModelConfigurationService implements ModelConfigurationService {
 
-The refactoring will improve configuration maintainability, reduce configuration errors, and provide better user experience through hot-reload capabilities and comprehensive validation. The modular design allows for future extensions and maintains compatibility with existing openHAB configuration patterns.
+    private final Logger logger = LoggerFactory.getLogger(DefaultModelConfigurationService.class);
+    private final ConfigurationValidator validator = new ConfigurationValidator();
+
+    @Activate
+    public void activate(Map<String, Object> config) {
+        logger.debug("Activating Model Configuration Service");
+        
+        try {
+            // Validate configuration before loading
+            validator.validateModelConfiguration(config);
+            
+            // Load and validate provider configurations
+            loadProviderConfigurations(config);
+            
+            // Initialize configuration file and start watching
+            initializeConfigurationFile();
+            
+            logger.info("Model Configuration Service activated successfully");
+        } catch (ConfigurationException e) {
+            logger.error("Failed to activate Model Configuration Service: {}", e.getMessage());
+            // Load default configuration as fallback
+            loadDefaultConfiguration();
+        }
+    }
+
+    @Modified
+    public void modified(Map<String, Object> config) {
+        logger.debug("Modifying Model Configuration Service");
+        
+        try {
+            // Validate new configuration
+            validator.validateModelConfiguration(config);
+            
+            // Reload configuration
+            loadProviderConfigurations(config);
+            
+            logger.info("Model Configuration Service modified successfully");
+        } catch (ConfigurationException e) {
+            logger.error("Failed to modify Model Configuration Service: {}", e.getMessage());
+            // Keep existing configuration
+        }
+    }
+
+    private void loadProviderConfigurations(Map<String, Object> config) {
+        // Enhanced configuration loading with validation
+        primaryProvider = validator.validateProvider(getStringConfig(config, "ai.model.primary.provider", "ollama"));
+        fallbackProvider = validator.validateProvider(getStringConfig(config, "ai.model.fallback.provider", "openai"));
+        defaultTemperature = validator.validateTemperature(getDoubleConfig(config, "ai.model.default.temperature", 0.3));
+        defaultMaxTokens = validator.validateMaxTokens(getIntConfig(config, "ai.model.default.maxTokens", 1000));
+        
+        // Load and validate provider-specific configurations
+        loadProviderConfigs(config);
+    }
+}
+```
+
+**Configuration Validator Example**:
+```java
+public class ConfigurationValidator {
+    
+    private final Logger logger = LoggerFactory.getLogger(ConfigurationValidator.class);
+    
+    public void validateModelConfiguration(Map<String, Object> config) throws ConfigurationException {
+        // Validate required fields
+        validateRequiredField(config, "ai.model.primary.provider");
+        validateRequiredField(config, "ai.model.fallback.provider");
+        
+        // Validate numeric ranges
+        validateTemperatureRange(getDoubleConfig(config, "ai.model.default.temperature", 0.3));
+        validateMaxTokensRange(getIntConfig(config, "ai.model.default.maxTokens", 1000));
+        
+        // Validate provider configurations
+        validateProviderConfigurations(config);
+    }
+    
+    private void validateProviderConfigurations(Map<String, Object> config) throws ConfigurationException {
+        // Validate OpenAI configuration if enabled
+        if (getBooleanConfig(config, "ai.model.openai.enabled", false)) {
+            validateOpenAIConfig(config);
+        }
+        
+        // Validate Anthropic configuration if enabled
+        if (getBooleanConfig(config, "ai.model.anthropic.enabled", false)) {
+            validateAnthropicConfig(config);
+        }
+        
+        // Validate Ollama configuration if enabled
+        if (getBooleanConfig(config, "ai.model.ollama.enabled", true)) {
+            validateOllamaConfig(config);
+        }
+    }
+    
+    private void validateOpenAIConfig(Map<String, Object> config) throws ConfigurationException {
+        String apiKey = getStringConfig(config, "ai.model.openai.api.key", "");
+        if (apiKey.isEmpty()) {
+            throw new ConfigurationException("OpenAI API key is required when OpenAI is enabled");
+        }
+        
+        String baseUrl = getStringConfig(config, "ai.model.openai.base.url", "https://api.openai.com/v1");
+        if (!isValidUrl(baseUrl)) {
+            throw new ConfigurationException("Invalid OpenAI base URL: " + baseUrl);
+        }
+    }
+    
+    private void validateTemperatureRange(double temperature) throws ConfigurationException {
+        if (temperature < 0.0 || temperature > 2.0) {
+            throw new ConfigurationException("Temperature must be between 0.0 and 2.0, got: " + temperature);
+        }
+    }
+    
+    private void validateMaxTokensRange(int maxTokens) throws ConfigurationException {
+        if (maxTokens < 1 || maxTokens > 8192) {
+            throw new ConfigurationException("Max tokens must be between 1 and 8192, got: " + maxTokens);
+        }
+    }
+}
+```
+
+### YAML Configuration Examples
+
+**Agent Configuration (conf/ai/agents/energy-agent.yaml)**:
+```yaml
+agent:
+  id: "energy-agent"
+  name: "Energy Management Agent"
+  version: "1.0.0"
+  description: "AI agent for energy optimization and management"
+  
+  capabilities:
+    - "energy_monitoring"
+    - "schedule_optimization"
+    - "cost_analysis"
+    - "device_control"
+    
+  autonomy:
+    level: "high"
+    confidence_threshold: 0.8
+    max_actions_per_hour: 10
+    require_confirmation: false
+    
+  learning:
+    enabled: true
+    adaptation_rate: 0.1
+    memory_retention_days: 30
+    feedback_integration: true
+    
+  safety:
+    max_power_change_percent: 15
+    max_temperature_change_celsius: 3
+    emergency_override_enabled: true
+    audit_all_actions: true
+    
+  communication:
+    protocols: ["a2a", "mcp"]
+    push_notifications_enabled: true
+    event_streaming_enabled: true
+    
+  persistence:
+    enabled: true
+    storage_key: "energy-agent-data"
+    backup_enabled: true
+    retention_days: 90
+```
+
+**Policy Configuration (conf/ai/policies/energy-policies.yaml)**:
+```yaml
+policies:
+  energy_management:
+    version: "1.0.0"
+    description: "Energy management specific policies"
+    
+    constraints:
+      power_management:
+        max_instantaneous_power: "5000W"
+        max_daily_energy: "50kWh"
+        peak_shaving_enabled: true
+        load_balancing_enabled: true
+        
+      device_safety:
+        min_operating_temperature: "5°C"
+        max_operating_temperature: "35°C"
+        voltage_protection: true
+        current_limiting: true
+        
+      user_comfort:
+        min_indoor_temperature: "18°C"
+        max_indoor_temperature: "26°C"
+        humidity_range: "30-70%"
+        lighting_minimum: "100 lux"
+        
+    rules:
+      - name: "peak_shaving"
+        condition: "grid_demand > threshold"
+        action: "reduce_non_essential_loads"
+        priority: "high"
+        
+      - name: "comfort_violation"
+        condition: "temperature < 18°C OR temperature > 26°C"
+        action: "override_energy_savings"
+        priority: "critical"
+        
+      - name: "renewable_optimization"
+        condition: "solar_production > 0"
+        action: "maximize_renewable_usage"
+        priority: "medium"
+```
+
+## Success Criteria
+
+### Phase 1: OSGi Configuration
+- [ ] All configuration services have proper validation and error handling
+- [ ] Configuration validation works for all settings with `ai.{domain}.*` key patterns
+- [ ] Configuration changes are properly handled via @Modified
+- [ ] Configuration errors are logged and recovered from
+
+### Phase 2: YAML Configuration
+- [ ] YAML files are properly loaded and parsed
+- [ ] YAML validation catches configuration errors
+- [ ] YAML file changes trigger automatic reload
+- [ ] YAML configuration is accessible through services
+
+### Phase 3: Integration
+- [ ] Configuration precedence works correctly
+- [ ] UI integration provides user-friendly configuration
+- [ ] Configuration changes trigger appropriate events
+- [ ] Configuration backup/restore works
+
+### Phase 4: Testing
+- [ ] All configuration scenarios are tested
+- [ ] Error handling is thoroughly tested
+- [ ] Performance is acceptable under load
+- [ ] Documentation is complete and accurate
+
+## Risk Mitigation
+
+### Configuration Complexity
+- **Risk**: YAML configuration becomes too complex
+- **Mitigation**: Provide clear examples and documentation
+- **Mitigation**: Implement schema validation for YAML files
+
+### Performance Impact
+- **Risk**: Configuration loading impacts startup time
+- **Mitigation**: Implement lazy loading for YAML files
+- **Mitigation**: Add configuration caching
+
+### User Experience
+- **Risk**: Configuration is too complex for users
+- **Mitigation**: Provide UI integration for common settings
+- **Mitigation**: Create configuration wizards for complex setups
+
+### Backward Compatibility
+- **Risk**: Changes break existing configurations
+- **Mitigation**: Maintain backward compatibility for .cfg files
+- **Mitigation**: Provide migration tools for configuration updates
+
+## Timeline and Dependencies
+
+### Week 1-2: OSGi Configuration Enhancement
+- **Dependencies**: None
+- **Deliverables**: Enhanced validation, error handling, updated services
+
+### Week 2-3: YAML Infrastructure
+- **Dependencies**: Phase 1 completion
+- **Deliverables**: YAML repositories, parsers, file monitoring
+
+### Week 3-4: Integration
+- **Dependencies**: Phase 2 completion
+- **Deliverables**: Unified configuration, UI integration, documentation
+
+### Week 4-5: Testing
+- **Dependencies**: Phase 3 completion
+- **Deliverables**: Comprehensive testing, error handling, performance validation
+
+## Conclusion
+
+This plan provides a comprehensive configuration management strategy that:
+
+1. **Follows openHAB standards** for OSGi DS and file-based configuration
+2. **Separates concerns** between simple settings (.cfg) and complex data (YAML)
+3. **Provides flexibility** for different types of configuration needs
+4. **Ensures reliability** through proper validation and error handling
+5. **Maintains usability** through UI integration and documentation
+
+The combination of OSGi Config Admin for core settings and YAML for complex structured data provides the best of both worlds: reliability and flexibility.

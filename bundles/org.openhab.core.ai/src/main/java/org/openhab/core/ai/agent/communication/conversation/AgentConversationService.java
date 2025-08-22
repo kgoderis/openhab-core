@@ -126,9 +126,9 @@ public class AgentConversationService {
         }
 
         // Create conversation
-        Conversation conversation = Conversation.builder().conversationId(conversationId).participantIds(participantIds)
-                .templateId(templateId).context(context).startTime(Instant.now()).state(ConversationState.ACTIVE)
-                .build();
+        Conversation conversation = Conversation.builder().withConversationId(conversationId)
+                .withParticipantIds(participantIds).withTemplateId(templateId).withContext(context)
+                .withStartTime(Instant.now()).withState(ConversationState.ACTIVE).build();
 
         // Apply template if specified
         if (templateId != null) {

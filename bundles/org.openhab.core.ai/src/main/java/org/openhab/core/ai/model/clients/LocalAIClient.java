@@ -18,7 +18,6 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -123,7 +122,7 @@ public class LocalAIClient implements ModelClient {
                     }
                 }
 
-                return ModelResponseBuilder.builder().withContent(responseContent).withModelName(config.getModelName())
+                return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
                         .withProviderType(ModelProviderType.LOCALAI.name()).build();
 
             } catch (Exception e) {
@@ -207,7 +206,7 @@ public class LocalAIClient implements ModelClient {
                 }
 
                 String finalContent = contentBuilder.toString();
-                ModelResponse llmResponse = ModelResponseBuilder.builder().withContent(finalContent)
+                ModelResponse llmResponse = ModelResponse.builder().withContent(finalContent)
                         .withModelName(config.getModelName()).withProviderType(ModelProviderType.LOCALAI.name())
                         .build();
 

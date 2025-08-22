@@ -49,8 +49,8 @@ class StubServiceTest {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
 
-        StubResponse builderResponse = StubResponse.builder().success(true).message("Built response").data("test")
-                .statusCode(201).headers(headers).processingTimeMs(150).build();
+        StubResponse builderResponse = StubResponse.builder().withSuccess(true).withMessage("Built response")
+                .withData("test").withStatusCode(201).withHeaders(headers).withProcessingTimeMs(150).build();
 
         assertTrue(builderResponse.isSuccess());
         assertEquals("Built response", builderResponse.getMessage().orElse(null));

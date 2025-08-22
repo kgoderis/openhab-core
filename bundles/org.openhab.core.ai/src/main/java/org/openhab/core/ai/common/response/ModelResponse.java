@@ -1,9 +1,9 @@
 package org.openhab.core.ai.common.response;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -38,60 +38,41 @@ public class ModelResponse implements Response<String> {
     /**
      * Create a new ModelResponse.
      * 
-     * @param id the response ID
-     * @param content the response content
-     * @param modelName the model name
-     * @param providerType the provider type
-     * @param timestamp the response timestamp
-     * @param promptTokens the number of prompt tokens
-     * @param completionTokens the number of completion tokens
-     * @param totalTokens the total number of tokens
-     * @param cost the response cost
-     * @param responseTimeMs the response time in milliseconds
-     * @param metadata additional metadata
-     * @param finishReason the finish reason
-     * @param errorMessage the error message if any
+     * @param builder the builder containing all parameters
      */
-    public ModelResponse(String id, String content, String modelName, String providerType, long timestamp,
-            int promptTokens, int completionTokens, int totalTokens, double cost, long responseTimeMs,
-            Map<String, Object> metadata, @Nullable String finishReason, @Nullable String errorMessage) {
-        this.id = Objects.requireNonNull(id, "id");
-        this.content = Objects.requireNonNull(content, "content");
-        this.modelName = Objects.requireNonNull(modelName, "modelName");
-        this.providerType = Objects.requireNonNull(providerType, "providerType");
-        this.timestamp = timestamp;
+    private ModelResponse(Builder builder) {
+        this.id = builder.id != null ? builder.id : generateId();
+        this.content = Objects.requireNonNull(builder.content, "content");
+        this.modelName = Objects.requireNonNull(builder.modelName, "modelName");
+        this.providerType = Objects.requireNonNull(builder.providerType, "providerType");
+        this.timestamp = builder.timestamp;
         this.timestampInstant = Instant.ofEpochMilli(timestamp);
-        this.promptTokens = promptTokens;
-        this.completionTokens = completionTokens;
-        this.totalTokens = totalTokens;
-        this.cost = cost;
-        this.responseTimeMs = responseTimeMs;
-        this.metadata = Objects.requireNonNull(metadata, "metadata");
-        this.finishReason = finishReason;
-        this.errorMessage = errorMessage;
+        this.promptTokens = builder.promptTokens;
+        this.completionTokens = builder.completionTokens;
+        this.totalTokens = builder.totalTokens;
+        this.cost = builder.cost;
+        this.responseTimeMs = builder.responseTimeMs;
+        this.metadata = Map.copyOf(builder.metadata);
+        this.finishReason = builder.finishReason;
+        this.errorMessage = builder.errorMessage;
     }
 
     /**
-     * Create a new ModelResponse with Instant timestamp.
+     * Create a new ModelResponseBuilder instance.
      * 
-     * @param content the response content
-     * @param modelName the model name
-     * @param providerType the provider type
-     * @param timestamp the response timestamp
-     * @param promptTokens the number of prompt tokens
-     * @param completionTokens the number of completion tokens
-     * @param totalTokens the total number of tokens
-     * @param cost the response cost
-     * @param responseTimeMs the response time in milliseconds
-     * @param metadata additional metadata
-     * @param finishReason the finish reason
-     * @param errorMessage the error message if any
+     * @return a new ModelResponseBuilder
      */
-    public ModelResponse(String content, String modelName, String providerType, long timestamp, int promptTokens,
-            int completionTokens, int totalTokens, double cost, long responseTimeMs, Map<String, Object> metadata,
-            @Nullable String finishReason, @Nullable String errorMessage) {
-        this(UUID.randomUUID().toString(), content, modelName, providerType, timestamp, promptTokens, completionTokens,
-                totalTokens, cost, responseTimeMs, metadata, finishReason, errorMessage);
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Create a builder from this instance for modification.
+     * 
+     * @return a new builder with current values
+     */
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     @Override
@@ -219,15 +200,6 @@ public class ModelResponse implements Response<String> {
     }
 
     /**
-     * Create a new ModelResponseBuilder instance.
-     * 
-     * @return a new ModelResponseBuilder
-     */
-    public static ModelResponseBuilder builder() {
-        return ModelResponseBuilder.builder();
-    }
-
-    /**
      * Create a successful response.
      * 
      * @param content the response content
@@ -236,8 +208,7 @@ public class ModelResponse implements Response<String> {
      * @return a successful ModelResponse
      */
     public static ModelResponse success(String content, String modelName, String providerType) {
-        return new ModelResponse(generateId(), content, modelName, providerType, System.currentTimeMillis(), 0, 0, 0,
-                0.0, 0, Map.of(), null, null);
+        return builder().withContent(content).withModelName(modelName).withProviderType(providerType).build();
     }
 
     /**
@@ -249,8 +220,8 @@ public class ModelResponse implements Response<String> {
      * @return an error ModelResponse
      */
     public static ModelResponse error(String errorMessage, String modelName, String providerType) {
-        return new ModelResponse(generateId(), "", modelName, providerType, System.currentTimeMillis(), 0, 0, 0, 0.0, 0,
-                Map.of(), null, errorMessage);
+        return builder().withContent("").withModelName(modelName).withProviderType(providerType)
+                .withErrorMessage(errorMessage).build();
     }
 
     private static String generateId() {
@@ -289,5 +260,144 @@ public class ModelResponse implements Response<String> {
                 + ", totalTokens=" + totalTokens + ", cost=" + cost + ", responseTimeMs=" + responseTimeMs
                 + ", metadata=" + metadata + ", finishReason='" + finishReason + '\'' + ", errorMessage='"
                 + errorMessage + '\'' + '}';
+    }
+
+    /**
+     * Builder for creating ModelResponse objects.
+     * 
+     * <p>
+     * Provides a fluent API with validation for constructing ModelResponse
+     * instances.
+     * </p>
+     * 
+     * @author Karel Goderis - Initial Contribution
+     * @since 1.0.0
+     */
+    public static final class Builder {
+        private @Nullable String id;
+        private String content = "";
+        private String modelName = "";
+        private String providerType = "";
+        private long timestamp = System.currentTimeMillis();
+        private int promptTokens = 0;
+        private int completionTokens = 0;
+        private int totalTokens = 0;
+        private double cost = 0.0;
+        private long responseTimeMs = 0L;
+        private Map<String, Object> metadata = Map.of();
+        private @Nullable String finishReason;
+        private @Nullable String errorMessage;
+
+        public Builder() {
+        }
+
+        public Builder(ModelResponse source) {
+            this.id = source.id;
+            this.content = source.content;
+            this.modelName = source.modelName;
+            this.providerType = source.providerType;
+            this.timestamp = source.timestamp;
+            this.promptTokens = source.promptTokens;
+            this.completionTokens = source.completionTokens;
+            this.totalTokens = source.totalTokens;
+            this.cost = source.cost;
+            this.responseTimeMs = source.responseTimeMs;
+            this.metadata = new HashMap<>(source.metadata);
+            this.finishReason = source.finishReason;
+            this.errorMessage = source.errorMessage;
+        }
+
+        public Builder withId(String id) {
+            this.id = Objects.requireNonNull(id, "id");
+            return this;
+        }
+
+        public Builder withContent(String content) {
+            this.content = Objects.requireNonNull(content, "content");
+            return this;
+        }
+
+        public Builder withModelName(String modelName) {
+            this.modelName = Objects.requireNonNull(modelName, "modelName");
+            return this;
+        }
+
+        public Builder withProviderType(String providerType) {
+            this.providerType = Objects.requireNonNull(providerType, "providerType");
+            return this;
+        }
+
+        public Builder withTimestamp(long timestamp) {
+            this.timestamp = timestamp;
+            return this;
+        }
+
+        public Builder withPromptTokens(int promptTokens) {
+            this.promptTokens = promptTokens;
+            return this;
+        }
+
+        public Builder withCompletionTokens(int completionTokens) {
+            this.completionTokens = completionTokens;
+            return this;
+        }
+
+        public Builder withTotalTokens(int totalTokens) {
+            this.totalTokens = totalTokens;
+            return this;
+        }
+
+        public Builder withCost(double cost) {
+            this.cost = cost;
+            return this;
+        }
+
+        public Builder withResponseTimeMs(long responseTimeMs) {
+            this.responseTimeMs = responseTimeMs;
+            return this;
+        }
+
+        public Builder withMetadata(Map<String, Object> metadata) {
+            this.metadata = Objects.requireNonNull(metadata, "metadata");
+            return this;
+        }
+
+        public Builder withFinishReason(@Nullable String finishReason) {
+            this.finishReason = finishReason;
+            return this;
+        }
+
+        public Builder withErrorMessage(@Nullable String errorMessage) {
+            this.errorMessage = errorMessage;
+            return this;
+        }
+
+        public ModelResponse build() {
+            if (content.isBlank()) {
+                throw new IllegalArgumentException("content must not be blank");
+            }
+            if (modelName.isBlank()) {
+                throw new IllegalArgumentException("modelName must not be blank");
+            }
+            if (providerType.isBlank()) {
+                throw new IllegalArgumentException("providerType must not be blank");
+            }
+            if (promptTokens < 0) {
+                throw new IllegalArgumentException("promptTokens must be >= 0");
+            }
+            if (completionTokens < 0) {
+                throw new IllegalArgumentException("completionTokens must be >= 0");
+            }
+            if (totalTokens < 0) {
+                throw new IllegalArgumentException("totalTokens must be >= 0");
+            }
+            if (responseTimeMs < 0) {
+                throw new IllegalArgumentException("responseTimeMs must be >= 0");
+            }
+            if (cost < 0) {
+                throw new IllegalArgumentException("cost must be >= 0");
+            }
+            return new ModelResponse(this);
+        }
     }
 }

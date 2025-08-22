@@ -7,7 +7,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.common.context.ExecutionContext;
-import org.openhab.core.ai.common.context.ExecutionContextBuilder;
 
 /**
  * Unified builder for ExecutionContext objects.
@@ -125,8 +124,8 @@ public final class ActionContextBuilder extends ActionBuilder<ExecutionContext> 
         if (!isValid()) {
             throw new IllegalArgumentException("Invalid ActionContextBuilder state: " + getValidationErrors());
         }
-        ExecutionContextBuilder builder = ExecutionContext.builder().withContextId(correlationId).withProtocol(protocol)
-                .withClientId(clientId).withSessionId(sessionId).withAuthContext(authContext)
+        ExecutionContext.Builder builder = ExecutionContext.builder().withContextId(correlationId)
+                .withProtocol(protocol).withClientId(clientId).withSessionId(sessionId).withAuthContext(authContext)
                 .withExecutionStartTime(executionStartTime).withCorrelationId(correlationId)
                 .withValues(protocolContext);
         if (priority != null && !priority.isEmpty()) {

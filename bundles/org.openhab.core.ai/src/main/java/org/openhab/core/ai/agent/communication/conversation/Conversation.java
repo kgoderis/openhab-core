@@ -1,7 +1,11 @@
 package org.openhab.core.ai.agent.communication.conversation;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -28,11 +32,14 @@ public class Conversation {
     private Instant lastActivity;
     private int messageCount;
 
-    Conversation(ConversationBuilder builder) {
+    /**
+     * Private constructor for builder pattern.
+     */
+    private Conversation(Builder builder) {
         this.conversationId = builder.conversationId;
-        this.participantIds = builder.participantIds;
+        this.participantIds = Set.copyOf(builder.participantIds);
         this.templateId = builder.templateId;
-        this.context = builder.context;
+        this.context = Map.copyOf(builder.context);
         this.startTime = builder.startTime;
         this.state = builder.state;
         this.lastActivity = builder.lastActivity;
@@ -99,9 +106,118 @@ public class Conversation {
         this.messageCount = messageCount;
     }
 
-    public static ConversationBuilder builder() {
-        return new ConversationBuilder();
+    /**
+     * Create a new builder for Conversation.
+     *
+     * @return a new Builder
+     */
+    public static Builder builder() {
+        return new Builder();
     }
 
-    /* Extracted: org.openhab.core.ai.agent.communication.conversation.ConversationBuilder */
+    /**
+     * Create a builder from this Conversation for modification.
+     *
+     * @return a new Builder with current values
+     */
+    public Builder toBuilder() {
+        return new Builder(this);
+    }
+
+    /**
+     * Builder for creating Conversation instances.
+     *
+     * @author Karel Goderis - Initial Contribution
+     * @since 1.0.0
+     */
+    public static final class Builder {
+        private String conversationId = "";
+        private Set<String> participantIds = Set.of();
+        private @Nullable String templateId;
+        private Map<String, Object> context = Map.of();
+        private Instant startTime = Instant.now();
+        private ConversationState state = ConversationState.ACTIVE;
+        private Instant lastActivity = Instant.now();
+        private int messageCount = 0;
+
+        /**
+         * Default constructor.
+         */
+        public Builder() {
+        }
+
+        /**
+         * Copy constructor.
+         *
+         * @param source the source Conversation
+         */
+        public Builder(Conversation source) {
+            this.conversationId = source.conversationId;
+            this.participantIds = new HashSet<>(source.participantIds);
+            this.templateId = source.templateId;
+            this.context = new HashMap<>(source.context);
+            this.startTime = source.startTime;
+            this.state = source.state;
+            this.lastActivity = source.lastActivity;
+            this.messageCount = source.messageCount;
+        }
+
+        public Builder withConversationId(String conversationId) {
+            this.conversationId = Objects.requireNonNull(conversationId, "conversationId");
+            return this;
+        }
+
+        public Builder withParticipantIds(List<String> participantIds) {
+            this.participantIds = new HashSet<>(Objects.requireNonNull(participantIds, "participantIds"));
+            return this;
+        }
+
+        public Builder withTemplateId(@Nullable String templateId) {
+            this.templateId = templateId;
+            return this;
+        }
+
+        public Builder withContext(Map<String, Object> context) {
+            this.context = Objects.requireNonNull(context, "context");
+            return this;
+        }
+
+        public Builder withStartTime(Instant startTime) {
+            this.startTime = Objects.requireNonNull(startTime, "startTime");
+            return this;
+        }
+
+        public Builder withState(ConversationState state) {
+            this.state = Objects.requireNonNull(state, "state");
+            return this;
+        }
+
+        public Builder withLastActivity(Instant lastActivity) {
+            this.lastActivity = Objects.requireNonNull(lastActivity, "lastActivity");
+            return this;
+        }
+
+        public Builder withMessageCount(int messageCount) {
+            this.messageCount = messageCount;
+            return this;
+        }
+
+        /**
+         * Build the Conversation.
+         *
+         * @return the new Conversation
+         */
+        public Conversation build() {
+            if (conversationId.isBlank()) {
+                throw new IllegalArgumentException("conversationId must not be blank");
+            }
+            if (participantIds.isEmpty()) {
+                throw new IllegalArgumentException("participantIds must not be empty");
+            }
+            if (messageCount < 0) {
+                throw new IllegalArgumentException("messageCount must be non-negative");
+            }
+            return new Conversation(this);
+        }
+    }
 }

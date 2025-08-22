@@ -8,7 +8,6 @@ import java.util.Optional;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.response.Response;
-import org.openhab.core.ai.common.response.StubResponseBuilder;
 
 /**
  * Response object for stub services.
@@ -20,7 +19,7 @@ import org.openhab.core.ai.common.response.StubResponseBuilder;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class StubResponse implements Response<Object> {
+public final class StubResponse implements Response<Object> {
 
     private final boolean success;
     private final @Nullable String message;
@@ -30,17 +29,14 @@ public class StubResponse implements Response<Object> {
     private final Instant timestamp;
     private final long processingTimeMs;
 
-    // Constructor using inner Builder removed; use StubResponseBuilder instead
-
-    public StubResponse(StubResponseBuilder builder) {
-        this.success = builder.getSuccess();
-        this.message = builder.getMessage();
-        this.data = builder.getData();
-        this.statusCode = builder.getStatusCode();
-        this.headers = builder.getHeaders();
-        long timestampValue = builder.getTimestamp();
-        this.timestamp = Instant.ofEpochMilli(timestampValue);
-        this.processingTimeMs = builder.getProcessingTimeMs();
+    private StubResponse(Builder builder) {
+        this.success = builder.success;
+        this.message = builder.message;
+        this.data = builder.data;
+        this.statusCode = builder.statusCode;
+        this.headers = builder.headers != null ? Map.copyOf(builder.headers) : null;
+        this.timestamp = Instant.ofEpochMilli(builder.timestamp);
+        this.processingTimeMs = builder.processingTimeMs;
     }
 
     /**
@@ -155,8 +151,17 @@ public class StubResponse implements Response<Object> {
      * 
      * @return Builder instance
      */
-    public static StubResponseBuilder builder() {
-        return new StubResponseBuilder();
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Create a builder from this instance for modification.
+     * 
+     * @return Builder instance with current values
+     */
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     /**
@@ -166,7 +171,7 @@ public class StubResponse implements Response<Object> {
      * @return StubResponse instance
      */
     public static StubResponse success(Object data) {
-        return builder().success(true).data(data).build();
+        return builder().withSuccess(true).withData(data).build();
     }
 
     /**
@@ -176,7 +181,7 @@ public class StubResponse implements Response<Object> {
      * @return StubResponse instance
      */
     public static StubResponse success(String message) {
-        return builder().success(true).message(message).build();
+        return builder().withSuccess(true).withMessage(message).build();
     }
 
     /**
@@ -186,7 +191,7 @@ public class StubResponse implements Response<Object> {
      * @return StubResponse instance
      */
     public static StubResponse error(String message) {
-        return builder().success(false).message(message).statusCode(500).build();
+        return builder().withSuccess(false).withMessage(message).withStatusCode(500).build();
     }
 
     /**
@@ -197,7 +202,7 @@ public class StubResponse implements Response<Object> {
      * @return StubResponse instance
      */
     public static StubResponse error(String message, int statusCode) {
-        return builder().success(false).message(message).statusCode(statusCode).build();
+        return builder().withSuccess(false).withMessage(message).withStatusCode(statusCode).build();
     }
 
     @Override
@@ -226,5 +231,81 @@ public class StubResponse implements Response<Object> {
                 + ", processingTimeMs=" + processingTimeMs + '}';
     }
 
-    // Builder extracted to top-level: see StubResponseBuilder
+    /**
+     * Builder for StubResponse.
+     * 
+     * @author Karel Goderis - Initial Contribution
+     * @since 1.0.0
+     */
+    public static final class Builder {
+        private boolean success = true;
+        private String message = "";
+        private @Nullable Object data;
+        private int statusCode = 200;
+        private @Nullable Map<String, String> headers;
+        private long timestamp = System.currentTimeMillis();
+        private long processingTimeMs = 0L;
+
+        public Builder() {
+            // Default constructor
+        }
+
+        public Builder(StubResponse source) {
+            this.success = source.success;
+            this.message = source.message != null ? source.message : "";
+            this.data = source.data;
+            this.statusCode = source.statusCode;
+            this.headers = source.headers;
+            this.timestamp = source.timestamp.toEpochMilli();
+            this.processingTimeMs = source.processingTimeMs;
+        }
+
+        public Builder withSuccess(boolean success) {
+            this.success = success;
+            return this;
+        }
+
+        public Builder withMessage(String message) {
+            this.message = Objects.requireNonNull(message, "message");
+            return this;
+        }
+
+        public Builder withData(@Nullable Object data) {
+            this.data = data;
+            return this;
+        }
+
+        public Builder withStatusCode(int statusCode) {
+            this.statusCode = statusCode;
+            return this;
+        }
+
+        public Builder withHeaders(@Nullable Map<String, String> headers) {
+            this.headers = headers;
+            return this;
+        }
+
+        public Builder withTimestamp(long timestamp) {
+            this.timestamp = timestamp;
+            return this;
+        }
+
+        public Builder withProcessingTimeMs(long processingTimeMs) {
+            this.processingTimeMs = processingTimeMs;
+            return this;
+        }
+
+        public StubResponse build() {
+            if (statusCode < 100 || statusCode > 599) {
+                throw new IllegalArgumentException("Status code must be between 100 and 599, got: " + statusCode);
+            }
+            if (timestamp < 0) {
+                throw new IllegalArgumentException("Timestamp must be non-negative, got: " + timestamp);
+            }
+            if (processingTimeMs < 0) {
+                throw new IllegalArgumentException("Processing time must be non-negative, got: " + processingTimeMs);
+            }
+            return new StubResponse(this);
+        }
+    }
 }

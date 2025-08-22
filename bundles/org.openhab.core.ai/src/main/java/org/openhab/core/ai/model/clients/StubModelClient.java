@@ -7,7 +7,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -38,7 +37,7 @@ public class StubModelClient implements ModelClient {
 
     @Override
     public CompletableFuture<ModelResponse> complete(String prompt, ModelParameters params) {
-        return CompletableFuture.completedFuture(ModelResponseBuilder.builder()
+        return CompletableFuture.completedFuture(ModelResponse.builder()
                 .withContent("This is a stub response from " + providerType + " model " + modelName)
                 .withModelName(modelName).withProviderType(providerType.name()).build());
     }
@@ -48,7 +47,7 @@ public class StubModelClient implements ModelClient {
             ModelStreamHandler handler) {
         // Simulate streaming by calling onChunk and then onComplete
         handler.onChunk("This is a stub streaming response from " + providerType + " model " + modelName);
-        ModelResponse response = ModelResponseBuilder.builder()
+        ModelResponse response = ModelResponse.builder()
                 .withContent("This is a stub streaming response from " + providerType + " model " + modelName)
                 .withModelName(modelName).withProviderType(providerType.name()).build();
         handler.onComplete(response);

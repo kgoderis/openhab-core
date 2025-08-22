@@ -1,5 +1,6 @@
 package org.openhab.core.ai.config;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -27,26 +28,16 @@ public class ProtocolConfiguration extends BaseConfiguration {
     private final int retryAttempts;
 
     /**
-     * Create a new AI protocol configuration.
-     * 
-     * @param protocolName The name of the protocol ("mcp" or "a2a")
-     * @param enabled Whether the protocol is enabled
-     * @param endpoint The protocol endpoint URL
-     * @param authenticationConfig Authentication configuration
-     * @param protocolSpecificConfig Protocol-specific configuration options
-     * @param timeoutSeconds Request timeout in seconds
-     * @param retryAttempts Number of retry attempts for failed requests
+     * Private constructor for builder pattern.
      */
-    public ProtocolConfiguration(String protocolName, boolean enabled, @Nullable String endpoint,
-            Map<String, String> authenticationConfig, Map<String, Object> protocolSpecificConfig, int timeoutSeconds,
-            int retryAttempts) {
-        super(protocolName, enabled, protocolName, "1.0.0",
-                createCustomOptions(authenticationConfig, protocolSpecificConfig));
-        this.endpoint = endpoint;
-        this.authenticationConfig = authenticationConfig != null ? Map.copyOf(authenticationConfig) : Map.of();
-        this.protocolSpecificConfig = protocolSpecificConfig != null ? Map.copyOf(protocolSpecificConfig) : Map.of();
-        this.timeoutSeconds = Math.max(1, timeoutSeconds);
-        this.retryAttempts = Math.max(0, retryAttempts);
+    private ProtocolConfiguration(Builder builder) {
+        super(builder.protocolName, builder.enabled, builder.protocolName, "1.0.0",
+                createCustomOptions(builder.authenticationConfig, builder.protocolSpecificConfig));
+        this.endpoint = builder.endpoint;
+        this.authenticationConfig = Map.copyOf(builder.authenticationConfig);
+        this.protocolSpecificConfig = Map.copyOf(builder.protocolSpecificConfig);
+        this.timeoutSeconds = Math.max(1, builder.timeoutSeconds);
+        this.retryAttempts = Math.max(0, builder.retryAttempts);
     }
 
     /**
@@ -54,14 +45,29 @@ public class ProtocolConfiguration extends BaseConfiguration {
      */
     private static Map<String, Object> createCustomOptions(Map<String, String> authenticationConfig,
             Map<String, Object> protocolSpecificConfig) {
-        Map<String, Object> customOptions = new java.util.HashMap<>();
-        if (authenticationConfig != null) {
-            customOptions.putAll(authenticationConfig);
-        }
-        if (protocolSpecificConfig != null) {
-            customOptions.putAll(protocolSpecificConfig);
-        }
+        Map<String, Object> customOptions = new HashMap<>();
+        customOptions.putAll(authenticationConfig);
+        customOptions.putAll(protocolSpecificConfig);
         return customOptions;
+    }
+
+    /**
+     * Create a new builder for this configuration.
+     * 
+     * @param protocolName The protocol name (cannot be null or blank)
+     * @return A new builder instance
+     */
+    public static Builder builder(String protocolName) {
+        return new Builder(protocolName);
+    }
+
+    /**
+     * Create a new builder from this configuration.
+     * 
+     * @return a new builder with current values
+     */
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     /**
@@ -165,16 +171,6 @@ public class ProtocolConfiguration extends BaseConfiguration {
         return retryAttempts;
     }
 
-    /**
-     * Create a builder for this configuration.
-     * 
-     * @param protocolName The protocol name
-     * @return A new builder instance
-     */
-    public static ProtocolConfigurationBuilder builder(String protocolName) {
-        return new ProtocolConfigurationBuilder(protocolName);
-    }
-
     @Override
     public boolean equals(@Nullable Object o) {
         if (this == o)
@@ -205,5 +201,158 @@ public class ProtocolConfiguration extends BaseConfiguration {
                 + protocolSpecificConfig.size() + '}';
     }
 
-    // Inner Builder extracted to top-level: org.openhab.core.ai.config.ProtocolConfigurationBuilder
+    /**
+     * Builder for ProtocolConfiguration.
+     * 
+     * This builder provides a fluent API for creating ProtocolConfiguration instances.
+     * The builder is not thread-safe and should be used for single-threaded construction.
+     * 
+     * @author Karel Goderis - Initial Contribution
+     * @since 1.0.0
+     */
+    public static final class Builder {
+        private final String protocolName;
+        private boolean enabled = true;
+        private @Nullable String endpoint;
+        private Map<String, String> authenticationConfig = new HashMap<>();
+        private Map<String, Object> protocolSpecificConfig = new HashMap<>();
+        private int timeoutSeconds = 30;
+        private int retryAttempts = 3;
+
+        /**
+         * Create a new builder with the specified protocol name.
+         * 
+         * @param protocolName the protocol name (cannot be null or blank)
+         */
+        public Builder(String protocolName) {
+            this.protocolName = Objects.requireNonNull(protocolName, "protocolName");
+        }
+
+        /**
+         * Create a new builder from an existing ProtocolConfiguration.
+         * 
+         * @param source the source configuration to copy from
+         */
+        public Builder(ProtocolConfiguration source) {
+            this.protocolName = source.getProtocolName();
+            this.enabled = source.isEnabled();
+            this.endpoint = source.endpoint;
+            this.authenticationConfig = new HashMap<>(source.authenticationConfig);
+            this.protocolSpecificConfig = new HashMap<>(source.protocolSpecificConfig);
+            this.timeoutSeconds = source.timeoutSeconds;
+            this.retryAttempts = source.retryAttempts;
+        }
+
+        /**
+         * Set whether the protocol is enabled.
+         * 
+         * @param enabled whether the protocol is enabled
+         * @return this builder
+         */
+        public Builder withEnabled(boolean enabled) {
+            this.enabled = enabled;
+            return this;
+        }
+
+        /**
+         * Set the protocol endpoint.
+         * 
+         * @param endpoint the protocol endpoint URL (can be null)
+         * @return this builder
+         */
+        public Builder withEndpoint(@Nullable String endpoint) {
+            this.endpoint = endpoint;
+            return this;
+        }
+
+        /**
+         * Set the authentication configuration.
+         * 
+         * @param authenticationConfig the authentication configuration map (cannot be null)
+         * @return this builder
+         */
+        public Builder withAuthenticationConfig(Map<String, String> authenticationConfig) {
+            this.authenticationConfig.clear();
+            this.authenticationConfig.putAll(Objects.requireNonNull(authenticationConfig, "authenticationConfig"));
+            return this;
+        }
+
+        /**
+         * Add an authentication configuration entry.
+         * 
+         * @param key the configuration key (cannot be null)
+         * @param value the configuration value (cannot be null)
+         * @return this builder
+         */
+        public Builder withAuthenticationEntry(String key, String value) {
+            this.authenticationConfig.put(Objects.requireNonNull(key, "key"), Objects.requireNonNull(value, "value"));
+            return this;
+        }
+
+        /**
+         * Set the protocol-specific configuration.
+         * 
+         * @param protocolSpecificConfig the protocol-specific configuration map (cannot be null)
+         * @return this builder
+         */
+        public Builder withProtocolSpecificConfig(Map<String, Object> protocolSpecificConfig) {
+            this.protocolSpecificConfig.clear();
+            this.protocolSpecificConfig
+                    .putAll(Objects.requireNonNull(protocolSpecificConfig, "protocolSpecificConfig"));
+            return this;
+        }
+
+        /**
+         * Add a protocol-specific configuration entry.
+         * 
+         * @param key the configuration key (cannot be null)
+         * @param value the configuration value (cannot be null)
+         * @return this builder
+         */
+        public Builder withProtocolEntry(String key, Object value) {
+            this.protocolSpecificConfig.put(Objects.requireNonNull(key, "key"), Objects.requireNonNull(value, "value"));
+            return this;
+        }
+
+        /**
+         * Set the request timeout in seconds.
+         * 
+         * @param timeoutSeconds the timeout in seconds (must be positive)
+         * @return this builder
+         */
+        public Builder withTimeoutSeconds(int timeoutSeconds) {
+            this.timeoutSeconds = timeoutSeconds;
+            return this;
+        }
+
+        /**
+         * Set the number of retry attempts.
+         * 
+         * @param retryAttempts the number of retry attempts (must be non-negative)
+         * @return this builder
+         */
+        public Builder withRetryAttempts(int retryAttempts) {
+            this.retryAttempts = retryAttempts;
+            return this;
+        }
+
+        /**
+         * Build the ProtocolConfiguration instance.
+         * 
+         * @return the configured ProtocolConfiguration
+         * @throws IllegalArgumentException if validation fails
+         */
+        public ProtocolConfiguration build() {
+            if (protocolName.isBlank()) {
+                throw new IllegalArgumentException("protocolName must not be blank");
+            }
+            if (timeoutSeconds <= 0) {
+                throw new IllegalArgumentException("timeoutSeconds must be positive");
+            }
+            if (retryAttempts < 0) {
+                throw new IllegalArgumentException("retryAttempts must be non-negative");
+            }
+            return new ProtocolConfiguration(this);
+        }
+    }
 }

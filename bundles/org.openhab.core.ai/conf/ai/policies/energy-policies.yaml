@@ -1,0 +1,39 @@
+policies:
+  energy_management:
+    version: "1.0.0"
+    description: "Energy management specific policies"
+    
+    constraints:
+      power_management:
+        max_instantaneous_power: "5000W"
+        max_daily_energy: "50kWh"
+        peak_shaving_enabled: true
+        load_balancing_enabled: true
+        
+      device_safety:
+        min_operating_temperature: "5°C"
+        max_operating_temperature: "35°C"
+        voltage_protection: true
+        current_limiting: true
+        
+      user_comfort:
+        min_indoor_temperature: "18°C"
+        max_indoor_temperature: "26°C"
+        humidity_range: "30-70%"
+        lighting_minimum: "100 lux"
+        
+    rules:
+      - name: "peak_shaving"
+        condition: "grid_demand > threshold"
+        action: "reduce_non_essential_loads"
+        priority: "high"
+        
+      - name: "comfort_violation"
+        condition: "temperature < 18°C OR temperature > 26°C"
+        action: "override_energy_savings"
+        priority: "critical"
+        
+      - name: "renewable_optimization"
+        condition: "solar_production > 0"
+        action: "maximize_renewable_usage"
+        priority: "medium"

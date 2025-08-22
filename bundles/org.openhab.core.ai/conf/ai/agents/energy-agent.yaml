@@ -1,0 +1,40 @@
+agent:
+  id: "energy-agent"
+  name: "Energy Management Agent"
+  version: "1.0.0"
+  description: "AI agent for energy optimization and management"
+  
+  capabilities:
+    - "energy_monitoring"
+    - "schedule_optimization"
+    - "cost_analysis"
+    - "device_control"
+    
+  autonomy:
+    level: "high"
+    confidence_threshold: 0.8
+    max_actions_per_hour: 10
+    require_confirmation: false
+    
+  learning:
+    enabled: true
+    adaptation_rate: 0.1
+    memory_retention_days: 30
+    feedback_integration: true
+    
+  safety:
+    max_power_change_percent: 15
+    max_temperature_change_celsius: 3
+    emergency_override_enabled: true
+    audit_all_actions: true
+    
+  communication:
+    protocols: ["a2a", "mcp"]
+    push_notifications_enabled: true
+    event_streaming_enabled: true
+    
+  persistence:
+    enabled: true
+    storage_key: "energy-agent-data"
+    backup_enabled: true
+    retention_days: 90

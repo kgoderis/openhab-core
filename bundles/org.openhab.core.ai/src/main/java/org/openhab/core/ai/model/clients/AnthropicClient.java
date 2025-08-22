@@ -17,7 +17,6 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -107,7 +106,7 @@ public class AnthropicClient implements ModelClient {
                 long responseTime = System.currentTimeMillis() - startTime;
                 trackMetrics(responseTime, true, null);
 
-                return ModelResponseBuilder.builder().withContent(responseContent).withModelName(config.getModelName())
+                return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
                         .withProviderType(ModelProviderType.ANTHROPIC.name()).build();
 
             } catch (Exception e) {
@@ -173,7 +172,7 @@ public class AnthropicClient implements ModelClient {
                         var start = event.asMessageStart();
                         modelNameRef.set(start.message().model().toString());
                     } else if (event.isMessageStop()) {
-                        handler.onComplete(ModelResponseBuilder.builder().withContent(responseContent.toString())
+                        handler.onComplete(ModelResponse.builder().withContent(responseContent.toString())
                                 .withModelName(modelNameRef.get()).withProviderType(ModelProviderType.ANTHROPIC.name())
                                 .build());
                     }
@@ -183,8 +182,8 @@ public class AnthropicClient implements ModelClient {
                 long responseTime = System.currentTimeMillis() - startTime;
                 trackMetrics(responseTime, true, null);
 
-                return ModelResponseBuilder.builder().withContent(responseContent.toString())
-                        .withModelName(modelNameRef.get()).withProviderType(ModelProviderType.ANTHROPIC.name()).build();
+                return ModelResponse.builder().withContent(responseContent.toString()).withModelName(modelNameRef.get())
+                        .withProviderType(ModelProviderType.ANTHROPIC.name()).build();
 
             } catch (Exception e) {
                 // Track error metrics

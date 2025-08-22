@@ -183,14 +183,18 @@ public class DefaultConfigurationService implements ConfigurationService {
     @Override
     public ProtocolConfiguration getProtocolConfiguration(String protocol) {
         if (protocol == null || protocol.trim().isEmpty()) {
-            return new ProtocolConfiguration("", false, "", new HashMap<>(), new HashMap<>(), 30, 3);
+            return ProtocolConfiguration.builder("").withEnabled(false).withEndpoint("")
+                    .withAuthenticationConfig(new HashMap<>()).withProtocolSpecificConfig(new HashMap<>())
+                    .withTimeoutSeconds(30).withRetryAttempts(3).build();
         }
 
         String prefix = protocol.toLowerCase() + ".";
         Map<String, String> protocolConfig = getConfigEntries(prefix);
 
         if (protocolConfig.isEmpty()) {
-            return new ProtocolConfiguration(protocol, false, "", new HashMap<>(), new HashMap<>(), 30, 3);
+            return ProtocolConfiguration.builder(protocol).withEnabled(false).withEndpoint("")
+                    .withAuthenticationConfig(new HashMap<>()).withProtocolSpecificConfig(new HashMap<>())
+                    .withTimeoutSeconds(30).withRetryAttempts(3).build();
         }
 
         // Extract protocol-specific configuration
@@ -217,8 +221,9 @@ public class DefaultConfigurationService implements ConfigurationService {
         int retryAttempts = Integer.parseInt(protocolConfig.getOrDefault(prefix + "retry.attempts", "3"));
 
         String endpointValue = endpoint != null ? endpoint : "";
-        return new ProtocolConfiguration(protocol, enabled, endpointValue, authConfig, protocolSpecificConfig,
-                timeoutSeconds, retryAttempts);
+        return ProtocolConfiguration.builder(protocol).withEnabled(enabled).withEndpoint(endpointValue)
+                .withAuthenticationConfig(authConfig).withProtocolSpecificConfig(protocolSpecificConfig)
+                .withTimeoutSeconds(timeoutSeconds).withRetryAttempts(retryAttempts).build();
     }
 
     @Override

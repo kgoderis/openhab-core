@@ -6,7 +6,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.builder.ServerConfigurationBuilder;
 import org.openhab.core.ai.common.configuration.ServerConfiguration;
 import org.openhab.core.ai.common.transport.TransportType;
 import org.openhab.core.ai.config.ConfigurationService;
@@ -471,7 +470,7 @@ public class DefaultToolServerManager implements ToolServerManager {
         }
 
         try {
-            ServerConfigurationBuilder builder = ServerConfigurationBuilder.builder();
+            ServerConfiguration.Builder builder = ServerConfiguration.builder();
 
             // Server Identity
             builder.withName(configurationService.getConfigValue("mcp.server.name", "openHAB MCP Server"))
@@ -479,7 +478,7 @@ public class DefaultToolServerManager implements ToolServerManager {
 
             // Transport Configuration
             String transportType = configurationService.getConfigValue("mcp.transport.type", "STDIO");
-            builder.withTransportType(TransportType.valueOf(transportType).name())
+            builder.withSetting("transportType", TransportType.valueOf(transportType).name())
                     .withSetting("baseUrl",
                             configurationService.getConfigValue("mcp.transport.base.url", "http://localhost:8080"))
                     .withSetting("messageEndpoint",
@@ -629,10 +628,10 @@ public class DefaultToolServerManager implements ToolServerManager {
      * @return Default MCP server configuration
      */
     private ToolServerConfiguration createDefaultConfiguration() {
-        ServerConfigurationBuilder builder = ServerConfiguration.builder().withName("openHAB Tool Server")
-                .withVersion("1.0.0").withTransportType(TransportType.STDIO.name()).withSetting("enableTools", true)
-                .withSetting("enableResources", true).withSetting("enablePrompts", true)
-                .withSetting("enableLogging", true);
+        ServerConfiguration.Builder builder = ServerConfiguration.builder().withName("openHAB Tool Server")
+                .withVersion("1.0.0").withSetting("transportType", TransportType.STDIO.name())
+                .withSetting("enableTools", true).withSetting("enableResources", true)
+                .withSetting("enablePrompts", true).withSetting("enableLogging", true);
         return new ToolServerConfiguration(builder);
     }
 

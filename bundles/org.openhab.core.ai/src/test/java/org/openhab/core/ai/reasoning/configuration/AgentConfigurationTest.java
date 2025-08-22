@@ -17,39 +17,60 @@ import org.junit.jupiter.api.Test;
 class AgentConfigurationTest {
 
     @Test
-    void testBasicConfiguration() {
-        AgentConfiguration config = AgentConfiguration.builder().agentId("test-agent").autonomousModeEnabled(true)
-                .behaviorLearningEnabled(true).safetyConstraintsEnabled(true).confidenceThreshold(0.8)
-                .timeout(Duration.ofMinutes(10)).maxConcurrentActions(5).build();
+    void testBuilderCreation() {
+        AgentConfiguration config = AgentConfiguration.builder().withAgentId("test-agent").build();
 
-        assertEquals("test-agent", config.getId());
         assertEquals("test-agent", config.getAgentId());
+        assertTrue(config.isEnabled());
         assertEquals("Agent Configuration", config.getName());
         assertEquals("1.0.0", config.getVersion());
-        assertTrue(config.isEnabled());
+    }
+
+    @Test
+    void testDefaultValues() {
+        AgentConfiguration config = AgentConfiguration.builder().withAgentId("test-agent").build();
+
         assertTrue(config.isAutonomousModeEnabled());
         assertTrue(config.isBehaviorLearningEnabled());
         assertTrue(config.isSafetyConstraintsEnabled());
-        assertEquals(0.8, config.getConfidenceThreshold());
+        assertEquals(0.7, config.getConfidenceThreshold());
+        assertEquals(Duration.ofMinutes(5), config.getTimeout());
+        assertEquals(10, config.getMaxConcurrentActions());
+        assertTrue(config.getBehaviorPolicies().isEmpty());
+        assertTrue(config.getConstraints().isEmpty());
+        assertTrue(config.getSafetyPolicies().isEmpty());
+    }
+
+    @Test
+    void testCustomValues() {
+        AgentConfiguration config = AgentConfiguration.builder().withAgentId("test-agent")
+                .withAutonomousModeEnabled(false).withBehaviorLearningEnabled(false).withSafetyConstraintsEnabled(false)
+                .withConfidenceThreshold(0.9).withTimeout(Duration.ofMinutes(10)).withMaxConcurrentActions(5).build();
+
+        assertFalse(config.isAutonomousModeEnabled());
+        assertFalse(config.isBehaviorLearningEnabled());
+        assertFalse(config.isSafetyConstraintsEnabled());
+        assertEquals(0.9, config.getConfidenceThreshold());
         assertEquals(Duration.ofMinutes(10), config.getTimeout());
         assertEquals(5, config.getMaxConcurrentActions());
     }
 
     @Test
     void testBehaviorPolicies() {
-        List<String> policies = List.of("energy-efficiency", "safety-first", "user-preference");
+        List<String> behaviorPolicies = List.of("cooperative", "aggressive", "conservative");
 
-        AgentConfiguration config = AgentConfiguration.builder().agentId("test-agent").behaviorPolicies(policies)
-                .build();
+        AgentConfiguration config = AgentConfiguration.builder().withAgentId("test-agent")
+                .withBehaviorPolicies(behaviorPolicies).build();
 
-        assertEquals(policies, config.getBehaviorPolicies());
+        assertEquals(behaviorPolicies, config.getBehaviorPolicies());
     }
 
     @Test
     void testConstraints() {
         List<String> constraints = List.of("max-power-usage", "min-temperature", "max-brightness");
 
-        AgentConfiguration config = AgentConfiguration.builder().agentId("test-agent").constraints(constraints).build();
+        AgentConfiguration config = AgentConfiguration.builder().withAgentId("test-agent").withConstraints(constraints)
+                .build();
 
         assertEquals(constraints, config.getConstraints());
     }
@@ -58,8 +79,8 @@ class AgentConfigurationTest {
     void testSafetyPolicies() {
         List<String> safetyPolicies = List.of("emergency-shutdown", "overload-protection", "user-safety");
 
-        AgentConfiguration config = AgentConfiguration.builder().agentId("test-agent").safetyPolicies(safetyPolicies)
-                .build();
+        AgentConfiguration config = AgentConfiguration.builder().withAgentId("test-agent")
+                .withSafetyPolicies(safetyPolicies).build();
 
         assertEquals(safetyPolicies, config.getSafetyPolicies());
     }
@@ -68,8 +89,8 @@ class AgentConfigurationTest {
     void testCustomSettings() {
         Map<String, Object> customSettings = Map.of("learningRate", 0.01, "maxIterations", 1000, "enableLogging", true);
 
-        AgentConfiguration config = AgentConfiguration.builder().agentId("test-agent").customSettings(customSettings)
-                .build();
+        AgentConfiguration config = AgentConfiguration.builder().withAgentId("test-agent")
+                .withCustomSettings(customSettings).build();
 
         assertEquals(customSettings, config.getCustomSettings());
         assertEquals(customSettings, config.getCustomOptions());
@@ -83,32 +104,34 @@ class AgentConfigurationTest {
 
     @Test
     void testValidation() {
-        AgentConfigurationBuilder builder = AgentConfiguration.builder();
-
         // Test invalid configuration (missing agentId)
-        assertFalse(builder.isValid());
-        assertNotNull(builder.getValidationErrors());
-
-        // Test valid configuration
-        builder.agentId("test-agent");
-        assertTrue(builder.isValid());
+        assertThrows(IllegalArgumentException.class, () -> {
+            AgentConfiguration.builder().build();
+        });
 
         // Test invalid confidence threshold
-        builder.confidenceThreshold(1.5); // > 1.0
-        assertFalse(builder.isValid());
+        assertThrows(IllegalArgumentException.class, () -> {
+            AgentConfiguration.builder().withAgentId("test-agent").withConfidenceThreshold(1.5).build();
+        });
 
         // Test invalid max concurrent actions
-        builder.confidenceThreshold(0.8).maxConcurrentActions(0);
-        assertFalse(builder.isValid());
+        assertThrows(IllegalArgumentException.class, () -> {
+            AgentConfiguration.builder().withAgentId("test-agent").withMaxConcurrentActions(0).build();
+        });
+
+        // Test invalid timeout
+        assertThrows(IllegalArgumentException.class, () -> {
+            AgentConfiguration.builder().withAgentId("test-agent").withTimeout(Duration.ofMinutes(-1)).build();
+        });
     }
 
     @Test
     void testEquality() {
-        AgentConfiguration config1 = AgentConfiguration.builder().agentId("test-agent").autonomousModeEnabled(true)
-                .confidenceThreshold(0.8).build();
+        AgentConfiguration config1 = AgentConfiguration.builder().withAgentId("test-agent")
+                .withAutonomousModeEnabled(true).withConfidenceThreshold(0.8).build();
 
-        AgentConfiguration config2 = AgentConfiguration.builder().agentId("test-agent").autonomousModeEnabled(true)
-                .confidenceThreshold(0.8).build();
+        AgentConfiguration config2 = AgentConfiguration.builder().withAgentId("test-agent")
+                .withAutonomousModeEnabled(true).withConfidenceThreshold(0.8).build();
 
         assertEquals(config1, config2);
         assertEquals(config1.hashCode(), config2.hashCode());
@@ -116,8 +139,8 @@ class AgentConfigurationTest {
 
     @Test
     void testToString() {
-        AgentConfiguration config = AgentConfiguration.builder().agentId("test-agent").autonomousModeEnabled(true)
-                .build();
+        AgentConfiguration config = AgentConfiguration.builder().withAgentId("test-agent")
+                .withAutonomousModeEnabled(true).build();
 
         String toString = config.toString();
         assertTrue(toString.contains("test-agent"));
@@ -126,21 +149,15 @@ class AgentConfigurationTest {
     }
 
     @Test
-    void testBuilderReset() {
-        AgentConfigurationBuilder builder = AgentConfiguration.builder().agentId("test-agent")
-                .autonomousModeEnabled(false).confidenceThreshold(0.9);
+    void testToBuilder() {
+        AgentConfiguration config1 = AgentConfiguration.builder().withAgentId("test-agent")
+                .withAutonomousModeEnabled(false).withConfidenceThreshold(0.9).build();
 
-        // Build first configuration
-        AgentConfiguration config1 = builder.build();
-        assertEquals("test-agent", config1.getAgentId());
-        assertFalse(config1.isAutonomousModeEnabled());
-        assertEquals(0.9, config1.getConfidenceThreshold());
+        // Use toBuilder to create a modified version
+        AgentConfiguration config2 = config1.toBuilder().withAgentId("new-agent").build();
 
-        // Reset and build second configuration
-        builder.reset();
-        AgentConfiguration config2 = builder.agentId("new-agent").build();
         assertEquals("new-agent", config2.getAgentId());
-        assertTrue(config2.isAutonomousModeEnabled()); // Default value
-        assertEquals(0.7, config2.getConfidenceThreshold()); // Default value
+        assertFalse(config2.isAutonomousModeEnabled()); // Preserved from original
+        assertEquals(0.9, config2.getConfidenceThreshold()); // Preserved from original
     }
 }

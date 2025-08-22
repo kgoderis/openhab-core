@@ -231,7 +231,7 @@ public class ModelResponseActionParser {
 
             return ExecutionContext.builder().withProtocol("a2a").withClientId("reasoning-engine")
                     .withSessionId(sessionId).withCorrelationId(correlationId)
-                    .withProtocolContext(Map.of("action", actionName, "arguments", arguments)).build();
+                    .withValues(Map.of("protocol.action", actionName, "protocol.arguments", arguments)).build();
 
         } catch (Exception e) {
             logger.debug("Error parsing JSON action call for session {}: {}", sessionId, e.getMessage());
@@ -308,7 +308,7 @@ public class ModelResponseActionParser {
 
                 ExecutionContext actionContext = ExecutionContext.builder().withProtocol("a2a")
                         .withClientId("reasoning-engine").withSessionId(sessionId).withCorrelationId(correlationId)
-                        .withProtocolContext(Map.of("action", actionName, "arguments", arguments)).build();
+                        .withValues(Map.of("protocol.action", actionName, "protocol.arguments", arguments)).build();
 
                 actionCalls.add(actionContext);
 

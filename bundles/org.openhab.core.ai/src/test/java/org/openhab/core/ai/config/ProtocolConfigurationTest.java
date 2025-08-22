@@ -16,8 +16,8 @@ class ProtocolConfigurationTest {
 
     @Test
     void testBasicConfiguration() {
-        ProtocolConfiguration config = ProtocolConfiguration.builder("mcp").enabled(true)
-                .endpoint("http://localhost:8080").timeoutSeconds(60).retryAttempts(3).build();
+        ProtocolConfiguration config = ProtocolConfiguration.builder("mcp").withEnabled(true)
+                .withEndpoint("http://localhost:8080").withTimeoutSeconds(60).withRetryAttempts(3).build();
 
         assertEquals("mcp", config.getId());
         assertEquals("mcp", config.getProtocolName());
@@ -32,7 +32,8 @@ class ProtocolConfigurationTest {
     void testAuthenticationConfiguration() {
         Map<String, String> authConfig = Map.of("apiKey", "test-key", "token", "test-token");
 
-        ProtocolConfiguration config = ProtocolConfiguration.builder("a2a").authenticationConfig(authConfig).build();
+        ProtocolConfiguration config = ProtocolConfiguration.builder("a2a").withAuthenticationConfig(authConfig)
+                .build();
 
         assertEquals(authConfig, config.getAuthenticationConfig());
         assertEquals("test-key", config.getAuthenticationValue("apiKey").orElse(null));
@@ -44,7 +45,7 @@ class ProtocolConfigurationTest {
     void testProtocolSpecificConfiguration() {
         Map<String, Object> protocolConfig = Map.of("maxTokens", 1000, "temperature", 0.7);
 
-        ProtocolConfiguration config = ProtocolConfiguration.builder("mcp").protocolSpecificConfig(protocolConfig)
+        ProtocolConfiguration config = ProtocolConfiguration.builder("mcp").withProtocolSpecificConfig(protocolConfig)
                 .build();
 
         assertEquals(protocolConfig, config.getProtocolSpecificConfig());
@@ -58,8 +59,8 @@ class ProtocolConfigurationTest {
         Map<String, String> authConfig = Map.of("apiKey", "test-key");
         Map<String, Object> protocolConfig = Map.of("maxTokens", 1000);
 
-        ProtocolConfiguration config = ProtocolConfiguration.builder("mcp").authenticationConfig(authConfig)
-                .protocolSpecificConfig(protocolConfig).build();
+        ProtocolConfiguration config = ProtocolConfiguration.builder("mcp").withAuthenticationConfig(authConfig)
+                .withProtocolSpecificConfig(protocolConfig).build();
 
         // Custom options should contain both auth and protocol configs
         assertTrue(config.hasCustomOption("apiKey"));
@@ -70,28 +71,30 @@ class ProtocolConfigurationTest {
 
     @Test
     void testValidation() {
-        ProtocolConfigurationBuilder builder = ProtocolConfiguration.builder("mcp");
+        ProtocolConfiguration.Builder builder = ProtocolConfiguration.builder("mcp");
 
-        // Test valid configuration
-        assertTrue(builder.isValid());
+        // Test valid configuration - build should succeed
+        ProtocolConfiguration validConfig = builder.build();
+        assertNotNull(validConfig);
 
-        // Test invalid timeout
-        builder.timeoutSeconds(0);
-        assertFalse(builder.isValid());
-        assertNotNull(builder.getValidationErrors());
+        // Test invalid timeout - should throw exception
+        assertThrows(IllegalArgumentException.class, () -> {
+            builder.withTimeoutSeconds(0).build();
+        });
 
-        // Test invalid retry attempts
-        builder.timeoutSeconds(30).retryAttempts(-1);
-        assertFalse(builder.isValid());
+        // Test invalid retry attempts - should throw exception
+        assertThrows(IllegalArgumentException.class, () -> {
+            builder.withTimeoutSeconds(30).withRetryAttempts(-1).build();
+        });
     }
 
     @Test
     void testEquality() {
-        ProtocolConfiguration config1 = ProtocolConfiguration.builder("mcp").enabled(true)
-                .endpoint("http://localhost:8080").build();
+        ProtocolConfiguration config1 = ProtocolConfiguration.builder("mcp").withEnabled(true)
+                .withEndpoint("http://localhost:8080").build();
 
-        ProtocolConfiguration config2 = ProtocolConfiguration.builder("mcp").enabled(true)
-                .endpoint("http://localhost:8080").build();
+        ProtocolConfiguration config2 = ProtocolConfiguration.builder("mcp").withEnabled(true)
+                .withEndpoint("http://localhost:8080").build();
 
         assertEquals(config1, config2);
         assertEquals(config1.hashCode(), config2.hashCode());
@@ -99,8 +102,8 @@ class ProtocolConfigurationTest {
 
     @Test
     void testToString() {
-        ProtocolConfiguration config = ProtocolConfiguration.builder("mcp").enabled(true)
-                .endpoint("http://localhost:8080").build();
+        ProtocolConfiguration config = ProtocolConfiguration.builder("mcp").withEnabled(true)
+                .withEndpoint("http://localhost:8080").build();
 
         String toString = config.toString();
         assertTrue(toString.contains("mcp"));

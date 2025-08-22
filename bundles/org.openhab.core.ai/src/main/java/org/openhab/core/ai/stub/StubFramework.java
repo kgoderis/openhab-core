@@ -223,7 +223,7 @@ public class StubFramework {
         }
 
         // Return default stub response
-        return StubResponse.builder().success(false).message("Stub service not found: " + serviceName).build();
+        return StubResponse.builder().withSuccess(false).withMessage("Stub service not found: " + serviceName).build();
     }
 
     /**

@@ -192,9 +192,10 @@ public class MultiStepReasoningEngine {
                 )).toList();
 
         // Create final result
-        MultiStepReasoningResult result = MultiStepReasoningResult.builder().sessionId(sessionId).steps(convertedSteps)
-                .toolCalls(actions).finalReasoning(finalReasoning).confidence(confidence).completed(completed)
-                .context(context).startTime(startTime).endTime(Instant.now()).build();
+        MultiStepReasoningResult result = MultiStepReasoningResult.builder().withSessionId(sessionId)
+                .withSteps(convertedSteps).withToolCalls(actions).withFinalReasoning(finalReasoning)
+                .withConfidence(confidence).withCompleted(completed).withContext(context).withStartTime(startTime)
+                .withEndTime(Instant.now()).build();
 
         // Record performance metrics
         recordPerformanceMetrics(sessionId, result);
@@ -229,8 +230,8 @@ public class MultiStepReasoningEngine {
         // Check if reasoning is complete
         boolean isComplete = isReasoningComplete(reasoning, actions);
 
-        return ReasoningStep.builder().withStepId(sessionId).withDescription(reasoning).withErrorMessage(null)
-                .withSuccess(isComplete).build();
+        return ReasoningStep.builder().withSessionId(sessionId).withReasoning(reasoning).withError(null)
+                .withComplete(isComplete).build();
     }
 
     /**
@@ -461,8 +462,8 @@ public class MultiStepReasoningEngine {
      * Create error step
      */
     private ReasoningStep createErrorStep(String sessionId, int stepNumber, Exception error) {
-        return ReasoningStep.builder().withStepId(sessionId).withDescription("Error occurred: " + error.getMessage())
-                .withErrorMessage(error.getMessage()).withSuccess(false).build();
+        return ReasoningStep.builder().withSessionId(sessionId).withReasoning("Error occurred: " + error.getMessage())
+                .withError(error.getMessage()).withComplete(false).build();
     }
 
     /**
@@ -470,10 +471,10 @@ public class MultiStepReasoningEngine {
      */
     private MultiStepReasoningResult createErrorResult(String sessionId, ReasoningContext context, Exception error,
             Instant startTime) {
-        return MultiStepReasoningResult.builder().sessionId(sessionId).steps(new ArrayList<>())
-                .toolCalls(new ArrayList<>()).finalReasoning("Reasoning failed: " + error.getMessage()).confidence(0.0)
-                .completed(false).context(context).startTime(startTime).endTime(Instant.now()).error(error.getMessage())
-                .build();
+        return MultiStepReasoningResult.builder().withSessionId(sessionId).withSteps(new ArrayList<>())
+                .withToolCalls(new ArrayList<>()).withFinalReasoning("Reasoning failed: " + error.getMessage())
+                .withConfidence(0.0).withCompleted(false).withContext(context).withStartTime(startTime)
+                .withEndTime(Instant.now()).withError(error.getMessage()).build();
     }
 
     /**

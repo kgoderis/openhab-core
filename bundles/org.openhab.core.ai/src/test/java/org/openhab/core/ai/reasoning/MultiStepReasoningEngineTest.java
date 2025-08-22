@@ -27,8 +27,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.common.configuration.MultiStepReasoningConfiguration;
 import org.openhab.core.ai.common.context.ReasoningContext;
-import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.common.response.ModelResponse;
+import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
 

@@ -25,7 +25,6 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -501,7 +500,7 @@ public class OllamaClient implements ModelClient {
         OllamaChatResult result = ollamaAPI.chat(request);
 
         // Convert to ModelResponse
-        return ModelResponseBuilder.builder().withContent(result.getResponseModel().getMessage().getContent())
+        return ModelResponse.builder().withContent(result.getResponseModel().getMessage().getContent())
                 .withModelName(config.getModelName()).withProviderType(ModelProviderType.OLLAMA.name())
                 .withTotalTokens(result.getResponseModel().getMessage().getContent().length()) // Approximate
                 .build();
@@ -550,7 +549,7 @@ public class OllamaClient implements ModelClient {
         JsonNode responseJson = objectMapper.readTree(response.body());
         String content = responseJson.path("message").path("content").asText();
 
-        return ModelResponseBuilder.builder().withContent(content).withModelName(config.getModelName())
+        return ModelResponse.builder().withContent(content).withModelName(config.getModelName())
                 .withProviderType(ModelProviderType.OLLAMA.name()).withTotalTokens(content.length()) // Approximate
                 .build();
     }
@@ -608,7 +607,7 @@ public class OllamaClient implements ModelClient {
             handler.onChunk(content);
         });
 
-        ModelResponse finalResponse = ModelResponseBuilder.builder().withContent(fullContent.toString())
+        ModelResponse finalResponse = ModelResponse.builder().withContent(fullContent.toString())
                 .withModelName(config.getModelName()).withProviderType(ModelProviderType.OLLAMA.name())
                 .withTotalTokens(fullContent.length()) // Approximate
                 .build();
@@ -683,7 +682,7 @@ public class OllamaClient implements ModelClient {
             }
         }
 
-        ModelResponse finalResponse = ModelResponseBuilder.builder().withContent(fullContent.toString())
+        ModelResponse finalResponse = ModelResponse.builder().withContent(fullContent.toString())
                 .withModelName(config.getModelName()).withProviderType(ModelProviderType.OLLAMA.name())
                 .withTotalTokens(fullContent.length()) // Approximate
                 .build();

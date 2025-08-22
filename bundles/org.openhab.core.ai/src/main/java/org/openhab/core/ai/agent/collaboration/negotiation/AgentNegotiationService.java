@@ -97,10 +97,11 @@ public class AgentNegotiationService {
             }
 
             // Create session
-            NegotiationSession session = NegotiationSession.builder().sessionId(sessionId).initiatorId(initiatorId)
-                    .participantIds(participantIds).templateId(templateId).strategyId(strategyId)
-                    .initialProposal(initialProposal).status(NegotiationStatus.ACTIVE).createdAt(Instant.now())
-                    .timeoutAt(Instant.now().plus(template.getTimeout())).build();
+            NegotiationSession session = NegotiationSession.builder().withSessionId(sessionId)
+                    .withInitiatorId(initiatorId).withParticipantIds(participantIds).withTemplateId(templateId)
+                    .withStrategyId(strategyId).withInitialProposal(initialProposal)
+                    .withStatus(NegotiationStatus.ACTIVE).withCreatedAt(Instant.now())
+                    .withTimeoutAt(Instant.now().plus(template.getTimeout())).build();
 
             activeSessions.put(sessionId, session);
             totalNegotiations.incrementAndGet();
@@ -136,8 +137,8 @@ public class AgentNegotiationService {
             }
 
             // Add proposal to session
-            NegotiationProposal negotiationProposal = NegotiationProposal.builder().sessionId(sessionId)
-                    .agentId(agentId).proposal(proposal).submittedAt(Instant.now()).build();
+            NegotiationProposal negotiationProposal = NegotiationProposal.builder().withSessionId(sessionId)
+                    .withAgentId(agentId).withProposal(proposal).withSubmittedAt(Instant.now()).build();
 
             session.addProposal(negotiationProposal);
 
@@ -287,17 +288,17 @@ public class AgentNegotiationService {
     }
 
     private void initializeDefaultTemplates() {
-        registerTemplate(NegotiationTemplate.builder().templateId("resource-allocation").name("Resource Allocation")
-                .description("Template for resource allocation negotiations").timeout(Duration.ofMinutes(10))
-                .maxRounds(5).build());
+        registerTemplate(NegotiationTemplate.builder().withTemplateId("resource-allocation")
+                .withName("Resource Allocation").withDescription("Template for resource allocation negotiations")
+                .withTimeout(Duration.ofMinutes(10)).withMaxRounds(5).build());
 
-        registerTemplate(NegotiationTemplate.builder().templateId("task-delegation").name("Task Delegation")
-                .description("Template for task delegation negotiations").timeout(Duration.ofMinutes(5)).maxRounds(3)
-                .build());
+        registerTemplate(NegotiationTemplate.builder().withTemplateId("task-delegation").withName("Task Delegation")
+                .withDescription("Template for task delegation negotiations").withTimeout(Duration.ofMinutes(5))
+                .withMaxRounds(3).build());
 
-        registerTemplate(NegotiationTemplate.builder().templateId("conflict-resolution").name("Conflict Resolution")
-                .description("Template for conflict resolution negotiations").timeout(Duration.ofMinutes(15))
-                .maxRounds(7).build());
+        registerTemplate(NegotiationTemplate.builder().withTemplateId("conflict-resolution")
+                .withName("Conflict Resolution").withDescription("Template for conflict resolution negotiations")
+                .withTimeout(Duration.ofMinutes(15)).withMaxRounds(7).build());
     }
 
     @Reference

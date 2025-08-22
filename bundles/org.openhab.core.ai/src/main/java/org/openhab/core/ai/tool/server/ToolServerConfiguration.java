@@ -1,11 +1,11 @@
 package org.openhab.core.ai.tool.server;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.builder.ServerConfigurationBuilder;
 import org.openhab.core.ai.common.configuration.ServerConfiguration;
 import org.openhab.core.ai.common.transport.TransportType;
 
@@ -46,79 +46,35 @@ public class ToolServerConfiguration extends ServerConfiguration {
     /**
      * Private constructor for builder pattern.
      */
-    public ToolServerConfiguration(ServerConfigurationBuilder builder) {
-        // Call the protected constructor of ServerConfiguration with default values for missing fields
-        super(builder.getName() != null ? builder.getName() : "default-server", builder.isEnabled(),
-                builder.getName() != null ? builder.getName() : "Default Server",
-                builder.getVersion() != null ? builder.getVersion() : "1.0.0", builder.getSettings(),
-                "http://" + builder.getHost() + ":" + builder.getPort(), // baseUrl
-                builder.getPort(), // port
-                "/", // contextPath
-                "/", // servletPath
-                "/*", // servletPattern
-                "/mcp", // messageEndpoint
-                "/health", // healthEndpoint
-                "/status", // statusEndpoint
-                "/metrics", // metricsEndpoint
-                false, // enableAuthentication
-                "none", // primaryAuthMethod
-                "none", // fallbackAuthMethod
-                false, // enableFallbackAuth
-                100, // maxConnections
-                60, // rateLimitPerMinute
-                true, // enableRequestValidation
-                null, // oauthIssuerUrl
-                null, // oauthClientId
-                null, // oauthClientSecret
-                null, // oauthRedirectUri
-                false, // oauthPkceEnabled
-                null, // openhabUsersFile
-                false, // openhabUsersEnabled
-                "X-API-Key", // apiKeyHeader
-                null, // apiKeyValue
-                false, // apiKeyEnabled
-                null, // jwtSecret
-                null, // jwtIssuer
-                60, // jwtExpirationMinutes
-                false, // jwtEnabled
-                true, // enableMetrics
-                true, // enableHealthChecks
-                30, // healthCheckInterval
-                false, // enablePerformanceMonitoring
-                false, // productionMode
-                30000, // requestTimeout
-                10000, // connectionTimeout
-                true, // enableGracefulShutdown
-                5000, // shutdownTimeout
-                false, // enableCors
-                "*", // corsAllowedOrigins
-                "GET,POST,PUT,DELETE,OPTIONS", // corsAllowedMethods
-                "Content-Type,Authorization", // corsAllowedHeaders
-                false, // enableSsl
-                null, // sslKeyStore
-                null, // sslKeyStorePassword
-                null, // sslTrustStore
-                null); // sslTrustStorePassword
+    public ToolServerConfiguration(ServerConfiguration.Builder builder) {
+        // Call the protected constructor of ServerConfiguration with default values
+        super("tool-server", true, "Tool Server", "1.0.0", Map.of(), "http://localhost:8080", 8080, "/", "/", "/*",
+                "/mcp", "/health", "/status", "/metrics", false, "none", "none", false, 100, 1000, true, "", "", "", "",
+                false, "", false, "X-API-Key", "", false, "", "", 60, false, true, true, 30, false, false, 30000, 10000,
+                true, 30, false, "*", "GET,POST,PUT,DELETE", "*", false, "", "", "", "");
 
-        // Tool-specific initialization
-        this.serverId = builder.getName() != null ? builder.getName() : "default-server";
-        this.serverVersion = "1.0.0"; // Default value since unified builder doesn't have version
-        this.transportType = TransportType.HTTP; // Default value since unified builder doesn't have transport type
+        // Extract tool-specific settings from the builder's settings
+        Map<String, Object> settings = new HashMap<>();
 
-        // Default values for tool-specific fields
-        this.sseEndpoint = "/sse";
+        this.serverId = "tool-server";
+        this.serverVersion = "1.0.0";
+        this.transportType = TransportType.STDIO;
+        this.sseEndpoint = "/mcp/events";
         this.enableSse = false;
+
         this.enableTools = true;
         this.enableResources = true;
         this.enablePrompts = true;
         this.enableLogging = true;
+
         this.enableAsyncServer = false;
         this.enableAsyncTools = false;
         this.asyncThreadPoolSize = 10;
-        this.asyncQueueCapacity = 100;
+        this.asyncQueueCapacity = 1000;
         this.enableAsyncCompletions = false;
-        this.transportOptions = builder.getSettings() != null ? Map.copyOf(builder.getSettings()) : Map.of();
-        this.serverOptions = Map.of();
+
+        this.transportOptions = Map.of();
+        this.serverOptions = settings;
     }
 
     /**

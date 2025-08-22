@@ -18,7 +18,6 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.openhab.core.ai.common.response.ModelResponseBuilder;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -113,7 +112,7 @@ public class AzureOpenAIClient implements ModelClient {
                 long responseTime = System.currentTimeMillis() - startTime;
                 trackMetrics(responseTime, true, null);
 
-                return ModelResponseBuilder.builder().withContent(responseContent).withModelName(config.getModelName())
+                return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
                         .withProviderType(ModelProviderType.AZURE.name()).build();
 
             } catch (Exception e) {
@@ -164,7 +163,7 @@ public class AzureOpenAIClient implements ModelClient {
                     }
                 }
 
-                ModelResponse llmResponse = ModelResponseBuilder.builder().withContent(responseContent.toString())
+                ModelResponse llmResponse = ModelResponse.builder().withContent(responseContent.toString())
                         .withModelName(config.getModelName()).withProviderType(ModelProviderType.AZURE.name()).build();
 
                 // Track success metrics

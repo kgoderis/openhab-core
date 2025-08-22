@@ -2,8 +2,11 @@ package org.openhab.core.ai.agent.collaboration.negotiation;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -33,30 +36,24 @@ public class NegotiationSession {
     private @Nullable Instant completedAt;
     private final List<NegotiationProposal> proposals = new ArrayList<>();
 
-    public NegotiationSession(NegotiationSessionBuilder builder) {
-        this.sessionId = builder.getSessionId();
-        this.initiatorId = builder.getInitiatorId();
-        this.participantIds = builder.getParticipantIds();
-        this.templateId = builder.getTemplateId();
-        this.strategyId = builder.getStrategyId();
-        this.initialProposal = builder.getInitialProposal();
-        this.status = builder.getStatus();
-        this.createdAt = builder.getCreatedAt();
-        this.timeoutAt = builder.getTimeoutAt();
+    private NegotiationSession(Builder builder) {
+        this.sessionId = builder.sessionId;
+        this.initiatorId = builder.initiatorId;
+        this.participantIds = Set.copyOf(builder.participantIds);
+        this.templateId = builder.templateId;
+        this.strategyId = builder.strategyId;
+        this.initialProposal = Map.copyOf(builder.initialProposal);
+        this.status = builder.status;
+        this.createdAt = builder.createdAt;
+        this.timeoutAt = builder.timeoutAt;
     }
 
-    public NegotiationSession(String sessionId, String initiatorId, Set<String> participantIds, String templateId,
-            String strategyId, Map<String, Object> initialProposal, NegotiationStatus status, Instant createdAt,
-            Instant timeoutAt) {
-        this.sessionId = sessionId;
-        this.initiatorId = initiatorId;
-        this.participantIds = participantIds;
-        this.templateId = templateId;
-        this.strategyId = strategyId;
-        this.initialProposal = initialProposal;
-        this.status = status;
-        this.createdAt = createdAt;
-        this.timeoutAt = timeoutAt;
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     public String getSessionId() {
@@ -131,7 +128,97 @@ public class NegotiationSession {
         proposals.add(proposal);
     }
 
-    public static NegotiationSessionBuilder builder() {
-        return new NegotiationSessionBuilder();
+    public static final class Builder {
+        private String sessionId = "";
+        private String initiatorId = "";
+        private Set<String> participantIds = Set.of();
+        private String templateId = "";
+        private String strategyId = "";
+        private Map<String, Object> initialProposal = Map.of();
+        private NegotiationStatus status = NegotiationStatus.ACTIVE;
+        private Instant createdAt = Instant.now();
+        private Instant timeoutAt = Instant.now().plusSeconds(300);
+
+        public Builder() {
+        }
+
+        public Builder(NegotiationSession source) {
+            this.sessionId = source.sessionId;
+            this.initiatorId = source.initiatorId;
+            this.participantIds = new HashSet<>(source.participantIds);
+            this.templateId = source.templateId;
+            this.strategyId = source.strategyId;
+            this.initialProposal = new HashMap<>(source.initialProposal);
+            this.status = source.status;
+            this.createdAt = source.createdAt;
+            this.timeoutAt = source.timeoutAt;
+        }
+
+        public Builder withSessionId(String sessionId) {
+            this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
+            return this;
+        }
+
+        public Builder withInitiatorId(String initiatorId) {
+            this.initiatorId = Objects.requireNonNull(initiatorId, "initiatorId");
+            return this;
+        }
+
+        public Builder withParticipantIds(Set<String> participantIds) {
+            this.participantIds = new HashSet<>(Objects.requireNonNull(participantIds, "participantIds"));
+            return this;
+        }
+
+        public Builder withTemplateId(String templateId) {
+            this.templateId = Objects.requireNonNull(templateId, "templateId");
+            return this;
+        }
+
+        public Builder withStrategyId(String strategyId) {
+            this.strategyId = Objects.requireNonNull(strategyId, "strategyId");
+            return this;
+        }
+
+        public Builder withInitialProposal(Map<String, Object> initialProposal) {
+            this.initialProposal = new HashMap<>(Objects.requireNonNull(initialProposal, "initialProposal"));
+            return this;
+        }
+
+        public Builder withStatus(NegotiationStatus status) {
+            this.status = Objects.requireNonNull(status, "status");
+            return this;
+        }
+
+        public Builder withCreatedAt(Instant createdAt) {
+            this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+            return this;
+        }
+
+        public Builder withTimeoutAt(Instant timeoutAt) {
+            this.timeoutAt = Objects.requireNonNull(timeoutAt, "timeoutAt");
+            return this;
+        }
+
+        public NegotiationSession build() {
+            if (sessionId.isBlank()) {
+                throw new IllegalArgumentException("sessionId must not be blank");
+            }
+            if (initiatorId.isBlank()) {
+                throw new IllegalArgumentException("initiatorId must not be blank");
+            }
+            if (participantIds.isEmpty()) {
+                throw new IllegalArgumentException("participantIds must not be empty");
+            }
+            if (templateId.isBlank()) {
+                throw new IllegalArgumentException("templateId must not be blank");
+            }
+            if (strategyId.isBlank()) {
+                throw new IllegalArgumentException("strategyId must not be blank");
+            }
+            if (timeoutAt.isBefore(createdAt)) {
+                throw new IllegalArgumentException("timeoutAt must be after createdAt");
+            }
+            return new NegotiationSession(this);
+        }
     }
 }

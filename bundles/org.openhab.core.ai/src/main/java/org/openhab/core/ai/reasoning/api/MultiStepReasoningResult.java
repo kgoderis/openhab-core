@@ -3,6 +3,7 @@ package org.openhab.core.ai.reasoning.api;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -33,25 +34,30 @@ public class MultiStepReasoningResult {
     private final Instant startTime;
     private final Instant endTime;
 
-    public MultiStepReasoningResult(String reasoningId, String sessionId, boolean successful, boolean completed,
-            String finalAnswer, String finalReasoning, List<ReasoningStep> steps, List<ActionResult> toolCalls,
-            Map<String, Object> metadata, @Nullable String errorMessage, @Nullable ReasoningContext context,
-            double confidence, long totalDurationMs, Instant startTime, Instant endTime) {
-        this.reasoningId = reasoningId;
-        this.sessionId = sessionId;
-        this.successful = successful;
-        this.completed = completed;
-        this.finalAnswer = finalAnswer;
-        this.finalReasoning = finalReasoning;
-        this.steps = steps;
-        this.toolCalls = toolCalls;
-        this.metadata = metadata;
-        this.errorMessage = errorMessage;
-        this.context = context;
-        this.confidence = confidence;
-        this.totalDurationMs = totalDurationMs;
-        this.startTime = startTime;
-        this.endTime = endTime;
+    private MultiStepReasoningResult(Builder builder) {
+        this.reasoningId = builder.reasoningId;
+        this.sessionId = builder.sessionId;
+        this.successful = builder.successful;
+        this.completed = builder.completed;
+        this.finalAnswer = builder.finalAnswer;
+        this.finalReasoning = builder.finalReasoning;
+        this.steps = List.copyOf(builder.steps);
+        this.toolCalls = List.copyOf(builder.toolCalls);
+        this.metadata = Map.copyOf(builder.metadata);
+        this.errorMessage = builder.errorMessage;
+        this.context = builder.context;
+        this.confidence = builder.confidence;
+        this.totalDurationMs = builder.totalDurationMs;
+        this.startTime = builder.startTime;
+        this.endTime = builder.endTime;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
     public String getReasoningId() {
@@ -114,18 +120,38 @@ public class MultiStepReasoningResult {
         return endTime;
     }
 
-    /**
-     * Backward compatibility constructor.
-     */
-    public MultiStepReasoningResult(String reasoningId, boolean successful, String finalAnswer,
-            List<ReasoningStep> steps, Map<String, Object> metadata, @Nullable String errorMessage,
-            long totalDurationMs) {
-        this(reasoningId, reasoningId, successful, successful, finalAnswer, finalAnswer, steps, List.of(), metadata,
-                errorMessage, null, 1.0, totalDurationMs, Instant.now(), Instant.now());
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        MultiStepReasoningResult that = (MultiStepReasoningResult) o;
+        return successful == that.successful && completed == that.completed
+                && Double.compare(that.confidence, confidence) == 0 && totalDurationMs == that.totalDurationMs
+                && Objects.equals(reasoningId, that.reasoningId) && Objects.equals(sessionId, that.sessionId)
+                && Objects.equals(finalAnswer, that.finalAnswer) && Objects.equals(finalReasoning, that.finalReasoning)
+                && Objects.equals(steps, that.steps) && Objects.equals(toolCalls, that.toolCalls)
+                && Objects.equals(metadata, that.metadata) && Objects.equals(errorMessage, that.errorMessage)
+                && Objects.equals(context, that.context) && Objects.equals(startTime, that.startTime)
+                && Objects.equals(endTime, that.endTime);
     }
 
-    public static MultiStepReasoningResultBuilder builder() {
-        return new MultiStepReasoningResultBuilder();
+    @Override
+    public int hashCode() {
+        return Objects.hash(reasoningId, sessionId, successful, completed, finalAnswer, finalReasoning, steps,
+                toolCalls, metadata, errorMessage, context, confidence, totalDurationMs, startTime, endTime);
+    }
+
+    @Override
+    public String toString() {
+        return "MultiStepReasoningResult [reasoningId=" + reasoningId + ", sessionId=" + sessionId + ", successful="
+                + successful + ", completed=" + completed + ", finalAnswer=" + finalAnswer + ", finalReasoning="
+                + finalReasoning + ", steps=" + steps + ", toolCalls=" + toolCalls + ", metadata=" + metadata
+                + ", errorMessage=" + errorMessage + ", context=" + context + ", confidence=" + confidence
+                + ", totalDurationMs=" + totalDurationMs + ", startTime=" + startTime + ", endTime=" + endTime + "]";
     }
 
     /**
@@ -170,11 +196,11 @@ public class MultiStepReasoningResult {
     /**
      * Builder for MultiStepReasoningResult.
      */
-    public static class MultiStepReasoningResultBuilder {
-        private String reasoningId;
-        private String sessionId;
-        private boolean successful;
-        private boolean completed;
+    public static final class Builder {
+        private String reasoningId = "";
+        private String sessionId = "";
+        private boolean successful = false;
+        private boolean completed = false;
         private String finalAnswer = "";
         private String finalReasoning = "";
         private List<ReasoningStep> steps = List.of();
@@ -183,95 +209,129 @@ public class MultiStepReasoningResult {
         private @Nullable String errorMessage;
         private @Nullable ReasoningContext context;
         private double confidence = 1.0;
-        private long totalDurationMs;
+        private long totalDurationMs = 0L;
         private Instant startTime = Instant.now();
         private Instant endTime = Instant.now();
 
-        public MultiStepReasoningResultBuilder reasoningId(String reasoningId) {
-            this.reasoningId = reasoningId;
+        public Builder() {
+        }
+
+        public Builder(MultiStepReasoningResult source) {
+            this.reasoningId = source.reasoningId;
+            this.sessionId = source.sessionId;
+            this.successful = source.successful;
+            this.completed = source.completed;
+            this.finalAnswer = source.finalAnswer;
+            this.finalReasoning = source.finalReasoning;
+            this.steps = source.steps;
+            this.toolCalls = source.toolCalls;
+            this.metadata = source.metadata;
+            this.errorMessage = source.errorMessage;
+            this.context = source.context;
+            this.confidence = source.confidence;
+            this.totalDurationMs = source.totalDurationMs;
+            this.startTime = source.startTime;
+            this.endTime = source.endTime;
+        }
+
+        public Builder withReasoningId(String reasoningId) {
+            this.reasoningId = Objects.requireNonNull(reasoningId, "reasoningId");
             return this;
         }
 
-        public MultiStepReasoningResultBuilder sessionId(String sessionId) {
-            this.sessionId = sessionId;
+        public Builder withSessionId(String sessionId) {
+            this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
             return this;
         }
 
-        public MultiStepReasoningResultBuilder successful(boolean successful) {
+        public Builder withSuccessful(boolean successful) {
             this.successful = successful;
             return this;
         }
 
-        public MultiStepReasoningResultBuilder completed(boolean completed) {
+        public Builder withCompleted(boolean completed) {
             this.completed = completed;
             return this;
         }
 
-        public MultiStepReasoningResultBuilder finalAnswer(String finalAnswer) {
-            this.finalAnswer = finalAnswer;
+        public Builder withFinalAnswer(String finalAnswer) {
+            this.finalAnswer = Objects.requireNonNull(finalAnswer, "finalAnswer");
             return this;
         }
 
-        public MultiStepReasoningResultBuilder finalReasoning(String finalReasoning) {
-            this.finalReasoning = finalReasoning;
+        public Builder withFinalReasoning(String finalReasoning) {
+            this.finalReasoning = Objects.requireNonNull(finalReasoning, "finalReasoning");
             return this;
         }
 
-        public MultiStepReasoningResultBuilder steps(List<ReasoningStep> steps) {
-            this.steps = steps;
+        public Builder withSteps(List<ReasoningStep> steps) {
+            this.steps = Objects.requireNonNull(steps, "steps");
             return this;
         }
 
-        public MultiStepReasoningResultBuilder toolCalls(List<ActionResult> toolCalls) {
-            this.toolCalls = toolCalls;
+        public Builder withToolCalls(List<ActionResult> toolCalls) {
+            this.toolCalls = Objects.requireNonNull(toolCalls, "toolCalls");
             return this;
         }
 
-        public MultiStepReasoningResultBuilder metadata(Map<String, Object> metadata) {
-            this.metadata = metadata;
+        public Builder withMetadata(Map<String, Object> metadata) {
+            this.metadata = Objects.requireNonNull(metadata, "metadata");
             return this;
         }
 
-        public MultiStepReasoningResultBuilder errorMessage(@Nullable String errorMessage) {
+        public Builder withErrorMessage(@Nullable String errorMessage) {
             this.errorMessage = errorMessage;
             return this;
         }
 
-        public MultiStepReasoningResultBuilder error(String errorMessage) {
-            this.errorMessage = errorMessage;
+        public Builder withError(String errorMessage) {
+            this.errorMessage = Objects.requireNonNull(errorMessage, "errorMessage");
             this.successful = false;
             return this;
         }
 
-        public MultiStepReasoningResultBuilder context(@Nullable ReasoningContext context) {
+        public Builder withContext(@Nullable ReasoningContext context) {
             this.context = context;
             return this;
         }
 
-        public MultiStepReasoningResultBuilder confidence(double confidence) {
+        public Builder withConfidence(double confidence) {
             this.confidence = confidence;
             return this;
         }
 
-        public MultiStepReasoningResultBuilder totalDurationMs(long totalDurationMs) {
+        public Builder withTotalDurationMs(long totalDurationMs) {
             this.totalDurationMs = totalDurationMs;
             return this;
         }
 
-        public MultiStepReasoningResultBuilder startTime(Instant startTime) {
-            this.startTime = startTime;
+        public Builder withStartTime(Instant startTime) {
+            this.startTime = Objects.requireNonNull(startTime, "startTime");
             return this;
         }
 
-        public MultiStepReasoningResultBuilder endTime(Instant endTime) {
-            this.endTime = endTime;
+        public Builder withEndTime(Instant endTime) {
+            this.endTime = Objects.requireNonNull(endTime, "endTime");
             return this;
         }
 
         public MultiStepReasoningResult build() {
-            return new MultiStepReasoningResult(reasoningId, sessionId, successful, completed, finalAnswer,
-                    finalReasoning, steps, toolCalls, metadata, errorMessage, context, confidence, totalDurationMs,
-                    startTime, endTime);
+            if (reasoningId.isBlank()) {
+                throw new IllegalArgumentException("reasoningId must not be blank");
+            }
+            if (sessionId.isBlank()) {
+                throw new IllegalArgumentException("sessionId must not be blank");
+            }
+            if (confidence < 0.0 || confidence > 1.0) {
+                throw new IllegalArgumentException("confidence must be between 0.0 and 1.0");
+            }
+            if (totalDurationMs < 0) {
+                throw new IllegalArgumentException("totalDurationMs must be >= 0");
+            }
+            if (endTime.isBefore(startTime)) {
+                throw new IllegalArgumentException("endTime must not be before startTime");
+            }
+            return new MultiStepReasoningResult(this);
         }
     }
 }

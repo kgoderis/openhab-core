@@ -1,11 +1,13 @@
 package org.openhab.core.ai.action.api;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.builder.ActionMetadataBuilder;
 
 /**
  * Metadata information for an action.
@@ -30,17 +32,17 @@ public class ActionMetadata {
     private final List<String> examples;
     private final Map<String, Object> requirements;
 
-    public ActionMetadata(ActionMetadataBuilder builder) {
-        this.version = builder.getVersion();
-        this.author = builder.getAuthor();
-        this.description = builder.getDescription();
-        this.tags = builder.getTags() != null ? builder.getTags() : List.of();
-        this.properties = builder.getProperties() != null ? builder.getProperties() : Map.of();
-        this.created = builder.getCreated() != null ? builder.getCreated() : Instant.now();
-        this.lastModified = builder.getLastModified() != null ? builder.getLastModified() : Instant.now();
-        this.documentation = builder.getDocumentation();
-        this.examples = builder.getExamples() != null ? builder.getExamples() : List.of();
-        this.requirements = builder.getRequirements() != null ? builder.getRequirements() : Map.of();
+    private ActionMetadata(Builder builder) {
+        this.version = builder.version;
+        this.author = builder.author;
+        this.description = builder.description;
+        this.tags = List.copyOf(builder.tags);
+        this.properties = Map.copyOf(builder.properties);
+        this.created = builder.created;
+        this.lastModified = builder.lastModified;
+        this.documentation = builder.documentation;
+        this.examples = List.copyOf(builder.examples);
+        this.requirements = Map.copyOf(builder.requirements);
     }
 
     /**
@@ -111,8 +113,181 @@ public class ActionMetadata {
         return tags.isEmpty() ? "general" : tags.get(0);
     }
 
-    public static ActionMetadataBuilder builder() {
-        return new ActionMetadataBuilder();
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public Builder toBuilder() {
+        return new Builder(this);
+    }
+
+    /**
+     * Builder for creating ActionMetadata instances.
+     * 
+     * @author Karel Goderis - Initial Contribution
+     * @since 1.0.0
+     */
+    public static final class Builder {
+
+        private String version = "1.0.0";
+        private String author = "openHAB AI Team";
+        private String description = "";
+        private List<String> tags = List.of();
+        private Map<String, Object> properties = Map.of();
+        private Instant created = Instant.now();
+        private Instant lastModified = Instant.now();
+        private String documentation = "";
+        private List<String> examples = List.of();
+        private Map<String, Object> requirements = Map.of();
+
+        /**
+         * Default constructor.
+         */
+        public Builder() {
+        }
+
+        /**
+         * Copy constructor.
+         * 
+         * @param source the source ActionMetadata
+         */
+        public Builder(ActionMetadata source) {
+            this.version = source.version;
+            this.author = source.author;
+            this.description = source.description;
+            this.tags = new ArrayList<>(source.tags);
+            this.properties = new HashMap<>(source.properties);
+            this.created = source.created;
+            this.lastModified = source.lastModified;
+            this.documentation = source.documentation;
+            this.examples = new ArrayList<>(source.examples);
+            this.requirements = new HashMap<>(source.requirements);
+        }
+
+        /**
+         * Set the version.
+         * 
+         * @param version the version
+         * @return this builder
+         */
+        public Builder withVersion(String version) {
+            this.version = Objects.requireNonNull(version, "version");
+            return this;
+        }
+
+        /**
+         * Set the author.
+         * 
+         * @param author the author
+         * @return this builder
+         */
+        public Builder withAuthor(String author) {
+            this.author = Objects.requireNonNull(author, "author");
+            return this;
+        }
+
+        /**
+         * Set the description.
+         * 
+         * @param description the description
+         * @return this builder
+         */
+        public Builder withDescription(String description) {
+            this.description = Objects.requireNonNull(description, "description");
+            return this;
+        }
+
+        /**
+         * Set the tags.
+         * 
+         * @param tags the tags
+         * @return this builder
+         */
+        public Builder withTags(List<String> tags) {
+            this.tags = Objects.requireNonNull(tags, "tags");
+            return this;
+        }
+
+        /**
+         * Set the properties.
+         * 
+         * @param properties the properties
+         * @return this builder
+         */
+        public Builder withProperties(Map<String, Object> properties) {
+            this.properties = Objects.requireNonNull(properties, "properties");
+            return this;
+        }
+
+        /**
+         * Set the created timestamp.
+         * 
+         * @param created the created timestamp
+         * @return this builder
+         */
+        public Builder withCreated(Instant created) {
+            this.created = Objects.requireNonNull(created, "created");
+            return this;
+        }
+
+        /**
+         * Set the last modified timestamp.
+         * 
+         * @param lastModified the last modified timestamp
+         * @return this builder
+         */
+        public Builder withLastModified(Instant lastModified) {
+            this.lastModified = Objects.requireNonNull(lastModified, "lastModified");
+            return this;
+        }
+
+        /**
+         * Set the documentation.
+         * 
+         * @param documentation the documentation
+         * @return this builder
+         */
+        public Builder withDocumentation(String documentation) {
+            this.documentation = Objects.requireNonNull(documentation, "documentation");
+            return this;
+        }
+
+        /**
+         * Set the examples.
+         * 
+         * @param examples the examples
+         * @return this builder
+         */
+        public Builder withExamples(List<String> examples) {
+            this.examples = Objects.requireNonNull(examples, "examples");
+            return this;
+        }
+
+        /**
+         * Set the requirements.
+         * 
+         * @param requirements the requirements
+         * @return this builder
+         */
+        public Builder withRequirements(Map<String, Object> requirements) {
+            this.requirements = Objects.requireNonNull(requirements, "requirements");
+            return this;
+        }
+
+        /**
+         * Build the ActionMetadata.
+         * 
+         * @return the new ActionMetadata
+         */
+        public ActionMetadata build() {
+            if (version.isBlank()) {
+                throw new IllegalArgumentException("version must not be blank");
+            }
+            if (author.isBlank()) {
+                throw new IllegalArgumentException("author must not be blank");
+            }
+            return new ActionMetadata(this);
+        }
     }
 
     @Override
