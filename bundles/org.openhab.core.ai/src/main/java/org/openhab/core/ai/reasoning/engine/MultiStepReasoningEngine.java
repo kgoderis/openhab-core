@@ -20,8 +20,10 @@ import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponseActionParser;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.reasoning.api.MultiStepReasoningResult;
-import org.openhab.core.ai.reasoning.configuration.MultiStepReasoningConfiguration;
+import org.openhab.core.ai.reasoning.config.MultiStepReasoningConfiguration;
+import org.openhab.core.ai.reasoning.engine.analysis.ReasoningStepAnalysisService;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
+import org.openhab.core.ai.reasoning.engine.persistence.ReasoningStepPersistenceService;
 import org.openhab.core.ai.reasoning.monitoring.OrchestrationPerformanceMetrics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -59,6 +61,12 @@ public class MultiStepReasoningEngine {
 
     @Reference
     private @Nullable ModelResponseActionParser actionCallParser;
+
+    @Reference
+    private @Nullable ReasoningStepPersistenceService persistenceService;
+
+    @Reference
+    private @Nullable ReasoningStepAnalysisService analysisService;
 
     // Performance monitoring
     private final AtomicLong totalReasoningSessions = new AtomicLong(0);
@@ -486,6 +494,67 @@ public class MultiStepReasoningEngine {
 
         logger.debug("Reasoning session {} completed in {} ms with {} steps and {} actions", sessionId, duration,
                 result.getSteps().size(), result.getToolCalls().size());
+
+        // Persist reasoning steps for analysis
+        persistReasoningSteps(result.getSteps());
+
+        // Trigger analysis for completed sessions (async)
+        if (result.isCompleted() && !result.getSteps().isEmpty()) {
+            triggerSessionAnalysis(sessionId, result.getSteps());
+        }
+    }
+
+    /**
+     * Persist reasoning steps to the persistence service
+     */
+    private void persistReasoningSteps(List<ReasoningStep> steps) {
+        ReasoningStepPersistenceService persistence = persistenceService;
+        if (persistence != null && !steps.isEmpty()) {
+            try {
+                int storedCount = persistence.storeSteps(steps);
+                logger.debug("Stored {} reasoning steps for analysis", storedCount);
+            } catch (Exception e) {
+                logger.warn("Failed to persist reasoning steps for analysis", e);
+            }
+        }
+    }
+
+    /**
+     * Trigger analysis for a completed reasoning session
+     */
+    private void triggerSessionAnalysis(String sessionId, List<ReasoningStep> steps) {
+        ReasoningStepAnalysisService analysis = analysisService;
+        if (analysis != null && steps.size() >= 2) { // Only analyze sessions with multiple steps
+            CompletableFuture.runAsync(() -> {
+                try {
+                    logger.debug("Starting analysis for session {}", sessionId);
+
+                    // Perform pattern analysis
+                    var patternAnalysis = analysis.analyzePatterns(steps);
+                    logger.debug("Pattern analysis completed for session {}: {} patterns identified", sessionId,
+                            patternAnalysis.getStepTypeFrequency().size());
+
+                    // Perform performance analysis
+                    var performanceAnalysis = analysis.analyzePerformance(steps);
+                    logger.debug("Performance analysis completed for session {}: avg time {:.1f}ms", sessionId,
+                            performanceAnalysis.getAverageProcessingTime());
+
+                    // Generate recommendations if issues are detected
+                    var recommendations = analysis.generateRecommendations(steps);
+                    if (!recommendations.isEmpty()) {
+                        logger.info("Generated {} recommendations for session {}", recommendations.size(), sessionId);
+                        recommendations.forEach(
+                                rec -> logger.debug("Recommendation: {} - {}", rec.getTitle(), rec.getDescription()));
+                    }
+
+                } catch (Exception e) {
+                    logger.warn("Failed to analyze reasoning session {}", sessionId, e);
+                }
+            }).exceptionally(throwable -> {
+                logger.warn("Async analysis failed for session {}", sessionId, throwable);
+                return null;
+            });
+        }
     }
 
     /**

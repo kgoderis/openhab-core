@@ -34,24 +34,21 @@ public class AgentServerConfiguration extends ServerConfiguration {
     private final boolean enableTaskPersistence;
 
     private AgentServerConfiguration(Builder builder) {
-        super(builder.serverId, builder.enabled, builder.serverName, builder.serverVersion, 
-              builder.serverOptions, builder.baseUrl, builder.port, builder.contextPath,
-              builder.servletPath, builder.servletPattern, builder.messageSendEndpoint, 
-              builder.healthEndpoint, builder.statusEndpoint, builder.metricsEndpoint,
-              builder.enableAuthentication, builder.primaryAuthMethod, builder.fallbackAuthMethod,
-              builder.enableFallbackAuth, builder.maxConnections, builder.rateLimitPerMinute,
-              builder.enableRequestValidation, builder.oauthIssuerUrl, builder.oauthClientId,
-              builder.oauthClientSecret, builder.oauthRedirectUri, builder.oauthPkceEnabled,
-              builder.openhabUsersFile, builder.openhabUsersEnabled, builder.apiKeyHeader,
-              builder.apiKeyValue, builder.apiKeyEnabled, builder.jwtSecret, builder.jwtIssuer,
-              builder.jwtExpirationMinutes, builder.jwtEnabled, builder.enableMetrics,
-              builder.enableHealthChecks, builder.healthCheckInterval, builder.enablePerformanceMonitoring,
-              builder.productionMode, builder.requestTimeout, builder.connectionTimeout,
-              builder.enableGracefulShutdown, builder.shutdownTimeout, builder.enableCors,
-              builder.corsAllowedOrigins, builder.corsAllowedMethods, builder.corsAllowedHeaders,
-              builder.enableSsl, builder.sslKeyStore, builder.sslKeyStorePassword,
-              builder.sslTrustStore, builder.sslTrustStorePassword);
-        
+        super(builder.serverId, builder.enabled, builder.serverName, builder.serverVersion, builder.serverOptions,
+                builder.baseUrl, builder.port, builder.contextPath, builder.servletPath, builder.servletPattern,
+                builder.messageSendEndpoint, builder.healthEndpoint, builder.statusEndpoint, builder.metricsEndpoint,
+                builder.enableAuthentication, builder.primaryAuthMethod, builder.fallbackAuthMethod,
+                builder.enableFallbackAuth, builder.maxConnections, builder.rateLimitPerMinute,
+                builder.enableRequestValidation, builder.oauthIssuerUrl, builder.oauthClientId,
+                builder.oauthClientSecret, builder.oauthRedirectUri, builder.oauthPkceEnabled, builder.openhabUsersFile,
+                builder.openhabUsersEnabled, builder.apiKeyHeader, builder.apiKeyValue, builder.apiKeyEnabled,
+                builder.jwtSecret, builder.jwtIssuer, builder.jwtExpirationMinutes, builder.jwtEnabled,
+                builder.enableMetrics, builder.enableHealthChecks, builder.healthCheckInterval,
+                builder.enablePerformanceMonitoring, builder.productionMode, builder.requestTimeout,
+                builder.connectionTimeout, builder.enableGracefulShutdown, builder.shutdownTimeout, builder.enableCors,
+                builder.corsAllowedOrigins, builder.corsAllowedMethods, builder.corsAllowedHeaders, builder.enableSsl,
+                builder.sslKeyStore, builder.sslKeyStorePassword, builder.sslTrustStore, builder.sslTrustStorePassword);
+
         this.messageSendEndpoint = builder.messageSendEndpoint;
         this.taskGetEndpoint = builder.taskGetEndpoint;
         this.taskCancelEndpoint = builder.taskCancelEndpoint;
@@ -117,22 +114,20 @@ public class AgentServerConfiguration extends ServerConfiguration {
             return false;
         }
         AgentServerConfiguration that = (AgentServerConfiguration) o;
-        return Objects.equals(messageSendEndpoint, that.messageSendEndpoint) 
+        return Objects.equals(messageSendEndpoint, that.messageSendEndpoint)
                 && Objects.equals(taskGetEndpoint, that.taskGetEndpoint)
                 && Objects.equals(taskCancelEndpoint, that.taskCancelEndpoint)
                 && Objects.equals(agentCardEndpoint, that.agentCardEndpoint)
                 && enableTaskManagement == that.enableTaskManagement
-                && enableMessageRouting == that.enableMessageRouting
-                && maxTaskQueueSize == that.maxTaskQueueSize
-                && taskTimeoutSeconds == that.taskTimeoutSeconds
-                && enableTaskPersistence == that.enableTaskPersistence;
+                && enableMessageRouting == that.enableMessageRouting && maxTaskQueueSize == that.maxTaskQueueSize
+                && taskTimeoutSeconds == that.taskTimeoutSeconds && enableTaskPersistence == that.enableTaskPersistence;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), messageSendEndpoint, taskGetEndpoint, taskCancelEndpoint, 
-                           agentCardEndpoint, enableTaskManagement, enableMessageRouting, 
-                           maxTaskQueueSize, taskTimeoutSeconds, enableTaskPersistence);
+        return Objects.hash(super.hashCode(), messageSendEndpoint, taskGetEndpoint, taskCancelEndpoint,
+                agentCardEndpoint, enableTaskManagement, enableMessageRouting, maxTaskQueueSize, taskTimeoutSeconds,
+                enableTaskPersistence);
     }
 
     @Override

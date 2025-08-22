@@ -6,8 +6,6 @@ import java.time.Duration;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-import org.openhab.core.ai.action.config.ActionExecutionConfiguration;
-import org.openhab.core.ai.action.config.ActionExecutionConfigurationBuilder;
 
 /**
  * Unit tests for ActionExecutionConfiguration and ActionExecutionConfigurationBuilder.
