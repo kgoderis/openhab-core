@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.tool.config.ToolServerConfiguration;
 import org.openhab.core.ai.tool.server.http.HealthHandler;
 import org.openhab.core.ai.tool.server.http.MetricsHandler;
 import org.slf4j.Logger;

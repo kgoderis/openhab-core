@@ -6,9 +6,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.configuration.ServerConfiguration;
 import org.openhab.core.ai.common.transport.TransportType;
 import org.openhab.core.ai.config.ConfigurationService;
+import org.openhab.core.ai.config.common.ServerConfiguration;
+import org.openhab.core.ai.tool.config.ToolServerConfiguration;
 import org.openhab.core.ai.tool.logging.ToolLoggingManager;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.server.api.ToolServer;

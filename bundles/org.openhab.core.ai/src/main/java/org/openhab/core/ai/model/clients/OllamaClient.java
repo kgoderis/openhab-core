@@ -31,7 +31,7 @@ import org.openhab.core.ai.model.ModelRateLimitInfo;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
-import org.openhab.core.ai.model.configuration.OllamaConfiguration;
+import org.openhab.core.ai.model.config.OllamaConfiguration;
 import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

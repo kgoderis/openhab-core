@@ -26,7 +26,7 @@ import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.common.security.SecurityManager;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
-import org.openhab.core.ai.reasoning.configuration.api.ConfigurationManager;
+import org.openhab.core.ai.reasoning.config.api.ConfigurationManager;
 import org.openhab.core.ai.reasoning.decision.DecisionAnalysis;
 import org.openhab.core.ai.reasoning.decision.DecisionPattern;
 import org.openhab.core.ai.reasoning.decision.OptimizationOpportunity;

@@ -2,14 +2,14 @@ package org.openhab.core.ai.model.api;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.model.configuration.AnthropicConfiguration;
-import org.openhab.core.ai.model.configuration.AzureOpenAIConfiguration;
-import org.openhab.core.ai.model.configuration.GoogleGenAIConfiguration;
-import org.openhab.core.ai.model.configuration.LMStudioConfiguration;
-import org.openhab.core.ai.model.configuration.LocalAIConfiguration;
-import org.openhab.core.ai.model.configuration.OllamaConfiguration;
-import org.openhab.core.ai.model.configuration.OpenAIConfiguration;
-import org.openhab.core.ai.model.configuration.VLLMConfiguration;
+import org.openhab.core.ai.model.config.AnthropicConfiguration;
+import org.openhab.core.ai.model.config.AzureOpenAIConfiguration;
+import org.openhab.core.ai.model.config.GoogleGenAIConfiguration;
+import org.openhab.core.ai.model.config.LMStudioConfiguration;
+import org.openhab.core.ai.model.config.LocalAIConfiguration;
+import org.openhab.core.ai.model.config.OllamaConfiguration;
+import org.openhab.core.ai.model.config.OpenAIConfiguration;
+import org.openhab.core.ai.model.config.VLLMConfiguration;
 
 /**
  * Service for managing LLM configuration.

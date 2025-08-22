@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.OpenHAB;
-import org.openhab.core.ai.common.configuration.ConfigurationChangeListener;
+import org.openhab.core.ai.config.common.ProtocolConfiguration;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -49,6 +49,7 @@ public class DefaultConfigurationService implements ConfigurationService {
     private final Map<String, String> configuration = new ConcurrentHashMap<>();
     private final List<ConfigurationChangeListener> listeners = new CopyOnWriteArrayList<>();
     private final ScheduledExecutorService reloadExecutor = Executors.newSingleThreadScheduledExecutor();
+    private final ConfigurationValidator validator = new ConfigurationValidator();
 
     // Configuration file paths
     private @Nullable Path commonConfigPath;
@@ -62,10 +63,21 @@ public class DefaultConfigurationService implements ConfigurationService {
     @Activate
     public void activate() {
         logger.info("Activating AI Configuration Service");
-        initializeConfigurationPaths();
-        loadConfiguration();
-        startConfigurationReload();
-        logger.info("AI Configuration Service activated successfully");
+
+        try {
+            initializeConfigurationPaths();
+            loadConfiguration();
+
+            // Validate configuration after loading
+            validateLoadedConfiguration();
+
+            startConfigurationReload();
+            logger.info("AI Configuration Service activated successfully");
+        } catch (ConfigurationException e) {
+            logger.error("Failed to activate AI Configuration Service: {}", e.getMessage());
+            // Load default configuration as fallback
+            loadDefaultConfiguration();
+        }
     }
 
     @Deactivate
@@ -286,7 +298,7 @@ public class DefaultConfigurationService implements ConfigurationService {
     public void addConfigurationChangeListener(ConfigurationChangeListener listener) {
         if (listener != null && !listeners.contains(listener)) {
             listeners.add(listener);
-            logger.debug("Added configuration change listener: {}", listener.getListenerName());
+            logger.debug("Added configuration change listener: {}", listener.getClass().getSimpleName());
         }
     }
 
@@ -294,7 +306,7 @@ public class DefaultConfigurationService implements ConfigurationService {
     public void removeConfigurationChangeListener(ConfigurationChangeListener listener) {
         if (listener != null) {
             listeners.remove(listener);
-            logger.debug("Removed configuration change listener: {}", listener.getListenerName());
+            logger.debug("Removed configuration change listener: {}", listener.getClass().getSimpleName());
         }
     }
 
@@ -307,11 +319,11 @@ public class DefaultConfigurationService implements ConfigurationService {
 
     private void initializeConfigurationPaths() {
         String configDir = OpenHAB.getConfigFolder();
-        commonConfigPath = Paths.get(configDir, "ai-common.cfg");
-        mcpConfigPath = Paths.get(configDir, "mcp.cfg");
-        a2aConfigPath = Paths.get(configDir, "a2a.cfg");
+        commonConfigPath = Paths.get(configDir, "common.cfg");
+        mcpConfigPath = Paths.get(configDir, "tool.cfg");
+        a2aConfigPath = Paths.get(configDir, "agent.cfg");
 
-        logger.debug("Configuration paths initialized: common={}, mcp={}, a2a={}", commonConfigPath, mcpConfigPath,
+        logger.debug("Configuration paths initialized: common={}, tool={}, agent={}", commonConfigPath, mcpConfigPath,
                 a2aConfigPath);
     }
 
@@ -427,23 +439,41 @@ public class DefaultConfigurationService implements ConfigurationService {
     }
 
     private void notifyConfigurationChanged(String key, String oldValue, String newValue) {
+        ConfigurationChangeEvent event = new ConfigurationChangeEvent(key, oldValue, newValue,
+                ConfigurationChangeEvent.ChangeType.MODIFIED, ConfigurationChangeEvent.ChangeSource.OSGI_CONFIG,
+                extractDomain(key), Map.of(key, newValue));
+
         for (ConfigurationChangeListener listener : listeners) {
             try {
-                listener.onConfigurationChanged(key, oldValue, newValue);
+                listener.onConfigurationChanged(event);
             } catch (Exception e) {
-                logger.warn("Error in configuration change listener: {}", listener.getListenerName(), e);
+                logger.warn("Error in configuration change listener: {}", listener.getClass().getSimpleName(), e);
             }
         }
     }
 
     private void notifyConfigurationReloaded() {
+        ConfigurationChangeEvent event = new ConfigurationChangeEvent("configuration_reloaded", null, null,
+                ConfigurationChangeEvent.ChangeType.RELOADED, ConfigurationChangeEvent.ChangeSource.OSGI_CONFIG, "all",
+                Map.of());
+
         for (ConfigurationChangeListener listener : listeners) {
             try {
-                listener.onConfigurationReloaded();
+                listener.onConfigurationChanged(event);
             } catch (Exception e) {
-                logger.warn("Error in configuration reload listener: {}", listener.getListenerName(), e);
+                logger.warn("Error in configuration reload listener: {}", listener.getClass().getSimpleName(), e);
             }
         }
+    }
+
+    private String extractDomain(String key) {
+        if (key.startsWith("ai.")) {
+            String[] parts = key.split("\\.");
+            if (parts.length >= 2) {
+                return parts[1]; // Return the domain part (e.g., "model", "agent", "tool")
+            }
+        }
+        return "unknown";
     }
 
     // Public utility methods for debugging and monitoring
@@ -467,15 +497,67 @@ public class DefaultConfigurationService implements ConfigurationService {
     public List<String> getConfigurationSources() {
         List<String> sources = new ArrayList<>();
         if (Files.exists(commonConfigPath)) {
-            sources.add("ai-common.cfg");
+            sources.add("common.cfg");
         }
         if (Files.exists(mcpConfigPath)) {
-            sources.add("mcp.cfg");
+            sources.add("tool.cfg");
         }
         if (Files.exists(a2aConfigPath)) {
-            sources.add("a2a.cfg");
+            sources.add("agent.cfg");
         }
         sources.add("environment");
         return sources;
+    }
+
+    /**
+     * Validates the loaded configuration using the ConfigurationValidator.
+     * 
+     * @throws ConfigurationException if validation fails
+     */
+    private void validateLoadedConfiguration() throws ConfigurationException {
+        logger.debug("Validating loaded configuration");
+
+        // Convert configuration map to Map<String, Object> for validation
+        Map<String, Object> configMap = new HashMap<>();
+        configuration.forEach((key, value) -> configMap.put(key, value));
+
+        // Validate common configuration
+        validator.validateCommonConfiguration(configMap);
+
+        // Validate model configuration if present
+        if (hasConfigKey("ai.model.")) {
+            validator.validateModelConfiguration(configMap);
+        }
+
+        // Validate agent configuration if present
+        if (hasConfigKey("ai.agent.")) {
+            validator.validateAgentConfiguration(configMap);
+        }
+
+        // Validate tool configuration if present
+        if (hasConfigKey("ai.tool.")) {
+            validator.validateToolConfiguration(configMap);
+        }
+
+        logger.debug("Configuration validation completed successfully");
+    }
+
+    /**
+     * Loads default configuration when validation fails.
+     */
+    private void loadDefaultConfiguration() {
+        logger.info("Loading default configuration");
+
+        // Clear existing configuration
+        configuration.clear();
+
+        // Set default values with ai.common.* prefix
+        configuration.put("ai.common.enabled", "true");
+        configuration.put("ai.common.debug.mode", "false");
+        configuration.put("ai.common.default.timeout", "30000");
+        configuration.put("ai.common.max.concurrent.requests", "10");
+        configuration.put("ai.common.security.enabled", "true");
+
+        logger.info("Default configuration loaded");
     }
 }

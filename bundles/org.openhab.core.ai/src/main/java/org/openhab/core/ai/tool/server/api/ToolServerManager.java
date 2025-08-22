@@ -4,7 +4,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.server.ToolServerConfiguration;
+import org.openhab.core.ai.tool.config.ToolServerConfiguration;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService.ReadyTracker;
 import org.osgi.framework.BundleContext;

@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.configuration.BaseConfiguration;
+import org.openhab.core.ai.config.common.BaseConfiguration;
 
 /**
  * Unified HTTP Server Configuration for MCP and A2A protocols.

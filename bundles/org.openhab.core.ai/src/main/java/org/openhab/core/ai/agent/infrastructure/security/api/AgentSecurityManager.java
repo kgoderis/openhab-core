@@ -15,10 +15,10 @@ import org.openhab.core.ai.agent.infrastructure.security.DecryptedMessage;
 import org.openhab.core.ai.agent.infrastructure.security.EncryptedMessage;
 import org.openhab.core.ai.agent.infrastructure.security.KeyGenerationResult;
 import org.openhab.core.ai.auth.SecurityIncident;
-import org.openhab.core.ai.common.configuration.SecurityConfiguration;
 import org.openhab.core.ai.common.security.QuickSecurityResult;
 import org.openhab.core.ai.common.security.SecurityManager;
 import org.openhab.core.ai.common.security.SecuritySeverity;
+import org.openhab.core.ai.security.config.SecurityConfiguration;
 
 /**
  * Agent Security Manager Interface

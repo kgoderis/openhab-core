@@ -5,7 +5,7 @@ import java.util.Map;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
-import org.openhab.core.ai.common.configuration.SecurityConfiguration;
+import org.openhab.core.ai.security.config.SecurityConfiguration;
 import org.openhab.core.ai.tool.security.filters.SecurityResult;
 
 /**

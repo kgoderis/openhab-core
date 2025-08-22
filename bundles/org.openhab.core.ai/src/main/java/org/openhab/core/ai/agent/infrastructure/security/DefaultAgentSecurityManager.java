@@ -28,13 +28,13 @@ import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManage
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.SecurityIncident;
-import org.openhab.core.ai.common.configuration.SecurityConfiguration;
 import org.openhab.core.ai.common.security.AgentSecurityStatistics;
 import org.openhab.core.ai.common.security.MessageSecurityStatistics;
 import org.openhab.core.ai.common.security.QuickSecurityResult;
 import org.openhab.core.ai.common.security.SecurityManager;
 import org.openhab.core.ai.common.security.SecuritySeverity;
 import org.openhab.core.ai.common.security.SecurityStatistics;
+import org.openhab.core.ai.security.config.SecurityConfiguration;
 import org.openhab.core.ai.tool.security.filters.SecurityResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;

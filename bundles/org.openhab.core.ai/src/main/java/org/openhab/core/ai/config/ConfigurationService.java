@@ -6,7 +6,7 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.configuration.ConfigurationChangeListener;
+import org.openhab.core.ai.config.common.ProtocolConfiguration;
 
 /**
  * Configuration service for AI protocols (MCP and A2A).

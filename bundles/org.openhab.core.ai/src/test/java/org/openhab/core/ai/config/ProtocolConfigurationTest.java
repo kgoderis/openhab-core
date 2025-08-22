@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.config.common.ProtocolConfiguration;
 
 /**
  * Unit tests for {@link ProtocolConfiguration}.

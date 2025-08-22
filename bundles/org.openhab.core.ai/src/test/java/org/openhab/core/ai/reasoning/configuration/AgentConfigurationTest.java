@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.reasoning.config.AgentConfiguration;
 
 /**
  * Unit tests for {@link AgentConfiguration}.
