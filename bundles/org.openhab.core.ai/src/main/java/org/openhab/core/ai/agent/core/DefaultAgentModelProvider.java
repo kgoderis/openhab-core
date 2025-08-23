@@ -12,7 +12,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
-import org.openhab.core.ai.agent.config.AgentModelConfiguration;
+import org.openhab.core.ai.agent.model.AgentModelConfiguration;
 import org.openhab.core.ai.agent.monitoring.AgentStatistics;
 import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;

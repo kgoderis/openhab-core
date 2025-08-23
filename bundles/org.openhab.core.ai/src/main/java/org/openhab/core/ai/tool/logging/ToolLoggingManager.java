@@ -1,11 +1,15 @@
 package org.openhab.core.ai.tool.logging;
 
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
+import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
 import org.openhab.core.ai.common.transport.TransportType;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,13 +28,12 @@ public class ToolLoggingManager {
 
     private static final Logger logger = LoggerFactory.getLogger(ToolLoggingManager.class);
 
-    // Performance tracking
-    private final AtomicLong totalToolExecutions = new AtomicLong(0);
-    private final AtomicLong totalToolExecutionTime = new AtomicLong(0);
-    private final AtomicLong totalServerRequests = new AtomicLong(0);
+    // NEW: Monitoring registry for centralized metrics collection
+    @Reference
+    private @Nullable MonitoringRegistry monitoringRegistry;
 
     /**
-     * Log tool execution with enhanced details.
+     * Log tool execution with enhanced details using the new monitoring framework.
      * 
      * @param toolId Tool identifier
      * @param parameters Tool parameters
@@ -39,229 +42,135 @@ public class ToolLoggingManager {
      * @param result Execution result or error message
      */
     public void logToolExecution(String toolId, Map<String, Object> parameters, long executionTime, boolean success,
-            String result) {
+            @Nullable String result) {
 
-        // Update performance metrics
-        totalToolExecutions.incrementAndGet();
-        totalToolExecutionTime.addAndGet(executionTime);
-
-        if (success) {
-            logger.info("MCP Tool executed: id={}, duration={}ms, result={}", toolId, executionTime, result);
-        } else {
-            logger.error("MCP Tool failed: id={}, duration={}ms, error={}", toolId, executionTime, result);
+        // Use centralized monitoring registry
+        if (monitoringRegistry != null) {
+            ExecutionMetricsCollector collector = monitoringRegistry.executionCollector(MetricKeys.tool(toolId));
+            collector.recordExecution(success, executionTime * 1_000_000L); // Convert to nanoseconds
         }
 
-        // Log detailed parameters for debugging
-        if (logger.isDebugEnabled()) {
-            logger.debug("MCP Tool parameters: id={}, params={}", toolId, parameters);
+        // Structured logging
+        if (success) {
+            logger.info("Tool execution successful - Tool: {}, Duration: {}ms, Result: {}", toolId, executionTime,
+                    result != null ? result.substring(0, Math.min(result.length(), 100)) + "..." : "null");
+        } else {
+            logger.error("Tool execution failed - Tool: {}, Duration: {}ms, Error: {}", toolId, executionTime,
+                    result != null ? result : "Unknown error");
         }
     }
 
     /**
-     * Log server lifecycle events.
+     * Log server request with enhanced details using the new monitoring framework.
      * 
-     * @param serverId Server identifier
-     * @param action Lifecycle action (created, started, stopped, etc.)
-     * @param transportType Transport type (STDIO, SSE, etc.)
-     * @param success Whether action was successful
-     * @param details Additional details or error message
+     * @param requestType Type of request
+     * @param transportType Transport type used
+     * @param processingTime Processing time in milliseconds
+     * @param success Whether request was successful
+     * @param details Additional request details
      */
-    public void logServerLifecycle(String serverId, String action, String transportType, boolean success,
-            String details) {
+    public void logServerRequest(String requestType, TransportType transportType, long processingTime, boolean success,
+            @Nullable Map<String, Object> details) {
 
+        // Use centralized monitoring registry
+        if (monitoringRegistry != null) {
+            ExecutionMetricsCollector collector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("server-" + requestType));
+            collector.recordExecution(success, processingTime * 1_000_000L); // Convert to nanoseconds
+        }
+
+        // Structured logging
         if (success) {
-            logger.info("MCP Server {}: action={}, transport={}, details={}", serverId, action, transportType, details);
+            logger.info("Server request successful - Type: {}, Transport: {}, Duration: {}ms", requestType,
+                    transportType, processingTime);
         } else {
-            logger.error("MCP Server {}: action={}, transport={}, error={}", serverId, action, transportType, details);
+            logger.error("Server request failed - Type: {}, Transport: {}, Duration: {}ms", requestType, transportType,
+                    processingTime);
         }
     }
 
     /**
-     * Log transport health status.
+     * Log transport health event using the new monitoring framework.
      * 
-     * @param serverId Server identifier
      * @param transportType Transport type
-     * @param healthy Whether transport is healthy
-     * @param error Error message if unhealthy
-     * @param uptime Transport uptime in milliseconds
+     * @param healthStatus Health status
+     * @param details Health details
      */
-    public void logTransportHealth(String serverId, TransportType transportType, boolean healthy, String error,
-            long uptime) {
+    public void logTransportHealth(TransportType transportType, String healthStatus,
+            @Nullable Map<String, Object> details) {
 
-        if (healthy) {
-            logger.info("MCP Transport healthy: server={}, transport={}, uptime={}ms", serverId, transportType, uptime);
-        } else {
-            logger.warn("MCP Transport unhealthy: server={}, transport={}, error={}, uptime={}ms", serverId,
-                    transportType, error, uptime);
+        // Use centralized monitoring registry
+        if (monitoringRegistry != null) {
+            ExecutionMetricsCollector collector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("transport-health"));
+            // Record health check as successful execution
+            collector.recordExecution("UP".equals(healthStatus), 0L);
         }
+
+        // Structured logging
+        logger.info("Transport health check - Type: {}, Status: {}, Details: {}", transportType, healthStatus, details);
     }
 
     /**
-     * Log security events and violations.
+     * Log security event using the new monitoring framework.
      * 
-     * @param clientId Client identifier
-     * @param eventType Type of security event
-     * @param details Event details
-     * @param success Whether the security check passed
-     * @param serverId Server identifier
+     * @param eventType Security event type
+     * @param severity Event severity
+     * @param details Security event details
      */
-    public void logSecurityEvent(String clientId, String eventType, String details, boolean success, String serverId) {
+    public void logSecurityEvent(String eventType, String severity, @Nullable Map<String, Object> details) {
 
-        if (success) {
-            logger.info("MCP Security event: client={}, type={}, server={}, details={}", clientId, eventType, serverId,
-                    details);
-        } else {
-            logger.warn("MCP Security violation: client={}, type={}, server={}, details={}", clientId, eventType,
-                    serverId, details);
+        // Use centralized monitoring registry
+        if (monitoringRegistry != null) {
+            ExecutionMetricsCollector collector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("security-" + eventType));
+            // Record security event as successful execution
+            collector.recordExecution(true, 0L);
         }
-    }
 
-    /**
-     * Log performance metrics.
-     * 
-     * @param serverId Server identifier
-     * @param requestCount Total request count
-     * @param totalExecutionTime Total execution time in milliseconds
-     * @param avgExecutionTime Average execution time in milliseconds
-     * @param activeConnections Number of active connections
-     */
-    public void logPerformanceMetrics(String serverId, long requestCount, long totalExecutionTime,
-            double avgExecutionTime, int activeConnections) {
-
-        logger.info("MCP Performance: server={}, requests={}, avgTime={:.2f}ms, connections={}", serverId, requestCount,
-                avgExecutionTime, activeConnections);
-    }
-
-    /**
-     * Log tool registry events.
-     * 
-     * @param action Registry action (discovered, registered, unregistered)
-     * @param toolId Tool identifier
-     * @param toolCount Total number of tools
-     * @param success Whether action was successful
-     */
-    public void logToolRegistryEvent(String action, String toolId, int toolCount, boolean success) {
-
-        if (success) {
-            logger.info("MCP Tool Registry: action={}, tool={}, totalTools={}", action, toolId, toolCount);
-        } else {
-            logger.error("MCP Tool Registry: action={}, tool={}, totalTools={}, failed", action, toolId, toolCount);
-        }
-    }
-
-    /**
-     * Log connection events.
-     * 
-     * @param clientId Client identifier
-     * @param transportType Transport type
-     * @param action Connection action (connected, disconnected, rejected)
-     * @param success Whether action was successful
-     * @param details Additional details
-     */
-    public void logConnectionEvent(String clientId, String transportType, String action, boolean success,
-            String details) {
-
-        if (success) {
-            logger.info("MCP Connection: client={}, transport={}, action={}, details={}", clientId, transportType,
-                    action, details);
-        } else {
-            logger.warn("MCP Connection: client={}, transport={}, action={}, error={}", clientId, transportType, action,
-                    details);
-        }
-    }
-
-    /**
-     * Log error recovery events.
-     * 
-     * @param errorType Type of error
-     * @param errorMessage Error message
-     * @param recoveryAction Recovery action taken
-     * @param success Whether recovery was successful
-     * @param serverId Server identifier
-     */
-    public void logErrorRecovery(String errorType, String errorMessage, String recoveryAction, boolean success,
-            String serverId) {
-
-        if (success) {
-            logger.info("MCP Error Recovery: type={}, action={}, server={}, message={}", errorType, recoveryAction,
-                    serverId, errorMessage);
-        } else {
-            logger.error("MCP Error Recovery Failed: type={}, action={}, server={}, message={}", errorType,
-                    recoveryAction, serverId, errorMessage);
-        }
-    }
-
-    /**
-     * Log configuration events.
-     * 
-     * @param serverId Server identifier
-     * @param configType Configuration type
-     * @param action Configuration action (loaded, saved, updated, validated)
-     * @param success Whether action was successful
-     * @param details Additional details
-     */
-    public void logConfigurationEvent(String serverId, String configType, String action, boolean success,
-            String details) {
-
-        if (success) {
-            logger.info("MCP Configuration: server={}, type={}, action={}, details={}", serverId, configType, action,
-                    details);
-        } else {
-            logger.error("MCP Configuration: server={}, type={}, action={}, error={}", serverId, configType, action,
-                    details);
-        }
-    }
-
-    /**
-     * Get current performance statistics.
-     * 
-     * @return Map containing performance statistics
-     */
-    public Map<String, Object> getPerformanceStatistics() {
-        long totalExecutions = totalToolExecutions.get();
-        long totalTime = totalToolExecutionTime.get();
-        double avgExecutionTime = totalExecutions > 0 ? (double) totalTime / totalExecutions : 0.0;
-
-        return Map.of("totalToolExecutions", totalExecutions, "totalToolExecutionTime", totalTime,
-                "averageToolExecutionTime", avgExecutionTime, "totalServerRequests", totalServerRequests.get());
-    }
-
-    /**
-     * Reset performance statistics.
-     */
-    public void resetPerformanceStatistics() {
-        totalToolExecutions.set(0);
-        totalToolExecutionTime.set(0);
-        totalServerRequests.set(0);
-        logger.info("MCP Performance statistics reset");
-    }
-
-    /**
-     * Log a general MCP event with structured format.
-     * 
-     * @param component Component name (server, tool, transport, etc.)
-     * @param event Event name
-     * @param level Log level (INFO, WARN, ERROR, DEBUG)
-     * @param details Event details
-     */
-    public void logMCPEvent(String component, String event, String level, Map<String, Object> details) {
-        String detailsStr = details != null ? details.toString() : "{}";
-
-        switch (level.toUpperCase()) {
-            case "DEBUG":
-                logger.debug("MCP {} {}: {}", component, event, detailsStr);
+        // Structured logging
+        switch (severity.toUpperCase()) {
+            case "CRITICAL":
+                logger.error("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
                 break;
-            case "INFO":
-                logger.info("MCP {} {}: {}", component, event, detailsStr);
+            case "HIGH":
+                logger.warn("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
                 break;
-            case "WARN":
-                logger.warn("MCP {} {}: {}", component, event, detailsStr);
+            case "MEDIUM":
+                logger.info("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
                 break;
-            case "ERROR":
-                logger.error("MCP {} {}: {}", component, event, detailsStr);
+            case "LOW":
+                logger.debug("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
                 break;
             default:
-                logger.info("MCP {} {}: {}", component, event, detailsStr);
+                logger.info("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
+        }
+    }
+
+    /**
+     * Log performance metrics using the new monitoring framework.
+     * 
+     * @param component Component name
+     * @param operation Operation name
+     * @param duration Duration in milliseconds
+     * @param success Whether operation was successful
+     */
+    public void logPerformanceMetrics(String component, String operation, long duration, boolean success) {
+
+        // Use centralized monitoring registry
+        if (monitoringRegistry != null) {
+            ExecutionMetricsCollector collector = monitoringRegistry
+                    .executionCollector(MetricKeys.action(component + "." + operation));
+            collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
+        }
+
+        // Structured logging
+        if (success) {
+            logger.debug("Performance metric - Component: {}, Operation: {}, Duration: {}ms", component, operation,
+                    duration);
+        } else {
+            logger.warn("Performance metric - Component: {}, Operation: {}, Duration: {}ms (FAILED)", component,
+                    operation, duration);
         }
     }
 }

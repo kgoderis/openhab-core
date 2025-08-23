@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -11,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
+import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
@@ -186,24 +188,11 @@ public class MultiStepReasoningEngine {
             }
         }
 
-        // Convert engine ReasoningStep to MultiStepReasoningResult.ReasoningStep
-        List<MultiStepReasoningResult.ReasoningStep> convertedSteps = steps.stream()
-                .map(step -> new MultiStepReasoningResult.ReasoningStep(step.getStepNumber(), step.getReasoning(), "", // action
-                                                                                                                       // -
-                                                                                                                       // not
-                                                                                                                       // available
-                                                                                                                       // in
-                                                                                                                       // engine
-                                                                                                                       // step
-                        "", // result - not available in engine step
-                        step.getEndTime().toEpochMilli() - step.getStartTime().toEpochMilli() // durationMs
-                )).toList();
-
-        // Create final result
-        MultiStepReasoningResult result = MultiStepReasoningResult.builder().withSessionId(sessionId)
-                .withSteps(convertedSteps).withToolCalls(actions).withFinalReasoning(finalReasoning)
-                .withConfidence(confidence).withCompleted(completed).withContext(context).withStartTime(startTime)
-                .withEndTime(Instant.now()).build();
+        // Create final result using the engine ReasoningStep directly
+        MultiStepReasoningResult result = MultiStepReasoningResult.builder().withSessionId(sessionId).withSteps(steps)
+                .withToolCalls(actions).withFinalReasoning(finalReasoning).withConfidence(confidence)
+                .withCompleted(completed).withContext(context).withStartTime(startTime).withEndTime(Instant.now())
+                .build();
 
         // Record performance metrics
         recordPerformanceMetrics(sessionId, result);
@@ -375,9 +364,38 @@ public class MultiStepReasoningEngine {
             throw new IllegalStateException("ActionRegistry not available");
         }
 
-        // This would integrate with the unified action execution system
-        // For now, throw an exception
-        throw new UnsupportedOperationException("Action execution not yet implemented");
+        try {
+            // Extract action name from the execution context
+            String actionName = action.getValue("protocol.action", String.class);
+            if (actionName == null || actionName.isEmpty()) {
+                return ActionResult.error("Action name not found in execution context",
+                        new ActionError("MISSING_ACTION_NAME", "Action name not found in execution context"), 0);
+            }
+
+            // Get the action from registry
+            Action targetAction = registry.getAction(actionName);
+            if (targetAction == null) {
+                return ActionResult.error("Action not found: " + actionName,
+                        new ActionError("ACTION_NOT_FOUND", "Action not found: " + actionName), 0);
+            }
+
+            // Extract parameters from the execution context
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parameters = action.getValue("protocol.arguments", Map.class);
+            if (parameters == null) {
+                parameters = Map.of();
+            }
+
+            // Execute the action
+            ActionResult result = targetAction.execute(parameters, action);
+            return result;
+
+        } catch (Exception e) {
+            logger.error("Error executing action: {}", action.getCorrelationId(), e);
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            return ActionResult.error("Action execution failed: " + errorMessage,
+                    new ActionError("EXECUTION_ERROR", errorMessage), 0);
+        }
     }
 
     /**
@@ -482,7 +500,7 @@ public class MultiStepReasoningEngine {
         return MultiStepReasoningResult.builder().withSessionId(sessionId).withSteps(new ArrayList<>())
                 .withToolCalls(new ArrayList<>()).withFinalReasoning("Reasoning failed: " + error.getMessage())
                 .withConfidence(0.0).withCompleted(false).withContext(context).withStartTime(startTime)
-                .withEndTime(Instant.now()).withError(error.getMessage()).build();
+                .withEndTime(Instant.now()).withErrorMessage(error.getMessage()).build();
     }
 
     /**

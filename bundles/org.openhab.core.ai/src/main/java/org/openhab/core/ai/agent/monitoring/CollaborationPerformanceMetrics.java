@@ -5,126 +5,193 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
-import org.openhab.core.ai.common.monitoring.api.LatencyMetrics;
-import org.openhab.core.ai.common.monitoring.base.AbstractMetrics;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
+import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Consolidated collaboration performance metrics that extends the unified monitoring framework.
+ * Performance metrics for agent collaboration operations.
  * 
  * <p>
- * This class provides comprehensive performance metrics for agent collaboration operations including
- * coordination counts, success rates, and latency metrics. It implements both
- * CountsMetrics and LatencyMetrics capability interfaces.
+ * This class provides comprehensive metrics for agent collaboration operations:
+ * - Collaboration session statistics
+ * - Communication performance metrics
+ * - Resource sharing and coordination metrics
+ * - Error tracking and failure analysis
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
+@Component(service = CollaborationPerformanceMetrics.class)
 @NonNullByDefault
-public class CollaborationPerformanceMetrics extends AbstractMetrics implements CountsMetrics, LatencyMetrics {
+public class CollaborationPerformanceMetrics {
 
-    private final String agentId;
+    private static final Logger logger = LoggerFactory.getLogger(CollaborationPerformanceMetrics.class);
 
-    /**
-     * Create a new CollaborationPerformanceMetrics instance.
-     * 
-     * @param id unique identifier for this metrics instance
-     * @param timestamp timestamp when metrics were collected
-     * @param agentId the agent identifier
-     * @param totalOperations total number of collaboration operations
-     * @param successfulOperations number of successful operations
-     * @param failedOperations number of failed operations
-     * @param totalProcessingTime total processing time in nanoseconds
-     * @param averageResponseTime average response time in milliseconds
-     * @param lastOperationTime timestamp of last operation
-     * @param data additional monitoring data
-     */
-    public CollaborationPerformanceMetrics(String id, Instant timestamp, String agentId, long totalOperations,
-            long successfulOperations, long failedOperations, long totalProcessingTime, double averageResponseTime,
-            @Nullable Instant lastOperationTime, @Nullable Map<String, Object> data) {
-        super(id, timestamp, "agent", "collaboration-performance", "Collaboration performance metrics", data,
-                totalOperations, successfulOperations, failedOperations, totalProcessingTime, averageResponseTime,
-                lastOperationTime);
-        this.agentId = agentId;
-    }
+    // NEW: Monitoring registry for centralized metrics collection
+    @Reference
+    private @Nullable MonitoringRegistry monitoringRegistry;
 
     /**
-     * Create a new CollaborationPerformanceMetrics instance with current timestamp.
-     * 
-     * @param id unique identifier for this metrics instance
-     * @param agentId the agent identifier
-     * @param totalOperations total number of collaboration operations
-     * @param successfulOperations number of successful operations
-     * @param failedOperations number of failed operations
-     * @param totalProcessingTime total processing time in nanoseconds
-     * @param averageResponseTime average response time in milliseconds
+     * Record collaboration session using the new monitoring framework
      */
-    public CollaborationPerformanceMetrics(String id, String agentId, long totalOperations, long successfulOperations,
-            long failedOperations, long totalProcessingTime, double averageResponseTime) {
-        this(id, Instant.now(), agentId, totalOperations, successfulOperations, failedOperations, totalProcessingTime,
-                averageResponseTime, null, null);
+    public void recordCollaborationSession(String sessionId, String agentId, long duration, boolean success) {
+        try {
+            // Use centralized monitoring registry
+            if (monitoringRegistry != null) {
+                ExecutionMetricsCollector collector = monitoringRegistry
+                        .executionCollector(MetricKeys.action("collaboration-session"));
+                collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
+            }
+
+            // Log the operation
+            if (success) {
+                logger.debug("Collaboration session successful - Session: {}, Agent: {}, Duration: {}ms", sessionId,
+                        agentId, duration);
+            } else {
+                logger.warn("Collaboration session failed - Session: {}, Agent: {}, Duration: {}ms", sessionId, agentId,
+                        duration);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error recording collaboration session metrics for session: {}", sessionId, e);
+        }
     }
 
     /**
-     * Get the agent identifier.
-     * 
-     * @return the agent identifier
+     * Record communication performance using the new monitoring framework
      */
-    public String getAgentId() {
-        return agentId;
-    }
+    public void recordCommunicationPerformance(String agentId, String targetAgentId, long latency, boolean success) {
+        try {
+            // Use centralized monitoring registry
+            if (monitoringRegistry != null) {
+                ExecutionMetricsCollector collector = monitoringRegistry
+                        .executionCollector(MetricKeys.action("agent-communication"));
+                collector.recordExecution(success, latency * 1_000_000L); // Convert to nanoseconds
+            }
 
-    // CountsMetrics interface implementation
-    @Override
-    public long total() {
-        return getTotalOperations();
-    }
+            // Log the operation
+            if (success) {
+                logger.debug("Communication successful - From: {}, To: {}, Latency: {}ms", agentId, targetAgentId,
+                        latency);
+            } else {
+                logger.warn("Communication failed - From: {}, To: {}, Latency: {}ms", agentId, targetAgentId, latency);
+            }
 
-    @Override
-    public long success() {
-        return getSuccessfulOperations();
-    }
-
-    @Override
-    public long failure() {
-        return getFailedOperations();
-    }
-
-    // LatencyMetrics interface implementation
-    @Override
-    public long totalDurationNanos() {
-        return getTotalProcessingTime();
+        } catch (Exception e) {
+            logger.error("Error recording communication performance metrics for agent: {}", agentId, e);
+        }
     }
 
     /**
-     * Get the collaboration success rate.
-     * 
-     * @return collaboration success rate as a percentage
+     * Record resource sharing using the new monitoring framework
      */
-    public double getCollaborationSuccessRate() {
-        return successRate() * 100.0;
+    public void recordResourceSharing(String resourceId, String agentId, long duration, boolean success) {
+        try {
+            // Use centralized monitoring registry
+            if (monitoringRegistry != null) {
+                ExecutionMetricsCollector collector = monitoringRegistry
+                        .executionCollector(MetricKeys.action("resource-sharing"));
+                collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
+            }
+
+            // Log the operation
+            if (success) {
+                logger.debug("Resource sharing successful - Resource: {}, Agent: {}, Duration: {}ms", resourceId,
+                        agentId, duration);
+            } else {
+                logger.warn("Resource sharing failed - Resource: {}, Agent: {}, Duration: {}ms", resourceId, agentId,
+                        duration);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error recording resource sharing metrics for resource: {}", resourceId, e);
+        }
     }
 
     /**
-     * Get the collaboration efficiency score.
-     * 
-     * @return collaboration efficiency score between 0.0 and 1.0
+     * Record coordination operation using the new monitoring framework
      */
-    public double getCollaborationEfficiency() {
-        double successRate = successRate();
-        double latencyScore = getAverageResponseTime() < 2000 ? 1.0
-                : getAverageResponseTime() < 5000 ? 0.8 : getAverageResponseTime() < 10000 ? 0.6 : 0.4;
+    public void recordCoordinationOperation(String operationId, String agentId, long duration, boolean success) {
+        try {
+            // Use centralized monitoring registry
+            if (monitoringRegistry != null) {
+                ExecutionMetricsCollector collector = monitoringRegistry
+                        .executionCollector(MetricKeys.action("coordination-operation"));
+                collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
+            }
 
-        return (successRate * 0.6) + (latencyScore * 0.4);
+            // Log the operation
+            if (success) {
+                logger.debug("Coordination operation successful - Operation: {}, Agent: {}, Duration: {}ms",
+                        operationId, agentId, duration);
+            } else {
+                logger.warn("Coordination operation failed - Operation: {}, Agent: {}, Duration: {}ms", operationId,
+                        agentId, duration);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error recording coordination operation metrics for operation: {}", operationId, e);
+        }
     }
 
     /**
-     * Get the coordination effectiveness.
-     * 
-     * @return coordination effectiveness score between 0.0 and 1.0
+     * Get collaboration performance statistics using the new monitoring framework
      */
-    public double getCoordinationEffectiveness() {
-        return getCollaborationEfficiency();
+    public Map<String, Object> getStatistics() {
+        Map<String, Object> statistics = new java.util.HashMap<>();
+
+        if (monitoringRegistry != null) {
+            // Get statistics from monitoring registry
+            ExecutionMetricsCollector sessionCollector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("collaboration-session"));
+            ExecutionMetricsCollector communicationCollector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("agent-communication"));
+            ExecutionMetricsCollector resourceCollector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("resource-sharing"));
+            ExecutionMetricsCollector coordinationCollector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("coordination-operation"));
+
+            var sessionSnapshot = sessionCollector.snapshot();
+            var communicationSnapshot = communicationCollector.snapshot();
+            var resourceSnapshot = resourceCollector.snapshot();
+            var coordinationSnapshot = coordinationCollector.snapshot();
+
+            statistics.put("totalCollaborationSessions", sessionSnapshot.total());
+            statistics.put("successfulCollaborationSessions", sessionSnapshot.success());
+            statistics.put("failedCollaborationSessions", sessionSnapshot.failure());
+            statistics.put("totalCommunications", communicationSnapshot.total());
+            statistics.put("successfulCommunications", communicationSnapshot.success());
+            statistics.put("failedCommunications", communicationSnapshot.failure());
+            statistics.put("totalResourceSharings", resourceSnapshot.total());
+            statistics.put("successfulResourceSharings", resourceSnapshot.success());
+            statistics.put("failedResourceSharings", resourceSnapshot.failure());
+            statistics.put("totalCoordinationOperations", coordinationSnapshot.total());
+            statistics.put("successfulCoordinationOperations", coordinationSnapshot.success());
+            statistics.put("failedCoordinationOperations", coordinationSnapshot.failure());
+            statistics.put("timestamp", Instant.now());
+        } else {
+            // Fallback to basic statistics
+            statistics.put("totalCollaborationSessions", 0);
+            statistics.put("successfulCollaborationSessions", 0);
+            statistics.put("failedCollaborationSessions", 0);
+            statistics.put("totalCommunications", 0);
+            statistics.put("successfulCommunications", 0);
+            statistics.put("failedCommunications", 0);
+            statistics.put("totalResourceSharings", 0);
+            statistics.put("successfulResourceSharings", 0);
+            statistics.put("failedResourceSharings", 0);
+            statistics.put("totalCoordinationOperations", 0);
+            statistics.put("successfulCoordinationOperations", 0);
+            statistics.put("failedCoordinationOperations", 0);
+            statistics.put("timestamp", Instant.now());
+        }
+
+        return statistics;
     }
 }

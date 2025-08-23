@@ -9,6 +9,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ReasoningContext;
+import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 
 /**
  * Result of multi-step reasoning process.
@@ -155,45 +156,6 @@ public class MultiStepReasoningResult {
     }
 
     /**
-     * Represents a single step in the reasoning process.
-     */
-    public static class ReasoningStep {
-        private final int stepNumber;
-        private final String description;
-        private final String action;
-        private final String result;
-        private final long durationMs;
-
-        public ReasoningStep(int stepNumber, String description, String action, String result, long durationMs) {
-            this.stepNumber = stepNumber;
-            this.description = description;
-            this.action = action;
-            this.result = result;
-            this.durationMs = durationMs;
-        }
-
-        public int getStepNumber() {
-            return stepNumber;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public String getAction() {
-            return action;
-        }
-
-        public String getResult() {
-            return result;
-        }
-
-        public long getDurationMs() {
-            return durationMs;
-        }
-    }
-
-    /**
      * Builder for MultiStepReasoningResult.
      */
     public static final class Builder {
@@ -284,19 +246,13 @@ public class MultiStepReasoningResult {
             return this;
         }
 
-        public Builder withError(String errorMessage) {
-            this.errorMessage = Objects.requireNonNull(errorMessage, "errorMessage");
-            this.successful = false;
-            return this;
-        }
-
         public Builder withContext(@Nullable ReasoningContext context) {
             this.context = context;
             return this;
         }
 
         public Builder withConfidence(double confidence) {
-            this.confidence = confidence;
+            this.confidence = Math.max(0.0, Math.min(1.0, confidence));
             return this;
         }
 
@@ -316,20 +272,23 @@ public class MultiStepReasoningResult {
         }
 
         public MultiStepReasoningResult build() {
-            if (reasoningId.isBlank()) {
-                throw new IllegalArgumentException("reasoningId must not be blank");
+            if (reasoningId == null || reasoningId.isBlank()) {
+                throw new IllegalArgumentException("reasoningId must not be null or blank");
             }
-            if (sessionId.isBlank()) {
-                throw new IllegalArgumentException("sessionId must not be blank");
+            if (sessionId == null || sessionId.isBlank()) {
+                throw new IllegalArgumentException("sessionId must not be null or blank");
+            }
+            if (finalAnswer == null || finalAnswer.isBlank()) {
+                throw new IllegalArgumentException("finalAnswer must not be null or blank");
+            }
+            if (finalReasoning == null || finalReasoning.isBlank()) {
+                throw new IllegalArgumentException("finalReasoning must not be null or blank");
             }
             if (confidence < 0.0 || confidence > 1.0) {
                 throw new IllegalArgumentException("confidence must be between 0.0 and 1.0");
             }
             if (totalDurationMs < 0) {
-                throw new IllegalArgumentException("totalDurationMs must be >= 0");
-            }
-            if (endTime.isBefore(startTime)) {
-                throw new IllegalArgumentException("endTime must not be before startTime");
+                throw new IllegalArgumentException("totalDurationMs must be non-negative");
             }
             return new MultiStepReasoningResult(this);
         }

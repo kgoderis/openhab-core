@@ -1,6 +1,7 @@
 package org.openhab.core.ai.reasoning.engine.analysis;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -95,6 +96,16 @@ public final class ReasoningPerformanceAnalysis {
 
         public Builder withAnalysisTime(Instant analysisTime) {
             this.analysisTime = analysisTime;
+            return this;
+        }
+
+        public Builder withTokensByModel(Map<String, Long> tokensByModel) {
+            // Convert tokens to performance metrics
+            Map<String, Double> performanceByModel = new HashMap<>();
+            for (Map.Entry<String, Long> entry : tokensByModel.entrySet()) {
+                performanceByModel.put(entry.getKey(), entry.getValue().doubleValue());
+            }
+            this.performanceByModel = performanceByModel;
             return this;
         }
 

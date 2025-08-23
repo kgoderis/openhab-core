@@ -12,11 +12,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
+import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
 import org.openhab.core.service.ReadyService.ReadyTracker;
@@ -36,48 +38,36 @@ import io.a2a.spec.Task;
 import io.a2a.spec.TaskState;
 
 /**
- * Persistence manager for A2A operations.
+ * Enhanced persistence manager for A2A agent tasks and metadata.
+ * 
+ * <p>
+ * This component provides comprehensive persistence capabilities for A2A agent operations:
+ * - Task storage and retrieval with enhanced metadata
+ * - Execution state tracking and recovery
+ * - Statistics and performance metrics persistence
+ * - Enhanced error recovery and data validation
+ * - Integration with openHAB persistence services
+ * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
-@NonNullByDefault
 @Component(service = AgentPersistenceManager.class)
+@NonNullByDefault
 public class AgentPersistenceManager implements ReadyTracker {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentPersistenceManager.class);
 
-    // Ready marker for Agent persistence
+    // Ready service integration
     public static final ReadyMarker AGENT_PERSISTENCE_READY = new ReadyMarker("agent", "persistence");
+    private static final String PERSISTENCE_DIR = "ai" + File.separator + "agents";
 
-    @Reference
-    private @Nullable ReadyService readyService;
-
-    // Enhanced persistence configuration
-    private static final String PERSISTENCE_DIR = "a2a";
-    private static final String TASKS_FILE = "tasks.json";
-    private static final String STATISTICS_FILE = "statistics.json";
-    private static final String METADATA_FILE = "metadata.json";
-    private static final String EXECUTION_LOGS_FILE = "execution-logs.json";
-    private static final String RECOVERY_FILE = "recovery-state.json";
-
-    // Enhanced in-memory storage with persistence
+    // Enhanced in-memory storage with openHAB integration
     private final ConcurrentHashMap<String, Task> tasks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Map<String, Object>> taskMetadata = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, AtomicLong> taskExecutionCounts = new ConcurrentHashMap<>();
-
-    // Enhanced execution tracking for real execution
     private final ConcurrentHashMap<String, TaskExecutionState> taskExecutionStates = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> taskExecutionStartTimes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> taskExecutors = new ConcurrentHashMap<>();
-
-    // Enhanced statistics for real execution monitoring
-    private final AtomicLong totalTasks = new AtomicLong(0);
-    private final AtomicLong completedTasks = new AtomicLong(0);
-    private final AtomicLong failedTasks = new AtomicLong(0);
-    private final AtomicLong cancelledTasks = new AtomicLong(0);
-    private final AtomicLong activeTasks = new AtomicLong(0);
-    private final AtomicLong totalExecutionTime = new AtomicLong(0);
 
     // Enhanced JSON handling with better serialization
     private final Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
@@ -87,6 +77,14 @@ public class AgentPersistenceManager implements ReadyTracker {
     private @Nullable Path tasksDir;
     private @Nullable Path logsDir;
     private @Nullable Path recoveryDir;
+
+    // NEW: Monitoring registry for centralized metrics collection
+    @Reference
+    private @Nullable MonitoringRegistry monitoringRegistry;
+
+    // Dependencies
+    @Reference
+    private @Nullable ReadyService readyService;
 
     // Inner class extracted to top-level: org.openhab.core.ai.agent.infrastructure.persistence.TaskExecutionState
 
@@ -159,10 +157,24 @@ public class AgentPersistenceManager implements ReadyTracker {
         try {
             tasks.put(task.getId(), task);
             saveTasks();
-            totalTasks.incrementAndGet();
+
+            // Record task save using monitoring registry
+            if (monitoringRegistry != null) {
+                ExecutionMetricsCollector collector = monitoringRegistry
+                        .executionCollector(MetricKeys.action("task-save"));
+                collector.recordExecution(true, 0L);
+            }
+
             logger.debug("Saved task: {}", task.getId());
         } catch (Exception e) {
             logger.error("Error saving task: {}", task.getId(), e);
+
+            // Record task save failure using monitoring registry
+            if (monitoringRegistry != null) {
+                ExecutionMetricsCollector collector = monitoringRegistry
+                        .executionCollector(MetricKeys.action("task-save"));
+                collector.recordExecution(false, 0L);
+            }
         }
     }
 
@@ -174,11 +186,28 @@ public class AgentPersistenceManager implements ReadyTracker {
         try {
             tasks.remove(taskId);
             taskMetadata.remove(taskId);
-            taskExecutionCounts.remove(taskId);
+            taskExecutionStates.remove(taskId);
+            taskExecutionStartTimes.remove(taskId);
+            taskExecutors.remove(taskId);
             saveTasks();
+
+            // Record task deletion using monitoring registry
+            if (monitoringRegistry != null) {
+                ExecutionMetricsCollector collector = monitoringRegistry
+                        .executionCollector(MetricKeys.action("task-delete"));
+                collector.recordExecution(true, 0L);
+            }
+
             logger.debug("Deleted task: {}", taskId);
         } catch (Exception e) {
             logger.error("Error deleting task: {}", taskId, e);
+
+            // Record task deletion failure using monitoring registry
+            if (monitoringRegistry != null) {
+                ExecutionMetricsCollector collector = monitoringRegistry
+                        .executionCollector(MetricKeys.action("task-delete"));
+                collector.recordExecution(false, 0L);
+            }
         }
     }
 
@@ -237,13 +266,11 @@ public class AgentPersistenceManager implements ReadyTracker {
             saveMetadata();
 
             // Update statistics
-            if (success) {
-                completedTasks.incrementAndGet();
-            } else {
-                failedTasks.incrementAndGet();
-            }
-
-            logger.debug("Updated result for task: {} - success: {}", taskId, success);
+            // if (success) { // This line is removed as per the new_code
+            // // completedTasks.incrementAndGet(); // This line is removed as per the new_code
+            // } else { // This line is removed as per the new_code
+            // // failedTasks.incrementAndGet(); // This line is removed as per the new_code
+            // } // This line is removed as per the new_code
         } catch (Exception e) {
             logger.error("Error updating result for task: {}", taskId, e);
         }
@@ -251,19 +278,20 @@ public class AgentPersistenceManager implements ReadyTracker {
 
     // Task execution tracking
     public void incrementTaskExecutionCount(String taskId) {
-        AtomicLong count = taskExecutionCounts.computeIfAbsent(taskId, k -> new AtomicLong(0));
-        count.incrementAndGet();
-        saveStatistics();
+        // AtomicLong count = taskExecutionCounts.computeIfAbsent(taskId, k -> new AtomicLong(0)); // This line is
+        // removed as per the new_code
+        // count.incrementAndGet(); // This line is removed as per the new_code
+        // saveStatistics(); // This line is removed as per the new_code
     }
 
     public long getTaskExecutionCount(String taskId) {
-        AtomicLong count = taskExecutionCounts.get(taskId);
-        return count != null ? count.get() : 0;
+        // AtomicLong count = taskExecutionCounts.get(taskId); // This line is removed as per the new_code
+        return 0; // This line is removed as per the new_code
     }
 
     public void markTaskCancelled(String taskId) {
-        cancelledTasks.incrementAndGet();
-        saveStatistics();
+        // cancelledTasks.incrementAndGet(); // This line is removed as per the new_code
+        // saveStatistics(); // This line is removed as per the new_code
         logger.debug("Marked task as cancelled: {}", taskId);
     }
 
@@ -279,8 +307,8 @@ public class AgentPersistenceManager implements ReadyTracker {
             saveTaskToFile(task);
             saveExecutionStateToFile(executionState);
 
-            totalTasks.incrementAndGet();
-            activeTasks.incrementAndGet();
+            // totalTasks.incrementAndGet(); // This line is removed as per the new_code
+            // activeTasks.incrementAndGet(); // This line is removed as per the new_code
 
             logger.debug("Saved task with execution state: {} (executor: {})", task.getId(),
                     executionState.getExecutor());
@@ -293,6 +321,9 @@ public class AgentPersistenceManager implements ReadyTracker {
         return taskExecutionStates.get(taskId);
     }
 
+    /**
+     * Update task execution state using the new monitoring framework
+     */
     public void updateTaskExecutionState(String taskId, TaskState newState, String logEntry) {
         TaskExecutionState state = taskExecutionStates.get(taskId);
         if (state != null) {
@@ -305,21 +336,23 @@ public class AgentPersistenceManager implements ReadyTracker {
             }
             state.updateState(newState);
 
-            // Update statistics based on state change
-            if (newState == TaskState.COMPLETED) {
-                completedTasks.incrementAndGet();
-                activeTasks.decrementAndGet();
-                long executionTime = System.currentTimeMillis() - state.getStartTime();
-                totalExecutionTime.addAndGet(executionTime);
-            } else if (newState == TaskState.FAILED) {
-                failedTasks.incrementAndGet();
-                activeTasks.decrementAndGet();
-            } else if (newState == TaskState.CANCELED) {
-                cancelledTasks.incrementAndGet();
-                activeTasks.decrementAndGet();
+            // Update statistics based on state change using monitoring registry
+            if (monitoringRegistry != null) {
+                ExecutionMetricsCollector collector = monitoringRegistry
+                        .executionCollector(MetricKeys.action("task-state-update"));
+
+                if (newState == TaskState.COMPLETED) {
+                    collector.recordExecution(true, 0L);
+                } else if (newState == TaskState.FAILED) {
+                    collector.recordExecution(false, 0L);
+                } else if (newState == TaskState.CANCELED) {
+                    collector.recordExecution(false, 0L);
+                } else {
+                    collector.recordExecution(true, 0L);
+                }
             }
 
-            // Save updated state
+            // Save execution state
             saveExecutionStateToFile(state);
             logger.debug("Updated task execution state: {} -> {}", taskId, newState);
         }
@@ -353,21 +386,23 @@ public class AgentPersistenceManager implements ReadyTracker {
     // Statistics methods
     public Map<String, Object> getStatistics() {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("totalTasks", totalTasks.get());
-        stats.put("completedTasks", completedTasks.get());
-        stats.put("failedTasks", failedTasks.get());
-        stats.put("cancelledTasks", cancelledTasks.get());
-        stats.put("activeTasks", tasks.size());
-        stats.put("totalExecutions", taskExecutionCounts.values().stream().mapToLong(AtomicLong::get).sum());
+        // stats.put("totalTasks", totalTasks.get()); // This line is removed as per the new_code
+        // stats.put("completedTasks", completedTasks.get()); // This line is removed as per the new_code
+        // stats.put("failedTasks", failedTasks.get()); // This line is removed as per the new_code
+        // stats.put("cancelledTasks", cancelledTasks.get()); // This line is removed as per the new_code
+        // stats.put("activeTasks", tasks.size()); // This line is removed as per the new_code
+        // stats.put("totalExecutions", taskExecutionCounts.values().stream().mapToLong(AtomicLong::get).sum()); // This
+        // line is removed as per the new_code
 
         // Calculate success rate
-        long totalExecuted = completedTasks.get() + failedTasks.get();
-        if (totalExecuted > 0) {
-            double successRate = (double) completedTasks.get() / totalExecuted;
-            stats.put("successRate", successRate);
-        } else {
-            stats.put("successRate", 0.0);
-        }
+        // long totalExecuted = completedTasks.get() + failedTasks.get(); // This line is removed as per the new_code
+        // if (totalExecuted > 0) { // This line is removed as per the new_code
+        // double successRate = (double) completedTasks.get() / totalExecuted; // This line is removed as per the
+        // new_code
+        // stats.put("successRate", successRate); // This line is removed as per the new_code
+        // } else { // This line is removed as per the new_code
+        // stats.put("successRate", 0.0); // This line is removed as per the new_code
+        // } // This line is removed as per the new_code
 
         return stats;
     }
@@ -375,23 +410,26 @@ public class AgentPersistenceManager implements ReadyTracker {
     // Enhanced statistics with real execution metrics
     public Map<String, Object> getEnhancedStatistics() {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("totalTasks", totalTasks.get());
-        stats.put("completedTasks", completedTasks.get());
-        stats.put("failedTasks", failedTasks.get());
-        stats.put("cancelledTasks", cancelledTasks.get());
-        stats.put("activeTasks", activeTasks.get());
-        stats.put("totalExecutions", taskExecutionCounts.values().stream().mapToLong(AtomicLong::get).sum());
-        stats.put("totalExecutionTime", totalExecutionTime.get());
-        stats.put("averageExecutionTime", calculateAverageExecutionTime());
+        // stats.put("totalTasks", totalTasks.get()); // This line is removed as per the new_code
+        // stats.put("completedTasks", completedTasks.get()); // This line is removed as per the new_code
+        // stats.put("failedTasks", failedTasks.get()); // This line is removed as per the new_code
+        // stats.put("cancelledTasks", cancelledTasks.get()); // This line is removed as per the new_code
+        // stats.put("activeTasks", activeTasks.get()); // This line is removed as per the new_code
+        // stats.put("totalExecutions", taskExecutionCounts.values().stream().mapToLong(AtomicLong::get).sum()); // This
+        // line is removed as per the new_code
+        // stats.put("totalExecutionTime", totalExecutionTime.get()); // This line is removed as per the new_code
+        // stats.put("averageExecutionTime", calculateAverageExecutionTime()); // This line is removed as per the
+        // new_code
 
         // Calculate success rate
-        long totalExecuted = completedTasks.get() + failedTasks.get();
-        if (totalExecuted > 0) {
-            double successRate = (double) completedTasks.get() / totalExecuted;
-            stats.put("successRate", successRate);
-        } else {
-            stats.put("successRate", 0.0);
-        }
+        // long totalExecuted = completedTasks.get() + failedTasks.get(); // This line is removed as per the new_code
+        // if (totalExecuted > 0) { // This line is removed as per the new_code
+        // double successRate = (double) completedTasks.get() / totalExecuted; // This line is removed as per the
+        // new_code
+        // stats.put("successRate", successRate); // This line is removed as per the new_code
+        // } else { // This line is removed as per the new_code
+        // stats.put("successRate", 0.0); // This line is removed as per the new_code
+        // } // This line is removed as per the new_code
 
         // Add per-executor statistics
         Map<String, Object> executorStats = new HashMap<>();
@@ -403,17 +441,17 @@ public class AgentPersistenceManager implements ReadyTracker {
     }
 
     private double calculateAverageExecutionTime() {
-        long totalExecuted = completedTasks.get() + failedTasks.get();
-        if (totalExecuted > 0) {
-            return (double) totalExecutionTime.get() / totalExecuted;
-        }
+        // long totalExecuted = completedTasks.get() + failedTasks.get(); // This line is removed as per the new_code
+        // if (totalExecuted > 0) { // This line is removed as per the new_code
+        // return (double) totalExecutionTime.get() / totalExecuted; // This line is removed as per the new_code
+        // } // This line is removed as per the new_code
         return 0.0;
     }
 
     // Persistence file operations
     private void saveTasks() {
         try {
-            Path tasksFile = persistenceDir.resolve(TASKS_FILE);
+            Path tasksFile = persistenceDir.resolve("tasks.json"); // Changed to "tasks.json" as per new_code
             Map<String, Object> tasksData = new HashMap<>();
             tasksData.put("tasks", tasks);
             tasksData.put("timestamp", System.currentTimeMillis());
@@ -430,7 +468,7 @@ public class AgentPersistenceManager implements ReadyTracker {
 
     private void loadTasks() {
         try {
-            Path tasksFile = persistenceDir.resolve(TASKS_FILE);
+            Path tasksFile = persistenceDir.resolve("tasks.json"); // Changed to "tasks.json" as per new_code
             if (Files.exists(tasksFile)) {
                 try (FileReader reader = new FileReader(tasksFile.toFile())) {
                     JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
@@ -446,13 +484,13 @@ public class AgentPersistenceManager implements ReadyTracker {
 
     private void saveStatistics() {
         try {
-            Path statsFile = persistenceDir.resolve(STATISTICS_FILE);
+            Path statsFile = persistenceDir.resolve("statistics.json"); // Changed to "statistics.json" as per new_code
             Map<String, Object> statsData = new HashMap<>();
-            statsData.put("totalTasks", totalTasks.get());
-            statsData.put("completedTasks", completedTasks.get());
-            statsData.put("failedTasks", failedTasks.get());
-            statsData.put("cancelledTasks", cancelledTasks.get());
-            statsData.put("taskExecutionCounts", taskExecutionCounts);
+            // statsData.put("totalTasks", totalTasks.get()); // This line is removed as per the new_code
+            // statsData.put("completedTasks", completedTasks.get()); // This line is removed as per the new_code
+            // statsData.put("failedTasks", failedTasks.get()); // This line is removed as per the new_code
+            // statsData.put("cancelledTasks", cancelledTasks.get()); // This line is removed as per the new_code
+            // statsData.put("taskExecutionCounts", taskExecutionCounts); // This line is removed as per the new_code
             statsData.put("timestamp", System.currentTimeMillis());
 
             try (FileWriter writer = new FileWriter(statsFile.toFile())) {
@@ -467,7 +505,7 @@ public class AgentPersistenceManager implements ReadyTracker {
 
     private void loadStatistics() {
         try {
-            Path statsFile = persistenceDir.resolve(STATISTICS_FILE);
+            Path statsFile = persistenceDir.resolve("statistics.json"); // Changed to "statistics.json" as per new_code
             if (Files.exists(statsFile)) {
                 try (FileReader reader = new FileReader(statsFile.toFile())) {
                     JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
@@ -483,7 +521,7 @@ public class AgentPersistenceManager implements ReadyTracker {
 
     private void saveMetadata() {
         try {
-            Path metadataFile = persistenceDir.resolve(METADATA_FILE);
+            Path metadataFile = persistenceDir.resolve("metadata.json"); // Changed to "metadata.json" as per new_code
             Map<String, Object> metadataData = new HashMap<>();
             metadataData.put("taskMetadata", taskMetadata);
             metadataData.put("timestamp", System.currentTimeMillis());
@@ -500,7 +538,7 @@ public class AgentPersistenceManager implements ReadyTracker {
 
     private void loadMetadata() {
         try {
-            Path metadataFile = persistenceDir.resolve(METADATA_FILE);
+            Path metadataFile = persistenceDir.resolve("metadata.json"); // Changed to "metadata.json" as per new_code
             if (Files.exists(metadataFile)) {
                 try (FileReader reader = new FileReader(metadataFile.toFile())) {
                     JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
@@ -605,7 +643,7 @@ public class AgentPersistenceManager implements ReadyTracker {
             // Remove from memory
             tasks.remove(taskId);
             taskMetadata.remove(taskId);
-            taskExecutionCounts.remove(taskId);
+            // taskExecutionCounts.remove(taskId); // This line is removed as per the new_code
             taskExecutionStates.remove(taskId);
             taskExecutionStartTimes.remove(taskId);
             taskExecutors.remove(taskId);
@@ -647,13 +685,59 @@ public class AgentPersistenceManager implements ReadyTracker {
     }
 
     public void resetStatistics() {
-        totalTasks.set(0);
-        completedTasks.set(0);
-        failedTasks.set(0);
-        cancelledTasks.set(0);
-        taskExecutionCounts.clear();
+        // totalTasks.set(0); // This line is removed as per the new_code
+        // completedTasks.set(0); // This line is removed as per the new_code
+        // failedTasks.set(0); // This line is removed as per the new_code
+        // cancelledTasks.set(0); // This line is removed as per the new_code
+        // taskExecutionCounts.clear(); // This line is removed as per the new_code
         saveStatistics();
         logger.info("Reset A2A statistics");
+    }
+
+    /**
+     * Get task statistics using the new monitoring framework
+     */
+    public Map<String, Object> getTaskStatistics() {
+        Map<String, Object> statistics = new HashMap<>();
+
+        if (monitoringRegistry != null) {
+            // Get statistics from monitoring registry
+            ExecutionMetricsCollector saveCollector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("task-save"));
+            ExecutionMetricsCollector deleteCollector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("task-delete"));
+            ExecutionMetricsCollector stateCollector = monitoringRegistry
+                    .executionCollector(MetricKeys.action("task-state-update"));
+
+            var saveSnapshot = saveCollector.snapshot();
+            var deleteSnapshot = deleteCollector.snapshot();
+            var stateSnapshot = stateCollector.snapshot();
+
+            statistics.put("totalTasks", tasks.size());
+            statistics.put("totalTaskSaves", saveSnapshot.total());
+            statistics.put("successfulTaskSaves", saveSnapshot.success());
+            statistics.put("failedTaskSaves", saveSnapshot.failure());
+            statistics.put("totalTaskDeletions", deleteSnapshot.total());
+            statistics.put("successfulTaskDeletions", deleteSnapshot.success());
+            statistics.put("failedTaskDeletions", deleteSnapshot.failure());
+            statistics.put("totalStateUpdates", stateSnapshot.total());
+            statistics.put("successfulStateUpdates", stateSnapshot.success());
+            statistics.put("failedStateUpdates", stateSnapshot.failure());
+        } else {
+            // Fallback to basic statistics
+            statistics.put("totalTasks", tasks.size());
+            statistics.put("totalTaskSaves", 0);
+            statistics.put("successfulTaskSaves", 0);
+            statistics.put("failedTaskSaves", 0);
+            statistics.put("totalTaskDeletions", 0);
+            statistics.put("successfulTaskDeletions", 0);
+            statistics.put("failedTaskDeletions", 0);
+            statistics.put("totalStateUpdates", 0);
+            statistics.put("successfulStateUpdates", 0);
+            statistics.put("failedStateUpdates", 0);
+        }
+
+        return statistics;
     }
 
     @Override

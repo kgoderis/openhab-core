@@ -48,7 +48,6 @@ public class AgentServerConfiguration extends ServerConfiguration {
                 builder.connectionTimeout, builder.enableGracefulShutdown, builder.shutdownTimeout, builder.enableCors,
                 builder.corsAllowedOrigins, builder.corsAllowedMethods, builder.corsAllowedHeaders, builder.enableSsl,
                 builder.sslKeyStore, builder.sslKeyStorePassword, builder.sslTrustStore, builder.sslTrustStorePassword);
-
         this.messageSendEndpoint = builder.messageSendEndpoint;
         this.taskGetEndpoint = builder.taskGetEndpoint;
         this.taskCancelEndpoint = builder.taskCancelEndpoint;
@@ -58,14 +57,6 @@ public class AgentServerConfiguration extends ServerConfiguration {
         this.maxTaskQueueSize = builder.maxTaskQueueSize;
         this.taskTimeoutSeconds = builder.taskTimeoutSeconds;
         this.enableTaskPersistence = builder.enableTaskPersistence;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public Builder toBuilder() {
-        return new Builder(this);
     }
 
     // A2A-specific getters

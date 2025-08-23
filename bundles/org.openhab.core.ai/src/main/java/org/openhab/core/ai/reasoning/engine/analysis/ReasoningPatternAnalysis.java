@@ -1,6 +1,7 @@
 package org.openhab.core.ai.reasoning.engine.analysis;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -73,6 +74,25 @@ public final class ReasoningPatternAnalysis {
 
     public Map<String, Integer> getPatternFrequencies() {
         return patternFrequencies;
+    }
+
+    /**
+     * Get step type frequencies.
+     * 
+     * @return map of step types to their frequencies
+     */
+    public Map<ReasoningStepType, Integer> getStepTypeFrequency() {
+        // Convert pattern frequencies to step type frequencies
+        Map<ReasoningStepType, Integer> stepTypeFrequencies = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : patternFrequencies.entrySet()) {
+            try {
+                ReasoningStepType stepType = ReasoningStepType.valueOf(entry.getKey().toUpperCase());
+                stepTypeFrequencies.put(stepType, entry.getValue());
+            } catch (IllegalArgumentException e) {
+                // Skip patterns that don't map to valid step types
+            }
+        }
+        return stepTypeFrequencies;
     }
 
     public Map<String, Double> getPatternSuccessRates() {

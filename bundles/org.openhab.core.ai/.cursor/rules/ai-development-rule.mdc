@@ -66,9 +66,225 @@ alwaysApply: true
 - **Use established patterns** from similar existing classes
 - **Maintain consistency** with existing naming and structure
 
+## Inheritance Tree and Base Classes
+
+### 9. **Base Class Hierarchy Overview**
+
+The openHAB AI bundle follows a comprehensive inheritance hierarchy with specific base classes for each application domain. **ALWAYS use the appropriate base class** for new implementations:
+
+#### **A. Result Classes (extends BaseResult)**
+```
+BaseResult (abstract)
+├── AgentModelEvaluationResult
+├── AgentModelOptimizationResult (to be created)
+├── AgentModelActionPlanExecutionResult (extends ActionResult)
+└── Other domain-specific result classes
+```
+
+**When to use**: All classes that represent operation results, evaluation outcomes, or execution results
+**Key features**: Immutable result data, success/failure status, execution timing, metadata management
+**Location**: `org.openhab.core.ai.common.result.BaseResult`
+
+#### **B. Context Classes (extends BaseContext)**
+```
+BaseContext (abstract)
+├── AgentContext
+├── AgentModelContext
+├── AgentModelEvaluationContext
+├── AgentModelOptimizationContext
+├── ExecutionContext
+├── ReasoningContext
+├── SecurityContext
+└── ToolContext
+```
+
+**When to use**: All classes that provide context information for operations, requests, or processing
+**Key features**: Immutable context data, correlation ID, timestamp, source tracking, extensible attributes
+**Location**: `org.openhab.core.ai.common.context.BaseContext`
+
+#### **C. Configuration Classes (extends BaseConfiguration)**
+```
+BaseConfiguration (abstract)
+├── AgentModelConfiguration
+├── AgentModelActionPlanParameters
+├── ProtocolConfiguration
+├── SecurityConfiguration
+├── ServerConfiguration
+└── HttpServerConfiguration
+```
+
+**When to use**: All classes that represent configuration settings, parameters, or options
+**Key features**: Immutable configuration data, ID management, version tracking, custom options
+**Location**: `org.openhab.core.ai.config.common.BaseConfiguration`
+
+#### **D. Validation Classes (extends BaseValidationResult)**
+```
+BaseValidationResult (abstract)
+├── AgentModelActionPlanValidationResult
+├── ConfigurationValidationResult
+├── InputValidationResult
+├── ReasoningValidationResult
+├── SimpleValidationResult
+└── ToolValidationResult
+```
+
+**When to use**: All classes that represent validation outcomes, error collections, or validation status
+**Key features**: Validation status tracking, error/warning collection, domain identification
+**Location**: `org.openhab.core.ai.common.validation.BaseValidationResult`
+
+#### **E. Metrics Classes (extends AbstractMetrics)**
+```
+AbstractMonitoring (abstract)
+├── AbstractMetrics (abstract)
+│   ├── AgentModelEvaluationStatistics
+│   ├── AgentModelPerformanceMetrics
+│   ├── ActionPerformanceMetrics
+│   ├── ToolPerformanceMetrics
+│   ├── ClientPerformanceMetrics
+│   └── Other performance metrics classes
+└── AbstractStatistics (abstract)
+    ├── AgentModelStatistics
+    ├── ToolStatistics
+    ├── ProviderStatistics
+    └── Other statistics classes
+```
+
+**When to use**: All classes that track performance metrics, statistics, or monitoring data
+**Key features**: Thread-safe counters, timing data, success/failure tracking, domain identification
+**Location**: `org.openhab.core.ai.common.monitoring.base.AbstractMetrics`
+
+#### **F. Builder Classes (extends AbstractBuilder)**
+```
+AbstractBuilder<T> (abstract)
+├── ActionBuilder<T>
+├── CommunicationBuilder<T>
+├── ExecutionBuilder<T>
+├── MetricsBuilder<T>
+├── ModelBuilder<T>
+├── ReasoningBuilder<T>
+├── SessionBuilder<T>
+└── Domain-specific builders
+```
+
+**When to use**: All classes that implement the builder pattern for complex object construction
+**Key features**: Validation error collection, fluent API, reset capabilities, common validation utilities
+**Location**: `org.openhab.core.ai.common.builder.AbstractBuilder`
+
+#### **G. Adapter Classes (extends BaseAdapter)**
+```
+BaseAdapter<T, C, R> (abstract)
+├── ResourceAdapter<T, C, R>
+├── PromptAdapter<T, C, R>
+├── CompletionAdapter<T, C, R>
+└── Domain-specific adapters
+```
+
+**When to use**: All classes that adapt between different data formats or interfaces
+**Key features**: Lifecycle management, caching, refresh mechanisms, state tracking
+**Location**: `org.openhab.core.ai.common.adapter.BaseAdapter`
+
+#### **H. Agent Classes (extends BaseAutonomousAgent)**
+```
+BaseAutonomousAgent (abstract)
+├── AbstractIntelligentAgent (abstract)
+│   ├── EnergyOptimizationAgent
+│   ├── SecurityMonitoringAgent
+│   └── Other intelligent agents
+└── Other autonomous agents
+```
+
+**When to use**: All classes that implement autonomous agent behavior
+**Key features**: Lifecycle management, skill execution, state persistence, error handling
+**Location**: `org.openhab.core.ai.agents.BaseAutonomousAgent`
+
+#### **I. Resource Classes (extends AbstractResource)**
+```
+AbstractResource (abstract)
+├── ItemResourceProxy
+├── ThingResourceProxy
+├── RuleResourceProxy
+├── ConfigurationResourceProxy
+└── Other resource proxies
+```
+
+**When to use**: All classes that represent MCP resources with lifecycle management
+**Key features**: Caching, refresh mechanisms, content management, validation
+**Location**: `org.openhab.core.ai.tool.resources.AbstractResource`
+
+#### **J. Prompt/Completion Classes (extends BasePrompt/BaseCompletion)**
+```
+BasePrompt (abstract)
+├── SystemPromptProxy
+├── ItemPromptProxy
+├── RulePromptProxy
+└── Other prompt proxies
+
+BaseCompletion (abstract)
+├── SystemCompletionProxy
+├── ItemCompletionProxy
+├── RuleCompletionProxy
+└── Other completion proxies
+```
+
+**When to use**: All classes that represent MCP prompts or completions
+**Key features**: Lifecycle management, caching, refresh mechanisms, suggestion handling
+**Location**: `org.openhab.core.ai.tool.prompts.BasePrompt` / `org.openhab.core.ai.tool.completions.BaseCompletion`
+
+### 10. **Base Class Selection Guidelines**
+
+#### **For New Result Classes:**
+- **Use `BaseResult`** for operation results, evaluation outcomes, execution results
+- **Use `ActionResult`** for action-specific results (extends BaseResult pattern)
+- **Use `BaseValidationResult`** for validation outcomes
+
+#### **For New Context Classes:**
+- **Use `BaseContext`** for all context information, request context, processing context
+- **Implement specific capability interfaces** (RequestContext, SecurityContext, etc.) as needed
+
+#### **For New Configuration Classes:**
+- **Use `BaseConfiguration`** for all configuration settings, parameters, options
+- **Use `BaseProviderConfiguration`** for provider-specific configurations
+
+#### **For New Metrics/Statistics Classes:**
+- **Use `AbstractMetrics`** for performance metrics, timing data, success/failure tracking
+- **Use `AbstractStatistics`** for statistical data, counts, aggregations
+- **Use `AbstractMonitoring`** for general monitoring data
+
+#### **For New Builder Classes:**
+- **Use `AbstractBuilder<T>`** for all builder implementations
+- **Implement domain-specific validation** in the `validate()` method
+
+#### **For New Adapter Classes:**
+- **Use `BaseAdapter<T, C, R>`** for all adapter implementations
+- **Implement `doRefresh()` and `doCleanup()` methods**
+
+#### **For New Agent Classes:**
+- **Use `BaseAutonomousAgent`** for autonomous agent implementations
+- **Use `AbstractIntelligentAgent`** for intelligent agent implementations
+
+### 11. **Base Class Implementation Requirements**
+
+#### **Required Methods to Implement:**
+- **BaseResult**: Implement `createCopy()` method
+- **BaseContext**: Implement `createCopy()` method  
+- **AbstractMetrics**: Implement `getType()` method
+- **AbstractBuilder**: Implement `validate()` and `doReset()` methods
+- **BaseAdapter**: Implement `doRefresh()` and `doCleanup()` methods
+
+#### **Common Patterns:**
+- **Immutable data**: All base classes use immutable data with defensive copying
+- **Builder pattern**: Use nested Builder classes for complex construction
+- **Validation**: Implement comprehensive validation in constructors and builders
+- **Thread safety**: Use thread-safe collections and atomic operations where needed
+
+#### **Error Handling:**
+- **Fail fast**: Validate inputs in constructors and throw `IllegalArgumentException`
+- **Meaningful messages**: Provide clear, actionable error messages
+- **Null safety**: Use `@Nullable` annotations and validate null constraints
+
 ## Testing and Quality Assurance
 
-### 9. **Testing Strategy**
+### 12. **Testing Strategy**
 - **Create comprehensive unit tests** for all new functionality
 - **Use Mockito for dependency mocking** in unit tests
 - **Implement integration tests** for service interactions
@@ -76,13 +292,13 @@ alwaysApply: true
 - **Test both success and failure scenarios**
 - **Aim for 80%+ code coverage**
 
-### 10. **Test Organization**
+### 13. **Test Organization**
 - **Unit tests**: Fast, isolated component tests with mocked dependencies
 - **Integration tests**: Component interaction tests with real services
 - **Workflow tests**: End-to-end workflow testing
 - **Performance tests**: Load testing and performance validation
 
-### 11. **Test Implementation**
+### 14. **Test Implementation**
 - **Use `@ExtendWith(MockitoExtension.class)`** for unit tests
 - **Mock openHAB services** (ItemRegistry, ThingRegistry, etc.)
 - **Test parameter validation** for all actions
@@ -91,19 +307,19 @@ alwaysApply: true
 
 ## Protocol-Specific Guidelines
 
-### 12. **MCP Protocol Implementation**
+### 15. **MCP Protocol Implementation**
 - **Use MCP Java SDK** for all MCP-related functionality
 - **Follow MCP specification** for tool definitions and responses
 - **Implement proper error handling** for MCP protocol errors
 - **Use established MCP patterns** from existing code
 
-### 13. **A2A Protocol Implementation**
+### 16. **A2A Protocol Implementation**
 - **Use A2A Java SDK** for all A2A-related functionality
 - **Follow A2A specification** for skill definitions and execution
 - **Implement proper task lifecycle** management
 - **Use established A2A patterns** from existing code
 
-### 14. **Agent-Skill Architecture**
+### 17. **Agent-Skill Architecture**
 - **Agents should be agnostic to actions** and only deal with skills
 - **Skills encapsulate common actions** shared with MCP implementation
 - **Maintain clear separation** between agent logic and action execution
@@ -111,13 +327,13 @@ alwaysApply: true
 
 ## Error Handling and Validation
 
-### 15. **Error Handling**
+### 18. **Error Handling**
 - **Implement comprehensive error handling** for all public methods
 - **Use appropriate exception types** (ActionException, ToolException, etc.)
 - **Provide meaningful error messages** with context information
 - **Log errors appropriately** with proper log levels
 
-### 16. **Validation**
+### 19. **Validation**
 - **Validate all input parameters** before processing
 - **Use ValidationUtils** for common validation patterns
 - **Implement parameter schemas** for all actions and tools
@@ -125,13 +341,13 @@ alwaysApply: true
 
 ## Performance and Monitoring
 
-### 17. **Performance Considerations**
+### 20. **Performance Considerations**
 - **Use concurrent collections** for thread-safe operations
 - **Implement proper resource cleanup** in lifecycle methods
 - **Add performance monitoring** with metrics collection
 - **Use caching** where appropriate for frequently accessed data
 
-### 18. **Monitoring and Metrics**
+### 21. **Monitoring and Metrics**
 - **Add performance metrics** for all major operations
 - **Implement health checks** for critical components
 - **Use atomic counters** for thread-safe metrics
@@ -139,19 +355,19 @@ alwaysApply: true
 
 ## Code Quality and Maintenance
 
-### 19. **Code Organization**
+### 22. **Code Organization**
 - **Follow single responsibility principle** - each class has one clear purpose
 - **Use builder patterns** for complex object construction
 - **Implement proper equals/hashCode** for value objects
 - **Use immutable objects** where possible
 
-### 20. **Dependency Management**
+### 23. **Dependency Management**
 - **Minimize dependencies** between components
 - **Use interfaces** for loose coupling
 - **Follow dependency injection** patterns consistently
 - **Avoid circular dependencies**
 
-### 21. **Configuration Management**
+### 24. **Configuration Management**
 - **Use configuration services** for all configurable parameters
 - **Implement hot-reload** capabilities where appropriate
 - **Provide sensible defaults** for all configuration options
@@ -159,13 +375,13 @@ alwaysApply: true
 
 ## Security and Safety
 
-### 22. **Security Implementation**
+### 25. **Security Implementation**
 - **Implement proper authentication** for all external interfaces
 - **Validate all inputs** to prevent injection attacks
 - **Use secure communication** protocols (TLS/SSL)
 - **Implement access control** for sensitive operations
 
-### 23. **Safety Constraints**
+### 26. **Safety Constraints**
 - **Implement safety checks** for critical operations
 - **Add constraint validation** for autonomous behaviors
 - **Provide emergency stop** mechanisms where appropriate
@@ -173,20 +389,20 @@ alwaysApply: true
 
 ## Documentation and Examples
 
-### 24. **Code Documentation**
+### 27. **Code Documentation**
 - **Document complex algorithms** with clear explanations
 - **Add usage examples** in javadoc where helpful
 - **Document configuration options** with examples
 - **Provide troubleshooting information** for common issues
 - **openHAB copyright statement** must be added to each class
 
-### 25. **API Documentation**
+### 28. **API Documentation**
 - **Document all public APIs** with clear examples
 - **Provide migration guides** for breaking changes
 - **Include performance considerations** in documentation
 - **Document error scenarios** and recovery procedures
 
-### 26. **Builder Pattern Best Practices**
+### 29. **Builder Pattern Best Practices**
 
 - **Immutability-first**
   - Make built types immutable: `private final` fields, `private` constructor, no setters
@@ -204,7 +420,7 @@ alwaysApply: true
 
 - **Required vs optional**
   - Capture required fields early (factory or builder constructor) and re-validate in `build()`
-  - Avoid encoding “required” as nullable; prefer types that enforce presence
+  - Avoid encoding "required" as nullable; prefer types that enforce presence
 
 - **Validation**
   - Validate ranges, formats, and cross-field constraints in `build()`
@@ -317,7 +533,7 @@ public final class ModelConfig {
 }
 ```
 
-### 28. **Metrics & Monitoring Best Practices**
+### 30. **Metrics & Monitoring Best Practices**
 
 - **Centralize metrics**
   - Place all metric types and infrastructure under `org.openhab.core.ai.tool.monitoring` with subpackages:
@@ -450,14 +666,14 @@ void updateMetrics(org.openhab.core.ai.model.api.ModelProviderType provider, Str
   - Replace `AtomicLong`-based `ToolMetrics`/`ProviderMetrics` with `...collector` variants using `LongAdder` and `nanoTime`
   - `ToolExecutionService#getMetrics()` should return an aggregated snapshot type built from the registry
 
-### 29. **Context Classes Best Practices**
+### 31. **Context Classes Best Practices**
 
 - **Immutability with builders**
   - Make contexts immutable snapshots; use `toBuilder()` for safe, scoped mutations
   - Annotate with `@NonNullByDefault`; use `@Nullable` only for truly optional fields
   - Validate required fields in `build()`; fail fast with actionable messages
 
-- **Small capability interfaces (compose, don’t inherit deeply)**
+- **Small capability interfaces (compose, don't inherit deeply)**
   - Define narrow capabilities in a shared API package (e.g., `org.openhab.core.ai.context.api`):
     - `RequestContext` (correlationId, timestamp, deadlineMs)
     - `SecurityContext` (principalId, permissions)
@@ -496,7 +712,7 @@ void updateMetrics(org.openhab.core.ai.model.api.ModelProviderType provider, Str
 - **Package organization**
   - `org.openhab.core.ai.context.api`: capability interfaces, `ContextKeys`, shared value objects
   - Domain-specific contexts live in their domain packages (`action`, `tool`, `auth`) and implement shared interfaces
-  - Avoid a central base class or a “god” context
+  - Avoid a central base class or a "god" context
 
 - **Testing**
   - Unit-test builders (validation, required fields), immutability, `equals/hashCode`
@@ -570,7 +786,7 @@ public final class ActionContext implements RequestContext {
 ```
 
 
-### 28. **Configuration Management Best Practices (DS + /conf/ai)**
+### 32. **Configuration Management Best Practices (DS + /conf/ai)**
 
 - **Use OSGi DS with typed MetaType**
   - Define `@ObjectClassDefinition` (OCD) and bind via `@Designate(ocd=...)`
@@ -615,7 +831,7 @@ public final class ActionContext implements RequestContext {
   - Do: keep configs immutable and thread-safe; publish change events if consumers must react immediately
   - Don't: perform file I/O or Config Admin lookups from consumers; avoid free-form maps for typed config
 
-### 27. **Result Classes Best Practices**
+### 33. **Result Classes Best Practices**
 
 - **Immutability and null-safety**
   - Use immutable value objects: `private final` fields, no setters, defensive copies
@@ -717,6 +933,11 @@ public final class OperationResult<T> {
 
     public boolean isSuccess() { return status == Status.SUCCESS; }
     public boolean isPartial() { return status == Status.PARTIAL; }
+
+    // getters ...
+}
+```
+
 
     // getters ...
 }

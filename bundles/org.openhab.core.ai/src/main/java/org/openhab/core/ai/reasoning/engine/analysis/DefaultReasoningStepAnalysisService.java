@@ -86,8 +86,7 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
 
             // Create a simple pattern analysis result
             return ReasoningPatternAnalysis.builder().withPatternFrequencies(stepTypeFrequency)
-                    .withPatternSuccessRates(successRatesByType)
-                    .withRecommendations(createBasicRecommendations(recommendations)).withAnalysisTime(Instant.now())
+                    .withPatternSuccessRates(successRatesByType).withAnalysisTime(Instant.now())
                     .withTotalStepsAnalyzed(steps.size())
                     .withOverallPatternEffectiveness(calculateOverallEffectiveness(successRatesByType)).build();
 
@@ -108,26 +107,24 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
                     .mapToLong(step -> step.getResourceUsage().processingTimeMs()).average().orElse(0.0);
 
             // Calculate tokens per step by model
-            Map<String, Double> tokensByModel = steps.stream()
+            Map<String, Long> tokensByModel = steps.stream()
                     .filter(step -> step.getResourceUsage() != null && step.getModelId() != null)
                     .collect(Collectors.groupingBy(ReasoningStep::getModelId,
-                            Collectors.averagingLong(step -> step.getResourceUsage().getTotalTokens())));
+                            Collectors.summingLong(step -> step.getResourceUsage().getTotalTokens())));
 
-            // Calculate cost per step by model
-            Map<String, Double> costByModel = steps.stream()
+            // Calculate performance by model
+            Map<String, Double> performanceByModel = steps.stream()
                     .filter(step -> step.getResourceUsage() != null && step.getModelId() != null)
                     .collect(Collectors.groupingBy(ReasoningStep::getModelId,
-                            Collectors.averagingDouble(step -> step.getResourceUsage().costUsd() * 100.0))); // Convert
-                                                                                                             // USD to
-                                                                                                             // cents
+                            Collectors.averagingLong(step -> step.getResourceUsage().processingTimeMs())));
 
             // Generate optimization suggestions
             List<String> optimizationSuggestions = generateBasicOptimizationSuggestions(avgProcessingTime,
-                    tokensByModel, costByModel);
+                    performanceByModel, performanceByModel);
 
             // Create a simple performance analysis result
             return ReasoningPerformanceAnalysis.builder().withAverageProcessingTime(avgProcessingTime)
-                    .withTokensByModel(tokensByModel).withCostByModel(costByModel)
+                    .withTokensByModel(tokensByModel).withPerformanceByModel(performanceByModel)
                     .withOptimizationSuggestions(optimizationSuggestions).withAnalysisTime(Instant.now()).build();
 
         } finally {
@@ -159,9 +156,9 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
             List<String> improvementSuggestions = generateBasicQualityImprovements(overallQuality, qualityIssues);
 
             // Create a simple quality assessment result
-            return ReasoningQualityAssessment.builder().withOverallQuality(overallQuality)
+            return ReasoningQualityAssessment.builder().withOverallQualityScore(overallQuality)
                     .withQualityByModel(qualityByModel).withQualityIssues(qualityIssues)
-                    .withImprovementSuggestions(improvementSuggestions).withAnalysisTime(Instant.now()).build();
+                    .withImprovementSuggestions(improvementSuggestions).withAssessmentTime(Instant.now()).build();
 
         } finally {
             recordAnalysis("quality", startTime);
@@ -188,19 +185,12 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
                 }
             }
 
-            // Calculate model performance correlation
-            Map<String, Double> modelPerformanceCorrelation = steps.stream()
-                    .filter(step -> step.getModelId() != null && step.getResourceUsage() != null)
-                    .collect(Collectors.groupingBy(ReasoningStep::getModelId,
-                            Collectors.averagingLong(step -> step.getResourceUsage().processingTimeMs())));
-
-            // Generate basic insights
+            // Generate significant correlations
             List<String> significantCorrelations = identifyBasicCorrelations(typeSuccessCorrelation,
-                    modelPerformanceCorrelation);
+                    typeSuccessCorrelation);
 
             // Create a simple correlation analysis result
-            return ReasoningCorrelationAnalysis.builder().withTypeSuccessCorrelation(typeSuccessCorrelation)
-                    .withModelPerformanceCorrelation(modelPerformanceCorrelation)
+            return ReasoningCorrelationAnalysis.builder().withStepTypeCorrelations(typeSuccessCorrelation)
                     .withSignificantCorrelations(significantCorrelations).withAnalysisTime(Instant.now()).build();
 
         } finally {
@@ -374,8 +364,26 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
             String summary = generateBasicReportSummary(steps);
             List<String> keyFindings = generateBasicKeyFindings(steps);
             Map<String, Object> metrics = generateBasicReportMetrics(steps);
-            List<String> recommendations = generateBasicRecommendations(steps).stream()
-                    .map(rec -> rec.getTitle() + ": " + rec.getDescription()).toList();
+
+            // Calculate step type frequency and success rates for recommendations
+            Map<String, Integer> stepTypeFrequency = steps.stream()
+                    .collect(Collectors.groupingBy(step -> step.getStepType().name(),
+                            Collectors.collectingAndThen(Collectors.counting(), Math::toIntExact)));
+
+            Map<String, Double> successRatesByType = new HashMap<>();
+            for (ReasoningStepType type : ReasoningStepType.values()) {
+                List<ReasoningStep> stepsOfType = steps.stream().filter(step -> step.getStepType() == type).toList();
+                if (!stepsOfType.isEmpty()) {
+                    long successCount = stepsOfType.stream()
+                            .mapToLong(step -> step.getStatus() == ReasoningStepStatus.COMPLETED ? 1 : 0).sum();
+                    double successRate = (double) successCount / stepsOfType.size();
+                    successRatesByType.put(type.name(), successRate);
+                }
+            }
+
+            List<String> recommendations = generateBasicRecommendations(stepTypeFrequency, successRatesByType);
+            List<String> recommendationTexts = createBasicRecommendations(recommendations).stream()
+                    .map(rec -> rec.getPatternType() + ": " + rec.getDescription()).toList();
 
             // Create a simple comprehensive report
             return ReasoningAnalysisReport.builder(reportId, title).withSummary(summary).withKeyFindings(keyFindings)
@@ -687,11 +695,12 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
             Map<String, Integer> dependencyCounts) {
         // Basic dependency analysis - assume sequential dependencies
         for (int i = 0; i < steps.size() - 1; i++) {
-            String currentStepId = steps.get(i).getStepId();
-            String nextStepId = steps.get(i + 1).getStepId();
+            int currentStepId = steps.get(i).getStepNumber();
+            int nextStepId = steps.get(i + 1).getStepNumber();
 
-            dependencies.computeIfAbsent(currentStepId, k -> new ArrayList<>()).add(nextStepId);
-            dependencyCounts.merge(currentStepId, 1, Integer::sum);
+            dependencies.computeIfAbsent(String.valueOf(currentStepId), k -> new ArrayList<>())
+                    .add(String.valueOf(nextStepId));
+            dependencyCounts.merge(String.valueOf(currentStepId), 1, Integer::sum);
         }
     }
 
@@ -734,7 +743,9 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
     }
 
     private List<PatternRecommendation> createBasicRecommendations(List<String> recommendations) {
-        return recommendations.stream().map(rec -> new PatternRecommendation(rec, "Basic recommendation", 0.7))
+        return recommendations
+                .stream().map(rec -> new PatternRecommendation("BASIC", rec,
+                        PatternRecommendation.RecommendationType.IMPORTANT, 0.7, List.of("Review and implement")))
                 .collect(Collectors.toList());
     }
 

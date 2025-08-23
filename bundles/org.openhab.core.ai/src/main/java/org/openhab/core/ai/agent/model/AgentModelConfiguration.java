@@ -1,4 +1,4 @@
-package org.openhab.core.ai.agent.config;
+package org.openhab.core.ai.agent.model;
 
 import java.time.Duration;
 import java.util.HashMap;
