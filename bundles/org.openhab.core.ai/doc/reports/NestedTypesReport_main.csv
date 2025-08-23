@@ -357,3 +357,49 @@ src/main/java/org/openhab/core/ai/tool/services/HybridToolExecutionService.java,
 src/main/java/org/openhab/core/ai/tool/util/ToolUtils.java,1,0
 src/main/java/org/openhab/core/ai/tool/util/helpers/ToolUtilsManager.java,2,0
 src/main/java/org/openhab/core/ai/transport/ServletLifecycleManager.java,1,0
+src/main/java/org/openhab/core/ai/tool/transport/WebSocketTransport.java,1,0
+src/main/java/org/openhab/core/ai/transport/TransportManager.java,1,0
+src/main/java/org/openhab/core/ai/transport/TransportRegistry.java,1,0
+src/main/java/org/openhab/core/ai/util/ValidationUtils.java,1,0
+
+---
+
+## 📋 **Document Analysis and Relevance Assessment**
+
+### **Current Status: STATIC REPORT - REFERENCE DATA**
+
+This document is a **static CSV report** that provides a snapshot of nested types (classes and interfaces) in the codebase. It is **useful for reference** but is not an active development document.
+
+### **Key Findings:**
+
+#### ✅ **Comprehensive Codebase Analysis**
+- **Nested Class Count**: Provides detailed count of nested classes per file
+- **Nested Interface Count**: Provides detailed count of nested interfaces per file
+- **File Coverage**: Covers the entire main source codebase
+- **Structural Information**: Shows the complexity and organization of the codebase
+
+#### ✅ **Code Quality Insights**
+- **Nested Type Usage**: Shows patterns of nested type usage across the codebase
+- **Complexity Indicators**: Files with many nested types may indicate high complexity
+- **Organization Patterns**: Shows how the codebase is organized and structured
+
+#### ❌ **Static Nature**
+- **Snapshot Data**: This is a point-in-time report, not live data
+- **No Active Updates**: The data does not reflect current codebase changes
+- **Reference Only**: Should be used for reference, not active development
+
+### **Recommended Actions:**
+
+#### ✅ **Keep for Reference**
+- **Codebase Analysis**: Useful for understanding codebase structure
+- **Complexity Assessment**: Helps identify complex files that may need refactoring
+- **Historical Reference**: Provides historical view of codebase organization
+
+#### ❌ **Do Not Update Regularly**
+- **Static Report**: This type of report is typically generated on-demand
+- **No Active Maintenance**: Does not require regular updates
+- **Reference Purpose**: Should be regenerated only when needed for analysis
+
+### **Current Relevance Score: 5/10**
+
+This document is **useful for reference** but is **not actively relevant** for development work. It should be **kept for historical reference** and **regenerated when needed** for codebase analysis.
