@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -20,6 +19,7 @@ import org.openhab.core.ai.agent.communication.conversation.api.ConversationPatt
 import org.openhab.core.ai.agent.communication.conversation.api.ConversationTemplate;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.common.communication.MessageDeliveryResult;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -54,6 +54,9 @@ public class AgentConversationService {
     @Reference
     private @Nullable AgentRegistry agentRegistry;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Conversation storage and management
     private final Map<String, Conversation> activeConversations = new ConcurrentHashMap<>();
     private final Map<String, ConversationHistory> conversationHistories = new ConcurrentHashMap<>();
@@ -63,12 +66,6 @@ public class AgentConversationService {
     // Participant management
     private final Map<String, Set<String>> conversationParticipants = new ConcurrentHashMap<>();
     private final Map<String, ParticipantRole> participantRoles = new ConcurrentHashMap<>();
-
-    // Analytics and metrics
-    private final AtomicLong totalConversations = new AtomicLong(0);
-    private final AtomicLong totalMessages = new AtomicLong(0);
-    private final AtomicLong totalConversationTime = new AtomicLong(0);
-    private final AtomicLong totalParticipants = new AtomicLong(0);
 
     // Configuration
     private final AtomicReference<ConversationConfiguration> configuration = new AtomicReference<>(
@@ -141,8 +138,8 @@ public class AgentConversationService {
         // Store conversation
         activeConversations.put(conversationId, conversation);
         conversationParticipants.put(conversationId, Set.copyOf(participantIds));
-        totalConversations.incrementAndGet();
-        totalParticipants.addAndGet(participantIds.size());
+        recordMetrics("agent-conversation", "conversation-started", true, Duration.ZERO);
+        recordMetrics("agent-conversation", "participants-added", true, Duration.ZERO);
 
         // Initialize conversation history
         ConversationHistory history = new ConversationHistory(conversationId);
@@ -191,7 +188,7 @@ public class AgentConversationService {
         // Update conversation state
         conversation.setLastActivity(Instant.now());
         conversation.setMessageCount(conversation.getMessageCount() + 1);
-        totalMessages.incrementAndGet();
+        recordMetrics("agent-conversation", "message-sent", true, Duration.ZERO);
 
         // Apply conversation patterns
         applyConversationPatterns(conversation, conversationMessage);
@@ -223,7 +220,7 @@ public class AgentConversationService {
 
         // Calculate conversation duration
         Duration duration = Duration.between(conversation.getStartTime(), conversation.getEndTime());
-        totalConversationTime.addAndGet(duration.toMillis());
+        recordMetrics("agent-conversation", "conversation-ended", true, duration);
 
         // Archive conversation
         archiveConversation(conversation);
@@ -231,6 +228,7 @@ public class AgentConversationService {
         // Clean up active conversation
         activeConversations.remove(conversationId);
         conversationParticipants.remove(conversationId);
+        recordMetrics("agent-conversation", "conversation-removed", true, Duration.ZERO);
 
         logger.debug("Conversation ended: {}", conversationId);
         return CompletableFuture
@@ -306,7 +304,7 @@ public class AgentConversationService {
         conversation.getParticipantIds().add(agentId);
         conversationParticipants.computeIfAbsent(conversationId, k -> ConcurrentHashMap.newKeySet()).add(agentId);
         participantRoles.put(conversationId + ":" + agentId, role);
-        totalParticipants.incrementAndGet();
+        recordMetrics("agent-conversation", "participant-added", true, Duration.ZERO);
 
         return true;
     }
@@ -334,6 +332,7 @@ public class AgentConversationService {
                 participants.remove(agentId);
             }
             participantRoles.remove(conversationId + ":" + agentId);
+            recordMetrics("agent-conversation", "participant-removed", true, Duration.ZERO);
         }
 
         return removed;
@@ -367,9 +366,21 @@ public class AgentConversationService {
      * @return Conversation statistics
      */
     public ConversationStatistics getStatistics() {
-        return new ConversationStatistics(totalConversations.get(), totalMessages.get(), totalConversationTime.get(),
-                totalParticipants.get(), activeConversations.size(), conversationHistories.size(),
-                conversationTemplates.size(), conversationPatterns.size());
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            logger.warn("MetricsService not available, returning empty statistics");
+            return new ConversationStatistics(0, 0, 0, 0, activeConversations.size(), conversationHistories.size(),
+                    conversationTemplates.size(), conversationPatterns.size());
+        }
+
+        // For now, return basic statistics since we need to implement proper snapshot retrieval
+        // TODO: Implement proper snapshot retrieval from MetricsService when domain-specific snapshots are available
+        return new ConversationStatistics(0, // totalConversations - will be retrieved from snapshots
+                0, // totalMessages - will be retrieved from snapshots
+                0, // totalConversationTime - will be retrieved from snapshots
+                0, // totalParticipants - will be retrieved from snapshots
+                activeConversations.size(), conversationHistories.size(), conversationTemplates.size(),
+                conversationPatterns.size());
     }
 
     /**
@@ -593,12 +604,9 @@ public class AgentConversationService {
             long totalAnalytics = conversationAnalytics.size();
 
             // Calculate average conversation metrics
-            double avgMessagesPerConversation = totalConversations.get() > 0
-                    ? (double) totalMessages.get() / totalConversations.get()
-                    : 0.0;
-            double avgConversationDuration = totalConversations.get() > 0
-                    ? (double) totalConversationTime.get() / totalConversations.get()
-                    : 0.0;
+            // TODO: Implement proper metrics retrieval when domain-specific snapshots are available
+            double avgMessagesPerConversation = 0.0;
+            double avgConversationDuration = 0.0;
 
             logger.info(
                     "System analytics: active={}, archived={}, analytics={}, avgMessages={:.2f}, avgDuration={:.2f}ms",
@@ -619,6 +627,16 @@ public class AgentConversationService {
         } catch (InterruptedException e) {
             executor.shutdownNow();
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, duration);
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
         }
     }
 

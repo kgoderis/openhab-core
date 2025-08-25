@@ -1,5 +1,6 @@
 package org.openhab.core.ai.reasoning.security;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +17,8 @@ import org.openhab.core.ai.auth.RoleBasedAccessControl;
 import org.openhab.core.ai.common.audit.AuditLogger;
 import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.common.context.AgentModelContext.AgentModelContextBuilder;
-import org.openhab.core.ai.common.security.AgentSecurityStatistics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.SecurityMonitoringStatistics;
 import org.openhab.core.ai.common.security.QuickSecurityResult;
 import org.openhab.core.ai.common.security.RateLimitInfo;
 import org.openhab.core.ai.common.security.SecurityContext;
@@ -75,6 +77,9 @@ public class AgentModelSecurityManager implements ReasoningSecurityManager {
 
     @Reference
     private AuditLogger auditLogger;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     private final Map<String, ModelSecurityPolicy> securityPolicies = new ConcurrentHashMap<>();
     private final Map<String, AccessControl> accessControls = new ConcurrentHashMap<>();
@@ -1293,7 +1298,11 @@ public class AgentModelSecurityManager implements ReasoningSecurityManager {
 
     @Override
     public SecurityStatistics getStatistics() {
-        return new AgentSecurityStatistics(0, 0, 0, 0, Instant.now(), 0, 0, true, true, 100, 60, 0);
+        if (metricsService != null) {
+            return metricsService.getSecurityMonitoringStatistics("agent-model-security", Duration.ofDays(30));
+        }
+        // Fallback to empty statistics if MetricsService is not available
+        return new SecurityMonitoringStatistics(List.of(), Duration.ofDays(30), System.currentTimeMillis());
     }
 
     @Override

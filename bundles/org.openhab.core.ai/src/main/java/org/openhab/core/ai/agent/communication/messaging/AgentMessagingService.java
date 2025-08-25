@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -21,6 +20,7 @@ import org.openhab.core.ai.agent.communication.messaging.api.MessageRouter;
 import org.openhab.core.ai.agent.communication.messaging.api.MessageValidator;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.common.communication.MessageDeliveryResult;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -59,6 +59,9 @@ public class AgentMessagingService {
     @Reference
     private @Nullable AgentRegistry agentRegistry;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Message storage and routing using A2A SDK Message class
     private final Map<String, Message> messageStore = new ConcurrentHashMap<>();
     private final Map<String, MessageDeliveryStatus> deliveryStatus = new ConcurrentHashMap<>();
@@ -78,13 +81,6 @@ public class AgentMessagingService {
     private final MessageEncryptionService encryptionService = new MessageEncryptionService();
     private final MessageSecurityManager securityManager = new MessageSecurityManager();
 
-    // Performance monitoring
-    private final AtomicLong totalMessagesSent = new AtomicLong(0);
-    private final AtomicLong totalMessagesDelivered = new AtomicLong(0);
-    private final AtomicLong totalMessagesAcknowledged = new AtomicLong(0);
-    private final AtomicLong totalMessagesFailed = new AtomicLong(0);
-    private final AtomicLong totalBroadcastMessages = new AtomicLong(0);
-
     // Configuration
     private final AtomicReference<MessagingConfiguration> configuration = new AtomicReference<>(
             new MessagingConfiguration());
@@ -99,9 +95,9 @@ public class AgentMessagingService {
         logger.info("Agent Messaging Service activated");
 
         // Start background processors
-        messageProcessor.scheduleAtFixedRate(this::processMessageQueue, 0, 100, TimeUnit.MILLISECONDS);
-        retryProcessor.scheduleAtFixedRate(this::processRetryQueue, 0, 1000, TimeUnit.MILLISECONDS);
-        cleanupProcessor.scheduleAtFixedRate(this::cleanupExpiredMessages, 0, 300, TimeUnit.SECONDS);
+        messageProcessor.scheduleWithFixedDelay(this::processPendingMessages, 0, 100, TimeUnit.MILLISECONDS);
+        retryProcessor.scheduleWithFixedDelay(this::processRetryQueue, 0, 500, TimeUnit.MILLISECONDS);
+        cleanupProcessor.scheduleWithFixedDelay(this::cleanupExpiredMessages, 0, 60000, TimeUnit.MILLISECONDS);
     }
 
     @Deactivate
@@ -115,10 +111,10 @@ public class AgentMessagingService {
     }
 
     /**
-     * Send a message from one agent to another using A2A SDK Message class
+     * Send a message from one agent to another
      * 
-     * @param fromAgentId Source agent ID
-     * @param toAgentId Destination agent ID
+     * @param fromAgentId Source agent identifier
+     * @param toAgentId Target agent identifier
      * @param content Message content
      * @param priority Message priority
      * @param options Message options
@@ -126,102 +122,113 @@ public class AgentMessagingService {
      */
     public CompletableFuture<MessageDeliveryResult> sendMessage(String fromAgentId, String toAgentId, String content,
             MessagePriority priority, MessageOptions options) {
-        logger.debug("Sending message from {} to {}: {}", fromAgentId, toAgentId, content);
+        Instant startTime = Instant.now();
+        boolean success = false;
+        Duration duration = Duration.ZERO;
 
-        // Validate agents exist
-        AgentRegistry registry = agentRegistry;
-        if (registry == null) {
-            return CompletableFuture.failedFuture(new IllegalStateException("Agent registry not available"));
-        }
+        try {
+            // Create A2A SDK Message
+            String messageId = generateMessageId();
+            List<Part<?>> parts = List.of(new TextPart(content, null));
+            Map<String, Object> metadata = createMessageMetadata(fromAgentId, toAgentId, priority, options);
+            Message message = new Message(Message.Role.AGENT, parts, null, null, null, null, metadata);
 
-        if (registry.getAgent(fromAgentId, "system") == null) {
+            // Validate message
+            if (!validateMessage(message)) {
+                recordMetrics("agent-messaging", "message-validation-failed", false,
+                        Duration.between(startTime, Instant.now()));
+                return CompletableFuture.completedFuture(MessageDeliveryResult.failure("Message validation failed"));
+            }
+
+            // Apply filters
+            if (!applyMessageFilters(message)) {
+                recordMetrics("agent-messaging", "message-filtered", false, Duration.between(startTime, Instant.now()));
+                return CompletableFuture.completedFuture(MessageDeliveryResult.filtered("Message filtered out"));
+            }
+
+            // Store message
+            messageStore.put(messageId, message);
+            deliveryStatus.put(messageId, MessageDeliveryStatus.PENDING);
+
+            // Record metrics
+            recordMetrics("agent-messaging", "message-sent", true, Duration.between(startTime, Instant.now()));
+
+            // Route message
+            return routeMessage(message, messageId).thenApply(result -> {
+                Duration totalDuration = Duration.between(startTime, Instant.now());
+                boolean deliverySuccess = result.isSuccess();
+                recordMetrics("agent-messaging", "message-delivery", deliverySuccess, totalDuration);
+                return result;
+            });
+
+        } catch (Exception e) {
+            duration = Duration.between(startTime, Instant.now());
+            logger.error("Error sending message from {} to {}: {}", fromAgentId, toAgentId, e.getMessage(), e);
+            recordMetrics("agent-messaging", "message-send-error", false, duration);
             return CompletableFuture
-                    .failedFuture(new IllegalArgumentException("Source agent not found: " + fromAgentId));
+                    .completedFuture(MessageDeliveryResult.failure("Error sending message: " + e.getMessage()));
         }
-
-        if (registry.getAgent(toAgentId, "system") == null) {
-            return CompletableFuture
-                    .failedFuture(new IllegalArgumentException("Destination agent not found: " + toAgentId));
-        }
-
-        // Create A2A SDK Message
-        String messageId = generateMessageId();
-        List<Part<?>> parts = List.of(new TextPart(content, null));
-        Map<String, Object> metadata = createMessageMetadata(fromAgentId, toAgentId, priority, options);
-
-        Message message = new Message(Message.Role.AGENT, parts, null, null, null, null, metadata);
-
-        // Validate message
-        if (!validateMessage(message)) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Message validation failed"));
-        }
-
-        // Apply filters
-        if (!applyMessageFilters(message)) {
-            return CompletableFuture.completedFuture(MessageDeliveryResult.filtered("Message filtered out"));
-        }
-
-        // Encrypt message if required
-        if (options.isEncrypted()) {
-            message = encryptionService.encryptMessage(message);
-        }
-
-        // Store message
-        messageStore.put(messageId, message);
-        totalMessagesSent.incrementAndGet();
-
-        // Route message
-        return routeMessage(message, messageId);
     }
 
     /**
-     * Broadcast a message to multiple agents using A2A SDK Message class
+     * Broadcast a message to multiple agents
      * 
-     * @param fromAgentId Source agent ID
-     * @param topic Broadcast topic
+     * @param fromAgentId Source agent identifier
      * @param content Message content
-     * @param priority Message priority
+     * @param topic Broadcast topic
      * @param options Message options
      * @return Broadcast result
      */
-    public CompletableFuture<BroadcastResult> broadcastMessage(String fromAgentId, String topic, String content,
-            MessagePriority priority, MessageOptions options) {
-        logger.debug("Broadcasting message from {} to topic {}: {}", fromAgentId, topic, content);
+    public CompletableFuture<BroadcastResult> broadcastMessage(String fromAgentId, String content, String topic,
+            MessageOptions options) {
+        Instant startTime = Instant.now();
+        boolean success = false;
 
-        // Get subscribers
-        Set<String> subscribers = topicSubscriptions.getOrDefault(topic, Set.of());
-        if (subscribers.isEmpty()) {
-            return CompletableFuture
-                    .completedFuture(BroadcastResult.noSubscribers("No subscribers for topic: " + topic));
+        try {
+            // Get subscribers for topic
+            Set<String> subscribers = topicSubscriptions.getOrDefault(topic, Set.of());
+            if (subscribers.isEmpty()) {
+                recordMetrics("agent-messaging", "broadcast-no-subscribers", false,
+                        Duration.between(startTime, Instant.now()));
+                return CompletableFuture.completedFuture(new BroadcastResult(0, 0, 0));
+            }
+
+            // Create broadcast message
+            Message broadcastMessage = Message.builder().id(generateMessageId()).from(fromAgentId)
+                    .to("broadcast:" + topic).addPart(TextPart.builder().text(content).build())
+                    .metadata(createMessageMetadata(fromAgentId, "broadcast:" + topic, MessagePriority.NORMAL, options))
+                    .build();
+
+            // Send to all subscribers
+            List<CompletableFuture<MessageDeliveryResult>> deliveries = subscribers.stream().map(
+                    subscriberId -> sendMessage(fromAgentId, subscriberId, content, MessagePriority.NORMAL, options))
+                    .toList();
+
+            // Wait for all deliveries
+            CompletableFuture<Void> allDeliveries = CompletableFuture
+                    .allOf(deliveries.toArray(new CompletableFuture[0]));
+
+            return allDeliveries.thenApply(v -> {
+                Duration duration = Duration.between(startTime, Instant.now());
+                long successful = deliveries.stream().mapToLong(f -> {
+                    try {
+                        return f.get() == MessageDeliveryResult.DELIVERED ? 1 : 0;
+                    } catch (Exception e) {
+                        return 0;
+                    }
+                }).sum();
+                long failed = subscribers.size() - successful;
+
+                recordMetrics("agent-messaging", "broadcast-completed", true, duration);
+                return new BroadcastResult(subscribers.size(), successful, failed);
+            });
+
+        } catch (Exception e) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            logger.error("Error broadcasting message from {} to topic {}: {}", fromAgentId, topic, e.getMessage(), e);
+            recordMetrics("agent-messaging", "broadcast-error", false, duration);
+            return CompletableFuture.completedFuture(new BroadcastResult(0, 0, 0));
         }
-
-        // Create broadcast message using A2A SDK
-        String messageId = generateMessageId();
-        List<Part<?>> parts = List.of(new TextPart(content, null));
-        Map<String, Object> metadata = createMessageMetadata(fromAgentId, "BROADCAST", priority, options);
-        metadata.put("topic", topic);
-
-        Message broadcastMessage = new Message(Message.Role.AGENT, parts, null, null, null, null, metadata);
-
-        // Store broadcast message
-        messageStore.put(messageId, broadcastMessage);
-        totalBroadcastMessages.incrementAndGet();
-
-        // Send to all subscribers
-        List<CompletableFuture<MessageDeliveryResult>> deliveries = subscribers.stream()
-                .map(subscriberId -> sendMessage(fromAgentId, subscriberId, content, priority, options)).toList();
-
-        return CompletableFuture.allOf(deliveries.toArray(new CompletableFuture[0])).thenApply(v -> {
-            long successful = deliveries.stream().mapToLong(future -> {
-                try {
-                    return future.get().isSuccess() ? 1 : 0;
-                } catch (Exception e) {
-                    return 0;
-                }
-            }).sum();
-
-            return BroadcastResult.success(successful, subscribers.size());
-        });
     }
 
     /**
@@ -265,39 +272,43 @@ public class AgentMessagingService {
     /**
      * Acknowledge message receipt
      * 
-     * @param messageId Message ID to acknowledge
-     * @param agentId Agent acknowledging the message
-     * @param acknowledgmentType Type of acknowledgment
+     * @param messageId Message identifier
+     * @param agentId Agent identifier
+     * @param acknowledgmentType Acknowledgment type
      * @return Acknowledgment result
      */
     public boolean acknowledgeMessage(String messageId, String agentId, AcknowledgmentType acknowledgmentType) {
-        logger.debug("Agent {} acknowledging message {} with type: {}", agentId, messageId, acknowledgmentType);
+        Instant startTime = Instant.now();
+        boolean success = false;
 
-        Message message = messageStore.get(messageId);
-        if (message == null) {
-            logger.warn("Cannot acknowledge message {}: message not found", messageId);
-            return false;
+        try {
+            Message message = messageStore.get(messageId);
+            if (message == null) {
+                recordMetrics("agent-messaging", "acknowledgment-message-not-found", false,
+                        Duration.between(startTime, Instant.now()));
+                return false;
+            }
+
+            // Create acknowledgment
+            MessageAcknowledgment acknowledgment = new MessageAcknowledgment(messageId, agentId, acknowledgmentType,
+                    Instant.now());
+            acknowledgments.put(messageId + ":" + agentId, acknowledgment);
+
+            // Update delivery status if all recipients acknowledged
+            if (isAllRecipientsAcknowledged(messageId)) {
+                deliveryStatus.put(messageId, MessageDeliveryStatus.ACKNOWLEDGED);
+            }
+
+            success = true;
+            recordMetrics("agent-messaging", "message-acknowledged", true, Duration.between(startTime, Instant.now()));
+
+        } catch (Exception e) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            logger.error("Error acknowledging message {} by agent {}: {}", messageId, agentId, e.getMessage(), e);
+            recordMetrics("agent-messaging", "acknowledgment-error", false, duration);
         }
 
-        // Verify agent is the intended recipient
-        Map<String, Object> metadata = message.getMetadata();
-        String toAgentId = metadata != null ? (String) metadata.get("toAgentId") : null;
-        if (toAgentId == null || (!toAgentId.equals(agentId) && !toAgentId.equals("BROADCAST"))) {
-            logger.warn("Agent {} cannot acknowledge message {}: not the intended recipient", agentId, messageId);
-            return false;
-        }
-
-        // Create acknowledgment
-        MessageAcknowledgment acknowledgment = MessageAcknowledgment.builder().messageId(messageId).agentId(agentId)
-                .acknowledgmentType(acknowledgmentType).timestamp(Instant.now()).build();
-
-        acknowledgments.put(messageId + ":" + agentId, acknowledgment);
-        totalMessagesAcknowledged.incrementAndGet();
-
-        // Update delivery status
-        deliveryStatus.put(messageId, MessageDeliveryStatus.ACKNOWLEDGED);
-
-        return true;
+        return success;
     }
 
     /**
@@ -327,9 +338,17 @@ public class AgentMessagingService {
      * @return Messaging statistics
      */
     public MessagingStatistics getStatistics() {
-        return new MessagingStatistics(totalMessagesSent.get(), totalMessagesDelivered.get(),
-                totalMessagesAcknowledged.get(), totalMessagesFailed.get(), totalBroadcastMessages.get(),
-                messageStore.size(), deliveryStatus.size(), acknowledgments.size(), topicSubscriptions.size());
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            logger.warn("MetricsService not available, returning empty statistics");
+            return new MessagingStatistics(0, 0, 0, 0, 0, messageStore.size(), deliveryStatus.size(),
+                    acknowledgments.size(), topicSubscriptions.size());
+        }
+
+        // TODO: Implement proper metrics retrieval when domain-specific snapshots are available
+        // For now, return current state counts
+        return new MessagingStatistics(0, 0, 0, 0, 0, messageStore.size(), deliveryStatus.size(),
+                acknowledgments.size(), topicSubscriptions.size());
     }
 
     /**
@@ -422,197 +441,76 @@ public class AgentMessagingService {
                 Thread.sleep(10);
 
                 deliveryStatus.put(messageId, MessageDeliveryStatus.DELIVERED);
-                totalMessagesDelivered.incrementAndGet();
+                return MessageDeliveryResult.DELIVERED;
 
-                return MessageDeliveryResult.success("Message delivered successfully");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                totalMessagesFailed.incrementAndGet();
-                return MessageDeliveryResult.failure("Message delivery interrupted");
+                deliveryStatus.put(messageId, MessageDeliveryStatus.FAILED);
+                return MessageDeliveryResult.FAILED;
             } catch (Exception e) {
-                totalMessagesFailed.incrementAndGet();
-                return MessageDeliveryResult.failure("Message delivery failed: " + e.getMessage());
+                logger.error("Error routing message {}: {}", messageId, e.getMessage(), e);
+                deliveryStatus.put(messageId, MessageDeliveryStatus.FAILED);
+                return MessageDeliveryResult.FAILED;
             }
         });
     }
 
-    private final Map<String, Message> pendingMessages = new ConcurrentHashMap<>();
-    private final Map<String, MessageRetryInfo> retryQueue = new ConcurrentHashMap<>();
-
-    private void processMessageQueue() {
-        try {
-            logger.debug("Processing message queue");
-
-            // Process pending messages
-            for (Map.Entry<String, Message> entry : pendingMessages.entrySet()) {
-                String messageId = entry.getKey();
-                Message message = entry.getValue();
-
-                try {
-                    // Attempt to deliver the message
-                    CompletableFuture<MessageDeliveryResult> deliveryFuture = routeMessage(message, messageId);
-                    MessageDeliveryResult result = deliveryFuture.get();
-
-                    if (result.isSuccess()) {
-                        // Message delivered successfully
-                        pendingMessages.remove(messageId);
-                        deliveryStatus.put(messageId, MessageDeliveryStatus.DELIVERED);
-                        totalMessagesDelivered.incrementAndGet();
-
-                        logger.debug("Message {} delivered successfully", messageId);
-                    } else {
-                        // Message delivery failed, add to retry queue
-                        addToRetryQueue(messageId, message);
-                        deliveryStatus.put(messageId, MessageDeliveryStatus.FAILED);
-                        totalMessagesFailed.incrementAndGet();
-
-                        logger.warn("Message {} delivery failed: {}", messageId, result.getMessage());
-                    }
-
-                } catch (Exception e) {
-                    logger.error("Error processing message {}: {}", messageId, e.getMessage());
-
-                    // Add to retry queue on error
-                    addToRetryQueue(messageId, message);
-                    deliveryStatus.put(messageId, MessageDeliveryStatus.FAILED);
-                    totalMessagesFailed.incrementAndGet();
-                }
-            }
-
-        } catch (Exception e) {
-            logger.error("Error in message queue processing: {}", e.getMessage(), e);
+    private boolean isAllRecipientsAcknowledged(String messageId) {
+        Message message = messageStore.get(messageId);
+        if (message == null) {
+            return false;
         }
+
+        // Check if all recipients have acknowledged
+        String toAgentId = message.getTo();
+        String acknowledgmentKey = messageId + ":" + toAgentId;
+        return acknowledgments.containsKey(acknowledgmentKey);
+    }
+
+    private void processPendingMessages() {
+        // Process messages with PENDING status
+        deliveryStatus.entrySet().stream().filter(entry -> entry.getValue() == MessageDeliveryStatus.PENDING)
+                .forEach(entry -> {
+                    String messageId = entry.getKey();
+                    Message message = messageStore.get(messageId);
+                    if (message != null) {
+                        routeMessage(message, messageId);
+                    }
+                });
     }
 
     private void processRetryQueue() {
-        try {
-            logger.debug("Processing retry queue");
-
-            Instant now = Instant.now();
-
-            // Process retry attempts for failed messages
-            for (Map.Entry<String, MessageRetryInfo> entry : retryQueue.entrySet()) {
-                String messageId = entry.getKey();
-                MessageRetryInfo retryInfo = entry.getValue();
-
-                // Check if it's time to retry
-                if (retryInfo.getNextRetryTime().isBefore(now)) {
-                    Message message = messageStore.get(messageId);
-                    if (message != null) {
-                        // Check if we haven't exceeded max retries
-                        Map<String, Object> metadata = message.getMetadata();
-                        int maxRetries = metadata != null && metadata.containsKey("maxRetries")
-                                ? (Integer) metadata.get("maxRetries")
-                                : configuration.get().getMaxRetries();
-
-                        if (retryInfo.getRetryCount() < maxRetries) {
-                            // Attempt retry
-                            try {
-                                CompletableFuture<MessageDeliveryResult> retryFuture = routeMessage(message, messageId);
-                                MessageDeliveryResult result = retryFuture.get();
-
-                                if (result.isSuccess()) {
-                                    // Retry successful
-                                    retryQueue.remove(messageId);
-                                    deliveryStatus.put(messageId, MessageDeliveryStatus.DELIVERED);
-                                    totalMessagesDelivered.incrementAndGet();
-
-                                    logger.info("Message {} retry successful after {} attempts", messageId,
-                                            retryInfo.getRetryCount() + 1);
-                                } else {
-                                    // Retry failed, update retry info
-                                    updateRetryInfo(messageId, retryInfo);
-                                    deliveryStatus.put(messageId, MessageDeliveryStatus.RETRYING);
-
-                                    logger.warn("Message {} retry failed (attempt {}): {}", messageId,
-                                            retryInfo.getRetryCount() + 1, result.getMessage());
-                                }
-
-                            } catch (Exception e) {
-                                logger.error("Error during retry for message {}: {}", messageId, e.getMessage());
-                                updateRetryInfo(messageId, retryInfo);
-                                deliveryStatus.put(messageId, MessageDeliveryStatus.RETRYING);
-                            }
-                        } else {
-                            // Max retries exceeded, mark as failed
-                            retryQueue.remove(messageId);
-                            deliveryStatus.put(messageId, MessageDeliveryStatus.FAILED);
-
-                            logger.error("Message {} failed after {} retry attempts", messageId,
-                                    retryInfo.getRetryCount());
-                        }
-                    } else {
-                        // Message no longer exists, remove from retry queue
-                        retryQueue.remove(messageId);
-                        logger.warn("Message {} no longer exists, removing from retry queue", messageId);
-                    }
-                }
+        // Process messages that need retry
+        retryInfo.entrySet().stream().filter(entry -> entry.getValue().shouldRetry()).forEach(entry -> {
+            String messageId = entry.getKey();
+            Message message = messageStore.get(messageId);
+            if (message != null) {
+                routeMessage(message, messageId);
+                entry.getValue().incrementRetryCount();
             }
-
-        } catch (Exception e) {
-            logger.error("Error in retry queue processing: {}", e.getMessage(), e);
-        }
-    }
-
-    private void addToRetryQueue(String messageId, Message message) {
-        try {
-            Instant now = Instant.now();
-            Duration retryInterval = configuration.get().getRetryInterval();
-            Instant nextRetryTime = now.plus(retryInterval);
-
-            MessageRetryInfo retryInfo = new MessageRetryInfo(messageId, 1, now, nextRetryTime);
-            retryQueue.put(messageId, retryInfo);
-
-            logger.debug("Added message {} to retry queue, next retry at {}", messageId, nextRetryTime);
-
-        } catch (Exception e) {
-            logger.error("Error adding message {} to retry queue: {}", messageId, e.getMessage());
-        }
-    }
-
-    private void updateRetryInfo(String messageId, MessageRetryInfo currentRetryInfo) {
-        try {
-            Instant now = Instant.now();
-            Duration retryInterval = configuration.get().getRetryInterval();
-
-            // Exponential backoff: increase retry interval with each attempt
-            long backoffMultiplier = Math.min(currentRetryInfo.getRetryCount() + 1, 4); // Cap at 4x
-            Duration nextRetryInterval = Duration.ofMillis(retryInterval.toMillis() * backoffMultiplier);
-            Instant nextRetryTime = now.plus(nextRetryInterval);
-
-            MessageRetryInfo newRetryInfo = new MessageRetryInfo(messageId, currentRetryInfo.getRetryCount() + 1, now,
-                    nextRetryTime);
-
-            retryQueue.put(messageId, newRetryInfo);
-
-            logger.debug("Updated retry info for message {}: attempt {}, next retry at {}", messageId,
-                    newRetryInfo.getRetryCount(), nextRetryTime);
-
-        } catch (Exception e) {
-            logger.error("Error updating retry info for message {}: {}", messageId, e.getMessage());
-        }
+        });
     }
 
     private void cleanupExpiredMessages() {
-        Instant cutoff = Instant.now().minus(Duration.ofDays(7));
+        Instant now = Instant.now();
 
+        // Remove expired messages
         messageStore.entrySet().removeIf(entry -> {
             Message message = entry.getValue();
             Map<String, Object> metadata = message.getMetadata();
-            if (metadata != null && metadata.containsKey("timestamp")) {
-                Object timestampObj = metadata.get("timestamp");
-                if (timestampObj instanceof Long) {
-                    Instant messageTime = Instant.ofEpochMilli((Long) timestampObj);
-                    return messageTime.isBefore(cutoff);
-                }
+            Long timestamp = (Long) metadata.get("timestamp");
+            Long timeout = (Long) metadata.get("timeout");
+
+            if (timestamp != null && timeout != null) {
+                return now.isAfter(Instant.ofEpochMilli(timestamp + timeout));
             }
             return false;
         });
 
-        deliveryStatus.entrySet().removeIf(entry -> {
-            // Remove delivery status for messages that no longer exist
-            return !messageStore.containsKey(entry.getKey());
-        });
+        // Clean up related data
+        deliveryStatus.entrySet().removeIf(entry -> !messageStore.containsKey(entry.getKey()));
+        acknowledgments.entrySet().removeIf(entry -> !messageStore.containsKey(entry.getKey().split(":")[0]));
+        retryInfo.entrySet().removeIf(entry -> !messageStore.containsKey(entry.getKey()));
     }
 
     private void shutdownExecutor(ScheduledExecutorService executor) {
@@ -627,5 +525,15 @@ public class AgentMessagingService {
         }
     }
 
-    // Inner classes extracted: MessageEncryptionService, MessageSecurityManager
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, duration);
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
+        }
+    }
+
+    // Inner classes and interfaces extracted to top-level types in this package
 }

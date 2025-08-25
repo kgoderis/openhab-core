@@ -1,14 +1,16 @@
 package org.openhab.core.ai.agent.execution;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.execution.api.AgentSkillException;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.ExecutionStatistics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,9 +94,7 @@ public class AgentSkillExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AgentSkillExecutor.class);
 
     private final AtomicReference<@Nullable AgentSkillRegistry> skillRegistry = new AtomicReference<>();
-    private final AtomicLong totalExecutions = new AtomicLong(0);
-    private final AtomicLong successfulExecutions = new AtomicLong(0);
-    private final AtomicLong failedExecutions = new AtomicLong(0);
+    private @Nullable MetricsService metricsService;
 
     /**
      * Set the skill registry reference.
@@ -103,6 +103,16 @@ public class AgentSkillExecutor {
      */
     public void setSkillRegistry(@Nullable AgentSkillRegistry registry) {
         this.skillRegistry.set(registry);
+    }
+
+    /**
+     * Set the metrics service reference.
+     * 
+     * @param metricsService the metrics service
+     */
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("Metrics service set for AgentSkillExecutor");
     }
 
     /**
@@ -115,7 +125,7 @@ public class AgentSkillExecutor {
      */
     public AgentSkillResult executeSkill(String skillId, Message message) throws AgentSkillException {
         long startTime = System.currentTimeMillis();
-        totalExecutions.incrementAndGet();
+        long startTimeNanos = System.nanoTime();
 
         logger.debug("Executing Agent skill: {}", skillId);
 
@@ -125,7 +135,7 @@ public class AgentSkillExecutor {
             if (registry == null) {
                 String errorMsg = "Skill registry not available";
                 logger.error(errorMsg);
-                failedExecutions.incrementAndGet();
+                recordMetrics("agent-skill", "execution", false, System.nanoTime() - startTimeNanos);
                 return AgentSkillResult.failure(errorMsg, "REGISTRY_UNAVAILABLE",
                         System.currentTimeMillis() - startTime);
             }
@@ -135,16 +145,17 @@ public class AgentSkillExecutor {
             if (adapter == null) {
                 String errorMsg = "Skill not found: " + skillId;
                 logger.warn(errorMsg);
-                failedExecutions.incrementAndGet();
+                recordMetrics("agent-skill", "execution", false, System.nanoTime() - startTimeNanos);
                 return AgentSkillResult.failure(errorMsg, "SKILL_NOT_FOUND", System.currentTimeMillis() - startTime);
             }
 
             // Execute the skill
             Object result = adapter.execute(message);
             long executionTime = System.currentTimeMillis() - startTime;
+            long durationNanos = System.nanoTime() - startTimeNanos;
 
             // Track successful execution
-            successfulExecutions.incrementAndGet();
+            recordMetrics("agent-skill", "execution", true, durationNanos);
 
             logger.debug("Skill execution completed successfully: {} in {}ms", skillId, executionTime);
 
@@ -161,7 +172,9 @@ public class AgentSkillExecutor {
 
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
-            failedExecutions.incrementAndGet();
+            long durationNanos = System.nanoTime() - startTimeNanos;
+
+            recordMetrics("agent-skill", "execution", false, durationNanos);
 
             logger.error("Skill execution failed: {}", skillId, e);
             return AgentSkillResult.failure("Skill execution failed: " + e.getMessage(), "EXECUTION_ERROR",
@@ -232,16 +245,49 @@ public class AgentSkillExecutor {
      * @return the execution statistics
      */
     public ExecutionStatistics getExecutionStatistics() {
-        return new ExecutionStatistics(totalExecutions.get(), successfulExecutions.get(), failedExecutions.get());
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var snapshot = metrics.getDomainAggregatedSnapshot("agent-skill");
+                return ExecutionStatistics.fromExecutionData(snapshot.totalOperations(),
+                        snapshot.totalOperations() - snapshot.failedOperations(), snapshot.failedOperations(),
+                        snapshot.totalDurationNanos(), Duration.ofDays(1) // Default time range
+                );
+            } catch (Exception e) {
+                logger.warn("Error retrieving metrics for agent-skill: {}", e.getMessage());
+            }
+        } else {
+            logger.warn("MetricsService not available, returning empty statistics");
+        }
+
+        // Return empty statistics if MetricsService is not available
+        return ExecutionStatistics.fromExecutionData(0L, 0L, 0L, 0L, Duration.ofDays(1));
+    }
+
+    /**
+     * Record metrics for an operation.
+     * 
+     * @param domain the operation domain
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param durationNanos the operation duration in nanoseconds
+     */
+    private void recordMetrics(String domain, String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
+        }
     }
 
     /**
      * Reset execution statistics.
      */
     public void resetExecutionStatistics() {
-        totalExecutions.set(0);
-        successfulExecutions.set(0);
-        failedExecutions.set(0);
+        // Reset is handled by the MetricsService, no local counters to reset
+        logger.info("Execution statistics reset requested - handled by MetricsService");
     }
 
     // Inner class extracted to top-level: org.openhab.core.ai.agent.execution.ExecutionStatistics

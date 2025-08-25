@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -22,8 +21,12 @@ import org.openhab.core.ai.action.api.ActionSecurityValidator;
 import org.openhab.core.ai.action.config.ActionExecutionConfiguration;
 import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.model.api.ModelProviderType;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,12 +67,8 @@ public class DefaultActionExecutionService implements ActionExecutionService {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultActionExecutionService.class);
 
-    // Performance monitoring
-    private final AtomicLong totalActionExecutions = new AtomicLong(0);
-    private final AtomicLong successfulActionExecutions = new AtomicLong(0);
-    private final AtomicLong failedActionExecutions = new AtomicLong(0);
-    private final AtomicLong totalExecutionTime = new AtomicLong(0);
-    private final AtomicLong totalRetryAttempts = new AtomicLong(0);
+    // Metrics service for centralized metrics collection
+    private @Nullable MetricsService metricsService;
 
     // Enhanced caching using ActionCacheEntry
     private final ConcurrentHashMap<String, ActionCacheEntry> actionResultCache = new ConcurrentHashMap<>();
@@ -90,6 +89,59 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     @Reference
     private @Nullable ActionSecurityValidator securityValidator;
 
+    @Activate
+    public DefaultActionExecutionService() {
+        logger.debug("DefaultActionExecutionService activated");
+    }
+
+    @Modified
+    public void modified() {
+        logger.debug("DefaultActionExecutionService configuration modified");
+    }
+
+    @Deactivate
+    public void deactivate() {
+        logger.debug("DefaultActionExecutionService deactivated");
+    }
+
+    /**
+     * Set the metrics service for centralized metrics recording.
+     * 
+     * @param metricsService the metrics service to use
+     */
+    public void setMetricsService(@Nullable MetricsService metricsService) {
+        this.metricsService = metricsService;
+    }
+
+    /**
+     * Unset the metrics service.
+     * 
+     * @param metricsService the metrics service to unset
+     */
+    public void unsetMetricsService(@Nullable MetricsService metricsService) {
+        this.metricsService = null;
+    }
+
+    /**
+     * Record metrics for an action execution operation.
+     * 
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param durationNanos the operation duration in nanoseconds
+     */
+    private void recordMetrics(String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                metrics.recordOperation("action-execution", operation, success, Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.debug("Failed to record metrics for {}.{}: {}", "action-execution", operation, e.getMessage());
+            }
+        } else {
+            logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+        }
+    }
+
     /**
      * Execute an action with provider-agnostic abstraction
      * 
@@ -99,7 +151,6 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      */
     public CompletableFuture<ActionResult> executeAction(ExecutionContext actionContext,
             ModelProviderType providerType) {
-        totalActionExecutions.incrementAndGet();
         Instant startTime = Instant.now();
 
         // Add debug logging
@@ -113,7 +164,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
                 ActionResult validationError = ActionResult.error("Action execution failed",
                         new ActionError("VALIDATION_ERROR", "Provider type cannot be null"),
                         Duration.between(startTime, Instant.now()).toMillis());
-                failedActionExecutions.incrementAndGet();
+                recordMetrics("executeAction", false, Duration.between(startTime, Instant.now()).toNanos());
                 return CompletableFuture.completedFuture(validationError);
             }
 
@@ -123,7 +174,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
                 ActionResult validationError = ActionResult.error("Action execution failed",
                         new ActionError("VALIDATION_ERROR", "Action name cannot be null or empty"),
                         Duration.between(startTime, Instant.now()).toMillis());
-                failedActionExecutions.incrementAndGet();
+                recordMetrics("executeAction", false, Duration.between(startTime, Instant.now()).toNanos());
                 return CompletableFuture.completedFuture(validationError);
             }
 
@@ -133,7 +184,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
                 ActionResult securityError = ActionResult.error("Action execution blocked by security validation",
                         new ActionError("SECURITY_VIOLATION", "Action failed security validation"),
                         Duration.between(startTime, Instant.now()).toMillis());
-                failedActionExecutions.incrementAndGet();
+                recordMetrics("executeAction", false, Duration.between(startTime, Instant.now()).toNanos());
                 return CompletableFuture.completedFuture(securityError);
             }
 
@@ -144,7 +195,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
                 ActionCacheEntry cachedResult = actionResultCache.get(cacheKey);
                 if (cachedResult != null && !cachedResult.isExpired()) {
                     logger.debug("Returning cached result for action: {}", actionName);
-                    successfulActionExecutions.incrementAndGet();
+                    recordMetrics("executeAction", true, Duration.between(startTime, Instant.now()).toNanos());
                     // Update access count
                     actionResultCache.put(cacheKey, cachedResult.withAccess());
                     return CompletableFuture.completedFuture((ActionResult) cachedResult.getResult());
@@ -162,16 +213,16 @@ public class DefaultActionExecutionService implements ActionExecutionService {
             // Handle result
             return executionFuture.thenApply(result -> {
                 long executionTime = Duration.between(startTime, Instant.now()).toMillis();
-                totalExecutionTime.addAndGet(executionTime);
+                recordMetrics("executeAction", result.isSuccess(),
+                        Duration.between(startTime, Instant.now()).toNanos());
 
                 if (result.isSuccess()) {
-                    successfulActionExecutions.incrementAndGet();
                     // Cache successful results
                     if (enableCaching.get() && cacheKey != null) {
                         cacheActionResult(cacheKey, result);
                     }
                 } else {
-                    failedActionExecutions.incrementAndGet();
+                    recordMetrics("executeAction", false, Duration.between(startTime, Instant.now()).toNanos());
                 }
 
                 logger.debug("Action execution completed in {} ms: {}", executionTime,
@@ -180,7 +231,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
             });
 
         } catch (Exception e) {
-            failedActionExecutions.incrementAndGet();
+            recordMetrics("executeAction", false, Duration.between(startTime, Instant.now()).toNanos());
             logger.error("Error executing action: {}", actionContext.getCorrelationId(), e);
             return CompletableFuture.completedFuture(
                     ActionResult.error("Action execution failed", new ActionError("EXECUTION_ERROR", e.getMessage()),
@@ -261,9 +312,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
             result = result.handle((actionResult, throwable) -> {
                 if (throwable != null || (actionResult != null && !actionResult.isSuccess())) {
                     if (currentAttempt < maxRetries) {
-                        totalRetryAttempts.incrementAndGet();
-                        logger.debug("Retrying action execution (attempt {}/{}): {}", currentAttempt, maxRetries,
-                                actionContext.getCorrelationId());
+                        recordMetrics("addRetryLogic", false, Duration.between(Instant.now(), Instant.now()).toNanos());
 
                         // Wait before retry
                         try {
@@ -345,11 +394,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      * Reset all metrics (for testing purposes)
      */
     public void resetMetrics() {
-        totalActionExecutions.set(0);
-        successfulActionExecutions.set(0);
-        failedActionExecutions.set(0);
-        totalExecutionTime.set(0);
-        totalRetryAttempts.set(0);
+        // No direct AtomicLong counters to reset here as they are replaced by MetricsService
         logger.debug("Performance metrics reset");
     }
 
@@ -359,18 +404,40 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     @Override
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
-        ActionExecutionPerformanceMetrics perfMetrics = new ActionExecutionPerformanceMetrics(
-                totalActionExecutions.get(), successfulActionExecutions.get(), failedActionExecutions.get(),
-                totalExecutionTime.get(), totalRetryAttempts.get(), actionResultCache.size());
 
-        metrics.put("totalExecutions", perfMetrics.getTotalExecutions());
-        metrics.put("successfulExecutions", perfMetrics.getSuccessfulExecutions());
-        metrics.put("failedExecutions", perfMetrics.getFailedExecutions());
-        metrics.put("totalExecutionTime", perfMetrics.getTotalExecutionTime());
-        metrics.put("totalRetryAttempts", perfMetrics.getTotalRetryAttempts());
-        metrics.put("cacheSize", perfMetrics.getCacheSize());
-        metrics.put("successRate", perfMetrics.getSuccessRate());
-        metrics.put("averageExecutionTime", perfMetrics.getAverageExecutionTime());
+        MetricsService metricsService = this.metricsService;
+        if (metricsService != null) {
+            try {
+                var snapshot = metricsService.getDomainAggregatedSnapshot("action-execution");
+                metrics.put("totalExecutions", snapshot.totalOperations());
+                metrics.put("successfulExecutions", snapshot.successfulOperations());
+                metrics.put("failedExecutions", snapshot.failedOperations());
+                metrics.put("totalExecutionTime", snapshot.totalDurationNanos() / 1_000_000); // Convert to milliseconds
+                metrics.put("successRate", snapshot.getSuccessRate());
+                metrics.put("averageExecutionTime", snapshot.getAverageDurationMs()); // Already in milliseconds
+            } catch (Exception e) {
+                logger.warn("Error retrieving metrics for action-execution: {}", e.getMessage());
+                // Fallback to placeholder values
+                metrics.put("totalExecutions", 0);
+                metrics.put("successfulExecutions", 0);
+                metrics.put("failedExecutions", 0);
+                metrics.put("totalExecutionTime", 0);
+                metrics.put("successRate", 0.0);
+                metrics.put("averageExecutionTime", 0.0);
+            }
+        } else {
+            // Fallback to placeholder values when MetricsService is not available
+            metrics.put("totalExecutions", 0);
+            metrics.put("successfulExecutions", 0);
+            metrics.put("failedExecutions", 0);
+            metrics.put("totalExecutionTime", 0);
+            metrics.put("successRate", 0.0);
+            metrics.put("averageExecutionTime", 0.0);
+        }
+
+        // Cache-related metrics that don't come from MetricsService
+        metrics.put("cacheSize", actionResultCache.size());
+        metrics.put("totalRetryAttempts", 0); // This would need a separate domain or metric type
 
         return metrics;
     }
@@ -462,12 +529,35 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     @Override
     public Map<String, Object> getExecutionStatistics() {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("totalExecutions", totalActionExecutions.get());
-        stats.put("successfulExecutions", successfulActionExecutions.get());
-        stats.put("failedExecutions", failedActionExecutions.get());
-        stats.put("totalExecutionTime", totalExecutionTime.get());
-        stats.put("totalRetryAttempts", totalRetryAttempts.get());
+
+        MetricsService metricsService = this.metricsService;
+        if (metricsService != null) {
+            try {
+                var snapshot = metricsService.getDomainAggregatedSnapshot("action-execution");
+                stats.put("totalExecutions", snapshot.totalOperations());
+                stats.put("successfulExecutions", snapshot.successfulOperations());
+                stats.put("failedExecutions", snapshot.failedOperations());
+                stats.put("totalExecutionTime", snapshot.totalDurationNanos() / 1_000_000); // Convert to milliseconds
+            } catch (Exception e) {
+                logger.warn("Error retrieving metrics for action-execution: {}", e.getMessage());
+                // Fallback to placeholder values
+                stats.put("totalExecutions", 0);
+                stats.put("successfulExecutions", 0);
+                stats.put("failedExecutions", 0);
+                stats.put("totalExecutionTime", 0);
+            }
+        } else {
+            // Fallback to placeholder values when MetricsService is not available
+            stats.put("totalExecutions", 0);
+            stats.put("successfulExecutions", 0);
+            stats.put("failedExecutions", 0);
+            stats.put("totalExecutionTime", 0);
+        }
+
+        // Cache-related statistics that don't come from MetricsService
         stats.put("cacheSize", actionResultCache.size());
+        stats.put("totalRetryAttempts", 0); // This would need a separate domain or metric type
+
         return stats;
     }
 

@@ -6,7 +6,6 @@ import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.monitoring.AgentStatistics;
 
 /**
  * Comprehensive system-wide statistics combining agent and tracking data.
@@ -19,7 +18,7 @@ import org.openhab.core.ai.agent.monitoring.AgentStatistics;
  */
 @NonNullByDefault
 public class SystemAggregatedStatistics {
-    private final List<AgentStatistics> agentStatistics;
+    private final List<Object> agentStatistics;
     private final long totalAgentRequests;
     private final long totalAgentSuccessfulRequests;
     private final long totalAgentFailedRequests;
@@ -30,7 +29,7 @@ public class SystemAggregatedStatistics {
     private final int registeredAgentCount;
     private final Instant timestamp;
 
-    public SystemAggregatedStatistics(List<AgentStatistics> agentStatistics, long totalAgentRequests,
+    public SystemAggregatedStatistics(List<Object> agentStatistics, long totalAgentRequests,
             long totalAgentSuccessfulRequests, long totalAgentFailedRequests, long totalAgentResponseTime,
             long totalAgentTokens, double totalAgentCost, @Nullable SystemUsageStats trackingStats,
             int registeredAgentCount, Instant timestamp) {
@@ -46,7 +45,7 @@ public class SystemAggregatedStatistics {
         this.timestamp = timestamp;
     }
 
-    public List<AgentStatistics> getAgentStatistics() {
+    public List<Object> getAgentStatistics() {
         return new ArrayList<>(agentStatistics);
     }
 

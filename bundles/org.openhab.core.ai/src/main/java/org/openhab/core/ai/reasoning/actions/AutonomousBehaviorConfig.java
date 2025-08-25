@@ -15,7 +15,6 @@ import org.openhab.core.ai.reasoning.config.AgentFullConfiguration;
 import org.openhab.core.ai.reasoning.config.ConfigurationResult;
 import org.openhab.core.ai.reasoning.constraints.ConstraintDefinition;
 import org.openhab.core.ai.reasoning.constraints.ConstraintResult;
-import org.openhab.core.ai.reasoning.monitoring.ConfigurationPerformanceMetrics;
 import org.openhab.core.ai.reasoning.policies.BehaviorPolicy;
 import org.openhab.core.ai.reasoning.policies.PolicyResult;
 import org.openhab.core.ai.reasoning.policies.SafetyPolicyConfig;
@@ -289,21 +288,9 @@ public class AutonomousBehaviorConfig {
     /**
      * Get configuration performance metrics
      */
-    public ConfigurationPerformanceMetrics getPerformanceMetrics() {
-        return new ConfigurationPerformanceMetrics("autonomous-behavior-config", 0, // totalOperations - not tracked yet
-                0, // successfulOperations - not tracked yet
-                0, // failedOperations - not tracked yet
-                0, // totalProcessingTime - not tracked yet
-                0.0, // averageResponseTime - not tracked yet
-                totalPolicyUpdates.get(), // totalPolicyUpdates
-                totalPreferenceUpdates.get(), // totalPreferenceUpdates
-                totalConstraintUpdates.get(), // totalConstraintUpdates
-                agentConfigurations.size(), // agentConfigurationCount
-                behaviorPolicies.size(), // behaviorPolicyCount
-                userPreferences.size(), // userPreferenceCount
-                constraintDefinitions.size(), // constraintDefinitionCount
-                safetyPolicies.size() // safetyPolicyCount
-        );
+    public Object getPerformanceMetrics() {
+        // TODO: Implement using new MetricsService when available
+        return null;
     }
 
     // Configuration methods

@@ -5,7 +5,15 @@ import java.time.Instant;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * Specification performance metrics record matching monitor expectations.
+ * Performance metrics for tool specifications.
+ * 
+ * <p>
+ * This record provides performance metrics for individual tool specifications,
+ * including request counts, success rates, response times, and throughput.
+ * </p>
+ * 
+ * @author Karel Goderis - Initial Contribution
+ * @since 4.0.0
  */
 @NonNullByDefault
 public record SpecificationPerformanceMetrics(String specificationId, long totalRequests, long successfulRequests,

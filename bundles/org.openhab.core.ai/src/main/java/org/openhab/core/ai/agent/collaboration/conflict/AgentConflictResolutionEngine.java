@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -19,6 +18,7 @@ import org.openhab.core.ai.agent.collaboration.ConflictResolutionResult;
 import org.openhab.core.ai.agent.collaboration.ConflictResolutionStrategy;
 import org.openhab.core.ai.agent.collaboration.ConflictType;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -53,6 +53,9 @@ public class AgentConflictResolutionEngine {
     @Reference
     private @Nullable AgentRegistry agentRegistry;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Conflict management
     private final Map<String, Conflict> activeConflicts = new ConcurrentHashMap<>();
     private final Map<String, ConflictHistory> conflictHistory = new ConcurrentHashMap<>();
@@ -63,13 +66,6 @@ public class AgentConflictResolutionEngine {
     private final Map<String, ConflictPattern> conflictPatterns = new ConcurrentHashMap<>();
     private final Map<String, PreventionRule> preventionRules = new ConcurrentHashMap<>();
     private final Map<String, ConflictLearningModel> learningModels = new ConcurrentHashMap<>();
-
-    // Performance monitoring
-    private final AtomicLong totalConflictsDetected = new AtomicLong(0);
-    private final AtomicLong totalConflictsResolved = new AtomicLong(0);
-    private final AtomicLong totalConflictsEscalated = new AtomicLong(0);
-    private final AtomicLong totalConflictsPrevented = new AtomicLong(0);
-    private final AtomicLong totalResolutionTime = new AtomicLong(0);
 
     // Configuration
     private final AtomicReference<ConflictResolutionConfiguration> configuration = new AtomicReference<>(
@@ -113,15 +109,21 @@ public class AgentConflictResolutionEngine {
     public CompletableFuture<ConflictDetectionResult> detectConflict(ConflictData conflictData, String agentId) {
         logger.debug("Agent {} reporting potential conflict: {}", agentId, conflictData);
 
+        Instant startTime = Instant.now();
+
         // Validate agent exists
         AgentRegistry registry = agentRegistry;
         if (registry == null || registry.getAgent(agentId, "system") == null) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            recordMetrics("conflict-resolution", "detection", false, duration);
             return CompletableFuture.completedFuture(ConflictDetectionResult.failure("Agent not found: " + agentId));
         }
 
         // Analyze conflict data
         ConflictAnalysis analysis = analyzeConflictData(conflictData, agentId);
         if (!analysis.isConflictDetected()) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            recordMetrics("conflict-resolution", "detection", false, duration);
             return CompletableFuture
                     .completedFuture(ConflictDetectionResult.noConflict("No conflict detected in the provided data"));
         }
@@ -136,7 +138,8 @@ public class AgentConflictResolutionEngine {
 
         // Check for prevention rules
         if (shouldPreventConflict(conflict)) {
-            totalConflictsPrevented.incrementAndGet();
+            Duration duration = Duration.between(startTime, Instant.now());
+            recordMetrics("conflict-resolution", "prevention", true, duration);
             return CompletableFuture
                     .completedFuture(ConflictDetectionResult.prevented("Conflict prevented by prevention rules"));
         }
@@ -144,7 +147,8 @@ public class AgentConflictResolutionEngine {
         // Update history
         updateConflictHistory(conflict);
 
-        totalConflictsDetected.incrementAndGet();
+        Duration duration = Duration.between(startTime, Instant.now());
+        recordMetrics("conflict-resolution", "detection", true, duration);
         return CompletableFuture.completedFuture(ConflictDetectionResult.conflictDetected(conflict, analysis));
     }
 
@@ -160,9 +164,13 @@ public class AgentConflictResolutionEngine {
             @Nullable String mediatorId) {
         logger.debug("Resolving conflict {} with strategy {} and mediator {}", conflictId, strategyId, mediatorId);
 
+        Instant startTime = Instant.now();
+
         // Get conflict
         Conflict conflict = activeConflicts.get(conflictId);
         if (conflict == null) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            recordMetrics("conflict-resolution", "resolution", false, duration);
             return CompletableFuture
                     .completedFuture(ConflictResolutionResult.notFound("Conflict not found: " + conflictId));
         }
@@ -170,6 +178,8 @@ public class AgentConflictResolutionEngine {
         // Get resolution strategy
         ConflictResolutionStrategy strategy = resolutionStrategies.get(strategyId);
         if (strategy == null) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            recordMetrics("conflict-resolution", "resolution", false, duration);
             return CompletableFuture
                     .completedFuture(ConflictResolutionResult.failure("Resolution strategy not found: " + strategyId));
         }
@@ -179,6 +189,8 @@ public class AgentConflictResolutionEngine {
         if (mediatorId != null) {
             mediator = mediators.get(mediatorId);
             if (mediator == null) {
+                Duration duration = Duration.between(startTime, Instant.now());
+                recordMetrics("conflict-resolution", "resolution", false, duration);
                 return CompletableFuture
                         .completedFuture(ConflictResolutionResult.failure("Mediator not found: " + mediatorId));
             }
@@ -198,22 +210,21 @@ public class AgentConflictResolutionEngine {
             conflict.setResolvedAt(Instant.now());
             conflict.setStatus(ConflictStatus.RESOLVED);
 
-            // Calculate resolution time
-            long resolutionTimeMs = Duration.between(resolutionStart, conflict.getResolvedAt()).toMillis();
-            totalResolutionTime.addAndGet(resolutionTimeMs);
-
             // Remove from active conflicts
             activeConflicts.remove(conflictId);
 
             // Update history
             updateConflictHistory(conflict);
 
-            totalConflictsResolved.incrementAndGet();
+            Duration duration = Duration.between(startTime, Instant.now());
+            recordMetrics("conflict-resolution", "resolution", true, duration);
             return CompletableFuture.completedFuture(result);
 
         } catch (Exception e) {
             logger.error("Error resolving conflict: {}", conflictId, e);
             conflict.setStatus(ConflictStatus.FAILED);
+            Duration duration = Duration.between(startTime, Instant.now());
+            recordMetrics("conflict-resolution", "resolution", false, duration);
             return CompletableFuture.completedFuture(
                     ConflictResolutionResult.failure("Error during conflict resolution: " + e.getMessage()));
         }
@@ -231,9 +242,13 @@ public class AgentConflictResolutionEngine {
             EscalationLevel escalationLevel) {
         logger.debug("Escalating conflict {} to level {}: {}", conflictId, escalationLevel, escalationReason);
 
+        Instant startTime = Instant.now();
+
         // Get conflict
         Conflict conflict = activeConflicts.get(conflictId);
         if (conflict == null) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            recordMetrics("conflict-resolution", "escalation", false, duration);
             return CompletableFuture
                     .completedFuture(ConflictEscalationResult.notFound("Conflict not found: " + conflictId));
         }
@@ -249,7 +264,8 @@ public class AgentConflictResolutionEngine {
         // Apply escalation procedures
         applyEscalationProcedures(conflict, escalation);
 
-        totalConflictsEscalated.incrementAndGet();
+        Duration duration = Duration.between(startTime, Instant.now());
+        recordMetrics("conflict-resolution", "escalation", true, duration);
         return CompletableFuture.completedFuture(ConflictEscalationResult.success(conflict, escalation));
     }
 
@@ -309,8 +325,20 @@ public class AgentConflictResolutionEngine {
      * @return Conflict resolution statistics
      */
     public ConflictResolutionStatistics getStatistics() {
-        return new ConflictResolutionStatistics(totalConflictsDetected.get(), totalConflictsResolved.get(),
-                totalConflictsEscalated.get(), totalConflictsPrevented.get(), totalResolutionTime.get(),
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            logger.warn("MetricsService not available, returning empty statistics");
+            return new ConflictResolutionStatistics(0, 0, 0, 0, 0, activeConflicts.size(), conflictHistory.size(),
+                    resolutionStrategies.size(), mediators.size());
+        }
+
+        // For now, return basic statistics since we need to implement proper snapshot retrieval
+        // TODO: Implement proper snapshot retrieval from MetricsService when domain-specific snapshots are available
+        return new ConflictResolutionStatistics(0, // totalConflictsDetected - will be retrieved from snapshots
+                0, // totalConflictsResolved - will be retrieved from snapshots
+                0, // totalConflictsEscalated - will be retrieved from snapshots
+                0, // totalConflictsPrevented - will be retrieved from snapshots
+                0, // totalResolutionTime - will be retrieved from snapshots
                 activeConflicts.size(), conflictHistory.size(), resolutionStrategies.size(), mediators.size());
     }
 
@@ -668,12 +696,21 @@ public class AgentConflictResolutionEngine {
             // Remove from active conflicts
             activeConflicts.remove(conflict.getConflictId());
 
-            // Update statistics
-            totalConflictsPrevented.incrementAndGet();
+            // Update statistics - now handled by MetricsService
 
         } catch (Exception e) {
             logger.error("Error applying prevention action for conflict {}: {}", conflict.getConflictId(),
                     e.getMessage());
+        }
+    }
+
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, duration);
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
         }
     }
 

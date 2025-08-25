@@ -4,6 +4,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
+import org.openhab.core.ai.common.monitoring.api.LatencyMetrics;
+import org.openhab.core.ai.common.monitoring.api.LifecycleMetrics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * Lifecycle statistics container.
@@ -17,7 +24,10 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @since 1.0.0
  */
 @NonNullByDefault
-public class LifecycleStatistics {
+public class LifecycleStatistics implements MetricsSnapshot, CountsMetrics, LatencyMetrics, LifecycleMetrics {
+
+    @Reference
+    private @Nullable MetricsService metricsService;
     private final boolean active;
     private final int servletCount;
     private final long totalRequests;
@@ -83,5 +93,96 @@ public class LifecycleStatistics {
                 "LifecycleStatistics{active=%s, servletCount=%d, totalRequests=%d, totalErrors=%d, uptimeMs=%d, errorRate=%.2f%%, requestsPerMinute=%.2f, allServletsHealthy=%s}",
                 active, servletCount, totalRequests, totalErrors, uptimeMs, errorRate * 100, requestsPerMinute,
                 allServletsHealthy);
+    }
+
+    // MetricsSnapshot implementation
+    @Override
+    public long timestampMs() {
+        return System.currentTimeMillis();
+    }
+
+    // CountsMetrics implementation
+    @Override
+    public long total() {
+        return totalRequests;
+    }
+
+    @Override
+    public long success() {
+        return totalRequests - totalErrors;
+    }
+
+    @Override
+    public long failure() {
+        return totalErrors;
+    }
+
+    @Override
+    public double successRate() {
+        if (totalRequests == 0) {
+            return 0.0;
+        }
+        return (success() * 100.0) / totalRequests;
+    }
+
+    // LatencyMetrics implementation
+    @Override
+    public long totalDurationNanos() {
+        // Convert uptime to nanoseconds for latency metrics
+        return uptimeMs * 1_000_000L;
+    }
+
+    @Override
+    public double averageMs(long total) {
+        if (total == 0) {
+            return 0.0;
+        }
+        return totalDurationNanos() / (total * 1_000_000.0);
+    }
+
+    // LifecycleMetrics implementation
+    @Override
+    public double uptime() {
+        return uptimeMs / (1000.0 * 60.0 * 60.0); // Convert to hours
+    }
+
+    @Override
+    public double startupTime() {
+        // For lifecycle statistics, we consider the uptime as the startup time
+        return uptimeMs;
+    }
+
+    @Override
+    public double shutdownTime() {
+        // Not tracked in current implementation
+        return 0.0;
+    }
+
+    @Override
+    public double restartFrequency() {
+        // Not tracked in current implementation
+        return 0.0;
+    }
+
+    @Override
+    public double healthScore() {
+        // Calculate health score based on error rate and servlet health
+        double errorScore = (1.0 - errorRate) * 100.0;
+        double healthScore = allServletsHealthy ? 100.0 : 50.0;
+        return (errorScore + healthScore) / 2.0;
+    }
+
+    /**
+     * Record lifecycle statistics using MetricsService.
+     */
+    public void recordLifecycleStatistics() {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            long startTime = System.currentTimeMillis();
+            boolean success = allServletsHealthy && errorRate < 0.1; // Consider healthy if error rate < 10%
+            long duration = System.currentTimeMillis() - startTime;
+
+            metrics.recordOperation("lifecycle", "statistics", success, java.time.Duration.ofMillis(duration));
+        }
     }
 }

@@ -1,15 +1,18 @@
 package org.openhab.core.ai.transport;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,9 +34,10 @@ public class ServletLifecycleManager {
 
     private final Map<String, ServletInfo> registeredServlets = new ConcurrentHashMap<>();
     private final AtomicBoolean isActive = new AtomicBoolean(false);
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong totalErrors = new AtomicLong(0);
-    private final AtomicLong startTime = new AtomicLong(0);
+    private final long startTime = System.currentTimeMillis();
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     /**
      * Activate the servlet lifecycle manager.
@@ -41,7 +45,7 @@ public class ServletLifecycleManager {
     @Activate
     public void activate() {
         isActive.set(true);
-        startTime.set(System.currentTimeMillis());
+        recordMetrics("servlet-lifecycle", "manager-activated", true, Duration.ZERO);
         logger.info("Servlet Lifecycle Manager activated");
     }
 
@@ -51,6 +55,7 @@ public class ServletLifecycleManager {
     @Deactivate
     public void deactivate() {
         isActive.set(false);
+        recordMetrics("servlet-lifecycle", "manager-deactivated", true, Duration.ZERO);
         logger.info("Servlet Lifecycle Manager deactivated");
     }
 
@@ -63,9 +68,20 @@ public class ServletLifecycleManager {
      * @param protocol the protocol (MCP or A2A)
      */
     public void registerServlet(String servletId, String servletName, String servletPattern, String protocol) {
-        ServletInfo servletInfo = new ServletInfo(servletId, servletName, servletPattern, protocol);
-        registeredServlets.put(servletId, servletInfo);
-        logger.info("Registered servlet: {} ({}) with pattern: {}", servletName, protocol, servletPattern);
+        Instant startTime = Instant.now();
+        boolean success = false;
+
+        try {
+            ServletInfo servletInfo = new ServletInfo(servletId, servletName, servletPattern, protocol);
+            registeredServlets.put(servletId, servletInfo);
+            success = true;
+            logger.info("Registered servlet: {} ({}) with pattern: {}", servletName, protocol, servletPattern);
+        } catch (Exception e) {
+            logger.error("Error registering servlet {}: {}", servletId, e.getMessage(), e);
+        } finally {
+            recordMetrics("servlet-lifecycle", "servlet-registered", success,
+                    Duration.between(startTime, Instant.now()));
+        }
     }
 
     /**
@@ -74,9 +90,20 @@ public class ServletLifecycleManager {
      * @param servletId the servlet ID
      */
     public void unregisterServlet(String servletId) {
-        ServletInfo servletInfo = registeredServlets.remove(servletId);
-        if (servletInfo != null) {
-            logger.info("Unregistered servlet: {} ({})", servletInfo.getServletName(), servletInfo.getProtocol());
+        Instant startTime = Instant.now();
+        boolean success = false;
+
+        try {
+            ServletInfo servletInfo = registeredServlets.remove(servletId);
+            if (servletInfo != null) {
+                success = true;
+                logger.info("Unregistered servlet: {} ({})", servletInfo.getServletName(), servletInfo.getProtocol());
+            }
+        } catch (Exception e) {
+            logger.error("Error unregistering servlet {}: {}", servletId, e.getMessage(), e);
+        } finally {
+            recordMetrics("servlet-lifecycle", "servlet-unregistered", success,
+                    Duration.between(startTime, Instant.now()));
         }
     }
 
@@ -86,7 +113,7 @@ public class ServletLifecycleManager {
      * @param servletId the servlet ID
      */
     public void recordRequest(String servletId) {
-        totalRequests.incrementAndGet();
+        recordMetrics("servlet-lifecycle", "request-recorded", true, Duration.ZERO);
         ServletInfo servletInfo = registeredServlets.get(servletId);
         if (servletInfo != null) {
             servletInfo.incrementRequestCount();
@@ -99,7 +126,7 @@ public class ServletLifecycleManager {
      * @param servletId the servlet ID
      */
     public void recordError(String servletId) {
-        totalErrors.incrementAndGet();
+        recordMetrics("servlet-lifecycle", "error-recorded", false, Duration.ZERO);
         ServletInfo servletInfo = registeredServlets.get(servletId);
         if (servletInfo != null) {
             servletInfo.incrementErrorCount();
@@ -155,19 +182,33 @@ public class ServletLifecycleManager {
     /**
      * Get the total number of requests across all servlets.
      * 
-     * @return total request count
+     * @return total requests
      */
     public long getTotalRequests() {
-        return totalRequests.get();
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            logger.warn("MetricsService not available, returning 0 for total requests");
+            return 0;
+        }
+
+        var snapshot = metrics.getDomainAggregatedSnapshot("servlet-lifecycle");
+        return snapshot.totalOperations();
     }
 
     /**
      * Get the total number of errors across all servlets.
      * 
-     * @return total error count
+     * @return total errors
      */
     public long getTotalErrors() {
-        return totalErrors.get();
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            logger.warn("MetricsService not available, returning 0 for total errors");
+            return 0;
+        }
+
+        var snapshot = metrics.getDomainAggregatedSnapshot("servlet-lifecycle");
+        return snapshot.failedOperations();
     }
 
     /**
@@ -176,7 +217,7 @@ public class ServletLifecycleManager {
      * @return uptime in milliseconds
      */
     public long getUptimeMs() {
-        return System.currentTimeMillis() - startTime.get();
+        return System.currentTimeMillis() - startTime;
     }
 
     /**
@@ -185,8 +226,8 @@ public class ServletLifecycleManager {
      * @return error rate as a percentage
      */
     public double getErrorRate() {
-        long total = totalRequests.get();
-        return total > 0 ? (double) totalErrors.get() / total : 0.0;
+        long total = getTotalRequests();
+        return total > 0 ? (double) getTotalErrors() / total : 0.0;
     }
 
     /**
@@ -196,7 +237,7 @@ public class ServletLifecycleManager {
      */
     public double getRequestsPerMinute() {
         long uptimeMs = getUptimeMs();
-        return uptimeMs > 0 ? (totalRequests.get() * 60000.0) / uptimeMs : 0.0;
+        return uptimeMs > 0 ? (getTotalRequests() * 60000.0) / uptimeMs : 0.0;
     }
 
     /**
@@ -257,10 +298,18 @@ public class ServletLifecycleManager {
      * Reset statistics.
      */
     public void resetStatistics() {
-        totalRequests.set(0);
-        totalErrors.set(0);
-        startTime.set(System.currentTimeMillis());
+        recordMetrics("servlet-lifecycle", "statistics-reset", true, Duration.ZERO);
         registeredServlets.values().forEach(ServletInfo::resetStatistics);
         logger.info("Servlet Lifecycle Manager statistics reset");
+    }
+
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, duration);
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
+        }
     }
 }

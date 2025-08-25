@@ -1,9 +1,10 @@
 package org.openhab.core.ai.tool.error;
 
+import java.time.Duration;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.error.ErrorRecoveryStatistics;
+import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +53,7 @@ public class ToolErrorRecoveryManager {
      */
     public ErrorRecoveryStatistics getErrorRecoveryStatistics() {
         // Basic implementation - can be extended with actual statistics
-        return new ErrorRecoveryStatistics(0, 0, 0, 0, 0, Map.of(), Map.of());
+        return ErrorRecoveryStatistics.empty(Duration.ofDays(1));
     }
 
     /**

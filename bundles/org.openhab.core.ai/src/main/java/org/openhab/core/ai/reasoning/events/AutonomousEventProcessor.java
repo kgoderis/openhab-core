@@ -19,7 +19,6 @@ import org.openhab.core.ai.reasoning.constraints.ConstraintViolation;
 import org.openhab.core.ai.reasoning.constraints.SafetyConstraint;
 import org.openhab.core.ai.reasoning.memory.AgentMemory;
 import org.openhab.core.ai.reasoning.memory.MemoryEntry;
-import org.openhab.core.ai.reasoning.monitoring.AutonomousPerformanceMetrics;
 import org.openhab.core.ai.reasoning.policies.UserPreference;
 import org.openhab.core.ai.reasoning.results.OverrideResult;
 import org.osgi.service.component.annotations.Activate;
@@ -210,21 +209,9 @@ public class AutonomousEventProcessor {
     /**
      * Get performance metrics
      */
-    public AutonomousPerformanceMetrics getPerformanceMetrics() {
-        return new AutonomousPerformanceMetrics("autonomous-event-processor", totalEventsProcessed.get(), // totalOperations
-                0, // successfulOperations - not tracked yet
-                0, // failedOperations - not tracked yet
-                0, // totalProcessingTime - not tracked yet
-                0.0, // averageResponseTime - not tracked yet
-                totalAutonomousActions.get(), // totalAutonomousActions
-                totalPatternDetections.get(), // totalPatternDetections
-                totalSafetyViolations.get(), // totalSafetyViolations
-                totalUserOverrides.get(), // totalUserOverrides
-                pendingActions.size(), // pendingActionCount
-                eventPatterns.size(), // patternCount
-                userPreferences.size(), // preferenceCount
-                safetyConstraints.size() // constraintCount
-        );
+    public Object getPerformanceMetrics() {
+        // TODO: Implement using new MetricsService when available
+        return null;
     }
 
     // Private helper methods

@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
+import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
 import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -75,7 +75,7 @@ public class AgentCommunicationPerformanceMonitor {
         try {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry.executionCollector(MetricKeys.agent(agentId));
+                MetricsCollector collector = monitoringRegistry.metricsCollector(MetricKeys.agent(agentId));
                 // Record as successful execution with latency
                 collector.recordExecution(true, latencyMs * 1_000_000L); // Convert to nanoseconds
             }
@@ -103,7 +103,7 @@ public class AgentCommunicationPerformanceMonitor {
         try {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry.executionCollector(MetricKeys.agent(agentId));
+                MetricsCollector collector = monitoringRegistry.metricsCollector(MetricKeys.agent(agentId));
                 // Record throughput as successful execution
                 collector.recordExecution(true, 0L);
             }
@@ -130,7 +130,7 @@ public class AgentCommunicationPerformanceMonitor {
         try {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry.executionCollector(MetricKeys.agent(agentId));
+                MetricsCollector collector = monitoringRegistry.metricsCollector(MetricKeys.agent(agentId));
                 // Record bandwidth as successful execution
                 collector.recordExecution(true, 0L);
             }
@@ -163,8 +163,8 @@ public class AgentCommunicationPerformanceMonitor {
         if (monitoringRegistry != null) {
             // Aggregate statistics from all agent collectors
             for (String agentId : latencyMetrics.keySet()) {
-                ExecutionMetricsCollector collector = monitoringRegistry.executionCollector(MetricKeys.agent(agentId));
-                var snapshot = collector.snapshot();
+                MetricsCollector collector = monitoringRegistry.metricsCollector(MetricKeys.agent(agentId));
+                var snapshot = collector.executionSnapshot();
                 totalMessagesProcessed += snapshot.total();
                 // Violations would need separate tracking in a real implementation
             }

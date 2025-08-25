@@ -7,7 +7,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepStatus;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepType;
-import org.openhab.core.ai.reasoning.engine.monitoring.ReasoningAnalysisStatistics;
 
 /**
  * Service for analyzing reasoning steps and providing practical insights.
@@ -170,5 +169,5 @@ public interface ReasoningStepAnalysisService {
      * 
      * @return service statistics
      */
-    ReasoningAnalysisStatistics getStatistics();
+    Object getStatistics();
 }

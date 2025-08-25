@@ -3,6 +3,7 @@ package org.openhab.core.ai.agent.core;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,9 +14,9 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.model.AgentModelConfiguration;
-import org.openhab.core.ai.agent.monitoring.AgentStatistics;
 import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
+import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelTrackingService;
@@ -289,9 +290,14 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
     }
 
     @Override
-    public AgentStatistics getStatistics() {
-        return new AgentStatistics("agent-" + agentId, agentId, AgentState.RUNNING, totalRequests, successfulRequests,
-                failedRequests, totalResponseTimeMs * 1_000_000); // Convert to nanoseconds
+    public AgentBehaviorStatistics getStatistics() {
+        // Create a single snapshot with current agent data
+        // In a real implementation, you would collect multiple snapshots over time
+        // For now, we create a simplified statistics object
+        return AgentBehaviorStatistics.fromSnapshots(List.of(), // Empty list for now - would contain AgentTaskSnapshot
+                                                                // objects
+                Duration.ofDays(1) // Default time range
+        );
     }
 
     @Override

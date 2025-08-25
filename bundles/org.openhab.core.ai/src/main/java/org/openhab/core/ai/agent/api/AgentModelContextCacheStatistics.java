@@ -3,9 +3,15 @@ package org.openhab.core.ai.agent.api;
 import java.time.Duration;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.osgi.service.component.annotations.Reference;
 
 @NonNullByDefault
 public class AgentModelContextCacheStatistics {
+
+    @Reference
+    private @Nullable MetricsService metricsService;
     private final int currentSize;
     private final long hits;
     private final long misses;
@@ -54,6 +60,20 @@ public class AgentModelContextCacheStatistics {
 
     public double getUtilizationRate() {
         return maxSize > 0 ? (double) currentSize / maxSize : 0.0;
+    }
+
+    /**
+     * Record cache statistics using MetricsService.
+     */
+    public void recordCacheStatistics() {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            long startTime = System.currentTimeMillis();
+            boolean success = getHitRate() > 0.5; // Consider cache healthy if hit rate > 50%
+            long duration = System.currentTimeMillis() - startTime;
+
+            metrics.recordOperation("agent-model", "context-cache", success, java.time.Duration.ofMillis(duration));
+        }
     }
 
     @Override

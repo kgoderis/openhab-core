@@ -1,15 +1,17 @@
 package org.openhab.core.ai.tool.security.filters;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -46,15 +48,17 @@ public class ProtocolSecurityFilter implements Filter {
 
     private static final Logger logger = LoggerFactory.getLogger(ProtocolSecurityFilter.class);
 
-    private final AtomicLong requestCount = new AtomicLong(0);
-    private final AtomicLong blockedCount = new AtomicLong(0);
-    private final AtomicLong lastResetTime = new AtomicLong(System.currentTimeMillis());
+    private final long startTime = System.currentTimeMillis();
 
     // Rate limiting configuration
     private static final int RATE_LIMIT_PER_MINUTE = 1000;
     private static final long RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 
+    // Rate limiting tracking
+    private final Map<String, RateLimitTracker> rateLimitTrackers = new ConcurrentHashMap<>();
+
     private @Nullable AuthenticationManager authenticationManager;
+    private @Nullable MetricsService metricsService;
 
     /**
      * Create a new protocol security filter instance.
@@ -85,6 +89,27 @@ public class ProtocolSecurityFilter implements Filter {
     }
 
     /**
+     * Set the metrics service reference.
+     * 
+     * @param metricsService the metrics service
+     */
+    @Reference
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("Metrics service set for protocol security filter");
+    }
+
+    /**
+     * Unset the metrics service reference.
+     * 
+     * @param metricsService the metrics service
+     */
+    public void unsetMetricsService(@Nullable MetricsService metricsService) {
+        this.metricsService = null;
+        logger.debug("Metrics service unset for protocol security filter");
+    }
+
+    /**
      * Initialize the filter.
      * 
      * @param filterConfig the filter configuration
@@ -103,7 +128,7 @@ public class ProtocolSecurityFilter implements Filter {
     }
 
     /**
-     * Filter requests for security validation.
+     * Filter the request.
      * 
      * @param request the servlet request
      * @param response the servlet response
@@ -114,7 +139,6 @@ public class ProtocolSecurityFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
-
         if (!(request instanceof HttpServletRequest) || !(response instanceof HttpServletResponse)) {
             chain.doFilter(request, response);
             return;
@@ -123,112 +147,130 @@ public class ProtocolSecurityFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-        String requestURI = httpRequest.getRequestURI();
-        String method = httpRequest.getMethod();
-        String remoteAddr = getClientIpAddress(httpRequest);
+        // Record request
+        recordMetrics("protocol-security", "request-received", true, Duration.ZERO);
 
-        logger.debug("Processing request: {} {} from {}", method, requestURI, remoteAddr);
+        // Check rate limiting
+        if (isRateLimitExceeded(httpRequest)) {
+            recordMetrics("protocol-security", "request-rate-limited", false, Duration.ZERO);
+            sendRateLimitResponse(httpResponse);
+            return;
+        }
 
-        // Increment request count
-        long currentRequestCount = requestCount.incrementAndGet();
+        // Authenticate request
+        Optional<AuthenticationContext> authContext = authenticateRequest(httpRequest);
+        if (authContext.isEmpty()) {
+            recordMetrics("protocol-security", "request-authentication-failed", false, Duration.ZERO);
+            sendAuthenticationErrorResponse(httpResponse, "Authentication required");
+            return;
+        }
 
+        // Authorize request
+        if (!isAuthorized(httpRequest, authContext.get())) {
+            recordMetrics("protocol-security", "request-authorization-failed", false, Duration.ZERO);
+            sendSecurityErrorResponse(httpResponse, "Access denied");
+            return;
+        }
+
+        // Log audit event
+        logAuditEvent(httpRequest, "REQUEST_ALLOWED", authContext.get());
+
+        // Continue with the filter chain
         try {
-            // Check rate limiting
-            if (isRateLimitExceeded(currentRequestCount)) {
-                logger.warn("Rate limit exceeded for request: {} {} from {}", method, requestURI, remoteAddr);
-                blockedCount.incrementAndGet();
-                sendRateLimitResponse(httpResponse);
-                return;
-            }
-
-            // Extract and validate authentication
-            Optional<AuthenticationContext> authContext = extractAndValidateAuthentication(httpRequest, requestURI);
-            if (authContext.isEmpty()) {
-                logger.warn("Authentication failed for request: {} {} from {}", method, requestURI, remoteAddr);
-                blockedCount.incrementAndGet();
-                sendAuthenticationErrorResponse(httpResponse, "Authentication required");
-                return;
-            }
-
-            // Store authentication context in request attributes for servlet access
-            httpRequest.setAttribute("authenticationContext", authContext.get());
-
-            // Validate protocol-specific security
-            if (!validateProtocolSecurity(httpRequest, requestURI, authContext.get())) {
-                logger.warn("Protocol security validation failed for request: {} {} from {}", method, requestURI,
-                        remoteAddr);
-                blockedCount.incrementAndGet();
-                sendSecurityErrorResponse(httpResponse, "Security validation failed");
-                return;
-            }
-
-            // Log the request for audit
-            logAuditEvent(httpRequest, "REQUEST_ALLOWED", authContext.get());
-
-            // Continue with the filter chain
             chain.doFilter(request, response);
-
-            // Log successful completion
-            logAuditEvent(httpRequest, "REQUEST_COMPLETED", authContext.get());
-
+            recordMetrics("protocol-security", "request-processed", true, Duration.ZERO);
         } catch (Exception e) {
-            logger.error("Error processing request: {} {} from {}", method, requestURI, remoteAddr, e);
-            logAuditEvent(httpRequest, "REQUEST_ERROR", null);
+            recordMetrics("protocol-security", "request-processing-error", false, Duration.ZERO);
             throw e;
         }
     }
 
     /**
-     * Extract and validate authentication from the request.
+     * Check if rate limit is exceeded.
      * 
      * @param request the HTTP request
-     * @param requestURI the request URI
-     * @return authentication context if valid
+     * @return true if rate limit is exceeded
      */
-    private Optional<AuthenticationContext> extractAndValidateAuthentication(HttpServletRequest request,
-            String requestURI) {
+    private boolean isRateLimitExceeded(HttpServletRequest request) {
+        String clientIp = getClientIpAddress(request);
+        long currentTime = System.currentTimeMillis();
+
+        // Get or create rate limit tracking for this client
+        RateLimitTracker tracker = rateLimitTrackers.computeIfAbsent(clientIp,
+                k -> new RateLimitTracker(RATE_LIMIT_PER_MINUTE, RATE_LIMIT_WINDOW_MS));
+
+        // Check if rate limit is exceeded
+        boolean exceeded = tracker.isRateLimitExceeded(currentTime);
+
+        if (exceeded) {
+            logger.warn("Rate limit exceeded for client IP: {} - {} requests in {} ms", clientIp,
+                    tracker.getCurrentCount(), RATE_LIMIT_WINDOW_MS);
+        }
+
+        return exceeded;
+    }
+
+    /**
+     * Authenticate the request.
+     * 
+     * @param request the HTTP request
+     * @return authentication context if successful
+     */
+    private Optional<AuthenticationContext> authenticateRequest(HttpServletRequest request) {
         AuthenticationManager authManager = authenticationManager;
         if (authManager == null) {
             logger.warn("Authentication manager not available");
             return Optional.empty();
         }
 
-        // Determine protocol from URI
-        String protocol = getProtocolFromUri(requestURI);
-        if (protocol == null) {
-            logger.warn("Unknown protocol for request: {}", requestURI);
-            return Optional.empty();
-        }
+        try {
+            // Extract credentials from request
+            Map<String, String> credentials = extractCredentials(request);
+            String protocol = getProtocolFromUri(request.getRequestURI());
+            String clientId = getClientIpAddress(request);
 
-        // Extract credentials from headers
-        Map<String, String> credentials = extractCredentials(request);
-        if (credentials.isEmpty()) {
-            logger.debug("No credentials found in request: {}", requestURI);
-            return Optional.empty();
-        }
+            if (protocol == null) {
+                logger.warn("Unknown protocol for request: {}", request.getRequestURI());
+                return Optional.empty();
+            }
 
-        // Get client identifier
-        String clientId = getClientIpAddress(request);
-
-        // Authenticate using AuthenticationManager
-        Optional<AuthenticationContext> context = authManager.authenticate(credentials, protocol, clientId);
-        if (context.isPresent()) {
-            logger.debug("Authentication successful for protocol: {}, client: {}", protocol, clientId);
-            return context;
-        }
-
-        // Try JWT authentication if no other method succeeded
-        String jwtToken = extractJwtToken(request);
-        if (jwtToken != null) {
-            context = authManager.authenticateWithJWT(jwtToken, protocol);
+            // Try authentication with credentials
+            Optional<AuthenticationContext> context = authManager.authenticate(credentials, protocol, clientId);
             if (context.isPresent()) {
-                logger.debug("JWT authentication successful for protocol: {}, client: {}", protocol, clientId);
+                logger.debug("Authentication successful for protocol: {}, client: {}", protocol, clientId);
                 return context;
             }
-        }
 
-        logger.debug("Authentication failed for protocol: {}, client: {}", protocol, clientId);
-        return Optional.empty();
+            // Try JWT authentication if no other method succeeded
+            String jwtToken = extractJwtToken(request);
+            if (jwtToken != null) {
+                context = authManager.authenticateWithJWT(jwtToken, protocol);
+                if (context.isPresent()) {
+                    logger.debug("JWT authentication successful for protocol: {}, client: {}", protocol, clientId);
+                    return context;
+                }
+            }
+
+            logger.debug("Authentication failed for protocol: {}, client: {}", protocol, clientId);
+            return Optional.empty();
+        } catch (Exception e) {
+            logger.error("Authentication error: {}", e.getMessage(), e);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Extract JWT token from request.
+     * 
+     * @param request the HTTP request
+     * @return JWT token if present
+     */
+    private @Nullable String extractJwtToken(HttpServletRequest request) {
+        String authorization = request.getHeader("Authorization");
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            return authorization.substring(7);
+        }
+        return null;
     }
 
     /**
@@ -262,20 +304,6 @@ public class ProtocolSecurityFilter implements Filter {
     }
 
     /**
-     * Extract JWT token from request.
-     * 
-     * @param request the HTTP request
-     * @return JWT token if present
-     */
-    private @Nullable String extractJwtToken(HttpServletRequest request) {
-        String authorization = request.getHeader("Authorization");
-        if (authorization != null && authorization.startsWith("Bearer ")) {
-            return authorization.substring(7);
-        }
-        return null;
-    }
-
-    /**
      * Get protocol from URI.
      * 
      * @param requestURI the request URI
@@ -291,42 +319,22 @@ public class ProtocolSecurityFilter implements Filter {
     }
 
     /**
-     * Check if rate limit is exceeded.
-     * 
-     * @param currentRequestCount the current request count
-     * @return true if rate limit is exceeded
-     */
-    private boolean isRateLimitExceeded(long currentRequestCount) {
-        long now = System.currentTimeMillis();
-        long lastReset = lastResetTime.get();
-
-        // Reset counter if window has passed
-        if (now - lastReset > RATE_LIMIT_WINDOW_MS) {
-            if (lastResetTime.compareAndSet(lastReset, now)) {
-                requestCount.set(1);
-                return false;
-            }
-        }
-
-        return currentRequestCount > RATE_LIMIT_PER_MINUTE;
-    }
-
-    /**
-     * Validate protocol-specific security requirements.
+     * Check if the request is authorized.
      * 
      * @param request the HTTP request
-     * @param requestURI the request URI
      * @param authContext the authentication context
-     * @return true if security validation passes
+     * @return true if authorized
      */
-    private boolean validateProtocolSecurity(HttpServletRequest request, String requestURI,
-            AuthenticationContext authContext) {
-        // MCP protocol security validation
+    private boolean isAuthorized(HttpServletRequest request, AuthenticationContext authContext) {
+        String method = request.getMethod();
+        String requestURI = request.getRequestURI();
+
+        // MCP protocol authorization
         if (requestURI.startsWith("/mcp/")) {
             return validateMcpRequest(request, authContext);
         }
 
-        // A2A protocol security validation
+        // A2A protocol authorization
         if (requestURI.startsWith("/a2a/")) {
             return validateA2ARequest(request, authContext);
         }
@@ -337,11 +345,11 @@ public class ProtocolSecurityFilter implements Filter {
     }
 
     /**
-     * Validate MCP protocol request security.
+     * Validate MCP protocol request authorization.
      * 
      * @param request the HTTP request
      * @param authContext the authentication context
-     * @return true if MCP security validation passes
+     * @return true if MCP authorization passes
      */
     private boolean validateMcpRequest(HttpServletRequest request, AuthenticationContext authContext) {
         String method = request.getMethod();
@@ -360,17 +368,17 @@ public class ProtocolSecurityFilter implements Filter {
             }
         }
 
-        logger.debug("MCP security validation passed for request: {} with principal: {}", requestURI,
+        logger.debug("MCP authorization passed for request: {} with principal: {}", requestURI,
                 authContext.getPrincipalId());
         return true;
     }
 
     /**
-     * Validate A2A protocol request security.
+     * Validate A2A protocol request authorization.
      * 
      * @param request the HTTP request
      * @param authContext the authentication context
-     * @return true if A2A security validation passes
+     * @return true if A2A authorization passes
      */
     private boolean validateA2ARequest(HttpServletRequest request, AuthenticationContext authContext) {
         String method = request.getMethod();
@@ -392,7 +400,7 @@ public class ProtocolSecurityFilter implements Filter {
             }
         }
 
-        logger.debug("A2A security validation passed for request: {} with principal: {}", requestURI,
+        logger.debug("A2A authorization passed for request: {} with principal: {}", requestURI,
                 authContext.getPrincipalId());
         return true;
     }
@@ -422,7 +430,7 @@ public class ProtocolSecurityFilter implements Filter {
     }
 
     /**
-     * Get the client IP address from the request.
+     * Get the client IP address.
      * 
      * @param request the HTTP request
      * @return the client IP address
@@ -502,6 +510,7 @@ public class ProtocolSecurityFilter implements Filter {
      */
     @Activate
     public void activate() {
+        recordMetrics("protocol-security", "filter-activated", true, Duration.ZERO);
         logger.info("Protocol Security Filter activated - registering with openHAB HTTP server");
     }
 
@@ -510,6 +519,7 @@ public class ProtocolSecurityFilter implements Filter {
      */
     @Deactivate
     public void deactivate() {
+        recordMetrics("protocol-security", "filter-deactivated", true, Duration.ZERO);
         logger.info("Protocol Security Filter deactivated - unregistering from openHAB HTTP server");
     }
 
@@ -519,22 +529,67 @@ public class ProtocolSecurityFilter implements Filter {
      * @return filter statistics
      */
     public FilterStatistics getFilterStatistics() {
-        return new FilterStatistics(requestCount.get(), blockedCount.get(),
-                System.currentTimeMillis() - lastResetTime.get());
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            logger.warn("MetricsService not available, returning empty statistics");
+            return new FilterStatistics(0, 0, System.currentTimeMillis() - startTime);
+        }
+
+        var snapshot = metrics.getDomainAggregatedSnapshot("protocol-security");
+        return new FilterStatistics(snapshot.totalOperations(), snapshot.failedOperations(),
+                System.currentTimeMillis() - startTime);
     }
 
     /**
      * Reset the filter statistics.
      */
     public void resetStatistics() {
-        requestCount.set(0);
-        blockedCount.set(0);
-        lastResetTime.set(System.currentTimeMillis());
+        recordMetrics("protocol-security", "statistics-reset", true, Duration.ZERO);
         logger.info("Protocol Security Filter statistics reset");
     }
 
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, duration);
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
+        }
+    }
+
     /**
-     * Filter statistics.
+     * Rate limit tracker for individual clients.
      */
-    // FilterStatistics extracted to org.openhab.core.ai.tool.security.filters.FilterStatistics
+    private static class RateLimitTracker {
+        private final int maxRequests;
+        private final long windowMs;
+        private long windowStart;
+        private int requestCount;
+
+        public RateLimitTracker(int maxRequests, long windowMs) {
+            this.maxRequests = maxRequests;
+            this.windowMs = windowMs;
+            this.windowStart = System.currentTimeMillis();
+            this.requestCount = 0;
+        }
+
+        public synchronized boolean isRateLimitExceeded(long currentTime) {
+            // Reset window if it has expired
+            if (currentTime - windowStart > windowMs) {
+                windowStart = currentTime;
+                requestCount = 0;
+            }
+
+            // Increment request count
+            requestCount++;
+
+            // Check if rate limit is exceeded
+            return requestCount > maxRequests;
+        }
+
+        public synchronized int getCurrentCount() {
+            return requestCount;
+        }
+    }
 }

@@ -1,6 +1,7 @@
 package org.openhab.core.ai.action;
 
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.security.SecurityLevel;

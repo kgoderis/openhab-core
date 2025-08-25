@@ -7,7 +7,8 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.monitoring.AgentModelPerformanceMetrics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.AgentModelSnapshot;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**
@@ -31,7 +32,7 @@ public final class AgentModel {
     private final String version;
     private final Set<String> capabilities;
     private final Map<String, Object> parameters;
-    private final AgentModelPerformanceMetrics performanceMetrics;
+    private final @Nullable MetricsService metricsService;
     private final Instant registrationTime;
     private final @Nullable String modelUrl;
     private final @Nullable String documentationUrl;
@@ -44,7 +45,7 @@ public final class AgentModel {
         this.version = b.version;
         this.capabilities = Set.copyOf(b.capabilities);
         this.parameters = Map.copyOf(b.parameters);
-        this.performanceMetrics = b.performanceMetrics;
+        this.metricsService = b.metricsService;
         this.registrationTime = b.registrationTime;
         this.modelUrl = b.modelUrl;
         this.documentationUrl = b.documentationUrl;
@@ -86,8 +87,8 @@ public final class AgentModel {
         return parameters;
     }
 
-    public AgentModelPerformanceMetrics getPerformanceMetrics() {
-        return performanceMetrics;
+    public @Nullable AgentModelSnapshot getPerformanceMetrics() {
+        return metricsService != null ? metricsService.getAgentModelSnapshot(modelId) : null;
     }
 
     public Instant getRegistrationTime() {
@@ -118,8 +119,7 @@ public final class AgentModel {
         private String version = "1.0.0";
         private Set<String> capabilities = Set.of();
         private Map<String, Object> parameters = Map.of();
-        private AgentModelPerformanceMetrics performanceMetrics = new AgentModelPerformanceMetrics("default", "default",
-                "default", 0.0, 0.0, Map.of(), Map.of(), 0L, 0L, 0L, 0L, 0.0);
+        private @Nullable MetricsService metricsService;
         private Instant registrationTime = Instant.now();
         private @Nullable String modelUrl;
         private @Nullable String documentationUrl;
@@ -138,7 +138,7 @@ public final class AgentModel {
             this.version = source.version;
             this.capabilities = source.capabilities;
             this.parameters = source.parameters;
-            this.performanceMetrics = source.performanceMetrics;
+            this.metricsService = source.metricsService;
             this.registrationTime = source.registrationTime;
             this.modelUrl = source.modelUrl;
             this.documentationUrl = source.documentationUrl;
@@ -174,8 +174,8 @@ public final class AgentModel {
             return this;
         }
 
-        public Builder withPerformanceMetrics(AgentModelPerformanceMetrics performanceMetrics) {
-            this.performanceMetrics = Objects.requireNonNull(performanceMetrics, "performanceMetrics");
+        public Builder withMetricsService(MetricsService metricsService) {
+            this.metricsService = metricsService;
             return this;
         }
 

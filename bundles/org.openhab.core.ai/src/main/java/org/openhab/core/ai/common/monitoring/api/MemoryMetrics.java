@@ -3,11 +3,12 @@ package org.openhab.core.ai.common.monitoring.api;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * Capability interface for memory usage metrics.
+ * Capability interface for memory-specific metrics.
  * 
  * <p>
- * This interface provides functionality for tracking memory usage including
- * current usage, peak usage, and utilization percentages.
+ * This interface provides memory-specific functionality including heap usage,
+ * non-heap usage, memory allocation rates, garbage collection metrics, and
+ * memory efficiency indicators.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
@@ -17,50 +18,72 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 public interface MemoryMetrics {
 
     /**
-     * Get the current memory usage in bytes.
+     * Get the heap memory usage as a percentage.
      * 
-     * @return current memory usage in bytes
+     * @return heap memory usage between 0.0 and 100.0
      */
-    long memoryUsageBytes();
+    double heapMemoryUsage();
 
     /**
-     * Get the peak memory usage in bytes.
+     * Get the non-heap memory usage as a percentage.
      * 
-     * @return peak memory usage in bytes
+     * @return non-heap memory usage between 0.0 and 100.0
      */
-    long peakMemoryUsageBytes();
+    double nonHeapMemoryUsage();
 
     /**
-     * Get the memory utilization as a percentage.
+     * Get the total memory usage as a percentage.
      * 
-     * @return memory utilization percentage (0.0 to 100.0)
+     * @return total memory usage between 0.0 and 100.0
      */
-    double memoryUtilizationPercentage();
+    double totalMemoryUsage();
+
+    /**
+     * Get the memory allocation rate in bytes per second.
+     * 
+     * @return memory allocation rate
+     */
+    double memoryAllocationRate();
+
+    /**
+     * Get the garbage collection frequency per minute.
+     * 
+     * @return garbage collection frequency
+     */
+    double garbageCollectionFrequency();
+
+    /**
+     * Get the memory efficiency score (0-100).
+     * 
+     * @return memory efficiency score
+     */
+    double memoryEfficiency();
+
+    /**
+     * Get the memory fragmentation level (0-100).
+     * 
+     * @return memory fragmentation level
+     */
+    double memoryFragmentation();
 
     /**
      * Get the available memory in bytes.
      * 
      * @return available memory in bytes
      */
-    default long availableMemoryBytes() {
-        return Runtime.getRuntime().totalMemory() - memoryUsageBytes();
-    }
+    long availableMemory();
 
     /**
-     * Check if memory usage is high (above 80% utilization).
+     * Get the total memory in bytes.
      * 
-     * @return true if memory utilization is above 80%
+     * @return total memory in bytes
      */
-    default boolean isHighMemoryUsage() {
-        return memoryUtilizationPercentage() > 80.0;
-    }
+    long totalMemory();
 
     /**
-     * Check if memory usage is critical (above 95% utilization).
+     * Get the used memory in bytes.
      * 
-     * @return true if memory utilization is above 95%
+     * @return used memory in bytes
      */
-    default boolean isCriticalMemoryUsage() {
-        return memoryUtilizationPercentage() > 95.0;
-    }
+    long usedMemory();
 }

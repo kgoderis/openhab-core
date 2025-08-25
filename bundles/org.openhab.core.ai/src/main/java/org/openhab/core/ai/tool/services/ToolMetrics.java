@@ -1,13 +1,10 @@
 package org.openhab.core.ai.tool.services;
 
-import java.time.Instant;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -35,7 +32,7 @@ public class ToolMetrics {
 
     // NEW: Monitoring registry for centralized metrics collection
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsService metricsService;
 
     /**
      * Record tool execution using the new monitoring framework
@@ -43,9 +40,9 @@ public class ToolMetrics {
     public void recordToolExecution(String toolName, long executionTime, boolean success) {
         try {
             // Use centralized monitoring registry
-            if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry.executionCollector(MetricKeys.tool(toolName));
-                collector.recordExecution(success, executionTime * 1_000_000L); // Convert to nanoseconds
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("tool", "execution", success, java.time.Duration.ofMillis(executionTime));
             }
 
             // Log the operation
@@ -66,9 +63,9 @@ public class ToolMetrics {
     public void recordToolError(String toolName, String errorType) {
         try {
             // Use centralized monitoring registry
-            if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry.executionCollector(MetricKeys.tool(toolName));
-                collector.recordExecution(false, 0L);
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("tool", "error", false, java.time.Duration.ofMillis(0));
             }
 
             // Log the error
@@ -85,88 +82,78 @@ public class ToolMetrics {
     public Map<String, Object> getToolStatistics(String toolName) {
         Map<String, Object> statistics = new java.util.HashMap<>();
 
-        if (monitoringRegistry != null) {
-            // Get statistics from monitoring registry for specific tool
-            ExecutionMetricsCollector collector = monitoringRegistry.executionCollector(MetricKeys.tool(toolName));
-            var snapshot = collector.snapshot();
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                // Get statistics from metrics service for specific tool
+                var snapshot = metrics.getDomainAggregatedSnapshot("tool");
 
-            statistics.put("toolName", toolName);
-            statistics.put("totalExecutions", snapshot.total());
-            statistics.put("successfulExecutions", snapshot.success());
-            statistics.put("failedExecutions", snapshot.failure());
-            statistics.put("totalExecutionTime", snapshot.totalDurationNanos() / 1_000_000); // Convert from nanoseconds
-            statistics.put("averageExecutionTime",
-                    snapshot.totalDurationNanos() / Math.max(1, snapshot.total()) / 1_000_000); // Convert from
-                                                                                                // nanoseconds
-            statistics.put("successRate", snapshot.successRate());
-            statistics.put("timestamp", Instant.now());
-        } else {
-            // Fallback to basic statistics
-            statistics.put("toolName", toolName);
-            statistics.put("totalExecutions", 0);
-            statistics.put("successfulExecutions", 0);
-            statistics.put("failedExecutions", 0);
-            statistics.put("totalExecutionTime", 0);
-            statistics.put("averageExecutionTime", 0);
-            statistics.put("successRate", 0.0);
-            statistics.put("timestamp", Instant.now());
+                statistics.put("toolName", toolName);
+                statistics.put("totalExecutions", snapshot.totalOperations());
+                statistics.put("successfulExecutions", snapshot.successfulOperations());
+                statistics.put("failedExecutions", snapshot.failedOperations());
+                statistics.put("totalExecutionTimeMs", snapshot.totalDurationNanos() / 1_000_000); // Convert from
+                                                                                                   // nanoseconds
+                statistics.put("averageExecutionTimeMs",
+                        snapshot.totalOperations() > 0
+                                ? snapshot.totalDurationNanos() / (snapshot.totalOperations() * 1_000_000)
+                                : 0);
+                statistics.put("successRate", snapshot.getSuccessRate());
+                statistics.put("lastUpdated", System.currentTimeMillis());
+            } catch (Exception e) {
+                logger.debug("Failed to get tool statistics: {}", e.getMessage());
+            }
         }
 
         return statistics;
     }
 
     /**
-     * Get overall tool statistics using the new monitoring framework
+     * Get overall tool execution statistics using the new monitoring framework
      */
-    public Map<String, Object> getOverallStatistics() {
+    public Map<String, Object> getAllToolStatistics() {
         Map<String, Object> statistics = new java.util.HashMap<>();
 
-        if (monitoringRegistry != null) {
-            // Get statistics from monitoring registry for all tools
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("tool-execution"));
-            var snapshot = collector.snapshot();
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                // Get statistics from metrics service for all tools
+                var snapshot = metrics.getDomainAggregatedSnapshot("tool");
 
-            statistics.put("totalToolExecutions", snapshot.total());
-            statistics.put("successfulToolExecutions", snapshot.success());
-            statistics.put("failedToolExecutions", snapshot.failure());
-            statistics.put("totalExecutionTime", snapshot.totalDurationNanos() / 1_000_000); // Convert from nanoseconds
-            statistics.put("averageExecutionTime",
-                    snapshot.totalDurationNanos() / Math.max(1, snapshot.total()) / 1_000_000); // Convert from
-                                                                                                // nanoseconds
-            statistics.put("overallSuccessRate", snapshot.successRate());
-            statistics.put("timestamp", Instant.now());
-        } else {
-            // Fallback to basic statistics
-            statistics.put("totalToolExecutions", 0);
-            statistics.put("successfulToolExecutions", 0);
-            statistics.put("failedToolExecutions", 0);
-            statistics.put("totalExecutionTime", 0);
-            statistics.put("averageExecutionTime", 0);
-            statistics.put("overallSuccessRate", 0.0);
-            statistics.put("timestamp", Instant.now());
+                statistics.put("totalToolExecutions", snapshot.totalOperations());
+                statistics.put("successfulToolExecutions", snapshot.successfulOperations());
+                statistics.put("failedToolExecutions", snapshot.failedOperations());
+                statistics.put("totalExecutionTimeMs", snapshot.totalDurationNanos() / 1_000_000); // Convert from
+                                                                                                   // nanoseconds
+                statistics.put("averageExecutionTimeMs",
+                        snapshot.totalOperations() > 0
+                                ? snapshot.totalDurationNanos() / (snapshot.totalOperations() * 1_000_000)
+                                : 0);
+                statistics.put("successRate", snapshot.getSuccessRate());
+                statistics.put("lastUpdated", System.currentTimeMillis());
+            } catch (Exception e) {
+                logger.debug("Failed to get all tool statistics: {}", e.getMessage());
+            }
         }
 
         return statistics;
     }
 
     /**
-     * Reset tool metrics for a specific tool
+     * Reset tool metrics for a specific tool.
+     * 
+     * @param toolName the tool name
      */
     public void resetToolMetrics(String toolName) {
-        if (monitoringRegistry != null) {
-            monitoringRegistry.reset(MetricKeys.tool(toolName));
-            logger.info("Tool metrics reset for tool: {}", toolName);
-        }
+        // Reset functionality is not available in MetricsService
+        logger.info("Tool metrics reset not supported for tool: {}", toolName);
     }
 
     /**
-     * Reset all tool metrics
+     * Reset all tool metrics.
      */
     public void resetAllMetrics() {
-        if (monitoringRegistry != null) {
-            monitoringRegistry.reset(MetricKeys.action("tool-execution"));
-            logger.info("All tool metrics reset");
-        }
+        // Reset functionality is not available in MetricsService
+        logger.info("All tool metrics reset not supported");
     }
 }

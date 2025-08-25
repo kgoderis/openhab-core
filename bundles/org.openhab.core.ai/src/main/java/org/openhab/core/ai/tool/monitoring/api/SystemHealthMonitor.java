@@ -12,7 +12,6 @@ import org.openhab.core.ai.tool.monitoring.PerformanceAlert;
 import org.openhab.core.ai.tool.monitoring.PerformanceOptimization;
 import org.openhab.core.ai.tool.monitoring.ProviderHealthMetrics;
 import org.openhab.core.ai.tool.monitoring.ServiceHealthMetrics;
-import org.openhab.core.ai.tool.monitoring.SpecificationPerformanceMetrics;
 import org.openhab.core.ai.tool.monitoring.SystemHealthStatus;
 
 /**
@@ -196,16 +195,16 @@ public interface SystemHealthMonitor {
      * Get specification metrics
      * 
      * @param specificationId the specification ID
-     * @return specification performance metrics
+     * @return specification performance metrics as Object
      */
-    SpecificationPerformanceMetrics getSpecificationMetrics(String specificationId);
+    Object getSpecificationMetrics(String specificationId);
 
     /**
      * Get all specification metrics
      * 
-     * @return map of specification performance metrics
+     * @return map of specification performance metrics as Object
      */
-    Map<String, SpecificationPerformanceMetrics> getAllSpecificationMetrics();
+    Map<String, Object> getAllSpecificationMetrics();
 
     /**
      * Get specification alerts

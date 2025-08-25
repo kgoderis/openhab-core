@@ -14,8 +14,7 @@ import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.Metrics;
 import org.openhab.core.ai.common.monitoring.api.Monitoring;
 import org.openhab.core.ai.common.monitoring.api.Statistics;
-import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
-import org.openhab.core.ai.common.monitoring.collector.ProviderHealthCollector;
+import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
 import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.osgi.service.component.annotations.Component;
 
@@ -49,9 +48,8 @@ public final class DefaultMonitoringRegistry implements MonitoringRegistry {
     private final ConcurrentMap<String, Health> healthData = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Monitoring> allMonitoringData = new ConcurrentHashMap<>();
 
-    // Collector management for thread-safe metrics collection
-    private final ConcurrentMap<String, ExecutionMetricsCollector> executionCollectors = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, ProviderHealthCollector> healthCollectors = new ConcurrentHashMap<>();
+    // Unified collector management for thread-safe metrics collection
+    private final ConcurrentMap<String, MetricsCollector> metricsCollectors = new ConcurrentHashMap<>();
 
     // ===== Metrics Management =====
 
@@ -219,25 +217,16 @@ public final class DefaultMonitoringRegistry implements MonitoringRegistry {
     // ===== Collector Management =====
 
     @Override
-    public ExecutionMetricsCollector executionCollector(MetricKey key) {
-        return executionCollectors.computeIfAbsent(key.id(), k -> new ExecutionMetricsCollector());
-    }
-
-    @Override
-    public ProviderHealthCollector healthCollector(MetricKey key) {
-        return healthCollectors.computeIfAbsent(key.id(), k -> new ProviderHealthCollector());
+    public MetricsCollector metricsCollector(MetricKey key) {
+        return metricsCollectors.computeIfAbsent(key.id(), k -> new MetricsCollector());
     }
 
     @Override
     public void reset(MetricKey key) {
         String keyId = key.id();
-        ExecutionMetricsCollector execCollector = executionCollectors.get(keyId);
-        if (execCollector != null) {
-            execCollector.reset();
-        }
-        ProviderHealthCollector healthCollector = healthCollectors.get(keyId);
-        if (healthCollector != null) {
-            healthCollector.reset();
+        MetricsCollector collector = metricsCollectors.get(keyId);
+        if (collector != null) {
+            collector.reset();
         }
     }
 
@@ -245,8 +234,7 @@ public final class DefaultMonitoringRegistry implements MonitoringRegistry {
      * Reset all collectors and clear registry data.
      */
     public void resetAll() {
-        executionCollectors.values().forEach(ExecutionMetricsCollector::reset);
-        healthCollectors.values().forEach(ProviderHealthCollector::reset);
+        metricsCollectors.values().forEach(MetricsCollector::reset);
         metricsData.clear();
         statisticsData.clear();
         healthData.clear();
@@ -254,7 +242,7 @@ public final class DefaultMonitoringRegistry implements MonitoringRegistry {
     }
 
     /**
-     * Get aggregated metrics across all execution collectors.
+     * Get aggregated metrics across all unified collectors.
      * 
      * @return aggregated execution metrics snapshot
      */
@@ -263,11 +251,11 @@ public final class DefaultMonitoringRegistry implements MonitoringRegistry {
         long successOps = 0;
         long totalDurationNanos = 0;
 
-        for (ExecutionMetricsCollector collector : executionCollectors.values()) {
+        for (MetricsCollector collector : metricsCollectors.values()) {
             if (collector.hasData()) {
                 totalOps += collector.getCurrentTotal();
                 successOps += collector.getCurrentSuccess();
-                ExecutionMetricsSnapshot snapshot = collector.snapshot();
+                ExecutionMetricsSnapshot snapshot = collector.executionSnapshot();
                 totalDurationNanos += snapshot.totalDurationNanos();
             }
         }
@@ -275,7 +263,8 @@ public final class DefaultMonitoringRegistry implements MonitoringRegistry {
         return new ExecutionMetricsSnapshot(
                 new org.openhab.core.ai.common.monitoring.api.Counts(totalOps, successOps,
                         Math.max(0, totalOps - successOps)),
-                new org.openhab.core.ai.common.monitoring.api.Timing(totalDurationNanos), System.currentTimeMillis());
+                new org.openhab.core.ai.common.monitoring.api.Timing(totalDurationNanos), System.currentTimeMillis(),
+                org.openhab.core.ai.common.monitoring.api.Health.HealthStatus.UNKNOWN, "", 0L, 0L, "", 0L);
     }
 
     /**
@@ -285,12 +274,7 @@ public final class DefaultMonitoringRegistry implements MonitoringRegistry {
      */
     public int getActiveCollectorCount() {
         int count = 0;
-        for (ExecutionMetricsCollector collector : executionCollectors.values()) {
-            if (collector.hasData()) {
-                count++;
-            }
-        }
-        for (ProviderHealthCollector collector : healthCollectors.values()) {
+        for (MetricsCollector collector : metricsCollectors.values()) {
             if (collector.hasData()) {
                 count++;
             }
@@ -313,7 +297,7 @@ public final class DefaultMonitoringRegistry implements MonitoringRegistry {
 
     @Override
     public List<Metrics> getMetricsSnapshots() {
-        return executionCollectors.values().stream().map(ExecutionMetricsCollector::snapshot)
+        return metricsCollectors.values().stream().map(MetricsCollector::executionSnapshot)
                 .filter(snapshot -> snapshot instanceof Metrics).map(snapshot -> (Metrics) snapshot)
                 .collect(java.util.stream.Collectors.toList());
     }
@@ -326,7 +310,7 @@ public final class DefaultMonitoringRegistry implements MonitoringRegistry {
 
     @Override
     public List<Health> getHealthSnapshots() {
-        return healthCollectors.values().stream().map(ProviderHealthCollector::snapshot)
+        return metricsCollectors.values().stream().map(MetricsCollector::executionSnapshot)
                 .filter(snapshot -> snapshot instanceof Health).map(snapshot -> (Health) snapshot)
                 .collect(java.util.stream.Collectors.toList());
     }

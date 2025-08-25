@@ -28,7 +28,8 @@ import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManage
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.SecurityIncident;
-import org.openhab.core.ai.common.security.AgentSecurityStatistics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.SecurityMonitoringStatistics;
 import org.openhab.core.ai.common.security.MessageSecurityStatistics;
 import org.openhab.core.ai.common.security.QuickSecurityResult;
 import org.openhab.core.ai.common.security.SecurityManager;
@@ -69,6 +70,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
     @Reference
     private @Nullable AgentRegistry agentRegistry;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Security management
     private final Map<String, AgentSecurityPolicy> securityPolicies = new ConcurrentHashMap<>();
@@ -347,14 +351,17 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
      * @return Security statistics
      */
     public MessageSecurityStatistics getSecurityStatistics() {
-        long totalOps = totalMessagesEncrypted.get() + totalMessagesDecrypted.get() + totalSignaturesVerified.get();
-        long successfulOps = totalMessagesEncrypted.get() + totalMessagesDecrypted.get()
-                + totalSignaturesVerified.get();
-        long failedOps = totalAuthenticationFailures.get();
-        long violations = totalSecurityIncidents.get();
-        return new MessageSecurityStatistics(totalOps, successfulOps, failedOps, violations, Instant.now(),
-                totalMessagesEncrypted.get(), totalMessagesDecrypted.get(), totalSignaturesVerified.get(),
-                totalAuthenticationFailures.get(), securityPolicies.size(), agentKeyPairs.size(), auditLogs.size());
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                return metrics.getMessageSecurityStatistics("agent-security", Duration.ofDays(30));
+            } catch (Exception e) {
+                logger.debug("Failed to get message security statistics from MetricsService: {}", e.getMessage());
+            }
+        }
+
+        // Return empty statistics if MetricsService is not available
+        return MessageSecurityStatistics.empty(Duration.ofDays(30));
     }
 
     /**
@@ -459,8 +466,11 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
     @Override
     public SecurityStatistics getStatistics() {
-        return new AgentSecurityStatistics(totalChecks.get(), allowedOperations.get(), deniedOperations.get(), 0L,
-                Instant.now(), 0, 0, true, true, 100, 60, 0);
+        if (metricsService != null) {
+            return metricsService.getSecurityMonitoringStatistics("agent-security", Duration.ofDays(30));
+        }
+        // Fallback to empty statistics if MetricsService is not available
+        return new SecurityMonitoringStatistics(List.of(), Duration.ofDays(30), System.currentTimeMillis());
     }
 
     @Override

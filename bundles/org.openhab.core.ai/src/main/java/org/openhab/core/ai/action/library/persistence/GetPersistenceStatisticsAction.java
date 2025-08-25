@@ -16,6 +16,7 @@ import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
 import org.openhab.core.persistence.QueryablePersistenceService;
@@ -42,6 +43,9 @@ public class GetPersistenceStatisticsAction implements Action {
 
     @Reference
     private @Nullable PersistenceServiceRegistry persistenceServiceRegistry;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     @Override
     public String getActionId() {
@@ -147,6 +151,7 @@ public class GetPersistenceStatisticsAction implements Action {
         logger.debug("Executing GetPersistenceStatisticsAction with context: {}", context.getProtocol());
 
         long startTime = System.currentTimeMillis();
+        boolean success = false;
 
         try {
             String serviceId = (String) parameters.get("serviceId");
@@ -160,11 +165,21 @@ public class GetPersistenceStatisticsAction implements Action {
                     includeUsage, includeErrors, timeRange);
 
             long executionTime = System.currentTimeMillis() - startTime;
+            success = true;
             return ActionResult.success(result, executionTime);
 
         } catch (Exception e) {
+            long executionTime = System.currentTimeMillis() - startTime;
             logger.error("Error executing GetPersistenceStatisticsAction: {}", e.getMessage(), e);
             throw new ActionException(ACTION_ID, "Failed to get persistence statistics: " + e.getMessage(), e);
+        } finally {
+            // Record metrics
+            long duration = System.currentTimeMillis() - startTime;
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("action", "get-persistence-statistics", success,
+                        java.time.Duration.ofMillis(duration));
+            }
         }
     }
 

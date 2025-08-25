@@ -1,6 +1,9 @@
 package org.openhab.core.ai.agent.communication.events;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * Event bus statistics snapshot.
@@ -12,6 +15,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public class EventBusStatistics {
+
+    @Reference
+    private @Nullable MetricsService metricsService;
     private final long totalEventsPublished;
     private final long totalEventsDelivered;
     private final long totalEventsFiltered;
@@ -70,5 +76,19 @@ public class EventBusStatistics {
 
     public int getDeadLetterQueueSize() {
         return deadLetterQueueSize;
+    }
+
+    /**
+     * Record event bus statistics using MetricsService.
+     */
+    public void recordEventBusStatistics() {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            long startTime = System.currentTimeMillis();
+            boolean success = totalEventsFailed == 0 && deadLetterQueueSize == 0;
+            long duration = System.currentTimeMillis() - startTime;
+
+            metrics.recordOperation("event-bus", "statistics", success, java.time.Duration.ofMillis(duration));
+        }
     }
 }

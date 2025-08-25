@@ -4,9 +4,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.transport.TransportType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -30,7 +28,7 @@ public class ToolLoggingManager {
 
     // NEW: Monitoring registry for centralized metrics collection
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsService metricsService;
 
     /**
      * Log tool execution with enhanced details using the new monitoring framework.
@@ -44,10 +42,9 @@ public class ToolLoggingManager {
     public void logToolExecution(String toolId, Map<String, Object> parameters, long executionTime, boolean success,
             @Nullable String result) {
 
-        // Use centralized monitoring registry
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry.executionCollector(MetricKeys.tool(toolId));
-            collector.recordExecution(success, executionTime * 1_000_000L); // Convert to nanoseconds
+        // Use centralized metrics service
+        if (metricsService != null) {
+            metricsService.recordOperation("tool", toolId, success, java.time.Duration.ofMillis(executionTime));
         }
 
         // Structured logging
@@ -72,11 +69,9 @@ public class ToolLoggingManager {
     public void logServerRequest(String requestType, TransportType transportType, long processingTime, boolean success,
             @Nullable Map<String, Object> details) {
 
-        // Use centralized monitoring registry
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("server-" + requestType));
-            collector.recordExecution(success, processingTime * 1_000_000L); // Convert to nanoseconds
+        // Use centralized metrics service
+        if (metricsService != null) {
+            metricsService.recordOperation("server", requestType, success, java.time.Duration.ofMillis(processingTime));
         }
 
         // Structured logging
@@ -99,69 +94,48 @@ public class ToolLoggingManager {
     public void logTransportHealth(TransportType transportType, String healthStatus,
             @Nullable Map<String, Object> details) {
 
-        // Use centralized monitoring registry
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("transport-health"));
-            // Record health check as successful execution
-            collector.recordExecution("UP".equals(healthStatus), 0L);
+        // Use centralized metrics service
+        if (metricsService != null) {
+            metricsService.recordOperation("transport", "health-check", "UP".equals(healthStatus),
+                    java.time.Duration.ZERO);
         }
 
         // Structured logging
-        logger.info("Transport health check - Type: {}, Status: {}, Details: {}", transportType, healthStatus, details);
+        logger.info("Transport health check - Type: {}, Status: {}", transportType, healthStatus);
     }
 
     /**
      * Log security event using the new monitoring framework.
      * 
-     * @param eventType Security event type
+     * @param eventType Type of security event
      * @param severity Event severity
-     * @param details Security event details
+     * @param details Event details
      */
     public void logSecurityEvent(String eventType, String severity, @Nullable Map<String, Object> details) {
 
-        // Use centralized monitoring registry
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("security-" + eventType));
-            // Record security event as successful execution
-            collector.recordExecution(true, 0L);
+        // Use centralized metrics service
+        if (metricsService != null) {
+            metricsService.recordOperation("security", eventType, true, java.time.Duration.ZERO);
         }
 
         // Structured logging
-        switch (severity.toUpperCase()) {
-            case "CRITICAL":
-                logger.error("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
-                break;
-            case "HIGH":
-                logger.warn("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
-                break;
-            case "MEDIUM":
-                logger.info("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
-                break;
-            case "LOW":
-                logger.debug("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
-                break;
-            default:
-                logger.info("Security event - Type: {}, Severity: {}, Details: {}", eventType, severity, details);
-        }
+        logger.info("Security event - Type: {}, Severity: {}", eventType, severity);
     }
 
     /**
-     * Log performance metrics using the new monitoring framework.
+     * Log performance metric using the new monitoring framework.
      * 
      * @param component Component name
      * @param operation Operation name
      * @param duration Duration in milliseconds
      * @param success Whether operation was successful
      */
-    public void logPerformanceMetrics(String component, String operation, long duration, boolean success) {
+    public void logPerformanceMetric(String component, String operation, long duration, boolean success) {
 
-        // Use centralized monitoring registry
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action(component + "." + operation));
-            collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
+        // Use centralized metrics service
+        if (metricsService != null) {
+            metricsService.recordOperation("performance", component + "." + operation, success,
+                    java.time.Duration.ofMillis(duration));
         }
 
         // Structured logging

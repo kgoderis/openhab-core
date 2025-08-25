@@ -10,8 +10,7 @@ import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.Metrics;
 import org.openhab.core.ai.common.monitoring.api.Monitoring;
 import org.openhab.core.ai.common.monitoring.api.Statistics;
-import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
-import org.openhab.core.ai.common.monitoring.collector.ProviderHealthCollector;
+import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
 
 /**
  * Unified registry for managing all types of monitoring data.
@@ -234,20 +233,12 @@ public interface MonitoringRegistry {
     // ===== Collector Management =====
 
     /**
-     * Get an execution metrics collector for the given key.
+     * Get a unified metrics collector for the given key.
      * 
      * @param key metric key
-     * @return execution metrics collector
+     * @return unified metrics collector
      */
-    ExecutionMetricsCollector executionCollector(MetricKey key);
-
-    /**
-     * Get a provider health collector for the given key.
-     * 
-     * @param key metric key
-     * @return provider health collector
-     */
-    ProviderHealthCollector healthCollector(MetricKey key);
+    MetricsCollector metricsCollector(MetricKey key);
 
     /**
      * Reset all collectors for the given key.

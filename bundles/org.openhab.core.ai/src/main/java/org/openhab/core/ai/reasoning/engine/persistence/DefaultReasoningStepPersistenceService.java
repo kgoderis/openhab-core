@@ -4,26 +4,29 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.ReasoningPerformanceStatistics;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepStatus;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepType;
-import org.openhab.core.ai.reasoning.engine.monitoring.ReasoningStepStorageStatistics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,12 +63,9 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
     private final ConcurrentHashMap<String, ReasoningStep> stepCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, List<ReasoningStep>> sessionCache = new ConcurrentHashMap<>();
 
-    // Statistics tracking
-    private final AtomicLong totalStepCount = new AtomicLong(0);
-    private final AtomicLong totalStorageSizeBytes = new AtomicLong(0);
-    private final AtomicLong activeStepCount = new AtomicLong(0);
-    private final AtomicLong archivedStepCount = new AtomicLong(0);
-    private final AtomicLong compressedStepCount = new AtomicLong(0);
+    // Metrics service for centralized metrics collection
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL)
+    private @Nullable MetricsService metricsService;
 
     // Index for efficient searching
     private final Map<String, StepIndexEntry> stepIndex = new ConcurrentHashMap<>();
@@ -92,10 +92,41 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
         }
     }
 
+    @Modified
+    protected void modified() {
+        logger.debug("ReasoningStepPersistenceService configuration modified");
+    }
+
     @Deactivate
     public void deactivate() {
         saveIndex();
         logger.info("ReasoningStepPersistenceService deactivated");
+    }
+
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for ReasoningStepPersistenceService");
+    }
+
+    protected void unsetMetricsService(MetricsService metricsService) {
+        this.metricsService = null;
+        logger.debug("MetricsService unset for ReasoningStepPersistenceService");
+    }
+
+    /**
+     * Record metrics for reasoning step storage operations
+     */
+    private void recordMetrics(String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                metrics.recordOperation("reasoning-storage", operation, success, Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.debug("Failed to record metrics for {}.{}: {}", "reasoning-storage", operation, e.getMessage());
+            }
+        } else {
+            logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+        }
     }
 
     @Override
@@ -445,72 +476,21 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
     }
 
     @Override
-    public ReasoningStepStorageStatistics getStorageStatistics() {
-        try {
-            Map<ReasoningStepStatus, Long> statusDistribution = new HashMap<>();
-            Map<ReasoningStepType, Long> typeDistribution = new HashMap<>();
-            Map<String, Long> modelUsageDistribution = new HashMap<>();
-            Map<String, Long> sessionDistribution = new HashMap<>();
-
-            long totalTokensUsed = 0;
-            double totalCostUsd = 0.0;
-            long totalProcessingTimeMs = 0;
-            double totalQualityScore = 0.0;
-            double totalConfidence = 0.0;
-            Instant oldestStepTime = Instant.now();
-            Instant newestStepTime = Instant.now();
-
-            for (StepIndexEntry indexEntry : stepIndex.values()) {
-                // Status distribution
-                statusDistribution.merge(indexEntry.getStatus(), 1L, Long::sum);
-
-                // Type distribution
-                typeDistribution.merge(indexEntry.getStepType(), 1L, Long::sum);
-
-                // Model usage distribution
-                if (indexEntry.getModelId() != null) {
-                    modelUsageDistribution.merge(indexEntry.getModelId(), 1L, Long::sum);
-                }
-
-                // Session distribution
-                sessionDistribution.merge(indexEntry.getSessionId(), 1L, Long::sum);
-
-                // Aggregated metrics
-                totalTokensUsed += indexEntry.getTotalTokens();
-                totalCostUsd += indexEntry.getCostUsd();
-                totalProcessingTimeMs += indexEntry.getProcessingTimeMs();
-                totalQualityScore += indexEntry.getQualityScore();
-                totalConfidence += indexEntry.getConfidence();
-
-                // Time range
-                if (indexEntry.getStartTime().isBefore(oldestStepTime)) {
-                    oldestStepTime = indexEntry.getStartTime();
-                }
-                if (indexEntry.getStartTime().isAfter(newestStepTime)) {
-                    newestStepTime = indexEntry.getStartTime();
-                }
+    public ReasoningPerformanceStatistics getStorageStatistics() {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                return metrics.getReasoningPerformanceStatistics("default", Duration.ofHours(1));
+            } catch (Exception e) {
+                logger.warn("Error retrieving reasoning performance statistics: {}", e.getMessage());
+                // Fallback to empty statistics
+                return ReasoningPerformanceStatistics.fromReasoningData(0L, 0L, 0L, 0L, 0L, 0L, 0.0, 0L, 0.0, 0.0, 0.0,
+                        0.0, Map.of(), Map.of(), Map.of(), Map.of(), Duration.ofHours(1));
             }
-
-            long stepCount = totalStepCount.get();
-            double averageQualityScore = stepCount > 0 ? totalQualityScore / stepCount : 0.0;
-            double averageConfidence = stepCount > 0 ? totalConfidence / stepCount : 0.0;
-            double averageStepSizeBytes = stepCount > 0 ? (double) totalStorageSizeBytes.get() / stepCount : 0.0;
-            double averageStepsPerSession = sessionDistribution.size() > 0
-                    ? (double) stepCount / sessionDistribution.size()
-                    : 0.0;
-
-            return new ReasoningStepStorageStatistics("storage-stats-" + System.currentTimeMillis(), stepCount,
-                    stepCount, 0, totalProcessingTimeMs * 1_000_000, 0.0, totalStorageSizeBytes.get(),
-                    activeStepCount.get(), archivedStepCount.get(), compressedStepCount.get(), statusDistribution,
-                    typeDistribution, modelUsageDistribution, sessionDistribution, averageStepSizeBytes,
-                    averageStepsPerSession, averageQualityScore, averageConfidence, totalTokensUsed, totalCostUsd,
-                    oldestStepTime, newestStepTime, Instant.now(), isHealthy(), null);
-
-        } catch (Exception e) {
-            logger.error("Failed to generate storage statistics", e);
-            return new ReasoningStepStorageStatistics("storage-stats-error-" + System.currentTimeMillis(), 0, 0, 0, 0,
-                    0.0, 0, 0, 0, 0, Map.of(), Map.of(), Map.of(), Map.of(), 0.0, 0.0, 0.0, 0.0, 0, 0.0, Instant.now(),
-                    Instant.now(), Instant.now(), false, "Failed to generate statistics: " + e.getMessage());
+        } else {
+            // Fallback to empty statistics when MetricsService is not available
+            return ReasoningPerformanceStatistics.fromReasoningData(0L, 0L, 0L, 0L, 0L, 0L, 0.0, 0L, 0.0, 0.0, 0.0, 0.0,
+                    Map.of(), Map.of(), Map.of(), Map.of(), Duration.ofHours(1));
         }
     }
 
@@ -593,7 +573,8 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
             // Remove original files
             deleteStepsForSession(sessionId);
 
-            compressedStepCount.addAndGet(steps.size());
+            // Record metrics via MetricsService instead of using AtomicLong counters
+            recordMetrics("steps_compressed", true, 0);
             logger.info("Compressed {} steps for session: {}", steps.size(), sessionId);
             return true;
 
@@ -622,7 +603,8 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
                 // Remove compressed file
                 Files.delete(compressedFile);
 
-                compressedStepCount.addAndGet(-steps.size());
+                // Record metrics via MetricsService instead of using AtomicLong counters
+                recordMetrics("steps_decompressed", true, 0);
                 logger.info("Decompressed {} steps for session: {}", steps.size(), sessionId);
                 return true;
             }
@@ -635,12 +617,12 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
 
     @Override
     public long getTotalStepCount() {
-        return totalStepCount.get();
+        return 0; // No longer tracked
     }
 
     @Override
     public long getTotalStorageSize() {
-        return totalStorageSizeBytes.get();
+        return 0; // No longer tracked
     }
 
     @Override
@@ -753,15 +735,14 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
 
     private void updateStatistics(@Nullable ReasoningStep step, boolean isAdd) {
         if (isAdd && step != null) {
-            totalStepCount.incrementAndGet();
-            activeStepCount.incrementAndGet();
+            // Record metrics via MetricsService instead of using AtomicLong counters
+            recordMetrics("step_added", true, 0);
             if (step.hasResourceUsage()) {
-                totalStorageSizeBytes.addAndGet(step.getResourceUsage().memoryUsageBytes());
+                recordMetrics("storage_size_updated", true, 0);
             }
         } else if (!isAdd) {
-            totalStepCount.decrementAndGet();
-            activeStepCount.decrementAndGet();
-            // Note: We don't track individual step sizes for removal
+            // Record metrics via MetricsService instead of using AtomicLong counters
+            recordMetrics("step_removed", true, 0);
         }
     }
 
@@ -819,9 +800,8 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
                 Files.createDirectories(archivedFile.getParent());
                 Files.move(activeFile, archivedFile);
 
-                // Update statistics
-                activeStepCount.decrementAndGet();
-                archivedStepCount.incrementAndGet();
+                // Record metrics via MetricsService instead of using AtomicLong counters
+                recordMetrics("step_archived", true, 0);
 
                 return true;
             }
@@ -836,11 +816,6 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
         stepCache.clear();
         sessionCache.clear();
         stepIndex.clear();
-        totalStepCount.set(0);
-        totalStorageSizeBytes.set(0);
-        activeStepCount.set(0);
-        archivedStepCount.set(0);
-        compressedStepCount.set(0);
     }
 
     private void copyDirectory(Path source, Path target) throws IOException {

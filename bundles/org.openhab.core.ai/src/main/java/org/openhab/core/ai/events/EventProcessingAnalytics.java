@@ -13,9 +13,7 @@ import java.util.concurrent.Executors;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
-import org.openhab.core.ai.events.monitoring.EventProcessingStatistics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.reasoning.input.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -76,7 +74,7 @@ public class EventProcessingAnalytics {
 
     // NEW: Monitoring registry for centralized metrics collection
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsService metricsService;
 
     // Configuration
     private Duration metricsWindow = DEFAULT_METRICS_WINDOW;
@@ -147,39 +145,30 @@ public class EventProcessingAnalytics {
     }
 
     /**
-     * Record performance metric using the new monitoring framework
+     * Record a performance metric for a component operation.
+     * 
+     * @param component the component name
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param duration the operation duration
      */
-    public void recordPerformanceMetric(String component, String operation, Duration duration, boolean success) {
-        if (!enablePerformanceMonitoring) {
-            return;
-        }
-
-        analyticsExecutor.submit(() -> {
-            try {
-                // Use centralized monitoring registry
-                if (monitoringRegistry != null) {
-                    ExecutionMetricsCollector collector = monitoringRegistry
-                            .executionCollector(MetricKeys.action(component + "." + operation));
-                    collector.recordExecution(success, duration.toNanos());
-                }
-
-                // Legacy local metrics for backward compatibility
-                String metricId = generateMetricId(component, operation);
-                PerformanceMetric metric = performanceMetrics.computeIfAbsent(metricId,
-                        k -> new PerformanceMetric(component, operation));
-
-                metric.recordExecution(duration, success);
-
-                // Check for performance issues
-                if (metric.getAverageDuration().compareTo(Duration.ofSeconds(1)) > 0) {
-                    recordAnalyticsEvent(AnalyticsEventType.PERFORMANCE_WARNING,
-                            "Slow performance detected for " + component + "." + operation, metric);
-                }
-
-            } catch (Exception e) {
-                logger.error("Error recording performance metric", e);
+    public void recordPerformanceMetric(String component, String operation, boolean success, Duration duration) {
+        try {
+            // Use centralized metrics service
+            if (metricsService != null) {
+                metricsService.recordOperation("event-processing", component + "." + operation, success, duration);
             }
-        });
+
+            // Store locally for analytics
+            String key = component + "." + operation;
+            PerformanceMetric metric = performanceMetrics.computeIfAbsent(key, k -> new PerformanceMetric());
+            metric.recordOperation(success, duration);
+
+            logger.debug("Recorded performance metric: {} (success={}, duration={}ms)", key, success,
+                    duration.toMillis());
+        } catch (Exception e) {
+            logger.debug("Failed to record performance metric: {}", e.getMessage());
+        }
     }
 
     /**
@@ -239,50 +228,46 @@ public class EventProcessingAnalytics {
     }
 
     /**
-     * Record error using the new monitoring framework
+     * Record an error for a component operation.
+     * 
+     * @param component the component name
+     * @param operation the operation name
+     * @param error the error message
+     * @param exception the exception (optional)
      */
     public void recordError(String component, String operation, String error, @Nullable Throwable exception) {
-        // Record error using monitoring registry
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action(component + "." + operation));
-            collector.recordExecution(false, 0L);
+        // Record error using metrics service
+        if (metricsService != null) {
+            metricsService.recordOperation("event-processing", component + "." + operation, false, Duration.ZERO);
         }
 
-        analyticsExecutor.submit(() -> {
-            try {
-                recordAnalyticsEvent(AnalyticsEventType.ERROR, "Error in " + component + "." + operation + ": " + error,
-                        null);
+        // Store locally for analytics
+        String key = component + "." + operation;
+        QualityMetric metric = qualityMetrics.computeIfAbsent(key, k -> new QualityMetric());
+        metric.recordError(error, exception);
 
-                // Record performance impact
-                recordPerformanceMetric(component, operation, Duration.ofMillis(0), false);
-
-            } catch (Exception e) {
-                logger.error("Error recording error metric", e);
-            }
-        });
+        logger.debug("Recorded error: {} - {}: {}", component, operation, error);
     }
 
     /**
-     * Record warning using the new monitoring framework
+     * Record a warning for a component operation.
+     * 
+     * @param component the component name
+     * @param operation the operation name
+     * @param warning the warning message
      */
     public void recordWarning(String component, String operation, String warning) {
-        // Record warning using monitoring registry
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action(component + "." + operation));
-            // Warning doesn't affect success/failure count, just record for tracking
+        // Record warning using metrics service
+        if (metricsService != null) {
+            metricsService.recordOperation("event-processing", component + "." + operation, true, Duration.ZERO);
         }
 
-        analyticsExecutor.submit(() -> {
-            try {
-                recordAnalyticsEvent(AnalyticsEventType.WARNING,
-                        "Warning in " + component + "." + operation + ": " + warning, null);
+        // Store locally for analytics
+        String key = component + "." + operation;
+        QualityMetric metric = qualityMetrics.computeIfAbsent(key, k -> new QualityMetric());
+        metric.recordWarning(warning);
 
-            } catch (Exception e) {
-                logger.error("Error recording warning metric", e);
-            }
-        });
+        logger.debug("Recorded warning: {} - {}: {}", component, operation, warning);
     }
 
     /**
@@ -307,10 +292,9 @@ public class EventProcessingAnalytics {
                 long totalEvents = 0;
                 long totalProcessingTime = 0;
 
-                if (monitoringRegistry != null) {
-                    ExecutionMetricsCollector collector = monitoringRegistry
-                            .executionCollector(MetricKeys.events("processing"));
-                    var snapshot = collector.snapshot();
+                if (metricsService != null) {
+                    MetricsService.ExecutionSnapshot snapshot = metricsService
+                            .executionSnapshot(MetricKeys.events("processing"));
                     totalEvents = snapshot.total();
                     totalProcessingTime = snapshot.totalDurationNanos() / 1_000_000; // Convert to milliseconds
                 }
@@ -348,10 +332,9 @@ public class EventProcessingAnalytics {
                 long totalErrors = 0;
                 long totalWarnings = 0;
 
-                if (monitoringRegistry != null) {
-                    ExecutionMetricsCollector collector = monitoringRegistry
-                            .executionCollector(MetricKeys.events("processing"));
-                    var snapshot = collector.snapshot();
+                if (metricsService != null) {
+                    MetricsService.ExecutionSnapshot snapshot = metricsService
+                            .executionSnapshot(MetricKeys.events("processing"));
                     totalErrors = snapshot.failure();
                     // Warnings are not tracked in the basic metrics, would need separate tracking
                 }
@@ -397,54 +380,101 @@ public class EventProcessingAnalytics {
     }
 
     /**
-     * Get comprehensive analytics report
+     * Get comprehensive analytics report.
+     * 
+     * @return analytics report with performance, quality, and resource metrics
      */
-    public CompletableFuture<ComprehensiveAnalyticsReport> getComprehensiveAnalyticsReport() {
-        return CompletableFuture.supplyAsync(() -> {
+    public AnalyticsReport getAnalyticsReport() {
+        long totalEvents = 0;
+        long totalProcessingTime = 0;
+
+        if (metricsService != null) {
             try {
-                PerformanceAnalytics performanceAnalytics = getPerformanceAnalytics().get();
-                QualityAnalytics qualityAnalytics = getQualityAnalytics().get();
-                ResourceAnalytics resourceAnalytics = getResourceAnalytics().get();
-
-                // Generate predictive analytics
-                PredictiveAnalytics predictiveAnalytics = generatePredictiveAnalytics();
-
-                // Generate system health score
-                double systemHealthScore = calculateSystemHealthScore(performanceAnalytics, qualityAnalytics,
-                        resourceAnalytics);
-
-                return new ComprehensiveAnalyticsReport(systemHealthScore, performanceAnalytics, qualityAnalytics,
-                        resourceAnalytics, predictiveAnalytics, analyticsEvents, Instant.now());
-
+                var snapshot = metricsService.getDomainAggregatedSnapshot("event-processing");
+                totalEvents = snapshot.totalOperations();
+                totalProcessingTime = snapshot.totalDurationNanos() / 1_000_000; // Convert to milliseconds
             } catch (Exception e) {
-                logger.error("Error generating comprehensive analytics report", e);
-                return new ComprehensiveAnalyticsReport(0.0, null, null, null, null, new ArrayList<>(), Instant.now());
+                logger.debug("Failed to get event processing metrics: {}", e.getMessage());
             }
-        }, analyticsExecutor);
+        }
+
+        // Calculate derived metrics
+        double averageProcessingTime = totalEvents > 0 ? (double) totalProcessingTime / totalEvents : 0.0;
+        double eventsPerSecond = totalEvents > 0 ? (double) totalEvents / (metricsWindow.toSeconds()) : 0.0;
+
+        return new AnalyticsReport(totalEvents, averageProcessingTime, eventsPerSecond, performanceMetrics.size(),
+                qualityMetrics.size(), resourceMetrics.size());
+    }
+
+    /**
+     * Get performance bottlenecks.
+     * 
+     * @return list of performance bottlenecks
+     */
+    public List<PerformanceBottleneck> getPerformanceBottlenecks() {
+        List<PerformanceBottleneck> bottlenecks = new ArrayList<>();
+
+        if (metricsService != null) {
+            try {
+                var snapshot = metricsService.getDomainAggregatedSnapshot("event-processing");
+                double successRate = snapshot.successRate();
+                if (successRate < performanceThreshold) {
+                    bottlenecks.add(new PerformanceBottleneck("event-processing", successRate, Duration.ZERO));
+                }
+            } catch (Exception e) {
+                logger.debug("Failed to get performance bottlenecks: {}", e.getMessage());
+            }
+        }
+
+        return bottlenecks;
+    }
+
+    /**
+     * Get quality issues.
+     * 
+     * @return list of quality issues
+     */
+    public List<QualityIssue> getQualityIssues() {
+        List<QualityIssue> issues = new ArrayList<>();
+
+        if (metricsService != null) {
+            try {
+                var snapshot = metricsService.getDomainAggregatedSnapshot("event-processing");
+                long totalErrors = snapshot.failedOperations();
+                if (totalErrors > 0) {
+                    issues.add(new QualityIssue("event-processing",
+                            1.0 - (double) totalErrors / snapshot.totalOperations()));
+                }
+            } catch (Exception e) {
+                logger.debug("Failed to get quality issues: {}", e.getMessage());
+            }
+        }
+
+        return issues;
     }
 
     /**
      * Get event processing statistics using the new monitoring framework
      */
     public EventProcessingStatistics getStatistics() {
-        if (monitoringRegistry != null) {
+        if (metricsService != null) {
             // Get statistics from centralized registry
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.events("processing"));
-            var snapshot = collector.snapshot();
+            MetricsService.ExecutionSnapshot snapshot = metricsService
+                    .executionSnapshot(MetricKeys.events("processing"));
 
-            return new EventProcessingStatistics("event-processing-stats", Instant.now(), snapshot.total(),
-                    snapshot.success(), snapshot.failure(), 0, // filteredEvents
-                    0, // enrichedEvents
-                    0, // routedEvents
-                    0, // persistedEvents
-                    0, // reasoningTriggers
-                    true, // eventProcessingEnabled
-                    true, // eventPersistenceEnabled
-                    true, // reasoningIntegrationEnabled
-                    Duration.ofHours(24), // eventRetentionPeriod
-                    false, // replayInProgress
-                    null // data
+            // Create EventProcessingStatistics from snapshot data
+            return EventProcessingStatistics.fromEventData(snapshot.total(), snapshot.success(), snapshot.failure(),
+                    snapshot.totalDurationNanos() / 1_000_000, // totalProcessingTimeMs
+                    snapshot.total() > 0 ? (snapshot.totalDurationNanos() / 1_000_000.0) / snapshot.total() : 0.0, // averageProcessingTimeMs
+                    0L, // totalEventsInQueue
+                    100L, // maxQueueSize
+                    0.0, // averageQueueSize
+                    0L, // totalEventsDropped
+                    snapshot.total() > 0 ? snapshot.total() / (Duration.ofDays(1).toSeconds()) : 0.0, // averageEventsPerSecond
+                    null, // eventTypeDistribution
+                    null, // processingTimeDistribution
+                    null, // errorDistribution
+                    Duration.ofDays(1) // timeRange
             );
         }
 
@@ -466,18 +496,18 @@ public class EventProcessingAnalytics {
             failedEvents += metric.getSuccesses().stream().filter(s -> !s).count();
         }
 
-        return new EventProcessingStatistics("event-processing-stats", Instant.now(), totalEvents, successfulEvents,
-                failedEvents, 0, // filteredEvents
-                0, // enrichedEvents
-                0, // routedEvents
-                0, // persistedEvents
-                0, // reasoningTriggers
-                true, // eventProcessingEnabled
-                true, // eventPersistenceEnabled
-                true, // reasoningIntegrationEnabled
-                Duration.ofHours(24), // eventRetentionPeriod
-                false, // replayInProgress
-                null // data
+        // Return EventProcessingStatistics with legacy data
+        return EventProcessingStatistics.fromEventData(totalEvents, successfulEvents, failedEvents, 0L, // totalProcessingTimeMs
+                0.0, // averageProcessingTimeMs
+                0L, // totalEventsInQueue
+                100L, // maxQueueSize
+                0.0, // averageQueueSize
+                0L, // totalEventsDropped
+                0.0, // averageEventsPerSecond
+                null, // eventTypeDistribution
+                null, // processingTimeDistribution
+                null, // errorDistribution
+                Duration.ofDays(1) // timeRange
         );
     }
 
@@ -758,10 +788,9 @@ public class EventProcessingAnalytics {
 
     private double calculatePredictedLoad() {
         // Simple prediction based on current trends
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.events("processing"));
-            var snapshot = collector.snapshot();
+        if (metricsService != null) {
+            MetricsService.ExecutionSnapshot snapshot = metricsService
+                    .executionSnapshot(MetricKeys.events("processing"));
             return Math.min(1.0, snapshot.total() / 1000.0);
         }
         return 0.0;
@@ -769,10 +798,9 @@ public class EventProcessingAnalytics {
 
     private double calculatePredictedPerformance() {
         // Simple prediction based on current performance
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.events("processing"));
-            var snapshot = collector.snapshot();
+        if (metricsService != null) {
+            MetricsService.ExecutionSnapshot snapshot = metricsService
+                    .executionSnapshot(MetricKeys.events("processing"));
             return Math.max(0.0, 1.0 - (snapshot.failure() / Math.max(1, snapshot.total())));
         }
         return 0.0;
@@ -780,10 +808,9 @@ public class EventProcessingAnalytics {
 
     private double calculatePredictedQuality() {
         // Simple prediction based on current quality
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.events("processing"));
-            var snapshot = collector.snapshot();
+        if (metricsService != null) {
+            MetricsService.ExecutionSnapshot snapshot = metricsService
+                    .executionSnapshot(MetricKeys.events("processing"));
             // Warnings are not tracked in basic metrics, use success rate as quality proxy
             return snapshot.successRate();
         }

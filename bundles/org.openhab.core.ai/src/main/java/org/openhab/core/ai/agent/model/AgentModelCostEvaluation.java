@@ -3,7 +3,10 @@ package org.openhab.core.ai.agent.model;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.evaluation.AbstractEvaluation;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * Cost evaluation result for an agent model.
@@ -18,6 +21,9 @@ import org.openhab.core.ai.common.evaluation.AbstractEvaluation;
  */
 @NonNullByDefault
 public final class AgentModelCostEvaluation extends AbstractEvaluation {
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     private final double costPerToken;
     private final double budget;
@@ -56,6 +62,20 @@ public final class AgentModelCostEvaluation extends AbstractEvaluation {
 
     public double getBudgetUtilization() {
         return budget > 0 ? costPerToken / budget : 0.0;
+    }
+
+    /**
+     * Record cost evaluation metrics using MetricsService.
+     */
+    public void recordEvaluation() {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            long startTime = System.currentTimeMillis();
+            boolean success = isWithinBudget();
+            long duration = System.currentTimeMillis() - startTime;
+
+            metrics.recordOperation("agent-model", "cost-evaluation", success, java.time.Duration.ofMillis(duration));
+        }
     }
 
     public static final class Builder {

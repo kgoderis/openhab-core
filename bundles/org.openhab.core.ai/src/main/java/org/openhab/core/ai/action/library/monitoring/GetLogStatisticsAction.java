@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionException;
@@ -18,7 +19,9 @@ import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +34,9 @@ public class GetLogStatisticsAction implements Action {
     private static final Logger logger = LoggerFactory.getLogger(GetLogStatisticsAction.class);
     private static final String ACTION_ID = "openhab.monitoring.get_log_statistics";
     private static final String ACTION_NAME = "Get Log Statistics";
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     @Override
     public String getActionId() {
@@ -149,6 +155,7 @@ public class GetLogStatisticsAction implements Action {
     @Override
     public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
+        boolean success = false;
         logger.debug("Executing get log statistics action with parameters: {}", parameters);
 
         try {
@@ -251,12 +258,20 @@ public class GetLogStatisticsAction implements Action {
             long executionTime = System.currentTimeMillis() - startTime;
             logger.debug("Get log statistics action completed in {}ms", executionTime);
 
+            success = true;
             return ActionResult.success(result, executionTime);
 
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
             logger.error("Failed to get log statistics", e);
             throw new ActionException(ACTION_ID, "Failed to get log statistics: " + e.getMessage(), e);
+        } finally {
+            // Record metrics
+            long duration = System.currentTimeMillis() - startTime;
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("action", "get-log-statistics", success, java.time.Duration.ofMillis(duration));
+            }
         }
     }
 

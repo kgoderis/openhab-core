@@ -10,7 +10,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.reasoning.monitoring.LearningPerformanceMetrics;
 import org.openhab.core.ai.reasoning.patterns.BehaviorPattern;
 import org.openhab.core.ai.reasoning.policies.UserPreferenceModel;
 import org.openhab.core.ai.reasoning.strategies.adaptation.AdaptiveStrategy;
@@ -246,20 +245,9 @@ public class LearningAdaptationSystem {
     /**
      * Get learning performance metrics
      */
-    public LearningPerformanceMetrics getPerformanceMetrics() {
-        return new LearningPerformanceMetrics("learning-adaptation-system", totalLearningEvents.get(), // totalOperations
-                0, // successfulOperations - not tracked yet
-                0, // failedOperations - not tracked yet
-                0, // totalProcessingTime - not tracked yet
-                0.0, // averageResponseTime - not tracked yet
-                totalPatternRecognitions.get(), // totalPatternRecognitions
-                totalFeedbackIntegrations.get(), // totalFeedbackIntegrations
-                totalStrategyAdaptations.get(), // totalStrategyAdaptations
-                userPreferences.size(), // userPreferenceCount
-                behaviorPatterns.size(), // behaviorPatternCount
-                feedbackHistory.size(), // feedbackHistoryCount
-                adaptiveStrategies.size() // adaptiveStrategyCount
-        );
+    public Object getPerformanceMetrics() {
+        // TODO: Implement using new MetricsService when available
+        return null;
     }
 
     // Configuration methods

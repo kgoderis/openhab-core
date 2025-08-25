@@ -6,7 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.error.ErrorRecoveryStatistics;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.server.DefaultToolServer;
 import org.slf4j.Logger;
@@ -35,13 +37,15 @@ public final class MetricsHandler implements HttpHandler {
     private final long startTime;
     private final AtomicLong totalRequests;
     private final AtomicLong totalErrors;
+    private final @Nullable MetricsService metricsService;
 
     public MetricsHandler(DefaultToolServer serverInstance, long startTime, AtomicLong totalRequests,
-            AtomicLong totalErrors) {
+            AtomicLong totalErrors, @Nullable MetricsService metricsService) {
         this.serverInstance = serverInstance;
         this.startTime = startTime;
         this.totalRequests = totalRequests;
         this.totalErrors = totalErrors;
+        this.metricsService = metricsService;
     }
 
     @Override
@@ -86,17 +90,20 @@ public final class MetricsHandler implements HttpHandler {
             if (serverInstance.isErrorRecoveryEnabled()) {
                 ErrorRecoveryStatistics errorStats = serverInstance.getErrorRecoveryStatistics();
                 if (errorStats != null) {
-                    response.append("# HELP mcp_errors_total_count Total number of errors\n");
-                    response.append("# TYPE mcp_errors_total_count counter\n");
-                    response.append("mcp_errors_total_count ").append(errorStats.getTotalErrors()).append("\n");
-                    response.append("# HELP mcp_recoveries_total Total number of successful recoveries\n");
-                    response.append("# TYPE mcp_recoveries_total counter\n");
-                    response.append("mcp_recoveries_total ").append(errorStats.getTotalRecoveries()).append("\n");
-                    response.append("# HELP mcp_fallbacks_total Total number of fallbacks\n");
-                    response.append("# TYPE mcp_fallbacks_total counter\n");
-                    response.append("mcp_fallbacks_total ").append(errorStats.getTotalFallbacks()).append("\n");
-                    double recoveryRate = errorStats.getTotalErrors() > 0
-                            ? (double) errorStats.getTotalRecoveries() / errorStats.getTotalErrors()
+                    response.append("# HELP mcp_recovery_attempts_total Total number of recovery attempts\n");
+                    response.append("# TYPE mcp_recovery_attempts_total counter\n");
+                    response.append("mcp_recovery_attempts_total ").append(errorStats.getTotalRecoveryAttempts())
+                            .append("\n");
+                    response.append("# HELP mcp_successful_recoveries_total Total number of successful recoveries\n");
+                    response.append("# TYPE mcp_successful_recoveries_total counter\n");
+                    response.append("mcp_successful_recoveries_total ").append(errorStats.getSuccessfulRecoveries())
+                            .append("\n");
+                    response.append("# HELP mcp_failed_recoveries_total Total number of failed recoveries\n");
+                    response.append("# TYPE mcp_failed_recoveries_total counter\n");
+                    response.append("mcp_failed_recoveries_total ").append(errorStats.getFailedRecoveries())
+                            .append("\n");
+                    double recoveryRate = errorStats.getTotalRecoveryAttempts() > 0
+                            ? (double) errorStats.getSuccessfulRecoveries() / errorStats.getTotalRecoveryAttempts()
                             : 0.0;
                     response.append("# HELP mcp_recovery_rate Recovery rate\n");
                     response.append("# TYPE mcp_recovery_rate gauge\n");

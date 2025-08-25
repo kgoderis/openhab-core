@@ -7,7 +7,9 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.error.ErrorRecoveryStatistics;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.config.ToolServerConfiguration;
 import org.openhab.core.ai.tool.server.DefaultToolServer;
@@ -39,18 +41,23 @@ public final class HealthHandler implements HttpHandler {
     private final long startTime;
     private final AtomicLong totalRequests;
     private final AtomicLong totalErrors;
+    private final @Nullable MetricsService metricsService;
 
     public HealthHandler(DefaultToolServer serverInstance, ToolServerConfiguration config, long startTime,
-            AtomicLong totalRequests, AtomicLong totalErrors) {
+            AtomicLong totalRequests, AtomicLong totalErrors, @Nullable MetricsService metricsService) {
         this.serverInstance = serverInstance;
         this.config = config;
         this.startTime = startTime;
         this.totalRequests = totalRequests;
         this.totalErrors = totalErrors;
+        this.metricsService = metricsService;
     }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        long startTime = System.nanoTime();
+        boolean success = false;
+
         try {
             totalRequests.incrementAndGet();
 
@@ -89,10 +96,13 @@ public final class HealthHandler implements HttpHandler {
                 ErrorRecoveryStatistics errorStats = serverInstance.getErrorRecoveryStatistics();
                 if (errorStats != null) {
                     response.append("  \"errorRecovery\": {\n");
-                    response.append("    \"totalErrors\": ").append(errorStats.getTotalErrors()).append(",\n");
-                    response.append("    \"totalRecoveries\": ").append(errorStats.getTotalRecoveries()).append(",\n");
-                    response.append("    \"totalFallbacks\": ").append(errorStats.getTotalFallbacks()).append(",\n");
-                    response.append("    \"totalFailures\": ").append(errorStats.getTotalFailures()).append("\n");
+                    response.append("    \"totalRecoveryAttempts\": ").append(errorStats.getTotalRecoveryAttempts())
+                            .append(",\n");
+                    response.append("    \"successfulRecoveries\": ").append(errorStats.getSuccessfulRecoveries())
+                            .append(",\n");
+                    response.append("    \"failedRecoveries\": ").append(errorStats.getFailedRecoveries())
+                            .append(",\n");
+                    response.append("    \"successRate\": ").append(errorStats.getSuccessRate()).append("\n");
                     response.append("  },\n");
                 }
             }
@@ -113,6 +123,8 @@ public final class HealthHandler implements HttpHandler {
                 }
             }
 
+            success = true;
+
         } catch (Exception e) {
             totalErrors.incrementAndGet();
             logger.error("Error handling health check request", e);
@@ -127,6 +139,13 @@ public final class HealthHandler implements HttpHandler {
                 if (os != null) {
                     os.write(responseBytes);
                 }
+            }
+        } finally {
+            // Record metrics for the request
+            long duration = System.nanoTime() - startTime;
+            if (metricsService != null) {
+                metricsService.recordOperation("tool-metrics", "endpoint", success,
+                        java.time.Duration.ofNanos(duration));
             }
         }
     }

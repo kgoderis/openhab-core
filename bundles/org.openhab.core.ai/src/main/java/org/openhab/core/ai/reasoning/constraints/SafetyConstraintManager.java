@@ -11,7 +11,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.audit.AuditLogger;
-import org.openhab.core.ai.reasoning.monitoring.SafetyPerformanceMetrics;
 import org.openhab.core.ai.reasoning.policies.PolicyResult;
 import org.openhab.core.ai.reasoning.policies.SafetyPolicy;
 import org.openhab.core.ai.reasoning.policies.SafetyValidationResult;
@@ -291,31 +290,9 @@ public class SafetyConstraintManager {
     /**
      * Get safety performance metrics
      */
-    public SafetyPerformanceMetrics getPerformanceMetrics() {
-        long totalValidations = totalSafetyValidations.get();
-        long successfulValidations = totalValidations - totalConstraintViolations.get();
-        long failedValidations = totalConstraintViolations.get();
-        long totalTime = totalValidations * 10; // Estimate average time per validation
-        double avgTime = totalValidations > 0 ? (double) totalTime / totalValidations : 0.0;
-        long totalConstraintViolationsCount = totalConstraintViolations.get();
-        long totalSafetyIncidentsCount = safetyIncidents.size();
-        long totalSafetyOverridesCount = 0; // Not tracked in this implementation
-        int safetyPolicyCount = safetyPolicies.size();
-        int userConstraintCount = userConstraints.size();
-        int constraintViolationCount = constraintViolations.size();
-        int safetyIncidentCount = safetyIncidents.size();
-
-        return new SafetyPerformanceMetrics("safety-constraint-manager", totalValidations, successfulValidations,
-                failedValidations, totalTime, // totalProcessingTime
-                avgTime, // averageResponseTime
-                totalConstraintViolationsCount, // totalConstraintViolations
-                totalSafetyIncidentsCount, // totalSafetyIncidents
-                totalSafetyOverridesCount, // totalSafetyOverrides
-                safetyPolicyCount, // safetyPolicyCount
-                userConstraintCount, // userConstraintCount
-                constraintViolationCount, // constraintViolationCount
-                safetyIncidentCount // safetyIncidentCount
-        );
+    public Object getPerformanceMetrics() {
+        // TODO: Implement using new MetricsService when available
+        return null;
     }
 
     // Configuration methods

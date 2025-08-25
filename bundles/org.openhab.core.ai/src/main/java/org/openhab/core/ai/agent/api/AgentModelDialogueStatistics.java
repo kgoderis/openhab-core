@@ -9,9 +9,11 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.Counts;
 import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.api.MonitoringType;
 import org.openhab.core.ai.common.monitoring.api.Statistics;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * Statistics snapshot for dialogue management
@@ -31,6 +33,9 @@ import org.openhab.core.ai.common.monitoring.api.Statistics;
 public record AgentModelDialogueStatistics(Counts counts, long timestampMs, @Nullable Instant collectionStartTime,
         @Nullable Instant collectionEndTime, long totalSessionCount, double averageSessionDuration,
         double averageMessagesPerSession) implements MetricsSnapshot, CountsMetrics, Statistics {
+
+    @Reference
+    private static @Nullable MetricsService metricsService;
 
     /**
      * Validation constructor for the record.
@@ -324,6 +329,26 @@ public record AgentModelDialogueStatistics(Counts counts, long timestampMs, @Nul
     }
 
     // ===== Utility Methods =====
+
+    /**
+     * Get items per second based on collection period.
+     * 
+     * @return items per second, or 0.0 if no collection period
+     */
+    public double getItemsPerSecond() {
+        long durationMs = getCollectionDurationMs();
+        return durationMs > 0 ? (double) total() / (durationMs / 1000.0) : 0.0;
+    }
+
+    /**
+     * Record dialogue statistics using MetricsService.
+     */
+    public static void recordDialogueStatistics(boolean success, long durationMs) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation("agent-model", "dialogue", success, java.time.Duration.ofMillis(durationMs));
+        }
+    }
 
     /**
      * Create a concise summary string for logging.

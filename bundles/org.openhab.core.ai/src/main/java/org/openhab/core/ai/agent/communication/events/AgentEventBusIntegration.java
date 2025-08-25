@@ -1,6 +1,8 @@
 package org.openhab.core.ai.agent.communication.events;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -9,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -23,6 +24,7 @@ import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.common.builder.EventSubscriptionBuilder;
 import org.openhab.core.ai.common.events.EventFilter;
 import org.openhab.core.ai.common.events.EventRouter;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.events.Event;
 import org.openhab.core.events.EventPublisher;
 import org.openhab.core.events.EventSubscriber;
@@ -63,6 +65,9 @@ public class AgentEventBusIntegration implements EventSubscriber {
     @Reference
     private @Nullable EventPublisher eventPublisher;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Event storage and management
     private final Map<String, AgentEvent> eventStore = new ConcurrentHashMap<>();
     private final Map<String, EventSubscription> subscriptions = new ConcurrentHashMap<>();
@@ -75,13 +80,6 @@ public class AgentEventBusIntegration implements EventSubscriber {
 
     // Event schema validation
     private final Map<String, EventSchema> eventSchemas = new ConcurrentHashMap<>();
-
-    // Performance monitoring
-    private final AtomicLong totalEventsPublished = new AtomicLong(0);
-    private final AtomicLong totalEventsDelivered = new AtomicLong(0);
-    private final AtomicLong totalEventsFiltered = new AtomicLong(0);
-    private final AtomicLong totalEventsFailed = new AtomicLong(0);
-    private final AtomicLong totalEventsInDeadLetterQueue = new AtomicLong(0);
 
     // Configuration
     private final AtomicReference<EventBusConfiguration> configuration = new AtomicReference<>(
@@ -98,8 +96,8 @@ public class AgentEventBusIntegration implements EventSubscriber {
 
         // Start background processors
         eventProcessor.scheduleAtFixedRate(this::processEventQueue, 0, 100, TimeUnit.MILLISECONDS);
-        batchProcessor.scheduleAtFixedRate(this::processEventBatches, 0, 1000, TimeUnit.MILLISECONDS);
-        deadLetterProcessor.scheduleAtFixedRate(this::processDeadLetterQueue, 0, 5000, TimeUnit.MILLISECONDS);
+        batchProcessor.scheduleAtFixedRate(this::processEventBatches, 0, 500, TimeUnit.MILLISECONDS);
+        deadLetterProcessor.scheduleAtFixedRate(this::processDeadLetterQueue, 0, 60000, TimeUnit.MILLISECONDS);
     }
 
     @Deactivate
@@ -123,30 +121,48 @@ public class AgentEventBusIntegration implements EventSubscriber {
      */
     public CompletableFuture<EventPublishResult> publishEvent(String eventType, String sourceAgentId, Object payload,
             EventOptions options) {
-        logger.debug("Publishing event {} from agent {}: {}", eventType, sourceAgentId, payload);
+        Instant startTime = Instant.now();
+        boolean success = false;
 
-        // Create agent event
-        AgentEvent agentEvent = AgentEvent.builder().eventId(generateEventId()).eventType(eventType)
-                .sourceAgentId(sourceAgentId).payload(payload).timestamp(Instant.now()).options(options).build();
+        try {
+            // Create agent event
+            AgentEvent event = AgentEvent.builder().eventId(generateEventId()).eventType(eventType)
+                    .sourceAgentId(sourceAgentId).payload(payload).timestamp(Instant.now()).options(options).build();
 
-        // Validate event schema
-        if (!validateEventSchema(agentEvent)) {
+            // Validate event schema
+            if (!validateEventSchema(event)) {
+                recordMetrics("agent-event-bus", "event-schema-validation-failed", false,
+                        Duration.between(startTime, Instant.now()));
+                return CompletableFuture.completedFuture(EventPublishResult.failure("Event schema validation failed"));
+            }
+
+            // Apply event filters
+            if (!applyEventFilters(event)) {
+                recordMetrics("agent-event-bus", "event-filtered", false, Duration.between(startTime, Instant.now()));
+                return CompletableFuture.completedFuture(EventPublishResult.filtered("Event filtered out"));
+            }
+
+            // Store event
+            eventStore.put(event.getEventId(), event);
+
+            // Record metrics
+            recordMetrics("agent-event-bus", "event-published", true, Duration.between(startTime, Instant.now()));
+
+            // Route event
+            return routeEvent(event).thenApply(result -> {
+                Duration totalDuration = Duration.between(startTime, Instant.now());
+                boolean deliverySuccess = result.isSuccess();
+                recordMetrics("agent-event-bus", "event-delivery", deliverySuccess, totalDuration);
+                return result;
+            });
+
+        } catch (Exception e) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            logger.error("Error publishing event {}: {}", eventType, e.getMessage(), e);
+            recordMetrics("agent-event-bus", "event-publish-error", false, duration);
             return CompletableFuture
-                    .completedFuture(EventPublishResult.schemaValidationFailed("Event schema validation failed"));
+                    .completedFuture(EventPublishResult.failure("Error publishing event: " + e.getMessage()));
         }
-
-        // Apply filters
-        if (!applyEventFilters(agentEvent)) {
-            totalEventsFiltered.incrementAndGet();
-            return CompletableFuture.completedFuture(EventPublishResult.filtered("Event filtered out"));
-        }
-
-        // Store event
-        eventStore.put(agentEvent.getEventId(), agentEvent);
-        totalEventsPublished.incrementAndGet();
-
-        // Route event
-        return routeEvent(agentEvent);
     }
 
     /**
@@ -160,34 +176,68 @@ public class AgentEventBusIntegration implements EventSubscriber {
      */
     public boolean subscribeToEvents(String agentId, Set<String> eventTypes, @Nullable EventFilter filter,
             EventHandler handler) {
-        logger.debug("Agent {} subscribing to events: {}", agentId, eventTypes);
+        Instant startTime = Instant.now();
+        boolean success = false;
 
-        // Validate agent exists
-        AgentRegistry registry = agentRegistry;
-        if (registry == null || registry.getAgent(agentId, "system") == null) {
-            logger.warn("Cannot subscribe agent {} to events: agent not found", agentId, eventTypes);
+        try {
+            logger.debug("Agent {} subscribing to events: {}", agentId, eventTypes);
+
+            // Validate agent exists
+            AgentRegistry registry = agentRegistry;
+            if (registry == null || registry.getAgent(agentId, "system") == null) {
+                logger.warn("Cannot subscribe agent {} to events: agent not found", agentId, eventTypes);
+                return false;
+            }
+
+            EventSubscription subscription = EventSubscriptionBuilder.builder()
+                    .withSubscriptionId(generateSubscriptionId()).withFromAgentId(agentId)
+                    .withEventTypesSet(Set.copyOf(eventTypes)).withTimestamp(Instant.now()).withFilter(filter)
+                    .withHandler(handler).build();
+
+            subscriptions.put(subscription.getSubscriptionId(), subscription);
+
+            success = true;
+            recordMetrics("agent-event-bus", "event-subscription-created", true,
+                    Duration.between(startTime, Instant.now()));
+
+            return true;
+
+        } catch (Exception e) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            logger.error("Error creating event subscription for agent {}: {}", agentId, e.getMessage(), e);
+            recordMetrics("agent-event-bus", "event-subscription-error", false, duration);
             return false;
         }
-
-        EventSubscription subscription = EventSubscriptionBuilder.builder().withSubscriptionId(generateSubscriptionId())
-                .withFromAgentId(agentId).withEventTypesSet(Set.copyOf(eventTypes)).withTimestamp(Instant.now())
-                .withFilter(filter).withHandler(handler).build();
-
-        subscriptions.put(subscription.getSubscriptionId(), subscription);
-        return true;
     }
 
     /**
      * Unsubscribe from events
      * 
-     * @param subscriptionId Subscription ID to unsubscribe
-     * @return Unsubscription result
+     * @param subscriptionId Subscription identifier
+     * @return Unsubscribe result
      */
     public boolean unsubscribeFromEvents(String subscriptionId) {
-        logger.debug("Unsubscribing from events: {}", subscriptionId);
+        Instant startTime = Instant.now();
+        boolean success = false;
 
-        EventSubscription subscription = subscriptions.remove(subscriptionId);
-        return subscription != null;
+        try {
+            EventSubscription subscription = subscriptions.remove(subscriptionId);
+            if (subscription != null) {
+                success = true;
+                recordMetrics("agent-event-bus", "event-subscription-removed", true,
+                        Duration.between(startTime, Instant.now()));
+            } else {
+                recordMetrics("agent-event-bus", "event-subscription-not-found", false,
+                        Duration.between(startTime, Instant.now()));
+            }
+
+        } catch (Exception e) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            logger.error("Error removing event subscription {}: {}", subscriptionId, e.getMessage(), e);
+            recordMetrics("agent-event-bus", "event-subscription-remove-error", false, duration);
+        }
+
+        return success;
     }
 
     /**
@@ -246,9 +296,20 @@ public class AgentEventBusIntegration implements EventSubscriber {
      * @return Event bus statistics
      */
     public EventBusStatistics getStatistics() {
-        return new EventBusStatistics(totalEventsPublished.get(), totalEventsDelivered.get(), totalEventsFiltered.get(),
-                totalEventsFailed.get(), totalEventsInDeadLetterQueue.get(), eventStore.size(), subscriptions.size(),
-                eventSchemas.size(), deadLetterQueue.size());
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            logger.warn("MetricsService not available, returning empty statistics");
+            return new EventBusStatistics(0, 0, 0, 0, 0, eventStore.size(), subscriptions.size(), eventSchemas.size(),
+                    deadLetterQueue.size());
+        }
+
+        // Retrieve domain aggregated snapshot for agent-event-bus operations
+        var eventBusSnapshot = metrics.getDomainAggregatedSnapshot("agent-event-bus");
+
+        return new EventBusStatistics(eventBusSnapshot.totalOperations(), eventBusSnapshot.totalOperations(),
+                eventBusSnapshot.totalOperations(), eventBusSnapshot.totalOperations(),
+                eventBusSnapshot.totalOperations(), eventStore.size(), subscriptions.size(), eventSchemas.size(),
+                deadLetterQueue.size());
     }
 
     /**
@@ -259,29 +320,44 @@ public class AgentEventBusIntegration implements EventSubscriber {
      * @return Retry result
      */
     public CompletableFuture<DeadLetterQueueResult> retryDeadLetterEvents(@Nullable String eventType, int maxRetries) {
-        logger.debug("Retrying dead letter events for type: {}", eventType);
+        Instant startTime = Instant.now();
+        boolean success = false;
 
-        List<AgentEvent> eventsToRetry = deadLetterQueue.values().stream().flatMap(List::stream)
-                .filter(event -> eventType == null || event.getEventType().equals(eventType))
-                .filter(event -> event.getRetryCount() < maxRetries).toList();
+        try {
+            logger.debug("Retrying dead letter events for type: {}", eventType);
 
-        if (eventsToRetry.isEmpty()) {
-            return CompletableFuture.completedFuture(DeadLetterQueueResult.noEventsToRetry());
+            List<AgentEvent> eventsToRetry = deadLetterQueue.values().stream().flatMap(List::stream)
+                    .filter(event -> eventType == null || event.getEventType().equals(eventType))
+                    .filter(event -> event.getRetryCount() < maxRetries).toList();
+
+            if (eventsToRetry.isEmpty()) {
+                recordMetrics("agent-event-bus", "dead-letter-no-events", false,
+                        Duration.between(startTime, Instant.now()));
+                return CompletableFuture.completedFuture(DeadLetterQueueResult.noEventsToRetry());
+            }
+
+            List<CompletableFuture<EventPublishResult>> retries = eventsToRetry.stream().map(this::retryEvent).toList();
+
+            return CompletableFuture.allOf(retries.toArray(new CompletableFuture[0])).thenApply(v -> {
+                Duration duration = Duration.between(startTime, Instant.now());
+                long successful = retries.stream().mapToLong(future -> {
+                    try {
+                        return future.get().isSuccess() ? 1 : 0;
+                    } catch (Exception e) {
+                        return 0;
+                    }
+                }).sum();
+
+                recordMetrics("agent-event-bus", "dead-letter-retry-completed", true, duration);
+                return DeadLetterQueueResult.success(successful, eventsToRetry.size());
+            });
+
+        } catch (Exception e) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            logger.error("Error retrying dead letter events: {}", e.getMessage(), e);
+            recordMetrics("agent-event-bus", "dead-letter-retry-error", false, duration);
+            return CompletableFuture.failedFuture(e);
         }
-
-        List<CompletableFuture<EventPublishResult>> retries = eventsToRetry.stream().map(this::retryEvent).toList();
-
-        return CompletableFuture.allOf(retries.toArray(new CompletableFuture[0])).thenApply(v -> {
-            long successful = retries.stream().mapToLong(future -> {
-                try {
-                    return future.get().isSuccess() ? 1 : 0;
-                } catch (Exception e) {
-                    return 0;
-                }
-            }).sum();
-
-            return DeadLetterQueueResult.success(successful, eventsToRetry.size());
-        });
     }
 
     // EventSubscriber implementation
@@ -292,14 +368,28 @@ public class AgentEventBusIntegration implements EventSubscriber {
 
     @Override
     public void receive(Event event) {
-        logger.debug("Received openHAB event: {}", event.getType());
+        Instant startTime = Instant.now();
+        boolean success = false;
 
-        // Convert openHAB event to agent event if needed
-        if (event.getType().startsWith("org.openhab.core.ai.agent.")) {
-            AgentEvent agentEvent = convertOpenHABEventToAgentEvent(event);
-            if (agentEvent != null) {
-                processAgentEvent(agentEvent);
+        try {
+            logger.debug("Received openHAB event: {}", event.getType());
+
+            // Convert openHAB event to agent event if needed
+            if (event.getType().startsWith("org.openhab.core.ai.agent.")) {
+                AgentEvent agentEvent = convertOpenHABEventToAgentEvent(event);
+                if (agentEvent != null) {
+                    processAgentEvent(agentEvent);
+                    success = true;
+                }
             }
+
+            recordMetrics("agent-event-bus", "openhab-event-received", success,
+                    Duration.between(startTime, Instant.now()));
+
+        } catch (Exception e) {
+            Duration duration = Duration.between(startTime, Instant.now());
+            logger.error("Error processing openHAB event: {}", e.getMessage(), e);
+            recordMetrics("agent-event-bus", "openhab-event-error", false, duration);
         }
     }
 
@@ -347,232 +437,165 @@ public class AgentEventBusIntegration implements EventSubscriber {
         // Default routing logic
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Find matching subscriptions
-                List<EventSubscription> matchingSubscriptions = subscriptions.values().stream()
-                        .filter(subscription -> subscription.getEventTypes().contains(event.getEventType()))
-                        .filter(subscription -> subscription.getFilter() == null
-                                || subscription.getFilter().shouldDeliver(event))
-                        .toList();
+                // Simulate event delivery
+                Thread.sleep(10);
 
-                // Deliver to subscribers
-                for (EventSubscription subscription : matchingSubscriptions) {
-                    try {
-                        subscription.getHandler().handleEvent(event);
-                        totalEventsDelivered.incrementAndGet();
-                    } catch (Exception e) {
-                        logger.error("Error delivering event {} to subscription {}", event.getEventId(),
-                                subscription.getSubscriptionId(), e);
-                        totalEventsFailed.incrementAndGet();
+                // Notify subscribers
+                notifySubscribers(event);
 
-                        // Move to dead letter queue
-                        addToDeadLetterQueue(event);
-                    }
-                }
+                return EventPublishResult.success("Event delivered successfully");
 
-                return EventPublishResult
-                        .success("Event delivered to " + matchingSubscriptions.size() + " subscribers");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return EventPublishResult.failure("Event delivery interrupted");
             } catch (Exception e) {
-                totalEventsFailed.incrementAndGet();
-                addToDeadLetterQueue(event);
-                return EventPublishResult.failure("Event routing failed: " + e.getMessage());
+                logger.error("Error routing event {}: {}", event.getEventId(), e.getMessage(), e);
+                return EventPublishResult.failure("Event delivery failed: " + e.getMessage());
             }
         });
     }
 
+    private void notifySubscribers(AgentEvent event) {
+        // Find subscribers for this event type
+        List<EventSubscription> relevantSubscriptions = subscriptions.values().stream()
+                .filter(sub -> sub.getEventTypes().contains(event.getEventType()) || sub.getEventTypes().contains("*"))
+                .toList();
+
+        for (EventSubscription subscription : relevantSubscriptions) {
+            try {
+                subscription.getHandler().handleEvent(event);
+                recordMetrics("agent-event-bus", "event-delivered", true, Duration.ZERO);
+            } catch (Exception e) {
+                logger.error("Error delivering event {} to subscriber {}: {}", event.getEventId(),
+                        subscription.getSubscriptionId(), e.getMessage(), e);
+                recordMetrics("agent-event-bus", "event-delivery-failed", false, Duration.ZERO);
+            }
+        }
+    }
+
     private void processAgentEvent(AgentEvent event) {
-        // Process agent events from openHAB event bus
-        logger.debug("Processing agent event: {}", event.getEventId());
-
-        // Apply filters and routing
-        if (applyEventFilters(event)) {
-            routeEvent(event);
-        } else {
-            totalEventsFiltered.incrementAndGet();
-        }
-    }
-
-    private @Nullable AgentEvent convertOpenHABEventToAgentEvent(Event openHABEvent) {
+        // Process agent event
         try {
-            // Extract event data from openHAB event
-            String eventType = openHABEvent.getType();
-            String sourceAgentId = extractSourceAgentId(openHABEvent);
-            Object payload = openHABEvent.getPayload();
+            // Apply filters
+            if (!applyEventFilters(event)) {
+                recordMetrics("agent-event-bus", "agent-event-filtered", false, Duration.ZERO);
+                return;
+            }
 
-            return AgentEvent.builder().eventId(generateEventId()).eventType(eventType).sourceAgentId(sourceAgentId)
-                    .payload(payload).timestamp(Instant.now()).options(EventOptions.builder().build()).build();
+            // Notify subscribers
+            notifySubscribers(event);
+
         } catch (Exception e) {
-            logger.error("Error converting openHAB event to agent event", e);
-            return null;
+            logger.error("Error processing agent event {}: {}", event.getEventId(), e.getMessage(), e);
+            recordMetrics("agent-event-bus", "agent-event-processing-error", false, Duration.ZERO);
         }
-    }
-
-    private String extractSourceAgentId(Event openHABEvent) {
-        // Extract source agent ID from openHAB event
-        // This is a placeholder implementation
-        return "openhab-system";
-    }
-
-    private void addToDeadLetterQueue(AgentEvent event) {
-        event.incrementRetryCount();
-        deadLetterQueue.computeIfAbsent(event.getEventType(), k -> List.of()).add(event);
-        totalEventsInDeadLetterQueue.incrementAndGet();
     }
 
     private CompletableFuture<EventPublishResult> retryEvent(AgentEvent event) {
-        logger.debug("Retrying event: {}", event.getEventId());
-        return routeEvent(event);
+        // Retry event delivery
+        return routeEvent(event).thenApply(result -> {
+            if (result.isSuccess()) {
+                // Remove from dead letter queue
+                deadLetterQueue.values().forEach(events -> events.remove(event));
+                recordMetrics("agent-event-bus", "event-retry-success", true, Duration.ZERO);
+            } else {
+                // Increment retry count
+                event.incrementRetryCount();
+                recordMetrics("agent-event-bus", "event-retry-failed", false, Duration.ZERO);
+            }
+            return result;
+        });
     }
 
-    private final Map<String, AgentEvent> pendingEvents = new ConcurrentHashMap<>();
-
     private void processEventQueue() {
-        try {
-            logger.debug("Processing event queue");
-
-            // Process pending events
-            for (Map.Entry<String, AgentEvent> entry : pendingEvents.entrySet()) {
-                String eventId = entry.getKey();
-                AgentEvent event = entry.getValue();
-
-                try {
-                    // Attempt to route the event
-                    CompletableFuture<EventPublishResult> routeFuture = routeEvent(event);
-                    EventPublishResult result = routeFuture.get();
-
+        // Process pending events from the event store
+        eventStore.values().stream().forEach(event -> {
+            try {
+                // Route the event to subscribers
+                routeEvent(event).thenAccept(result -> {
                     if (result.isSuccess()) {
-                        // Event processed successfully
-                        pendingEvents.remove(eventId);
-                        totalEventsDelivered.incrementAndGet();
-
-                        logger.debug("Event {} processed successfully", eventId);
+                        // Remove from event store after successful processing
+                        eventStore.remove(event.getEventId());
+                        recordMetrics("agent-event-bus", "event-queue-processed", true, Duration.ZERO);
                     } else {
-                        // Event processing failed, add to dead letter queue
-                        addToDeadLetterQueue(event);
-                        totalEventsFailed.incrementAndGet();
-
-                        logger.warn("Event {} processing failed: {}", eventId, result.getMessage());
+                        // Move to dead letter queue if processing failed
+                        deadLetterQueue.computeIfAbsent(event.getEventType(), k -> new ArrayList<>()).add(event);
+                        eventStore.remove(event.getEventId());
+                        recordMetrics("agent-event-bus", "event-queue-failed", false, Duration.ZERO);
                     }
-
-                } catch (Exception e) {
-                    logger.error("Error processing event {}: {}", eventId, e.getMessage());
-
-                    // Add to dead letter queue on error
-                    addToDeadLetterQueue(event);
-                    totalEventsFailed.incrementAndGet();
-                }
+                });
+            } catch (Exception e) {
+                logger.error("Error processing event from queue {}: {}", event.getEventId(), e.getMessage(), e);
+                recordMetrics("agent-event-bus", "event-queue-error", false, Duration.ZERO);
             }
-
-        } catch (Exception e) {
-            logger.error("Error in event queue processing: {}", e.getMessage(), e);
-        }
+        });
     }
 
     private void processEventBatches() {
-        try {
-            logger.debug("Processing event batches");
+        // Process event batches
+        eventBatches.forEach((batchId, batch) -> {
+            try {
+                long successful = batch.stream().mapToLong(event -> {
+                    try {
+                        CompletableFuture<EventPublishResult> result = routeEvent(event);
+                        return result.get().isSuccess() ? 1 : 0;
+                    } catch (Exception e) {
+                        return 0;
+                    }
+                }).sum();
 
-            // Process event batches for optimization
-            for (Map.Entry<String, List<AgentEvent>> entry : eventBatches.entrySet()) {
-                String batchId = entry.getKey();
-                List<AgentEvent> batch = entry.getValue();
+                recordMetrics("agent-event-bus", "batch-processing-completed", true, Duration.ZERO);
 
-                if (batch.size() >= configuration.get().getMaxEventBatchSize()) {
-                    // Process batch
-                    processBatch(batch);
-
-                    // Clear the batch
-                    eventBatches.remove(batchId);
-
-                    logger.debug("Processed event batch {} with {} events", batchId, batch.size());
-                }
+            } catch (Exception e) {
+                logger.error("Error processing event batch {}: {}", batchId, e.getMessage(), e);
+                recordMetrics("agent-event-bus", "batch-processing-error", false, Duration.ZERO);
             }
-
-        } catch (Exception e) {
-            logger.error("Error in event batch processing: {}", e.getMessage(), e);
-        }
+        });
     }
 
     private void processDeadLetterQueue() {
-        try {
-            logger.debug("Processing dead letter queue");
+        // Process dead letter queue
+        deadLetterQueue.forEach((eventType, events) -> {
+            try {
+                // Process dead letter events
+                List<AgentEvent> eventsToRetry = new ArrayList<>();
+                List<AgentEvent> eventsToRemove = new ArrayList<>();
 
-            // Process events in dead letter queue
-            for (Map.Entry<String, List<AgentEvent>> entry : deadLetterQueue.entrySet()) {
-                String eventType = entry.getKey();
-                List<AgentEvent> events = entry.getValue();
-
-                // Remove events that have exceeded max retries
-                events.removeIf(event -> event.getRetryCount() >= configuration.get().getMaxRetries());
-
-                // Retry events that haven't exceeded max retries
                 for (AgentEvent event : events) {
-                    if (event.getRetryCount() < configuration.get().getMaxRetries()) {
-                        try {
-                            CompletableFuture<EventPublishResult> retryFuture = routeEvent(event);
-                            EventPublishResult result = retryFuture.get();
-
+                    // Check if event should be retried
+                    if (event.getRetryCount() < getMaxRetries(event)) {
+                        // Retry the event
+                        CompletableFuture<EventPublishResult> retryResult = routeEvent(event);
+                        retryResult.thenAccept(result -> {
                             if (result.isSuccess()) {
-                                // Retry successful, remove from dead letter queue
-                                events.remove(event);
-                                totalEventsDelivered.incrementAndGet();
-
-                                logger.info("Event {} retry successful after {} attempts", event.getEventId(),
-                                        event.getRetryCount() + 1);
+                                // Event successfully retried, remove from dead letter queue
+                                eventsToRemove.add(event);
+                                recordMetrics("agent-event-bus", "dead-letter-retry-success", true, Duration.ZERO);
                             } else {
                                 // Retry failed, increment retry count
                                 event.incrementRetryCount();
-
-                                logger.warn("Event {} retry failed (attempt {}): {}", event.getEventId(),
-                                        event.getRetryCount(), result.getMessage());
+                                recordMetrics("agent-event-bus", "dead-letter-retry-failed", false, Duration.ZERO);
                             }
-
-                        } catch (Exception e) {
-                            logger.error("Error during retry for event {}: {}", event.getEventId(), e.getMessage());
-                            event.incrementRetryCount();
-                        }
+                        });
+                    } else {
+                        // Max retries exceeded, remove from dead letter queue
+                        eventsToRemove.add(event);
+                        recordMetrics("agent-event-bus", "dead-letter-max-retries-exceeded", false, Duration.ZERO);
+                        logger.warn("Event {} exceeded max retries, removing from dead letter queue",
+                                event.getEventId());
                     }
                 }
+
+                // Remove processed events from dead letter queue
+                events.removeAll(eventsToRemove);
+
+                recordMetrics("agent-event-bus", "dead-letter-processing", true, Duration.ZERO);
+
+            } catch (Exception e) {
+                logger.error("Error processing dead letter queue for {}: {}", eventType, e.getMessage(), e);
+                recordMetrics("agent-event-bus", "dead-letter-processing-error", false, Duration.ZERO);
             }
-
-        } catch (Exception e) {
-            logger.error("Error in dead letter queue processing: {}", e.getMessage(), e);
-        }
-    }
-
-    private void processBatch(List<AgentEvent> batch) {
-        try {
-            // Process a batch of events together for efficiency
-            List<CompletableFuture<EventPublishResult>> futures = batch.stream().map(this::routeEvent).toList();
-
-            // Wait for all events in the batch to complete
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
-
-            // Count successful deliveries
-            long successful = futures.stream().mapToLong(future -> {
-                try {
-                    return future.get().isSuccess() ? 1 : 0;
-                } catch (Exception e) {
-                    return 0;
-                }
-            }).sum();
-
-            totalEventsDelivered.addAndGet(successful);
-            totalEventsFailed.addAndGet(batch.size() - successful);
-
-            logger.debug("Batch processing completed: {} successful, {} failed out of {} events", successful,
-                    batch.size() - successful, batch.size());
-
-        } catch (Exception e) {
-            logger.error("Error processing event batch: {}", e.getMessage(), e);
-
-            // Mark all events in batch as failed
-            totalEventsFailed.addAndGet(batch.size());
-
-            // Add failed events to dead letter queue
-            for (AgentEvent event : batch) {
-                addToDeadLetterQueue(event);
-            }
-        }
+        });
     }
 
     private void shutdownExecutor(ScheduledExecutorService executor) {
@@ -587,7 +610,49 @@ public class AgentEventBusIntegration implements EventSubscriber {
         }
     }
 
-    // Inner classes and interfaces extracted to top-level types in this package
+    private @Nullable AgentEvent convertOpenHABEventToAgentEvent(Event event) {
+        try {
+            // Convert openHAB event to agent event
+            String eventType = event.getType();
+            String sourceAgentId = "openhab-system"; // Default source for openHAB events
 
-    // Default implementations
+            // Create event options with default settings
+            EventOptions options = EventOptions.builder().timeout(Duration.ofSeconds(30))
+                    .metadata(Map.of("openhabEventType", eventType)).build();
+
+            // Create agent event
+            AgentEvent agentEvent = AgentEvent.builder().eventId(generateEventId()).eventType("openhab." + eventType)
+                    .sourceAgentId(sourceAgentId).payload(event).timestamp(Instant.now()).options(options).build();
+
+            recordMetrics("agent-event-bus", "openhab-event-converted", true, Duration.ZERO);
+            return agentEvent;
+
+        } catch (Exception e) {
+            logger.error("Error converting openHAB event to agent event: {}", e.getMessage(), e);
+            recordMetrics("agent-event-bus", "openhab-event-conversion-failed", false, Duration.ZERO);
+            return null;
+        }
+    }
+
+    private int getMaxRetries(AgentEvent event) {
+        // Get max retries from event options or use default
+        EventOptions options = event.getOptions();
+        if (options != null) {
+            return options.getMaxRetries();
+        }
+        // Default max retries
+        return 3;
+    }
+
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, duration);
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
+        }
+    }
+
+    // Inner classes and interfaces extracted to top-level types in this package
 }

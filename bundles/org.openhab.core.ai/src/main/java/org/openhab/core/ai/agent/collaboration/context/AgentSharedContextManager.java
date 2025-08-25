@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -18,6 +17,7 @@ import org.openhab.core.ai.agent.collaboration.ContextOptions;
 import org.openhab.core.ai.agent.collaboration.ContextVersion;
 import org.openhab.core.ai.agent.collaboration.SharedContext;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -52,6 +52,9 @@ public class AgentSharedContextManager {
     @Reference
     private @Nullable AgentRegistry agentRegistry;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Context storage and management
     private final Map<String, SharedContext> contextStore = new ConcurrentHashMap<>();
     private final Map<String, ContextVersion> contextVersions = new ConcurrentHashMap<>();
@@ -61,13 +64,6 @@ public class AgentSharedContextManager {
     // Context caching and optimization
     private final Map<String, CachedContext> contextCache = new ConcurrentHashMap<>();
     private final Map<String, ContextSchema> contextSchemas = new ConcurrentHashMap<>();
-
-    // Performance monitoring
-    private final AtomicLong totalContextReads = new AtomicLong(0);
-    private final AtomicLong totalContextWrites = new AtomicLong(0);
-    private final AtomicLong totalContextConflicts = new AtomicLong(0);
-    private final AtomicLong totalContextCacheHits = new AtomicLong(0);
-    private final AtomicLong totalContextCacheMisses = new AtomicLong(0);
 
     // Configuration
     private final AtomicReference<ContextManagerConfiguration> configuration = new AtomicReference<>(
@@ -134,7 +130,11 @@ public class AgentSharedContextManager {
         if (existingContext != null) {
             // Check for conflicts
             if (existingContext.getVersion() != options.getExpectedVersion()) {
-                totalContextConflicts.incrementAndGet();
+                // Record context conflict metrics
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    metrics.recordOperation("agent-context", "conflict", true, Duration.ZERO);
+                }
                 return handleContextConflict(contextId, agentId, data, options, existingContext);
             }
         }
@@ -157,7 +157,11 @@ public class AgentSharedContextManager {
         // Notify change listeners
         notifyContextChange(contextId, ContextChangeType.UPDATED, agentId, data);
 
-        totalContextWrites.incrementAndGet();
+        // Record context write metrics
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation("agent-context", "write", true, Duration.ZERO);
+        }
         return CompletableFuture.completedFuture(ContextOperationResult.success("Context updated successfully"));
     }
 
@@ -188,7 +192,11 @@ public class AgentSharedContextManager {
         // Try cache first
         CachedContext cached = contextCache.get(contextId);
         if (cached != null && !cached.isExpired()) {
-            totalContextCacheHits.incrementAndGet();
+            // Record cache hit metrics
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("agent-context", "cache-hit", true, Duration.ZERO);
+            }
             return CompletableFuture
                     .completedFuture(ContextRetrievalResult.success(cached.getContext(), cached.getVersion()));
         }
@@ -196,7 +204,11 @@ public class AgentSharedContextManager {
         // Get from store
         SharedContext context = contextStore.get(contextId);
         if (context == null) {
-            totalContextCacheMisses.incrementAndGet();
+            // Record cache miss metrics
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("agent-context", "cache-miss", true, Duration.ZERO);
+            }
             return CompletableFuture
                     .completedFuture(ContextRetrievalResult.notFound("Context not found: " + contextId));
         }
@@ -214,8 +226,12 @@ public class AgentSharedContextManager {
         // Update cache
         updateContextCache(contextId, context);
 
-        totalContextReads.incrementAndGet();
-        totalContextCacheMisses.incrementAndGet();
+        // Record context read and cache miss metrics
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation("agent-context", "read", true, Duration.ZERO);
+            metrics.recordOperation("agent-context", "cache-miss", true, Duration.ZERO);
+        }
 
         return CompletableFuture.completedFuture(ContextRetrievalResult.success(context, version));
     }
@@ -351,9 +367,18 @@ public class AgentSharedContextManager {
      * @return Context manager statistics
      */
     public ContextManagerStatistics getStatistics() {
-        return new ContextManagerStatistics(totalContextReads.get(), totalContextWrites.get(),
-                totalContextConflicts.get(), totalContextCacheHits.get(), totalContextCacheMisses.get(),
-                contextStore.size(), contextVersions.size(), contextCache.size(), changeListeners.size());
+        // Get statistics from MetricsService if available, otherwise return basic session counts
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            // TODO: Use MetricsService.getStatistics() with proper ContextManagerStatistics
+            // For now, return basic session counts
+            return new ContextManagerStatistics(0, 0, 0, 0, 0, contextStore.size(), contextVersions.size(),
+                    contextCache.size(), changeListeners.size());
+        }
+
+        // Fallback to basic session counts if MetricsService is not available
+        return new ContextManagerStatistics(0, 0, 0, 0, 0, contextStore.size(), contextVersions.size(),
+                contextCache.size(), changeListeners.size());
     }
 
     /**

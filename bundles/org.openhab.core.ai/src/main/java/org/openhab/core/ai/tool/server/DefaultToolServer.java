@@ -5,7 +5,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.error.ErrorRecoveryStatistics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.common.transport.TransportType;
 import org.openhab.core.ai.tool.config.ToolServerConfiguration;
@@ -16,6 +17,8 @@ import org.openhab.core.ai.tool.security.DefaultToolSecurityService;
 import org.openhab.core.ai.tool.server.api.ToolServer;
 import org.openhab.core.ai.tool.server.api.ToolServerState;
 import org.osgi.framework.BundleContext;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +68,10 @@ public class DefaultToolServer implements ToolServer {
     // Security and reliability managers
     private volatile @Nullable DefaultToolSecurityService securityManager;
     private volatile @Nullable DefaultErrorRecoveryService errorRecoveryManager;
+
+    // Metrics service for centralized metrics collection
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL)
+    private @Nullable MetricsService metricsService;
 
     /**
      * Enumeration of server states.
@@ -440,7 +447,7 @@ public class DefaultToolServer implements ToolServer {
         }
 
         // Create the sync server using McpServer.sync
-        McpSyncServer syncServer = McpServer.sync(mcpTransport).serverInfo(serverId, "1.0.0")
+        McpSyncServer syncServer = McpServer.sync(mcpTransport).serverInfo(serverId, "1.00")
                 .capabilities(ServerCapabilities.builder().resources(false, true) // Resource support with list changes
                                                                                   // notifications
                         .tools(true) // Tool support with list changes notifications
@@ -496,7 +503,7 @@ public class DefaultToolServer implements ToolServer {
         }
 
         // Create the async server using McpServer.async
-        McpAsyncServer asyncServer = McpServer.async(mcpTransport).serverInfo(serverId, "1.0.0")
+        McpAsyncServer asyncServer = McpServer.async(mcpTransport).serverInfo(serverId, "1.00")
                 .capabilities(ServerCapabilities.builder().resources(false, true) // Resource support with list changes
                                                                                   // notifications
                         .tools(true) // Tool support with list changes notifications
@@ -657,5 +664,33 @@ public class DefaultToolServer implements ToolServer {
     public String toString() {
         return String.format("ToolServer{serverId='%s', state=%s, transportType=%s, healthy=%s}", serverId, state.get(),
                 currentTransportType, transportHealthy);
+    }
+
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for DefaultToolServer");
+    }
+
+    protected void unsetMetricsService(MetricsService metricsService) {
+        this.metricsService = null;
+        logger.debug("MetricsService unset for DefaultToolServer");
+    }
+
+    /**
+     * Record metrics for transport operations
+     */
+    private void recordMetrics(String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                metrics.recordOperation("tool-server-transport", operation, success,
+                        java.time.Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.debug("Failed to record metrics for {}.{}: {}", "tool-server-transport", operation,
+                        e.getMessage());
+            }
+        } else {
+            logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+        }
     }
 }

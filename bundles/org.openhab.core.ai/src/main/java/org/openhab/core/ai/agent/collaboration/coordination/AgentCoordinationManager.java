@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -18,6 +17,7 @@ import org.openhab.core.ai.agent.collaboration.ContextAccessLevel;
 import org.openhab.core.ai.agent.collaboration.SharedContext;
 import org.openhab.core.ai.agent.collaboration.coordination.api.CoordinationProtocol;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -46,17 +46,14 @@ public class AgentCoordinationManager {
     @Reference
     private @Nullable AgentRegistry agentRegistry;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Coordination state
     private final Map<String, CoordinationSession> activeSessions = new ConcurrentHashMap<>();
     private final Map<String, ConflictResolutionSession> conflictSessions = new ConcurrentHashMap<>();
     private final Map<String, SharedContext> sharedContexts = new ConcurrentHashMap<>();
     private final Map<String, CoordinationProtocol> protocols = new ConcurrentHashMap<>();
-
-    // Metrics and monitoring
-    private final AtomicLong totalCoordinationSessions = new AtomicLong(0);
-    private final AtomicLong totalConflictResolutions = new AtomicLong(0);
-    private final AtomicLong totalContextSharing = new AtomicLong(0);
-    private final AtomicLong totalProtocolExecutions = new AtomicLong(0);
 
     // Configuration
     private final AtomicReference<CoordinationConfiguration> configuration = new AtomicReference<>(
@@ -91,7 +88,13 @@ public class AgentCoordinationManager {
                 .protocol(protocol).startTime(Instant.now()).state(CoordinationState.INITIATED).build();
 
         activeSessions.put(sessionId, session);
-        totalCoordinationSessions.incrementAndGet();
+
+        // Record coordination session metrics
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation("agent-coordination", "session-start", true,
+                    Duration.between(session.getStartTime(), Instant.now()));
+        }
 
         // Execute coordination protocol
         return protocol.execute(session).thenApply(result -> {
@@ -125,7 +128,13 @@ public class AgentCoordinationManager {
                 .startTime(Instant.now()).state(ConflictResolutionState.INITIATED).build();
 
         conflictSessions.put(conflictId, session);
-        totalConflictResolutions.incrementAndGet();
+
+        // Record conflict resolution metrics
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation("agent-coordination", "conflict-resolution", true,
+                    Duration.between(session.getStartTime(), Instant.now()));
+        }
 
         // Apply conflict resolution strategy
         ConflictResolutionStrategy strategy = selectConflictResolutionStrategy(conflictType);
@@ -160,7 +169,12 @@ public class AgentCoordinationManager {
                 .accessLevel(accessLevel).createdAt(Instant.now()).lastModifiedAt(Instant.now()).version(1).build();
 
         sharedContexts.put(contextId, context);
-        totalContextSharing.incrementAndGet();
+
+        // Record context sharing metrics
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation("agent-coordination", "context-sharing", true, Duration.ZERO);
+        }
 
         return context;
     }
@@ -237,9 +251,15 @@ public class AgentCoordinationManager {
      * @return Coordination statistics
      */
     public CoordinationStatistics getStatistics() {
-        return new CoordinationStatistics(totalCoordinationSessions.get(), totalConflictResolutions.get(),
-                totalContextSharing.get(), totalProtocolExecutions.get(), activeSessions.size(),
-                conflictSessions.size(), sharedContexts.size(), protocols.size());
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            // Use MetricsService to get coordination statistics directly
+            return metrics.getAgentCoordinationStatistics("default", Duration.ofHours(24));
+        }
+
+        // Fallback to empty statistics if MetricsService is not available
+        return new CoordinationStatistics(0L, 0L, 0L, 0L, activeSessions.size(), conflictSessions.size(),
+                sharedContexts.size(), protocols.size());
     }
 
     /**

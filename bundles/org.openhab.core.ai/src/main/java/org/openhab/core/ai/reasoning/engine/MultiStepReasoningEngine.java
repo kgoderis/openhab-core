@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -17,6 +16,8 @@ import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ReasoningContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.ReasoningPerformanceStatistics;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelResponseActionParser;
@@ -26,10 +27,10 @@ import org.openhab.core.ai.reasoning.config.MultiStepReasoningConfiguration;
 import org.openhab.core.ai.reasoning.engine.analysis.ReasoningStepAnalysisService;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.engine.persistence.ReasoningStepPersistenceService;
-import org.openhab.core.ai.reasoning.monitoring.OrchestrationPerformanceMetrics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,12 +71,10 @@ public class MultiStepReasoningEngine {
     @Reference
     private @Nullable ReasoningStepAnalysisService analysisService;
 
-    // Performance monitoring
-    private final AtomicLong totalReasoningSessions = new AtomicLong(0);
-    private final AtomicLong successfulReasoningSessions = new AtomicLong(0);
-    private final AtomicLong failedReasoningSessions = new AtomicLong(0);
-    private final AtomicLong totalReasoningSteps = new AtomicLong(0);
-    private final AtomicLong totalActions = new AtomicLong(0);
+    // Metrics service for centralized metrics collection
+    private @Nullable MetricsService metricsService;
+
+    // Session durations tracking
     private final ConcurrentHashMap<String, Long> sessionDurations = new ConcurrentHashMap<>();
 
     // Configuration
@@ -87,9 +86,52 @@ public class MultiStepReasoningEngine {
         this.configuration = new MultiStepReasoningConfiguration();
     }
 
+    @Modified
+    public void modified() {
+        logger.debug("Multi-Step Reasoning Engine configuration modified");
+    }
+
     @Deactivate
     public void deactivate() {
         logger.debug("Multi-Step Reasoning Engine deactivated");
+    }
+
+    /**
+     * Set the metrics service for centralized metrics recording.
+     * 
+     * @param metricsService the metrics service to use
+     */
+    public void setMetricsService(@Nullable MetricsService metricsService) {
+        this.metricsService = metricsService;
+    }
+
+    /**
+     * Unset the metrics service.
+     * 
+     * @param metricsService the metrics service to unset
+     */
+    public void unsetMetricsService(@Nullable MetricsService metricsService) {
+        this.metricsService = null;
+    }
+
+    /**
+     * Record metrics for a reasoning operation.
+     * 
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param durationNanos the operation duration in nanoseconds
+     */
+    private void recordMetrics(String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                metrics.recordOperation("reasoning", operation, success, Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.debug("Failed to record metrics for {}.{}: {}", "reasoning", operation, e.getMessage());
+            }
+        } else {
+            logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+        }
     }
 
     /**
@@ -101,13 +143,13 @@ public class MultiStepReasoningEngine {
             Instant startTime = Instant.now();
 
             logger.debug("Starting multi-step reasoning session: {}", sessionId);
-            totalReasoningSessions.incrementAndGet();
+            recordMetrics("reasoning_session_start", true, Duration.between(startTime, Instant.now()).toNanos());
 
             try {
                 return executeReasoningSession(sessionId, context, startTime);
             } catch (Exception e) {
                 logger.error("Multi-step reasoning session {} failed", sessionId, e);
-                failedReasoningSessions.incrementAndGet();
+                recordMetrics("reasoning_session_error", false, Duration.between(startTime, Instant.now()).toNanos());
                 return createErrorResult(sessionId, context, e, startTime);
             }
         });
@@ -140,7 +182,8 @@ public class MultiStepReasoningEngine {
                 // Execute single reasoning step
                 ReasoningStep step = executeReasoningStep(sessionId, stepNumber, accumulatedContext, context);
                 steps.add(step);
-                totalReasoningSteps.incrementAndGet();
+                recordMetrics("reasoning_step_execution", true,
+                        Duration.between(stepStartTime, Instant.now()).toNanos());
 
                 // Accumulate context from step
                 accumulatedContext = accumulateContext(accumulatedContext, step);
@@ -150,10 +193,8 @@ public class MultiStepReasoningEngine {
                     for (ExecutionContext action : step.getToolCalls()) {
                         ActionResult executedAction = executeAction(action, context);
                         actions.add(executedAction);
-                        totalActions.incrementAndGet();
-
-                        // Add action result to accumulated context
-                        accumulatedContext = accumulateActionResult(accumulatedContext, executedAction);
+                        recordMetrics("action_execution", true,
+                                Duration.between(Instant.now(), Instant.now()).toNanos());
                     }
                 }
 
@@ -198,9 +239,9 @@ public class MultiStepReasoningEngine {
         recordPerformanceMetrics(sessionId, result);
 
         if (completed) {
-            successfulReasoningSessions.incrementAndGet();
+            recordMetrics("reasoning_session_success", true, Duration.between(startTime, Instant.now()).toNanos());
         } else {
-            failedReasoningSessions.incrementAndGet();
+            recordMetrics("reasoning_session_failure", false, Duration.between(startTime, Instant.now()).toNanos());
         }
 
         return result;
@@ -578,14 +619,31 @@ public class MultiStepReasoningEngine {
     /**
      * Get performance metrics
      */
-    public OrchestrationPerformanceMetrics getPerformanceMetrics() {
-        return new OrchestrationPerformanceMetrics("multi-step-reasoning-engine", totalReasoningSessions.get(),
-                successfulReasoningSessions.get(), failedReasoningSessions.get(), 0, // totalProcessingTime - not
-                                                                                     // tracked yet
-                calculateAverageSessionDuration(), // averageResponseTime
-                0, // activeSessions - not tracked yet
-                totalReasoningSessions.get() // totalSessions
-        );
+    public ReasoningPerformanceStatistics getPerformanceMetrics() {
+        MetricsService metricsService = this.metricsService;
+        if (metricsService != null) {
+            try {
+                return metricsService.getReasoningPerformanceStatistics("default", Duration.ofHours(1));
+            } catch (Exception e) {
+                logger.warn("Error retrieving reasoning performance statistics: {}", e.getMessage());
+                // Fallback to empty statistics
+                return ReasoningPerformanceStatistics.fromReasoningData(0L, 0L, 0L, 0L, 0L, 0L, 0.0, 0L, 0.0, 0.0, 0.0,
+                        0.0, Map.of(), Map.of(), Map.of(), Map.of(), Duration.ofHours(1));
+            }
+        } else {
+            // Fallback to empty statistics when MetricsService is not available
+            return ReasoningPerformanceStatistics.fromReasoningData(0L, 0L, 0L, 0L, 0L, 0L, 0.0, 0L, 0.0, 0.0, 0.0, 0.0,
+                    Map.of(), Map.of(), Map.of(), Map.of(), Duration.ofHours(1));
+        }
+    }
+
+    /**
+     * Reset performance metrics
+     */
+    public void resetMetrics() {
+        // Clear session durations cache
+        sessionDurations.clear();
+        logger.debug("Reasoning performance metrics reset");
     }
 
     /**

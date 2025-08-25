@@ -5,10 +5,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.service.statistics.ReasoningPerformanceStatistics;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepStatus;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepType;
-import org.openhab.core.ai.reasoning.engine.monitoring.ReasoningStepStorageStatistics;
 
 /**
  * Service for persisting and retrieving reasoning steps.
@@ -178,7 +178,7 @@ public interface ReasoningStepPersistenceService {
      * 
      * @return storage statistics
      */
-    ReasoningStepStorageStatistics getStorageStatistics();
+    ReasoningPerformanceStatistics getStorageStatistics();
 
     /**
      * Create a backup of all reasoning steps.

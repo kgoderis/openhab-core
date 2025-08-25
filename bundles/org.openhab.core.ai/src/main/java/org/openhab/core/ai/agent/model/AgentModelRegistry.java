@@ -1,5 +1,6 @@
 package org.openhab.core.ai.agent.model;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -10,8 +11,13 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.agent.monitoring.AgentModelRegistryMetrics;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
 import org.openhab.core.ai.model.api.ModelProviderType;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +32,7 @@ import org.slf4j.LoggerFactory;
  * @author Karel Goderis - Initial Contribution
  * @since 4.0.0
  */
+@Component(service = AgentModelRegistry.class)
 @NonNullByDefault
 public final class AgentModelRegistry {
 
@@ -34,6 +41,10 @@ public final class AgentModelRegistry {
     private final Map<String, AgentModel> models = new ConcurrentHashMap<>();
     private final Map<String, AgentModelConfiguration> configurations = new ConcurrentHashMap<>();
     private final ReadWriteLock registryLock = new ReentrantReadWriteLock();
+
+    // Metrics service for centralized metrics collection
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL)
+    private @Nullable MetricsService metricsService;
 
     /**
      * Register a new agent model.
@@ -344,20 +355,37 @@ public final class AgentModelRegistry {
      * 
      * @return registry statistics
      */
-    public AgentModelRegistryMetrics getStatistics() {
-        registryLock.readLock().lock();
-        try {
-            Map<ModelProviderType, Long> providerCounts = models.values().stream().collect(java.util.stream.Collectors
-                    .groupingBy(AgentModel::getProviderType, java.util.stream.Collectors.counting()));
+    public AgentBehaviorStatistics getStatistics() {
+        // Create AgentBehaviorStatistics from registry data
+        return AgentBehaviorStatistics.fromSnapshots(List.of(), // No snapshots available yet - will be integrated with
+                                                                // MetricsService
+                Duration.ofDays(1));
+    }
 
-            Map<String, Long> capabilityCounts = models.values().stream()
-                    .flatMap(model -> model.getCapabilities().stream()).collect(java.util.stream.Collectors
-                            .groupingBy(capability -> capability, java.util.stream.Collectors.counting()));
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for AgentModelRegistry");
+    }
 
-            return new AgentModelRegistryMetrics("registry-stats", models.size(), configurations.size(), providerCounts,
-                    capabilityCounts, 0L, 0L, 0L, 0L, 0.0);
-        } finally {
-            registryLock.readLock().unlock();
+    protected void unsetMetricsService(MetricsService metricsService) {
+        this.metricsService = null;
+        logger.debug("MetricsService unset for AgentModelRegistry");
+    }
+
+    /**
+     * Record metrics for agent model registry operations
+     */
+    private void recordMetrics(String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                metrics.recordOperation("agent-model-registry", operation, success, Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.debug("Failed to record metrics for {}.{}: {}", "agent-model-registry", operation,
+                        e.getMessage());
+            }
+        } else {
+            logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
         }
     }
 }

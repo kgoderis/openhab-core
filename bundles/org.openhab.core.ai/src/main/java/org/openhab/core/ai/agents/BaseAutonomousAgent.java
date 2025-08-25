@@ -21,6 +21,7 @@ import org.openhab.core.ai.agent.core.AgentState;
 import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.common.context.AgentContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
 import org.openhab.core.ai.reasoning.input.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
@@ -63,10 +64,7 @@ public abstract class BaseAutonomousAgent {
     private final AtomicReference<AgentContext> context = new AtomicReference<>(new AgentContext());
     private final Map<String, Object> persistentState = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalSkillsExecuted = new AtomicLong(0);
-    private final AtomicLong totalSkillsSucceeded = new AtomicLong(0);
-    private final AtomicLong totalSkillsFailed = new AtomicLong(0);
+    // Performance monitoring - now handled by MetricsService
     protected final AtomicLong totalProcessingTime = new AtomicLong(0);
 
     // Threading
@@ -82,6 +80,9 @@ public abstract class BaseAutonomousAgent {
 
     @Reference
     private @Nullable AgentSkillManager skillManager;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Configuration
     private Duration skillTimeout = DEFAULT_SKILL_TIMEOUT;
@@ -566,12 +567,10 @@ public abstract class BaseAutonomousAgent {
      * @param duration the execution duration
      */
     private void recordSkillMetrics(String skillName, AgentSkillResult result, Duration duration) {
-        totalSkillsExecuted.incrementAndGet();
-
-        if (result.isSuccess()) {
-            totalSkillsSucceeded.incrementAndGet();
-        } else {
-            totalSkillsFailed.incrementAndGet();
+        // Record metrics using MetricsService
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation("agent", "skill-execution", result.isSuccess(), duration);
         }
 
         totalProcessingTime.addAndGet(duration.toMillis());
@@ -705,8 +704,27 @@ public abstract class BaseAutonomousAgent {
      * @return the agent metrics
      */
     public AgentMetrics getMetrics() {
-        return new AgentMetrics(getAgentId(), state.get(), totalSkillsExecuted.get(), totalSkillsSucceeded.get(),
-                totalSkillsFailed.get(), totalProcessingTime.get(), new ArrayList<>(), Instant.now());
+        // Get metrics from MetricsService
+        MetricsService metrics = metricsService;
+        long totalSkillsExecuted = 0;
+        long totalSkillsSucceeded = 0;
+        long totalSkillsFailed = 0;
+
+        if (metrics != null) {
+            try {
+                var snapshot = metrics.getDomainAggregatedSnapshot("agent");
+                totalSkillsExecuted = snapshot.totalOperations();
+                totalSkillsSucceeded = snapshot.totalOperations() - snapshot.failedOperations();
+                totalSkillsFailed = snapshot.failedOperations();
+            } catch (Exception e) {
+                logger.warn("Error retrieving metrics for agent {}: {}", getAgentId(), e.getMessage());
+            }
+        } else {
+            logger.warn("MetricsService not available, returning empty metrics for agent {}", getAgentId());
+        }
+
+        return new AgentMetrics(getAgentId(), state.get(), totalSkillsExecuted, totalSkillsSucceeded, totalSkillsFailed,
+                totalProcessingTime.get(), new ArrayList<>(), Instant.now());
     }
 
     /**

@@ -17,6 +17,7 @@ import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.automation.Rule;
 import org.openhab.core.automation.RuleRegistry;
 import org.openhab.core.items.ItemRegistry;
@@ -50,6 +51,9 @@ public class GetRuleStatisticsAction implements Action {
 
     @Reference
     private @Nullable ItemRegistry itemRegistry;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     @Override
     public String getActionId() {
@@ -143,6 +147,7 @@ public class GetRuleStatisticsAction implements Action {
     @Override
     public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
+        boolean success = false;
 
         try {
             String ruleUID = (String) parameters.get("ruleUID");
@@ -229,12 +234,22 @@ public class GetRuleStatisticsAction implements Action {
 
             long executionTime = System.currentTimeMillis() - executionStartTime;
             logger.debug("Retrieved statistics for rule: {} in {}ms", ruleUID, executionTime);
+            success = true;
 
             return ActionResult.success(result, executionTime);
 
         } catch (Exception e) {
+            long executionTime = System.currentTimeMillis() - executionStartTime;
             logger.error("Error getting rule statistics: {}", e.getMessage(), e);
             throw new ActionException(getActionId(), "Failed to get rule statistics: " + e.getMessage(), e);
+        } finally {
+            // Record metrics
+            long duration = System.currentTimeMillis() - executionStartTime;
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("action", "get-rule-statistics", success,
+                        java.time.Duration.ofMillis(duration));
+            }
         }
     }
 

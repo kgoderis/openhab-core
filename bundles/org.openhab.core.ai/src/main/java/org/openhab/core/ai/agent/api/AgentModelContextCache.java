@@ -19,14 +19,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.context.AgentModelContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.reasoning.memory.CacheEntry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,9 +49,9 @@ public class AgentModelContextCache {
 
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
     private final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor();
-    private final AtomicLong cacheHits = new AtomicLong(0);
-    private final AtomicLong cacheMisses = new AtomicLong(0);
-    private final AtomicLong cacheEvictions = new AtomicLong(0);
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Configuration
     private final int maxCacheSize;
@@ -97,99 +99,96 @@ public class AgentModelContextCache {
         CacheEntry entry = cache.get(contextId);
 
         if (entry == null) {
-            cacheMisses.incrementAndGet();
-            logger.debug("Cache miss for context: {}", contextId);
+            recordMetrics("agent-model-context-cache", "cache-miss", true, Duration.ZERO);
             return null;
         }
 
+        // Check if entry has expired
         if (entry.isExpired()) {
             cache.remove(contextId);
-            cacheEvictions.incrementAndGet();
-            cacheMisses.incrementAndGet();
-            logger.debug("Cache hit for expired context: {}", contextId);
+            recordMetrics("agent-model-context-cache", "cache-eviction", true, Duration.ZERO);
+            recordMetrics("agent-model-context-cache", "cache-miss", true, Duration.ZERO);
             return null;
         }
 
-        cacheHits.incrementAndGet();
-        entry.updateLastAccess();
-        logger.debug("Cache hit for context: {}", contextId);
+        recordMetrics("agent-model-context-cache", "cache-hit", true, Duration.ZERO);
         return entry.getContext();
     }
 
     /**
      * Put a context into the cache.
      * 
+     * @param contextId The context ID
      * @param context The context to cache
-     * @return True if successfully cached, false otherwise
      */
-    public boolean put(AgentModelContext context) {
-        return put(context, defaultExpiration);
+    public void put(String contextId, AgentModelContext context) {
+        put(contextId, context, defaultExpiration);
     }
 
     /**
      * Put a context into the cache with custom expiration.
      * 
+     * @param contextId The context ID
      * @param context The context to cache
-     * @param expiration The expiration time for this context
-     * @return True if successfully cached, false otherwise
+     * @param expiration The expiration time
      */
-    public boolean put(AgentModelContext context, Duration expiration) {
-        if (context == null) {
-            logger.warn("Attempted to cache null context");
-            return false;
-        }
-
-        String contextId = context.getContextId();
-        if (contextId == null || contextId.trim().isEmpty()) {
-            logger.warn("Attempted to cache context with null or empty ID");
-            return false;
-        }
-
-        // Check cache size limit
+    public void put(String contextId, AgentModelContext context, Duration expiration) {
+        // Check if cache is full and evict oldest entry if necessary
         if (cache.size() >= maxCacheSize) {
-            evictLeastRecentlyUsed();
+            evictOldestEntry();
         }
 
         CacheEntry entry = new CacheEntry(context, expiration);
         cache.put(contextId, entry);
-
-        logger.debug("Cached context: {} with expiration: {}", contextId, expiration);
-        return true;
+        recordMetrics("agent-model-context-cache", "cache-put", true, Duration.ZERO);
     }
 
     /**
      * Remove a context from the cache.
      * 
      * @param contextId The context ID to remove
-     * @return True if the context was removed, false if not found
+     * @return The removed context, or null if not found
      */
-    public boolean remove(String contextId) {
-        CacheEntry removed = cache.remove(contextId);
-        if (removed != null) {
-            logger.debug("Removed context from cache: {}", contextId);
-            return true;
+    public AgentModelContext remove(String contextId) {
+        CacheEntry entry = cache.remove(contextId);
+        if (entry != null) {
+            recordMetrics("agent-model-context-cache", "cache-remove", true, Duration.ZERO);
+            return entry.getContext();
         }
-        return false;
+        return null;
     }
 
     /**
-     * Clear all contexts from the cache.
+     * Clear all cached contexts.
      */
     public void clear() {
         int size = cache.size();
         cache.clear();
-        logger.info("Cleared {} contexts from cache", size);
+        recordMetrics("agent-model-context-cache", "cache-clear", true, Duration.ZERO);
+        logger.info("Cleared {} cached contexts", size);
     }
 
     /**
-     * Check if a context exists in the cache.
+     * Get the current cache size.
+     * 
+     * @return Number of cached contexts
+     */
+    public int size() {
+        return cache.size();
+    }
+
+    /**
+     * Check if the cache contains a context.
      * 
      * @param contextId The context ID to check
-     * @return True if the context exists and is not expired, false otherwise
+     * @return true if the context is cached and not expired
      */
     public boolean contains(String contextId) {
         CacheEntry entry = cache.get(contextId);
-        return entry != null && !entry.isExpired();
+        if (entry == null || entry.isExpired()) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -198,102 +197,75 @@ public class AgentModelContextCache {
      * @return Cache statistics
      */
     public AgentModelContextCacheStatistics getStatistics() {
-        return new AgentModelContextCacheStatistics(cache.size(), cacheHits.get(), cacheMisses.get(),
-                cacheEvictions.get(), maxCacheSize, defaultExpiration);
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var snapshot = metrics.getDomainAggregatedSnapshot("agent-model-context-cache");
+                long hits = snapshot.totalOperations() - snapshot.failedOperations(); // Approximate hits
+                long misses = snapshot.failedOperations(); // Approximate misses
+                long evictions = 0L; // Placeholder - would need domain-specific data
+                return new AgentModelContextCacheStatistics(cache.size(), hits, misses, evictions, maxCacheSize,
+                        defaultExpiration);
+            } catch (Exception e) {
+                logger.warn("Error retrieving metrics for agent-model-context-cache: {}", e.getMessage());
+                // Fallback to default values
+                return new AgentModelContextCacheStatistics(cache.size(), 0L, 0L, 0L, maxCacheSize, defaultExpiration);
+            }
+        } else {
+            // Fallback to default values if MetricsService is not available
+            return new AgentModelContextCacheStatistics(cache.size(), 0L, 0L, 0L, maxCacheSize, defaultExpiration);
+        }
     }
 
     /**
-     * Get the current cache size.
-     * 
-     * @return Number of contexts currently in the cache
+     * Evict the oldest entry from the cache.
      */
-    public int size() {
-        return cache.size();
-    }
+    private void evictOldestEntry() {
+        String oldestKey = null;
+        Instant oldestTime = Instant.now();
 
-    /**
-     * Check if the cache is empty.
-     * 
-     * @return True if the cache is empty, false otherwise
-     */
-    public boolean isEmpty() {
-        return cache.isEmpty();
-    }
+        for (Map.Entry<String, CacheEntry> entry : cache.entrySet()) {
+            if (entry.getValue().getExpirationTime().isBefore(oldestTime)) {
+                oldestTime = entry.getValue().getExpirationTime();
+                oldestKey = entry.getKey();
+            }
+        }
 
-    /**
-     * Get the maximum cache size.
-     * 
-     * @return Maximum number of contexts allowed in the cache
-     */
-    public int getMaxCacheSize() {
-        return maxCacheSize;
-    }
-
-    /**
-     * Get the default expiration time.
-     * 
-     * @return Default expiration time for cached contexts
-     */
-    public Duration getDefaultExpiration() {
-        return defaultExpiration;
+        if (oldestKey != null) {
+            cache.remove(oldestKey);
+            recordMetrics("agent-model-context-cache", "cache-eviction", true, Duration.ZERO);
+            logger.debug("Evicted oldest cache entry: {}", oldestKey);
+        }
     }
 
     /**
      * Start the cleanup task.
      */
     private void startCleanupTask() {
-        cleanupExecutor.scheduleAtFixedRate(this::cleanupExpiredEntries, cleanupInterval.toMillis(),
-                cleanupInterval.toMillis(), TimeUnit.MILLISECONDS);
-        logger.debug("Started cache cleanup task with interval: {}", cleanupInterval);
+        cleanupExecutor.scheduleAtFixedRate(this::cleanupExpiredEntries, cleanupInterval.toMinutes(),
+                cleanupInterval.toMinutes(), TimeUnit.MINUTES);
     }
 
     /**
      * Clean up expired entries from the cache.
      */
     private void cleanupExpiredEntries() {
-        try {
-            int initialSize = cache.size();
-            cache.entrySet().removeIf(entry -> {
-                boolean expired = entry.getValue().isExpired();
-                if (expired) {
-                    cacheEvictions.incrementAndGet();
-                    logger.debug("Cleaned up expired context: {}", entry.getKey());
-                }
-                return expired;
-            });
-
-            int removedCount = initialSize - cache.size();
-            if (removedCount > 0) {
-                logger.debug("Cache cleanup removed {} expired entries", removedCount);
-            }
-        } catch (Exception e) {
-            logger.error("Error during cache cleanup", e);
-        }
-    }
-
-    /**
-     * Evict the least recently used entry from the cache.
-     */
-    private void evictLeastRecentlyUsed() {
-        String lruKey = null;
-        Instant lruTime = Instant.now();
-
+        int removedCount = 0;
         for (Map.Entry<String, CacheEntry> entry : cache.entrySet()) {
-            if (entry.getValue().getLastAccess().isBefore(lruTime)) {
-                lruTime = entry.getValue().getLastAccess();
-                lruKey = entry.getKey();
+            if (entry.getValue().isExpired()) {
+                cache.remove(entry.getKey());
+                removedCount++;
             }
         }
 
-        if (lruKey != null) {
-            cache.remove(lruKey);
-            cacheEvictions.incrementAndGet();
-            logger.debug("Evicted least recently used context: {}", lruKey);
+        if (removedCount > 0) {
+            recordMetrics("agent-model-context-cache", "cache-eviction", true, Duration.ZERO);
+            logger.debug("Cleaned up {} expired cache entries", removedCount);
         }
     }
 
     /**
-     * Cleanup on deactivation.
+     * Deactivate the cache.
      */
     @Deactivate
     public void deactivate() {
@@ -311,13 +283,15 @@ public class AgentModelContextCache {
         logger.info("Agent Model Context Cache deactivated");
     }
 
-    /**
-     * Cache Entry class.
-     */
-    // Extracted: org.openhab.core.ai.reasoning.CacheEntry
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, duration);
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
+        }
+    }
 
-    /**
-     * Cache Statistics class.
-     */
     // CacheStatistics extracted to org.openhab.core.ai.reasoning.AgentModelContextCacheStatistics
 }

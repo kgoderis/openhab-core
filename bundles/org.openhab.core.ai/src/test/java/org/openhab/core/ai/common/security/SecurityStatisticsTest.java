@@ -2,9 +2,12 @@ package org.openhab.core.ai.common.security;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.openhab.core.ai.common.monitoring.service.statistics.SecurityMonitoringStatistics;
 
 /**
  * Unit tests for SecurityStatistics interface and BaseSecurityStatistics class.
@@ -98,28 +101,22 @@ class SecurityStatisticsTest {
     }
 
     @Test
-    void testAgentSecurityStatistics() {
-        Instant now = Instant.now();
-        AgentSecurityStatistics stats = new AgentSecurityStatistics(100, 80, 20, 5, now, 10, 2, true, true, 50, 100, 8);
+    void testSecurityMonitoringStatistics() {
+        // Test that SecurityMonitoringStatistics implements SecurityStatistics correctly
+        SecurityMonitoringStatistics stats = new SecurityMonitoringStatistics(List.of(), Duration.ofDays(30),
+                System.currentTimeMillis());
 
         // Test base functionality
-        assertEquals(100, stats.getTotalOperations());
-        assertEquals(80, stats.getSuccessfulOperations());
-        assertEquals(20, stats.getFailedOperations());
-        assertEquals(5, stats.getSecurityViolations());
-        assertEquals(now, stats.getLastOperationTime());
+        assertEquals(0, stats.getTotalOperations());
+        assertEquals(0, stats.getSuccessfulOperations());
+        assertEquals(0, stats.getFailedOperations());
+        assertEquals(0, stats.getSecurityViolations());
+        assertNull(stats.getLastOperationTime());
 
-        // Test agent-specific functionality
-        assertEquals(10, stats.getActiveClients());
-        assertEquals(2, stats.getBlockedClients());
-        assertTrue(stats.isAuthenticationEnabled());
-        assertTrue(stats.isRequestValidationEnabled());
-        assertEquals(50, stats.getMaxConnections());
-        assertEquals(100, stats.getRateLimitPerMinute());
-        assertEquals(8, stats.getActiveSessions());
-
-        // Test backward-compatible aliases
-        assertEquals(20, stats.getFailedAttempts());
+        // Test calculated rates
+        assertEquals(0.0, stats.getSuccessRate(), 0.01);
+        assertEquals(0.0, stats.getFailureRate(), 0.01);
+        assertEquals(0.0, stats.getViolationRate(), 0.01);
     }
 
     @Test

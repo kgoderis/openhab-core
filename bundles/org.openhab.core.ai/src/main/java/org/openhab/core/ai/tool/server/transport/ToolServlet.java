@@ -12,6 +12,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
 import org.openhab.core.ai.tool.api.ToolException;
@@ -90,6 +91,7 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
     private @Nullable PromptRegistry promptRegistry;
     private @Nullable PromptExecutionService promptExecutionService;
     private @Nullable CompletionSuggestionService completionSuggestionService;
+    private @Nullable MetricsService metricsService;
 
     /**
      * Create a new MCP servlet instance.
@@ -270,36 +272,75 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
         logger.debug("Prompt registry unset from MCP servlet");
     }
 
+    /**
+     * Set the metrics service reference.
+     * 
+     * @param metricsService the metrics service
+     */
+    @Reference
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("Metrics service set for MCP servlet");
+    }
+
+    /**
+     * Unset the metrics service reference.
+     * 
+     * @param metricsService the metrics service
+     */
+    public void unsetMetricsService(@Nullable MetricsService metricsService) {
+        this.metricsService = null;
+        logger.debug("Metrics service unset from MCP servlet");
+    }
+
     @Override
     protected void doGet(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response)
             throws ServletException, IOException {
-        // Handle MCP protocol endpoints
-        if (handleMcpProtocolEndpoints(request, response, "GET")) {
-            return;
-        }
+        long startTime = System.nanoTime();
+        boolean success = false;
 
-        // Validate authentication context for MCP operations
-        if (!validateMcpAuthentication(request, response, "GET")) {
-            return;
-        }
+        try {
+            // Handle MCP protocol endpoints
+            if (handleMcpProtocolEndpoints(request, response, "GET")) {
+                success = true;
+                return;
+            }
 
-        super.doGet(request, response);
+            // Validate authentication context for MCP operations
+            if (!validateMcpAuthentication(request, response, "GET")) {
+                return;
+            }
+
+            super.doGet(request, response);
+            success = true;
+        } finally {
+            recordMetrics("mcp-servlet", "get-request", success, System.nanoTime() - startTime);
+        }
     }
 
     @Override
     protected void doPost(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response)
             throws ServletException, IOException {
-        // Handle MCP protocol endpoints
-        if (handleMcpProtocolEndpoints(request, response, "POST")) {
-            return;
-        }
+        long startTime = System.nanoTime();
+        boolean success = false;
 
-        // Validate authentication context for MCP operations
-        if (!validateMcpAuthentication(request, response, "POST")) {
-            return;
-        }
+        try {
+            // Handle MCP protocol endpoints
+            if (handleMcpProtocolEndpoints(request, response, "POST")) {
+                success = true;
+                return;
+            }
 
-        super.doPost(request, response);
+            // Validate authentication context for MCP operations
+            if (!validateMcpAuthentication(request, response, "POST")) {
+                return;
+            }
+
+            super.doPost(request, response);
+            success = true;
+        } finally {
+            recordMetrics("mcp-servlet", "post-request", success, System.nanoTime() - startTime);
+        }
     }
 
     @Override
@@ -1765,19 +1806,54 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
         ToolRegistry registry = toolRegistry;
         McpSyncServer sync = syncServer.get();
         McpAsyncServer async = asyncServer.get();
+        MetricsService metrics = metricsService;
 
-        // Map previous booleans to generic stats placeholder
+        // Get real metrics from MetricsService
         long totalRequests = 0L;
         long successfulRequests = 0L;
         long failedRequests = 0L;
         long totalResponseTime = 0L;
         double averageResponseTime = 0.0;
+
+        if (metrics != null) {
+            try {
+                var snapshot = metrics.getDomainAggregatedSnapshot("mcp-servlet");
+                totalRequests = snapshot.totalOperations();
+                failedRequests = snapshot.failedOperations();
+                successfulRequests = totalRequests - failedRequests;
+                totalResponseTime = snapshot.totalDurationNanos() / 1_000_000; // Convert to milliseconds
+                averageResponseTime = totalRequests > 0 ? (double) totalResponseTime / totalRequests : 0.0;
+            } catch (Exception e) {
+                logger.warn("Error retrieving metrics for MCP servlet: {}", e.getMessage());
+            }
+        } else {
+            logger.warn("MetricsService not available, returning empty statistics");
+        }
+
         int activeConnections = (sync != null ? 1 : 0) + (async != null ? 1 : 0) + (registry != null ? 1 : 0);
         return ServerStatistics.builder("mcp-servlet").withServerId("mcp-servlet").withServerName("MCP Servlet")
                 .withServerType("HTTP").withProtocol("HTTP/SSE").withTotalRequests(totalRequests)
                 .withSuccessfulRequests(successfulRequests).withFailedRequests(failedRequests)
                 .withTotalResponseTime(totalResponseTime).withAverageResponseTime(averageResponseTime)
                 .withActiveConnections(activeConnections).withHealthy(isHealthy()).build();
+    }
+
+    /**
+     * Record metrics for an operation.
+     * 
+     * @param domain the operation domain
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param durationNanos the operation duration in nanoseconds
+     */
+    private void recordMetrics(String domain, String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
+        }
     }
 
     /**

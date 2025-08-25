@@ -5,12 +5,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
 import org.openhab.core.service.ReadyService.ReadyTracker;
@@ -36,7 +36,7 @@ import io.a2a.spec.AgentSkill;
  * <li><strong>Skill Registration:</strong> Registers skill adapters</li>
  * <li><strong>Skill Lookup:</strong> Provides skill adapter lookup functionality</li>
  * <li><strong>Skill Metadata:</strong> Manages skill metadata and definitions</li>
- * <li><strong>Skill Statistics:</strong> Tracks skill registration statistics</li>
+ * <li><strong>Skill Statistics:</strong> Tracks skill registration statistics via MetricsService</li>
  * <li><strong>Skill Discovery:</strong> Provides skill discovery capabilities</li>
  * <li><strong>Ready State Management:</strong> Manages skill registry ready state</li>
  * </ul>
@@ -52,7 +52,7 @@ import io.a2a.spec.AgentSkill;
  * <li>Returns skill definitions via {@link #getSkillDefinitions()}</li>
  * <li>Returns A2A SDK AgentSkill objects via {@link #getAgentSkills()}</li>
  * <li>Returns all registered skill IDs via {@link #getSkillIds()}</li>
- * <li>Manages skill metadata and statistics</li>
+ * <li>Manages skill metadata and statistics via MetricsService</li>
  * <li>Provides skill discovery capabilities</li>
  * <li>Manages skill registry ready state</li>
  * </ul>
@@ -66,7 +66,7 @@ import io.a2a.spec.AgentSkill;
  * <li>❌ Manage task lifecycle (delegates to AgentTaskManager)</li>
  * <li>❌ Handle authentication (delegates to security manager)</li>
  * <li>❌ Convert parameters (delegates to AgentSkillManagerImpl)</li>
- * <li>❌ Track execution metrics (delegates to AgentSkillExecutor)</li>
+ * <li>❌ Track execution metrics directly (delegates to MetricsService)</li>
  * </ul>
  * </p>
  * 
@@ -78,6 +78,7 @@ import io.a2a.spec.AgentSkill;
  * <li>Does not handle protocol communication</li>
  * <li>Does not manage task lifecycle</li>
  * <li>Does not contain business logic</li>
+ * <li>Does not maintain direct counters (uses MetricsService)</li>
  * </ul>
  * </p>
  * 
@@ -86,6 +87,7 @@ import io.a2a.spec.AgentSkill;
  * <ul>
  * <li>{@link ActionRegistry}: For action-to-skill mapping</li>
  * <li>{@link ReadyService}: For ready state management</li>
+ * <li>{@link MetricsService}: For statistics tracking</li>
  * </ul>
  * </p>
  * 
@@ -111,18 +113,14 @@ public class AgentSkillRegistry implements ReadyTracker {
     @Reference
     private @Nullable ActionRegistry actionRegistry;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Skill registry using SDK patterns
     private final ConcurrentHashMap<String, AgentSkillAdapter> skillAdapters = new ConcurrentHashMap<>();
 
     // Enhanced skill tracking using SDK patterns
     private final ConcurrentHashMap<String, Map<String, Object>> skillMetadata = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, AtomicLong> skillExecutionCounts = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Long> skillLastExecutionTimes = new ConcurrentHashMap<>();
-
-    // Skill execution statistics
-    private final AtomicLong totalExecutions = new AtomicLong(0);
-    private final AtomicLong successfulExecutions = new AtomicLong(0);
-    private final AtomicLong failedExecutions = new AtomicLong(0);
 
     @Activate
     public void activate() {
@@ -150,8 +148,6 @@ public class AgentSkillRegistry implements ReadyTracker {
         // Clean up registrations
         skillAdapters.clear();
         skillMetadata.clear();
-        skillExecutionCounts.clear();
-        skillLastExecutionTimes.clear();
     }
 
     private void initializeSkillRegistry() {
@@ -191,14 +187,14 @@ public class AgentSkillRegistry implements ReadyTracker {
                 Map<String, Object> metadata = createSkillMetadata(action, skillId);
                 skillMetadata.put(skillId, metadata);
 
-                // Initialize execution tracking
-                skillExecutionCounts.put(skillId, new AtomicLong(0));
-                skillLastExecutionTimes.put(skillId, 0L);
+                // Record skill registration metrics
+                recordMetrics("agent-skill", "skill-registration", true, 0L);
 
                 logger.debug("Registered AI action as Agent skill: {} -> {}", action.getActionId(), skillId);
 
             } catch (Exception e) {
                 logger.error("Failed to register AI action as Agent skill: {}", action.getActionId(), e);
+                recordMetrics("agent-skill", "skill-registration", false, 0L);
             }
         }
     }
@@ -247,17 +243,6 @@ public class AgentSkillRegistry implements ReadyTracker {
             definition.put("version", "1.0.0");
             definition.put("openhab", true);
 
-            // Add execution statistics
-            AtomicLong executionCount = skillExecutionCounts.get(skillId);
-            if (executionCount != null) {
-                definition.put("executionCount", executionCount.get());
-            }
-
-            Long lastExecutionTime = skillLastExecutionTimes.get(skillId);
-            if (lastExecutionTime != null) {
-                definition.put("lastExecutionTime", lastExecutionTime);
-            }
-
             // Add metadata if available
             if (metadata != null) {
                 definition.put("metadata", metadata);
@@ -300,37 +285,38 @@ public class AgentSkillRegistry implements ReadyTracker {
 
         // Basic statistics
         stats.put("totalSkills", skillAdapters.size());
-        stats.put("totalExecutions", totalExecutions.get());
-        stats.put("successfulExecutions", successfulExecutions.get());
-        stats.put("failedExecutions", failedExecutions.get());
 
-        // Calculate success rate
-        long total = totalExecutions.get();
-        if (total > 0) {
-            double successRate = (double) successfulExecutions.get() / total;
-            stats.put("successRate", successRate);
+        // Get metrics from MetricsService
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var snapshot = metrics.getDomainAggregatedSnapshot("agent-skill");
+                stats.put("totalExecutions", snapshot.totalOperations());
+                stats.put("successfulExecutions", snapshot.totalOperations() - snapshot.failedOperations());
+                stats.put("failedExecutions", snapshot.failedOperations());
+
+                // Calculate success rate
+                long total = snapshot.totalOperations();
+                if (total > 0) {
+                    double successRate = (double) (snapshot.totalOperations() - snapshot.failedOperations()) / total;
+                    stats.put("successRate", successRate);
+                } else {
+                    stats.put("successRate", 0.0);
+                }
+            } catch (Exception e) {
+                logger.warn("Error retrieving metrics for agent-skill: {}", e.getMessage());
+                stats.put("totalExecutions", 0L);
+                stats.put("successfulExecutions", 0L);
+                stats.put("failedExecutions", 0L);
+                stats.put("successRate", 0.0);
+            }
         } else {
+            logger.warn("MetricsService not available, returning empty statistics");
+            stats.put("totalExecutions", 0L);
+            stats.put("successfulExecutions", 0L);
+            stats.put("failedExecutions", 0L);
             stats.put("successRate", 0.0);
         }
-
-        // Per-skill statistics
-        Map<String, Object> skillStats = new HashMap<>();
-        for (String skillId : skillAdapters.keySet()) {
-            Map<String, Object> skillStat = new HashMap<>();
-
-            AtomicLong executionCount = skillExecutionCounts.get(skillId);
-            if (executionCount != null) {
-                skillStat.put("executionCount", executionCount.get());
-            }
-
-            Long lastExecutionTime = skillLastExecutionTimes.get(skillId);
-            if (lastExecutionTime != null) {
-                skillStat.put("lastExecutionTime", lastExecutionTime);
-            }
-
-            skillStats.put(skillId, skillStat);
-        }
-        stats.put("skillStatistics", skillStats);
 
         return stats;
     }
@@ -341,13 +327,9 @@ public class AgentSkillRegistry implements ReadyTracker {
         // Clear existing registrations
         skillAdapters.clear();
         skillMetadata.clear();
-        skillExecutionCounts.clear();
-        skillLastExecutionTimes.clear();
 
-        // Reset statistics
-        totalExecutions.set(0);
-        successfulExecutions.set(0);
-        failedExecutions.set(0);
+        // Reset statistics - handled by MetricsService
+        logger.info("Statistics reset requested - handled by MetricsService");
 
         // Re-register skills
         registerActionsAsSkills();
@@ -378,6 +360,24 @@ public class AgentSkillRegistry implements ReadyTracker {
             if (readyService != null) {
                 readyService.unmarkReady(AGENT_SKILLS_READY);
             }
+        }
+    }
+
+    /**
+     * Record metrics for an operation.
+     * 
+     * @param domain the operation domain
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param durationNanos the operation duration in nanoseconds
+     */
+    private void recordMetrics(String domain, String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
         }
     }
 
@@ -414,13 +414,36 @@ public class AgentSkillRegistry implements ReadyTracker {
         return skillMetadata.get(skillId);
     }
 
+    /**
+     * Get skill execution count from MetricsService.
+     * 
+     * @param skillId the skill ID
+     * @return the execution count, or 0 if MetricsService is not available
+     */
     public long getSkillExecutionCount(String skillId) {
-        AtomicLong count = skillExecutionCounts.get(skillId);
-        return count != null ? count.get() : 0;
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var snapshot = metrics.getDomainAggregatedSnapshot("agent-skill");
+                return snapshot.totalOperations();
+            } catch (Exception e) {
+                logger.warn("Error retrieving execution count for skill {}: {}", skillId, e.getMessage());
+            }
+        }
+        return 0L;
     }
 
+    /**
+     * Get skill last execution time from MetricsService.
+     * 
+     * @param skillId the skill ID
+     * @return the last execution time, or 0 if MetricsService is not available
+     */
     public long getSkillLastExecutionTime(String skillId) {
-        Long time = skillLastExecutionTimes.get(skillId);
-        return time != null ? time : 0;
+        // Note: This would require domain-specific data in MetricsService
+        // For now, return 0 as this information is not available in the current MetricsService implementation
+        logger.debug("Last execution time not available in current MetricsService implementation for skill: {}",
+                skillId);
+        return 0L;
     }
 }

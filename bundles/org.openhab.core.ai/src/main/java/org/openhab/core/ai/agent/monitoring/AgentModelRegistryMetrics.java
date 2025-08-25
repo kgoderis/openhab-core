@@ -6,7 +6,7 @@ import java.util.Map;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
+import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
 import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
@@ -45,8 +45,8 @@ public class AgentModelRegistryMetrics {
         try {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry
-                        .executionCollector(MetricKeys.action("model-registration"));
+                MetricsCollector collector = monitoringRegistry
+                        .metricsCollector(MetricKeys.action("model-registration"));
                 collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
             }
 
@@ -71,8 +71,8 @@ public class AgentModelRegistryMetrics {
         try {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry
-                        .executionCollector(MetricKeys.action("model-unregistration"));
+                MetricsCollector collector = monitoringRegistry
+                        .metricsCollector(MetricKeys.action("model-unregistration"));
                 collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
             }
 
@@ -95,8 +95,7 @@ public class AgentModelRegistryMetrics {
         try {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry
-                        .executionCollector(MetricKeys.action("model-retrieval"));
+                MetricsCollector collector = monitoringRegistry.metricsCollector(MetricKeys.action("model-retrieval"));
                 collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
             }
 
@@ -119,8 +118,7 @@ public class AgentModelRegistryMetrics {
         try {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry
-                        .executionCollector(MetricKeys.action("model-validation"));
+                MetricsCollector collector = monitoringRegistry.metricsCollector(MetricKeys.action("model-validation"));
                 collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
             }
 
@@ -144,19 +142,19 @@ public class AgentModelRegistryMetrics {
 
         if (monitoringRegistry != null) {
             // Get statistics from monitoring registry
-            ExecutionMetricsCollector registrationCollector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("model-registration"));
-            ExecutionMetricsCollector unregistrationCollector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("model-unregistration"));
-            ExecutionMetricsCollector retrievalCollector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("model-retrieval"));
-            ExecutionMetricsCollector validationCollector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("model-validation"));
+            MetricsCollector registrationCollector = monitoringRegistry
+                    .metricsCollector(MetricKeys.action("model-registration"));
+            MetricsCollector unregistrationCollector = monitoringRegistry
+                    .metricsCollector(MetricKeys.action("model-unregistration"));
+            MetricsCollector retrievalCollector = monitoringRegistry
+                    .metricsCollector(MetricKeys.action("model-retrieval"));
+            MetricsCollector validationCollector = monitoringRegistry
+                    .metricsCollector(MetricKeys.action("model-validation"));
 
-            var registrationSnapshot = registrationCollector.snapshot();
-            var unregistrationSnapshot = unregistrationCollector.snapshot();
-            var retrievalSnapshot = retrievalCollector.snapshot();
-            var validationSnapshot = validationCollector.snapshot();
+            var registrationSnapshot = registrationCollector.executionSnapshot();
+            var unregistrationSnapshot = unregistrationCollector.executionSnapshot();
+            var retrievalSnapshot = retrievalCollector.executionSnapshot();
+            var validationSnapshot = validationCollector.executionSnapshot();
 
             statistics.put("totalRegistrations", registrationSnapshot.total());
             statistics.put("successfulRegistrations", registrationSnapshot.success());

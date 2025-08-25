@@ -16,7 +16,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionMetadata;
-import org.openhab.core.ai.action.monitoring.ActionPerformanceMetrics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.ActionExecutionSnapshot;
 import org.openhab.core.ai.model.ActionExecutionEventStatus;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
@@ -69,7 +70,8 @@ public class ActionRegistry {
     private final Map<String, List<String>> skillActionMappings = new ConcurrentHashMap<>();
 
     // Performance monitoring
-    private final Map<String, ActionPerformanceMetrics> performanceMetrics = new ConcurrentHashMap<>();
+    @Reference
+    private @Nullable MetricsService metricsService;
     private final AtomicLong totalExecutions = new AtomicLong(0);
     private final AtomicLong successfulExecutions = new AtomicLong(0);
     private final AtomicLong failedExecutions = new AtomicLong(0);
@@ -420,10 +422,9 @@ public class ActionRegistry {
         lastExecutionTime.set(Instant.now());
 
         // Update action-specific metrics
-        ActionPerformanceMetrics currentMetrics = performanceMetrics.get(actionId);
-        if (currentMetrics != null) {
-            // TODO: Update metrics with new execution data
-            // This would require a mutable metrics class or a different approach
+        // Record action execution metrics
+        if (metricsService != null) {
+            metricsService.recordOperation("action", actionId, success, Duration.ofMillis(executionTimeMs));
         }
 
         // Record execution event
@@ -451,8 +452,8 @@ public class ActionRegistry {
      * @param actionId the action ID
      * @return the performance metrics, or null if not found
      */
-    public @Nullable ActionPerformanceMetrics getPerformanceMetrics(String actionId) {
-        return performanceMetrics.get(actionId);
+    public @Nullable ActionExecutionSnapshot getPerformanceMetrics(String actionId) {
+        return metricsService != null ? metricsService.getActionExecutionSnapshot(actionId) : null;
     }
 
     /**
@@ -460,10 +461,9 @@ public class ActionRegistry {
      * 
      * @return the overall performance metrics
      */
-    public ActionPerformanceMetrics getOverallPerformanceMetrics() {
-        return ActionPerformanceMetrics.builder().withActionId("overall").withTotalOperations(totalExecutions.get())
-                .withSuccessfulOperations(successfulExecutions.get()).withFailedOperations(failedExecutions.get())
-                .withTotalProcessingTime(totalExecutionTimeMs.get()).build();
+    public ActionExecutionSnapshot getOverallPerformanceMetrics() {
+        return metricsService != null ? metricsService.getActionExecutionSnapshot("overall")
+                : ActionExecutionSnapshot.empty("overall");
     }
 
     /**

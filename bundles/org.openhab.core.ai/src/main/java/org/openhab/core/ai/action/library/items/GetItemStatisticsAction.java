@@ -16,6 +16,7 @@ import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
@@ -47,6 +48,9 @@ public class GetItemStatisticsAction implements Action {
 
     @Reference
     private @Nullable PersistenceServiceRegistry persistenceServiceRegistry;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     @Override
     public String getActionId() {
@@ -151,6 +155,7 @@ public class GetItemStatisticsAction implements Action {
     @Override
     public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long executionStartTime = System.currentTimeMillis();
+        boolean success = false;
 
         try {
             String itemName = (String) parameters.get("itemName");
@@ -201,6 +206,7 @@ public class GetItemStatisticsAction implements Action {
             long executionTime = System.currentTimeMillis() - executionStartTime;
             logger.debug("Successfully retrieved statistics for item: {} in {}ms", itemName, executionTime);
 
+            success = true;
             return ActionResult.success(result, executionTime);
 
         } catch (ItemNotFoundException e) {
@@ -218,6 +224,14 @@ public class GetItemStatisticsAction implements Action {
             long executionTime = System.currentTimeMillis() - executionStartTime;
             logger.error("Error getting item statistics", e);
             throw new ActionException(getActionId(), "Failed to get item statistics: " + e.getMessage(), e);
+        } finally {
+            // Record metrics
+            long duration = System.currentTimeMillis() - executionStartTime;
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("action", "get-item-statistics", success,
+                        java.time.Duration.ofMillis(duration));
+            }
         }
     }
 

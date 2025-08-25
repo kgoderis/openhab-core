@@ -8,8 +8,10 @@ import java.util.Objects;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.result.BaseResult;
 import org.openhab.core.ai.model.api.ModelProviderType;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * Result of agent model evaluation.
@@ -25,6 +27,9 @@ import org.openhab.core.ai.model.api.ModelProviderType;
  */
 @NonNullByDefault
 public final class AgentModelEvaluationResult extends BaseResult {
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     private static final String RESULT_TYPE = "agent-model-evaluation";
     private static final String MODEL_ID_KEY = "modelId";
@@ -98,6 +103,20 @@ public final class AgentModelEvaluationResult extends BaseResult {
     public double getOverallScore() {
         Object value = getMetadata(OVERALL_SCORE_KEY);
         return value instanceof Number ? ((Number) value).doubleValue() : 0.0;
+    }
+
+    /**
+     * Record evaluation metrics using MetricsService.
+     */
+    public void recordEvaluation() {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            long startTime = System.currentTimeMillis();
+            boolean success = isSuccess();
+            long duration = System.currentTimeMillis() - startTime;
+
+            metrics.recordOperation("agent-model", "evaluation", success, java.time.Duration.ofMillis(duration));
+        }
     }
 
     @SuppressWarnings("unchecked")

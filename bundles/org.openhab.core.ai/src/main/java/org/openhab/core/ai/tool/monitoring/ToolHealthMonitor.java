@@ -11,8 +11,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +76,10 @@ public class ToolHealthMonitor {
     private final AtomicReference<Double> minSpecificationSuccessRate = new AtomicReference<>(0.9); // 90%
     private final AtomicReference<Integer> maxSpecificationThroughput = new AtomicReference<>(100); // 100 req/sec
 
+    // NEW: Centralized MetricsService for monitoring operations
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     /**
      * Check if a provider is healthy
      * 
@@ -114,6 +121,19 @@ public class ToolHealthMonitor {
     public void recordSuccess(ModelProviderType provider, long responseTime) {
         ProviderHealthState state = getOrCreateProviderState(provider);
         state.recordSuccess(responseTime);
+
+        // NEW: Record monitoring operation using centralized MetricsService
+        if (metricsService != null) {
+            try {
+                metricsService.recordMonitoringOperation("provider-" + provider.name(), true,
+                        Duration.ofMillis(responseTime), 1, // metrics collected
+                        0, // no alerts generated
+                        "provider-health", "none");
+            } catch (Exception e) {
+                logger.warn("Failed to record monitoring operation for provider: {}", provider, e);
+            }
+        }
+
         logger.debug("Recorded success for provider {}: {}ms", provider, responseTime);
     }
 
@@ -126,6 +146,20 @@ public class ToolHealthMonitor {
     public void recordFailure(ModelProviderType provider, Exception error) {
         ProviderHealthState state = getOrCreateProviderState(provider);
         state.recordFailure(error);
+
+        // NEW: Record monitoring operation using centralized MetricsService
+        if (metricsService != null) {
+            try {
+                metricsService.recordMonitoringOperation("provider-" + provider.name(), false, Duration.ofMillis(0), 0, // no
+                                                                                                                        // metrics
+                                                                                                                        // collected
+                        1, // alert generated
+                        "provider-health", "error");
+            } catch (Exception e) {
+                logger.warn("Failed to record monitoring operation for provider: {}", provider, e);
+            }
+        }
+
         logger.warn("Recorded failure for provider {}: {}", provider, error.getMessage());
     }
 
@@ -159,28 +193,47 @@ public class ToolHealthMonitor {
      * @param provider the provider to check
      * @return CompletableFuture with health check result
      */
-    public CompletableFuture<HealthCheckResult> performHealthCheck(ModelProviderType provider) {
+    public CompletableFuture<HealthCheckResult> performProviderHealthCheck(ModelProviderType provider) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
+            boolean isHealthy = false;
+            Exception error = null;
+
             try {
-                logger.debug("Starting tool health check for provider: {}", provider);
+                // Perform comprehensive health check
+                isHealthy = performProviderHealthCheckLogic(provider);
 
-                // Perform comprehensive tool health check
-                boolean isHealthy = performComprehensiveToolHealthCheck(provider);
-                long responseTime = measureHealthCheckResponseTime(provider);
+                // NEW: Record monitoring operation using centralized MetricsService
+                if (metricsService != null) {
+                    try {
+                        long responseTime = System.currentTimeMillis() - startTime;
+                        metricsService.recordMonitoringOperation("provider-health-check-" + provider.name(), isHealthy,
+                                Duration.ofMillis(responseTime), isHealthy ? 1 : 0, // metrics collected if healthy
+                                isHealthy ? 0 : 1, // alert generated if unhealthy
+                                "health-check", isHealthy ? "none" : "warning");
+                    } catch (Exception e) {
+                        logger.warn("Failed to record monitoring operation for provider health check: {}", provider, e);
+                    }
+                }
 
-                HealthCheckResult result = new HealthCheckResult(provider, isHealthy, responseTime, null);
-
-                // Update health state
-                ProviderHealthState state = getOrCreateProviderState(provider);
-                state.updateFromHealthCheck(result);
-
-                logger.debug("Tool health check completed for provider {}: healthy={}, responseTime={}ms", provider,
-                        isHealthy, responseTime);
-
-                return result;
+                return new HealthCheckResult(provider.name(), isHealthy, System.currentTimeMillis() - startTime, null);
             } catch (Exception e) {
-                logger.error("Tool health check failed for provider {}", provider, e);
-                return new HealthCheckResult(provider, false, 0, e);
+                error = e;
+                logger.error("Provider health check failed for {}", provider, e);
+
+                // NEW: Record monitoring operation for failed health check
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordMonitoringOperation("provider-health-check-" + provider.name(), false,
+                                Duration.ofMillis(System.currentTimeMillis() - startTime), 0, // no metrics collected
+                                1, // alert generated
+                                "health-check", "error");
+                    } catch (Exception ex) {
+                        logger.warn("Failed to record monitoring operation for failed health check: {}", provider, ex);
+                    }
+                }
+
+                return new HealthCheckResult(provider.name(), false, System.currentTimeMillis() - startTime, e);
             }
         });
     }
@@ -193,10 +246,14 @@ public class ToolHealthMonitor {
      */
     public CompletableFuture<HealthCheckResult> performServiceHealthCheck(String serviceName) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
+            boolean isHealthy = false;
+            Exception error = null;
+
             try {
                 // TODO: Implement actual service health check logic
-                boolean isHealthy = performServiceHealthCheckLogic(serviceName);
-                long responseTime = measureServiceHealthCheckResponseTime(serviceName);
+                isHealthy = performServiceHealthCheckLogic(serviceName);
+                long responseTime = System.currentTimeMillis() - startTime;
 
                 HealthCheckResult result = new HealthCheckResult(serviceName, isHealthy, responseTime, null);
 
@@ -204,10 +261,38 @@ public class ToolHealthMonitor {
                 ServiceHealthState state = getOrCreateServiceState(serviceName);
                 state.updateFromHealthCheck(isHealthy, responseTime);
 
+                // NEW: Record monitoring operation using centralized MetricsService
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordMonitoringOperation("service-health-check-" + serviceName, isHealthy,
+                                Duration.ofMillis(responseTime), isHealthy ? 1 : 0, // metrics collected if healthy
+                                isHealthy ? 0 : 1, // alert generated if unhealthy
+                                "health-check", isHealthy ? "none" : "warning");
+                    } catch (Exception e) {
+                        logger.warn("Failed to record monitoring operation for service health check: {}", serviceName,
+                                e);
+                    }
+                }
+
                 return result;
             } catch (Exception e) {
+                error = e;
                 logger.error("Service health check failed for {}", serviceName, e);
-                return new HealthCheckResult(serviceName, false, 0, e);
+
+                // NEW: Record monitoring operation for failed health check
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordMonitoringOperation("service-health-check-" + serviceName, false,
+                                Duration.ofMillis(System.currentTimeMillis() - startTime), 0, // no metrics collected
+                                1, // alert generated
+                                "health-check", "error");
+                    } catch (Exception ex) {
+                        logger.warn("Failed to record monitoring operation for failed service health check: {}",
+                                serviceName, ex);
+                    }
+                }
+
+                return new HealthCheckResult(serviceName, false, System.currentTimeMillis() - startTime, e);
             }
         });
     }
@@ -259,6 +344,25 @@ public class ToolHealthMonitor {
     }
 
     /**
+     * Get monitoring statistics for the health monitor
+     * 
+     * @param timeRange the time range for statistics
+     * @return monitoring statistics
+     */
+    public MonitoringStatistics getMonitoringStatistics(Duration timeRange) {
+        if (metricsService != null) {
+            try {
+                return metricsService.getMonitoringStatistics("tool-health-monitor", timeRange);
+            } catch (Exception e) {
+                logger.warn("Failed to get monitoring statistics from MetricsService", e);
+            }
+        }
+
+        // Fallback to empty statistics if MetricsService is not available
+        return MonitoringStatistics.empty(timeRange);
+    }
+
+    /**
      * Force recovery of a provider
      * 
      * @param provider the provider to recover
@@ -267,6 +371,19 @@ public class ToolHealthMonitor {
         ProviderHealthState state = providerHealthStates.get(provider);
         if (state != null) {
             state.forceRecovery();
+
+            // NEW: Record monitoring operation for recovery
+            if (metricsService != null) {
+                try {
+                    metricsService.recordMonitoringOperation("provider-recovery-" + provider.name(), true,
+                            Duration.ofMillis(0), 1, // recovery metric collected
+                            0, // no alerts generated
+                            "recovery", "none");
+                } catch (Exception e) {
+                    logger.warn("Failed to record monitoring operation for provider recovery: {}", provider, e);
+                }
+            }
+
             logger.info("Forced recovery for provider {}", provider);
         }
     }
@@ -280,6 +397,19 @@ public class ToolHealthMonitor {
         ServiceHealthState state = serviceHealthStates.get(serviceName);
         if (state != null) {
             state.forceRecovery();
+
+            // NEW: Record monitoring operation for recovery
+            if (metricsService != null) {
+                try {
+                    metricsService.recordMonitoringOperation("service-recovery-" + serviceName, true,
+                            Duration.ofMillis(0), 1, // recovery metric collected
+                            0, // no alerts generated
+                            "recovery", "none");
+                } catch (Exception e) {
+                    logger.warn("Failed to record monitoring operation for service recovery: {}", serviceName, e);
+                }
+            }
+
             logger.info("Forced recovery for service {}", serviceName);
         }
     }
@@ -291,6 +421,19 @@ public class ToolHealthMonitor {
      */
     public void resetProviderHealth(ModelProviderType provider) {
         providerHealthStates.remove(provider);
+
+        // NEW: Record monitoring operation for reset
+        if (metricsService != null) {
+            try {
+                metricsService.recordMonitoringOperation("provider-reset-" + provider.name(), true,
+                        Duration.ofMillis(0), 1, // reset metric collected
+                        0, // no alerts generated
+                        "reset", "none");
+            } catch (Exception e) {
+                logger.warn("Failed to record monitoring operation for provider reset: {}", provider, e);
+            }
+        }
+
         logger.info("Reset health monitoring for provider {}", provider);
     }
 
@@ -598,7 +741,7 @@ public class ToolHealthMonitor {
     }
 
     // Placeholder health check implementations
-    private boolean performProviderHealthCheck(ModelProviderType provider) {
+    private boolean performProviderHealthCheckLogic(ModelProviderType provider) {
         // TODO: Implement actual provider health check
         // This could involve making a test request to the provider
         return true; // Placeholder

@@ -143,7 +143,7 @@ public final class AgentModelOptimizationResult {
     public static final class Builder {
         private String modelId;
         private String modelName = "";
-        private ModelProviderType providerType = ModelProviderType.UNKNOWN;
+        private ModelProviderType providerType = ModelProviderType.OPENAI;
         private AgentModelOptimizationStatus status = AgentModelOptimizationStatus.PENDING;
         private double overallImprovement = 0.0;
         private @Nullable AgentModelPerformanceOptimization performanceOptimization;

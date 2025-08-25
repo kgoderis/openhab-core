@@ -11,12 +11,15 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +38,9 @@ public class GetNetworkStatisticsAction implements Action {
     private static final String DESCRIPTION = "Retrieves network statistics and performance metrics";
     private static final String CATEGORY = "network";
     private static final String VERSION = "1.0.0";
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     @Override
     public String getActionId() {
@@ -141,6 +147,7 @@ public class GetNetworkStatisticsAction implements Action {
     public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         logger.debug("Executing GetNetworkStatisticsAction with context: {}", context.getProtocol());
         long startTime = System.currentTimeMillis();
+        boolean success = false;
 
         try {
             // Extract parameters with defaults
@@ -172,11 +179,21 @@ public class GetNetworkStatisticsAction implements Action {
             result.put("timestamp", Instant.now().toString());
 
             long executionTime = System.currentTimeMillis() - startTime;
+            success = true;
             return ActionResult.success(result, executionTime);
 
         } catch (Exception e) {
+            long executionTime = System.currentTimeMillis() - startTime;
             logger.error("Error getting network statistics: {}", e.getMessage(), e);
             throw new ActionException(ACTION_ID, "Failed to get network statistics: " + e.getMessage(), e);
+        } finally {
+            // Record metrics
+            long duration = System.currentTimeMillis() - startTime;
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("action", "get-network-statistics", success,
+                        java.time.Duration.ofMillis(duration));
+            }
         }
     }
 

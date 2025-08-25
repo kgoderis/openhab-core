@@ -6,6 +6,8 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * Statistics for agent model optimizations.
@@ -20,6 +22,9 @@ import org.eclipse.jdt.annotation.Nullable;
  */
 @NonNullByDefault
 public final class AgentModelOptimizationStatistics {
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     private final int totalOptimizations;
     private final Map<AgentModelOptimizationStatus, Long> statusCounts;
@@ -75,6 +80,21 @@ public final class AgentModelOptimizationStatistics {
     public long getOptimizationsWithImprovement() {
         return statusCounts.entrySet().stream().filter(entry -> entry.getKey().hasImprovement())
                 .mapToLong(Map.Entry::getValue).sum();
+    }
+
+    /**
+     * Record optimization statistics using MetricsService.
+     */
+    public void recordOptimizationStatistics() {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            long startTime = System.currentTimeMillis();
+            boolean success = getSuccessfulOptimizations() > 0;
+            long duration = System.currentTimeMillis() - startTime;
+
+            metrics.recordOperation("agent-model", "optimization-statistics", success,
+                    java.time.Duration.ofMillis(duration));
+        }
     }
 
     @Override

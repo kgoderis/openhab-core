@@ -19,6 +19,7 @@ import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ToolContext;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
 import org.openhab.core.ai.common.services.LoadBalancingStrategy;
 import org.openhab.core.ai.model.api.ModelProviderType;
@@ -29,6 +30,7 @@ import org.openhab.core.ai.tool.resources.ResourceManager;
 import org.openhab.core.ai.tool.services.api.ToolExecutionService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +100,10 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
     @Reference
     private @Nullable MonitoringRegistry monitoringRegistry;
+
+    // Metrics service for centralized metrics collection
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL)
+    private @Nullable MetricsService metricsService;
 
     @Override
     public CompletableFuture<ActionResult> executeTool(ExecutionContext actionContext,
@@ -925,6 +931,32 @@ public class HybridToolExecutionService implements ToolExecutionService {
         providerMetrics.clear();
         toolMetrics.clear();
         providerLoadCounters.clear();
+    }
+
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for HybridToolExecutionService");
+    }
+
+    protected void unsetMetricsService(MetricsService metricsService) {
+        this.metricsService = null;
+        logger.debug("MetricsService unset for HybridToolExecutionService");
+    }
+
+    /**
+     * Record metrics for tool execution operations
+     */
+    private void recordMetrics(String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                metrics.recordOperation("tool-execution", operation, success, Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.debug("Failed to record metrics for {}.{}: {}", "tool-execution", operation, e.getMessage());
+            }
+        } else {
+            logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+        }
     }
 
     // Use API enum org.openhab.core.ai.tool.services.api.LoadBalancingStrategy instead of inner enum

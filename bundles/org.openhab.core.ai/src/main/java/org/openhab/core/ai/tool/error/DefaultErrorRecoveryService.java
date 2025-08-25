@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.error;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,8 +11,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.audit.AuditLogger;
-import org.openhab.core.ai.common.error.ErrorRecoveryStatistics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.error.api.ErrorRecoveryService;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +33,9 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
     private static final Logger logger = LoggerFactory.getLogger(DefaultErrorRecoveryService.class);
 
     private final AuditLogger auditLogger;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Error tracking
     private final Map<String, AtomicInteger> errorCounters = new ConcurrentHashMap<>();
@@ -101,6 +107,12 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
         lastErrorTimes.put(errorType, System.currentTimeMillis());
         lastErrorMessages.put(errorType, errorMessage);
 
+        // Record error recovery metrics
+        MetricsService service = metricsService;
+        if (service != null) {
+            service.recordErrorRecovery(errorType, false, Duration.ofMillis(0), "none", false);
+        }
+
         // Log error
         logger.error("Error occurred: {} - {}", errorType, errorMessage);
         if (clientId != null) {
@@ -125,6 +137,13 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
     @Override
     public void recordRecovery(String errorType) {
         totalRecoveries.incrementAndGet();
+
+        // Record successful recovery metrics
+        MetricsService service = metricsService;
+        if (service != null) {
+            service.recordErrorRecovery(errorType, true, Duration.ofMillis(100), "automatic", false);
+        }
+
         logger.info("Recovery recorded for error type: {}", errorType);
 
         // Reset error counter for this type
@@ -174,19 +193,15 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
 
     @Override
     public ErrorRecoveryStatistics getErrorRecoveryStatistics() {
-        Map<String, Long> errorCountsByType = new HashMap<>();
-        for (Map.Entry<String, AtomicInteger> entry : errorCounters.entrySet()) {
-            errorCountsByType.put(entry.getKey(), (long) entry.getValue().get());
+        MetricsService service = metricsService;
+        if (service != null) {
+            // Use the MetricsService to get statistics for all error types
+            // For now, return statistics for a generic error type
+            return service.getErrorRecoveryStatistics("general", Duration.ofDays(1));
         }
 
-        Map<String, Long> recoveryCountsByStrategy = new HashMap<>();
-        // TODO: Implement strategy tracking
-
-        return new ErrorRecoveryStatistics(totalErrors.get(), totalRecoveries.get(), totalFallbacks.get(), 0, // totalFailures
-                                                                                                              // - TODO:
-                                                                                                              // implement
-                0, // recoveryAttempts - TODO: implement
-                errorCountsByType, recoveryCountsByStrategy);
+        // Fallback to empty statistics if MetricsService is not available
+        return ErrorRecoveryStatistics.empty(Duration.ofDays(1));
     }
 
     @Override

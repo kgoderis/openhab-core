@@ -1,5 +1,6 @@
 package org.openhab.core.ai.reasoning.engine.analysis;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,10 +10,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.service.statistics.ReasoningPerformanceStatistics;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepStatus;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepType;
-import org.openhab.core.ai.reasoning.engine.monitoring.ReasoningAnalysisStatistics;
 import org.openhab.core.ai.reasoning.engine.persistence.ReasoningStepPersistenceService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -522,10 +523,26 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
     }
 
     @Override
-    public ReasoningAnalysisStatistics getStatistics() {
-        return new ReasoningAnalysisStatistics("analysis-stats-" + System.currentTimeMillis(), totalAnalyses.get(),
-                successfulAnalyses.get(), failedAnalyses.get(), totalAnalysisTimeNanos.get(), 0.0,
-                Map.copyOf(analysisTypeCounter), 0.8, 0.7, 0, 0, 0, 0.0, 0.0);
+    public ReasoningPerformanceStatistics getStatistics() {
+        // Create ReasoningPerformanceStatistics from analysis data
+        return ReasoningPerformanceStatistics.fromReasoningData(totalAnalyses.get(), // totalStepCount
+                0L, // totalStorageSizeBytes
+                successfulAnalyses.get(), // activeStepCount
+                0L, // archivedStepCount
+                0L, // compressedStepCount
+                0L, // totalTokensUsed
+                0.0, // totalCostUsd
+                totalAnalysisTimeNanos.get() / 1_000_000, // totalProcessingTimeMs
+                0.8, // averageQualityScore
+                0.7, // averageConfidence
+                1024.0, // averageStepSizeBytes
+                5.0, // averageStepsPerSession
+                null, // statusDistribution
+                null, // typeDistribution
+                null, // modelUsageDistribution
+                null, // sessionDistribution
+                Duration.ofDays(1) // timeRange
+        );
     }
 
     // Helper methods for the analysis implementations

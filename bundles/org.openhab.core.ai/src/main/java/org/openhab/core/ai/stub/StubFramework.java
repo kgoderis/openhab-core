@@ -200,13 +200,8 @@ public class StubFramework {
      * @return Statistics about stub usage
      */
     public StubStatistics getStatistics() {
-        StubStatistics stats = new StubStatistics();
-        stats.setEnabled(enabled);
-        stats.setRegisteredServices(stubServices.size());
-        stats.setHttpRequestCount(httpStubServer.getRequestCount());
-        stats.setWebSocketConnectionCount(webSocketStubServer.getConnectionCount());
-        stats.setMqttMessageCount(mqttStubBroker.getMessageCount());
-        return stats;
+        return StubStatistics.fromCurrentState(enabled, stubServices.size(), httpStubServer.getRequestCount(),
+                webSocketStubServer.getConnectionCount(), mqttStubBroker.getMessageCount());
     }
 
     /**

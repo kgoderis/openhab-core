@@ -1,10 +1,14 @@
 package org.openhab.core.ai.common.monitoring.snapshot;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.Counts;
 import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
+import org.openhab.core.ai.common.monitoring.api.Health;
+import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
 import org.openhab.core.ai.common.monitoring.api.LatencyMetrics;
 import org.openhab.core.ai.common.monitoring.api.Metrics;
 import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
@@ -24,8 +28,16 @@ import org.openhab.core.ai.common.monitoring.api.Timing;
  * @since 1.0.0
  */
 @NonNullByDefault
-public record ExecutionMetricsSnapshot(Counts counts, Timing timing,
-        long timestampMs) implements MetricsSnapshot, CountsMetrics, LatencyMetrics, Metrics {
+public record ExecutionMetricsSnapshot(Counts counts, Timing timing, long timestampMs,
+        // Health-related fields
+        HealthStatus healthStatus, String statusMessage, long lastFailureTime, long lastSuccessTime, String lastError,
+        long consecutiveFailures) implements MetricsSnapshot, CountsMetrics, LatencyMetrics, Metrics, Health {
+
+    public ExecutionMetricsSnapshot {
+        Objects.requireNonNull(healthStatus, "healthStatus");
+        Objects.requireNonNull(statusMessage, "statusMessage");
+        Objects.requireNonNull(lastError, "lastError");
+    }
 
     public long total() {
         return counts.total();
@@ -123,7 +135,109 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing,
      * @return true if success rate is above 95% and average latency is reasonable
      */
     public boolean isHealthy() {
-        return successRatePercent() >= 95.0 && averageLatencyMs() < 5000.0;
+        return successRatePercent() >= 95.0 && averageLatencyMs() < 5000.0 && healthStatus == HealthStatus.HEALTHY;
+    }
+
+    // ===== Health Interface Implementation =====
+
+    @Override
+    public HealthStatus getStatus() {
+        return healthStatus;
+    }
+
+    @Override
+    public String getStatusMessage() {
+        return statusMessage;
+    }
+
+    @Override
+    public Map<String, Object> getHealthIndicators() {
+        Map<String, Object> indicators = new HashMap<>();
+        indicators.put("successRate", successRatePercent());
+        indicators.put("failureRate", failureRatePercent());
+        indicators.put("averageLatency", averageLatencyMs());
+        indicators.put("operationsPerSecond", operationsPerSecond());
+        indicators.put("lastFailureTime", lastFailureTime);
+        indicators.put("lastSuccessTime", lastSuccessTime);
+        indicators.put("lastError", lastError);
+        indicators.put("consecutiveFailures", consecutiveFailures);
+        indicators.put("efficiencyScore", efficiencyScore());
+        return indicators;
+    }
+
+    // ===== Health-Specific Methods =====
+
+    /**
+     * Get time since last failure in milliseconds.
+     * 
+     * @return milliseconds since last failure, or -1 if no failures recorded
+     */
+    public long timeSinceLastFailureMs() {
+        if (lastFailureTime == 0) {
+            return -1;
+        }
+        return timestampMs - lastFailureTime;
+    }
+
+    /**
+     * Get time since last success in milliseconds.
+     * 
+     * @return milliseconds since last success, or -1 if no successes recorded
+     */
+    public long timeSinceLastSuccessMs() {
+        if (lastSuccessTime == 0) {
+            return -1;
+        }
+        return timestampMs - lastSuccessTime;
+    }
+
+    /**
+     * Calculate overall health score (0.0-1.0) combining execution and health metrics.
+     * 
+     * @return health score combining various health indicators
+     */
+    public double healthScore() {
+        double executionScore = efficiencyScore();
+        double uptimeScore = successRatePercent() / 100.0;
+
+        // Reduce score based on consecutive failures
+        double failurePenalty = Math.min(0.5, consecutiveFailures * 0.1);
+
+        // Reduce score based on time since last success
+        double recentActivityScore = 1.0;
+        long timeSinceSuccess = timeSinceLastSuccessMs();
+        if (timeSinceSuccess > 300_000) { // 5 minutes
+            recentActivityScore = Math.max(0.0, 1.0 - (timeSinceSuccess - 300_000) / 600_000.0);
+        }
+
+        return Math.max(0.0, (executionScore + uptimeScore + recentActivityScore) / 3.0 - failurePenalty);
+    }
+
+    /**
+     * Check if immediate attention is required.
+     * 
+     * @return true if health score is critically low or consecutive failures are high
+     */
+    public boolean requiresImmediateAttention() {
+        return healthScore() < 0.3 || consecutiveFailures >= 5;
+    }
+
+    /**
+     * Get the last error message.
+     * 
+     * @return last error message, or empty string if none
+     */
+    public String getLastError() {
+        return lastError;
+    }
+
+    /**
+     * Get the number of consecutive failures.
+     * 
+     * @return consecutive failure count
+     */
+    public long getConsecutiveFailures() {
+        return consecutiveFailures;
     }
 
     // ===== Metrics Interface Implementation =====
@@ -205,6 +319,13 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing,
         private Counts counts = new Counts(0, 0, 0);
         private Timing timing = new Timing(0);
         private long timestampMs = System.currentTimeMillis();
+        // Health-related fields
+        private HealthStatus healthStatus = HealthStatus.UNKNOWN;
+        private String statusMessage = "";
+        private long lastFailureTime = 0L;
+        private long lastSuccessTime = 0L;
+        private String lastError = "";
+        private long consecutiveFailures = 0L;
 
         public Builder() {
             // Default constructor
@@ -214,6 +335,12 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing,
             this.counts = source.counts;
             this.timing = source.timing;
             this.timestampMs = source.timestampMs;
+            this.healthStatus = source.healthStatus;
+            this.statusMessage = source.statusMessage;
+            this.lastFailureTime = source.lastFailureTime;
+            this.lastSuccessTime = source.lastSuccessTime;
+            this.lastError = source.lastError;
+            this.consecutiveFailures = source.consecutiveFailures;
         }
 
         public Builder withCounts(Counts counts) {
@@ -251,9 +378,41 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing,
             return this;
         }
 
+        // Health-related builder methods
+        public Builder withHealthStatus(HealthStatus healthStatus) {
+            this.healthStatus = Objects.requireNonNull(healthStatus, "healthStatus");
+            return this;
+        }
+
+        public Builder withStatusMessage(String statusMessage) {
+            this.statusMessage = Objects.requireNonNull(statusMessage, "statusMessage");
+            return this;
+        }
+
+        public Builder withLastFailureTime(long lastFailureTime) {
+            this.lastFailureTime = lastFailureTime;
+            return this;
+        }
+
+        public Builder withLastSuccessTime(long lastSuccessTime) {
+            this.lastSuccessTime = lastSuccessTime;
+            return this;
+        }
+
+        public Builder withLastError(String lastError) {
+            this.lastError = Objects.requireNonNull(lastError, "lastError");
+            return this;
+        }
+
+        public Builder withConsecutiveFailures(long consecutiveFailures) {
+            this.consecutiveFailures = consecutiveFailures;
+            return this;
+        }
+
         public ExecutionMetricsSnapshot build() {
             validate();
-            return new ExecutionMetricsSnapshot(counts, timing, timestampMs);
+            return new ExecutionMetricsSnapshot(counts, timing, timestampMs, healthStatus, statusMessage,
+                    lastFailureTime, lastSuccessTime, lastError, consecutiveFailures);
         }
 
         private void validate() {
@@ -320,7 +479,9 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing,
                 .append(String.format("%.2f%%", successRatePercent())).append(", avgLatency=")
                 .append(String.format("%.2fms", averageLatencyMs())).append(", opsPerSec=")
                 .append(String.format("%.2f", operationsPerSecond())).append(", efficiency=")
-                .append(String.format("%.3f", efficiencyScore())).append(", healthy=").append(isHealthy())
+                .append(String.format("%.3f", efficiencyScore())).append(", healthStatus=").append(healthStatus)
+                .append(", healthScore=").append(String.format("%.3f", healthScore())).append(", consecutiveFailures=")
+                .append(consecutiveFailures).append(", requiresAttention=").append(requiresImmediateAttention())
                 .append(", timestamp=").append(getTimestamp()).append("}").toString();
     }
 

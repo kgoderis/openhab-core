@@ -9,6 +9,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.transport.api.A2ARequestHandler;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -50,6 +51,7 @@ public class AgentServlet extends HttpServlet {
     private final AtomicReference<A2ARequestHandler> requestHandler = new AtomicReference<>();
 
     private @Nullable AuthenticationManager authenticationManager;
+    private @Nullable MetricsService metricsService;
 
     /**
      * Create a new A2A servlet instance.
@@ -98,51 +100,101 @@ public class AgentServlet extends HttpServlet {
         logger.debug("Authentication manager unset for A2A servlet");
     }
 
+    /**
+     * Set the metrics service reference.
+     * 
+     * @param metricsService the metrics service
+     */
+    @Reference
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("Metrics service set for A2A servlet");
+    }
+
+    /**
+     * Unset the metrics service reference.
+     * 
+     * @param metricsService the metrics service
+     */
+    public void unsetMetricsService(@Nullable MetricsService metricsService) {
+        this.metricsService = null;
+        logger.debug("Metrics service unset for A2A servlet");
+    }
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        logger.debug("A2A Servlet GET request: {}", request.getRequestURI());
+        long startTime = System.currentTimeMillis();
+        boolean success = false;
 
-        // Validate authentication context for A2A operations
-        if (!validateA2AAuthentication(request, response, "GET")) {
-            return;
-        }
+        try {
+            logger.debug("A2A Servlet GET request: {}", request.getRequestURI());
 
-        String path = request.getRequestURI();
-        if (path.endsWith("/.well-known/agent.json") || path.endsWith("/.well-known/agent-card.json")) {
-            handleAgentCard(response);
-        } else if (path.endsWith("/message/stream")) {
-            handleMessageStream(response);
-        } else if (path.endsWith("/health")) {
-            handleHealthCheck(response);
-        } else if (path.endsWith("/status")) {
-            handleStatusCheck(response);
-        } else {
-            response.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-            response.getWriter().write("GET method not supported for this endpoint");
+            // Validate authentication context for A2A operations
+            if (!validateA2AAuthentication(request, response, "GET")) {
+                return;
+            }
+
+            String path = request.getRequestURI();
+            if (path.endsWith("/.well-known/agent.json") || path.endsWith("/.well-known/agent-card.json")) {
+                handleAgentCard(response);
+            } else if (path.endsWith("/message/stream")) {
+                handleMessageStream(response);
+            } else if (path.endsWith("/health")) {
+                handleHealthCheck(response);
+            } else if (path.endsWith("/status")) {
+                handleStatusCheck(response);
+            } else {
+                response.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+                response.getWriter().write("GET method not supported for this endpoint");
+            }
+
+            success = true;
+        } finally {
+            // Record metrics
+            long duration = System.currentTimeMillis() - startTime;
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("agent-servlet", "get-request", success, java.time.Duration.ofMillis(duration));
+            }
         }
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        logger.debug("A2A Servlet POST request: {}", request.getRequestURI());
+        long startTime = System.currentTimeMillis();
+        boolean success = false;
 
-        // Validate authentication context for A2A operations
-        if (!validateA2AAuthentication(request, response, "POST")) {
-            return;
-        }
+        try {
+            logger.debug("A2A Servlet POST request: {}", request.getRequestURI());
 
-        String path = request.getRequestURI();
-        if (path.endsWith("/message/send")) {
-            handleMessageSend(request, response);
-        } else if (path.endsWith("/task/get")) {
-            handleTaskGet(request, response);
-        } else if (path.endsWith("/task/cancel")) {
-            handleTaskCancel(request, response);
-        } else {
-            response.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-            response.getWriter().write("POST method not supported for this endpoint");
+            // Validate authentication context for A2A operations
+            if (!validateA2AAuthentication(request, response, "POST")) {
+                return;
+            }
+
+            String path = request.getRequestURI();
+            if (path.endsWith("/message/send")) {
+                handleMessageSend(request, response);
+            } else if (path.endsWith("/task/get")) {
+                handleTaskGet(request, response);
+            } else if (path.endsWith("/task/cancel")) {
+                handleTaskCancel(request, response);
+            } else {
+                response.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+                response.getWriter().write("POST method not supported for this endpoint");
+            }
+
+            success = true;
+        } finally {
+            // Record metrics
+            long duration = System.currentTimeMillis() - startTime;
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation("agent-servlet", "post-request", success,
+                        java.time.Duration.ofMillis(duration));
+            }
         }
     }
 

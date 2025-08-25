@@ -6,12 +6,10 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.agent.monitoring.AgentStatistics;
 import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
-import org.openhab.core.ai.model.monitoring.ModelIntegrationStatistics;
 
 /**
  * Service for integrating AI models directly into autonomous agents
@@ -88,14 +86,14 @@ public interface AgentModelIntegrationService {
      * @param agentId the agent ID
      * @return the model integration statistics
      */
-    AgentStatistics getAgentStatistics(String agentId);
+    Object getAgentStatistics(String agentId);
 
     /**
      * Get overall model integration statistics
      * 
      * @return the overall model integration statistics
      */
-    ModelIntegrationStatistics getOverallStatistics();
+    Object getOverallStatistics();
 
     /**
      * Check if an agent is registered for model integration

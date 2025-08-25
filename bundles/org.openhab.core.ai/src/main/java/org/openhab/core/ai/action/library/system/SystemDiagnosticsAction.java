@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.OpenHAB;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionException;
@@ -26,7 +27,9 @@ import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +48,9 @@ public class SystemDiagnosticsAction implements Action {
     private static final String DESCRIPTION = "Collects comprehensive system diagnostic information including environment, network, file system, and runtime details";
     private static final String CATEGORY = "system";
     private static final String VERSION = "1.0.0";
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     @Override
     public String getActionId() {
@@ -117,6 +123,7 @@ public class SystemDiagnosticsAction implements Action {
     @Override
     public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
+        boolean success = false;
 
         try {
             logger.debug("Executing system diagnostics action with parameters: {}", parameters);
@@ -131,6 +138,7 @@ public class SystemDiagnosticsAction implements Action {
 
             long executionTime = System.currentTimeMillis() - startTime;
             logger.debug("System diagnostics action completed in {}ms", executionTime);
+            success = true;
 
             return ActionResult.success(diagnostics, executionTime);
 
@@ -138,6 +146,18 @@ public class SystemDiagnosticsAction implements Action {
             long executionTime = System.currentTimeMillis() - startTime;
             logger.error("System diagnostics action failed", e);
             throw new ActionException(ACTION_ID, "Failed to collect diagnostics: " + e.getMessage(), e);
+        } finally {
+            // Record metrics
+            long duration = System.currentTimeMillis() - startTime;
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                try {
+                    metrics.recordOperation("action", "system-diagnostics", success,
+                            java.time.Duration.ofMillis(duration));
+                } catch (Exception e) {
+                    logger.debug("Failed to record metrics for system diagnostics action: {}", e.getMessage());
+                }
+            }
         }
     }
 

@@ -1,13 +1,10 @@
 package org.openhab.core.ai.stub;
 
-import java.time.Instant;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.collector.ExecutionMetricsCollector;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -35,18 +32,17 @@ public class StubServiceStatistics {
 
     // NEW: Monitoring registry for centralized metrics collection
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsService metricsService;
 
     /**
      * Record request handling using the new monitoring framework
      */
     public void recordRequest(String serviceName, long processingTimeMs, boolean success) {
         try {
-            // Use centralized monitoring registry
-            if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry
-                        .executionCollector(MetricKeys.action("stub-" + serviceName));
-                collector.recordExecution(success, processingTimeMs * 1_000_000L); // Convert to nanoseconds
+            // Use centralized metrics service
+            if (metricsService != null) {
+                metricsService.recordOperation("stub-service", serviceName, success,
+                        java.time.Duration.ofMillis(processingTimeMs));
             }
 
             // Log the operation
@@ -67,11 +63,9 @@ public class StubServiceStatistics {
      */
     public void recordError(String serviceName, String errorType) {
         try {
-            // Use centralized monitoring registry
-            if (monitoringRegistry != null) {
-                ExecutionMetricsCollector collector = monitoringRegistry
-                        .executionCollector(MetricKeys.action("stub-" + serviceName));
-                collector.recordExecution(false, 0L);
+            // Use centralized metrics service
+            if (metricsService != null) {
+                metricsService.recordOperation("stub-service", serviceName + "-error", false, java.time.Duration.ZERO);
             }
 
             // Log the error
@@ -88,29 +82,25 @@ public class StubServiceStatistics {
     public Map<String, Object> getStatistics() {
         Map<String, Object> statistics = new java.util.HashMap<>();
 
-        if (monitoringRegistry != null) {
-            // Get statistics from monitoring registry for stub services
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("stub-service"));
-            var snapshot = collector.snapshot();
+        if (metricsService != null) {
+            try {
+                // Get statistics from metrics service for stub services
+                var snapshot = metricsService.getDomainAggregatedSnapshot("stub-service");
 
-            statistics.put("requestCount", snapshot.total());
-            statistics.put("successCount", snapshot.success());
-            statistics.put("errorCount", snapshot.failure());
-            statistics.put("totalProcessingTimeMs", snapshot.totalDurationNanos() / 1_000_000); // Convert from
-                                                                                                // nanoseconds
-            statistics.put("averageProcessingTimeMs",
-                    snapshot.totalDurationNanos() / Math.max(1, snapshot.total()) / 1_000_000); // Convert from
-                                                                                                // nanoseconds
-            statistics.put("timestamp", Instant.now());
-        } else {
-            // Fallback to basic statistics
-            statistics.put("requestCount", 0);
-            statistics.put("successCount", 0);
-            statistics.put("errorCount", 0);
-            statistics.put("totalProcessingTimeMs", 0);
-            statistics.put("averageProcessingTimeMs", 0);
-            statistics.put("timestamp", Instant.now());
+                statistics.put("requestCount", snapshot.totalOperations());
+                statistics.put("successCount", snapshot.successfulOperations());
+                statistics.put("errorCount", snapshot.failedOperations());
+                statistics.put("totalProcessingTimeMs", snapshot.totalDurationNanos() / 1_000_000); // Convert from
+                                                                                                    // nanoseconds
+                statistics.put("averageProcessingTimeMs",
+                        snapshot.totalOperations() > 0
+                                ? snapshot.totalDurationNanos() / (snapshot.totalOperations() * 1_000_000)
+                                : 0);
+                statistics.put("successRate", snapshot.getSuccessRate());
+                statistics.put("lastUpdated", System.currentTimeMillis());
+            } catch (Exception e) {
+                logger.debug("Failed to get stub service statistics: {}", e.getMessage());
+            }
         }
 
         return statistics;
@@ -122,10 +112,8 @@ public class StubServiceStatistics {
      * @return Request count
      */
     public long getRequestCount() {
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("stub-service"));
-            return collector.snapshot().total();
+        if (metricsService != null) {
+            return metricsService.executionSnapshot().total();
         }
         return 0;
     }
@@ -136,10 +124,8 @@ public class StubServiceStatistics {
      * @return Success count
      */
     public long getSuccessCount() {
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("stub-service"));
-            return collector.snapshot().success();
+        if (metricsService != null) {
+            return metricsService.executionSnapshot().success();
         }
         return 0;
     }
@@ -150,10 +136,8 @@ public class StubServiceStatistics {
      * @return Error count
      */
     public long getErrorCount() {
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("stub-service"));
-            return collector.snapshot().failure();
+        if (metricsService != null) {
+            return metricsService.executionSnapshot().failure();
         }
         return 0;
     }
@@ -164,10 +148,8 @@ public class StubServiceStatistics {
      * @return Total processing time
      */
     public long getTotalProcessingTimeMs() {
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("stub-service"));
-            return collector.snapshot().totalDurationNanos() / 1_000_000; // Convert from nanoseconds
+        if (metricsService != null) {
+            return metricsService.executionSnapshot().totalDurationNanos() / 1_000_000; // Convert from nanoseconds
         }
         return 0;
     }
@@ -178,10 +160,8 @@ public class StubServiceStatistics {
      * @return Average processing time
      */
     public long getAverageProcessingTimeMs() {
-        if (monitoringRegistry != null) {
-            ExecutionMetricsCollector collector = monitoringRegistry
-                    .executionCollector(MetricKeys.action("stub-service"));
-            var snapshot = collector.snapshot();
+        if (metricsService != null) {
+            var snapshot = metricsService.executionSnapshot();
             return snapshot.totalDurationNanos() / Math.max(1, snapshot.total()) / 1_000_000; // Convert from
                                                                                               // nanoseconds
         }
@@ -192,9 +172,24 @@ public class StubServiceStatistics {
      * Reset statistics (clears the monitoring registry data for stub services)
      */
     public void resetStatistics() {
-        if (monitoringRegistry != null) {
-            monitoringRegistry.reset(MetricKeys.action("stub-service"));
+        if (metricsService != null) {
+            metricsService.reset();
             logger.info("Stub service statistics reset");
         }
+    }
+
+    /**
+     * Reset statistics - alias for resetStatistics() for backward compatibility
+     */
+    public void reset() {
+        resetStatistics();
+    }
+
+    /**
+     * Set request count - for backward compatibility (no-op since we use monitoring registry)
+     */
+    public void setRequestCount(long count) {
+        // No-op since we use the monitoring registry for statistics
+        logger.debug("setRequestCount called with {} - using monitoring registry instead", count);
     }
 }

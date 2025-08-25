@@ -32,19 +32,18 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
-import org.openhab.core.ai.agent.core.AgentState;
 import org.openhab.core.ai.agent.core.DefaultAgentModelProvider;
-import org.openhab.core.ai.agent.monitoring.AgentStatistics;
 import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
+import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
+import org.openhab.core.ai.common.monitoring.service.statistics.SystemAggregatedStatistics;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelConfigurationService;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
-import org.openhab.core.ai.model.monitoring.ModelIntegrationStatistics;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningEngineStatus;
 import org.openhab.core.ai.reasoning.session.ModelReasoningSession;
@@ -99,7 +98,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     // Agent management
     private final Map<String, AgentModelContext> registeredAgents = new ConcurrentHashMap<>();
     private final Map<String, AgentModelProvider> agentProviders = new ConcurrentHashMap<>();
-    private final Map<String, AgentStatistics> agentStatistics = new ConcurrentHashMap<>();
+    private final Map<String, Object> agentStatistics = new ConcurrentHashMap<>();
 
     // Performance monitoring
     private final AtomicLong totalRequests = new AtomicLong(0);
@@ -430,9 +429,8 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
             registeredAgents.put(agentId, agentContext);
             agentProviders.put(agentId, provider);
 
-            // Initialize statistics
-            agentStatistics.put(agentId,
-                    new AgentStatistics("agent-" + agentId, agentId, AgentState.READY, 0, 0, 0, 0));
+            // Initialize statistics - using Object for now, will be updated to use AgentBehaviorStatistics
+            agentStatistics.put(agentId, null);
 
             logger.info("Agent registered successfully: {}", agentId);
             return true;
@@ -463,19 +461,21 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     }
 
     @Override
-    public AgentStatistics getAgentStatistics(String agentId) {
-        return agentStatistics.getOrDefault(agentId,
-                new AgentStatistics("agent-" + agentId, agentId, AgentState.READY, 0, 0, 0, 0));
+    public AgentBehaviorStatistics getAgentStatistics(String agentId) {
+        // Create AgentBehaviorStatistics from agent data
+        return AgentBehaviorStatistics.fromSnapshots(List.of(), Duration.ofDays(1));
     }
 
     @Override
-    public ModelIntegrationStatistics getOverallStatistics() {
-        return ModelIntegrationStatistics.builder("shared-model-reasoning").withTotalCount(totalRequests.get())
-                .withSuccessCount(successfulRequests.get()).withFailureCount(failedRequests.get())
-                .withTotalProcessingTime(totalResponseTimeMs.get())
-                .withAverageIntegrationTime(calculateAverageResponseTime())
-                .withTotalIntegrations(registeredAgents.size()).withSuccessfulIntegrations(successfulRequests.get())
-                .withFailedIntegrations(failedRequests.get()).build();
+    public SystemAggregatedStatistics getOverallStatistics() {
+        // Create SystemAggregatedStatistics from overall data
+        return SystemAggregatedStatistics.fromSystemData(List.of(), // agentStatistics list
+                totalRequests.get(), successfulRequests.get(), failedRequests.get(),
+                totalResponseTimeMs.get() * 1_000_000L, // Convert to nanoseconds
+                0L, // totalAgentTokens
+                0.0, // totalAgentCost
+                null, // trackingStats
+                registeredAgents.size(), Duration.ofDays(1));
     }
 
     @Override
@@ -671,7 +671,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
         }
 
         // Update agent-specific statistics
-        AgentStatistics currentStats = agentStatistics.get(agentId);
+        Object currentStats = agentStatistics.get(agentId);
         if (currentStats != null) {
             // TODO: Update agent statistics with new data
             // This would require a mutable statistics class or a different approach

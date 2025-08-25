@@ -5,10 +5,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
@@ -57,6 +57,9 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
     @Reference
     private @Nullable StorageService storageService;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // openHAB integration configuration
     private static final String DEFAULT_PERSISTENCE_SERVICE = "mapdb";
 
@@ -79,19 +82,13 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
     // Enhanced in-memory storage with openHAB integration
     private final ConcurrentHashMap<String, Task> tasks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Map<String, Object>> taskMetadata = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, AtomicLong> taskExecutionCounts = new ConcurrentHashMap<>();
 
     // Enhanced execution tracking with openHAB integration
     private final ConcurrentHashMap<String, TaskExecutionState> taskExecutionStates = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> taskExecutionStartTimes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> taskExecutors = new ConcurrentHashMap<>();
 
-    // Enhanced statistics with openHAB integration
-    private final AtomicLong totalTasks = new AtomicLong(0);
-    private final AtomicLong completedTasks = new AtomicLong(0);
-    private final AtomicLong failedTasks = new AtomicLong(0);
-    private final AtomicLong cancelledTasks = new AtomicLong(0);
-    private final AtomicLong activeTasks = new AtomicLong(0);
+    // Enhanced statistics with openHAB integration - now handled by MetricsService
 
     // openHAB persistence service integration
     private @Nullable PersistenceService primaryPersistenceService;
@@ -229,8 +226,8 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
             saveTaskToStorage(task);
             saveExecutionStateToStorage(executionState);
 
-            totalTasks.incrementAndGet();
-            activeTasks.incrementAndGet();
+            // Record metrics for task creation
+            recordMetrics("agent-persistence", "openhab-integration", true, 0L);
 
             // Log task creation using SLF4J
             logger.info("A2A Task created: id={}, action={}, executor={}", task.getId(),
@@ -341,20 +338,47 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
     public Map<String, Object> getOpenHABStatistics() {
         Map<String, Object> stats = new HashMap<>();
 
-        // Basic statistics
-        stats.put("totalTasks", totalTasks.get());
-        stats.put("completedTasks", completedTasks.get());
-        stats.put("failedTasks", failedTasks.get());
-        stats.put("cancelledTasks", cancelledTasks.get());
-        stats.put("activeTasks", tasks.size());
-        stats.put("totalExecutions", taskExecutionCounts.values().stream().mapToLong(AtomicLong::get).sum());
+        // Get metrics from MetricsService
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var snapshot = metrics.getDomainAggregatedSnapshot("agent-persistence");
+                stats.put("totalTasks", snapshot.totalOperations());
+                stats.put("completedTasks", snapshot.totalOperations() - snapshot.failedOperations());
+                stats.put("failedTasks", snapshot.failedOperations());
+                stats.put("cancelledTasks", 0L); // Not tracked separately in current metrics
+                stats.put("activeTasks", tasks.size());
+                stats.put("totalExecutions", snapshot.totalOperations());
 
-        // Calculate success rate
-        long totalExecuted = completedTasks.get() + failedTasks.get();
-        if (totalExecuted > 0) {
-            double successRate = (double) completedTasks.get() / totalExecuted;
-            stats.put("successRate", successRate);
+                // Calculate success rate
+                long totalExecuted = snapshot.totalOperations();
+                if (totalExecuted > 0) {
+                    double successRate = (double) (snapshot.totalOperations() - snapshot.failedOperations())
+                            / totalExecuted;
+                    stats.put("successRate", successRate);
+                } else {
+                    stats.put("successRate", 0.0);
+                }
+            } catch (Exception e) {
+                logger.warn("Error retrieving metrics for agent-persistence: {}", e.getMessage());
+                // Fallback to basic statistics
+                stats.put("totalTasks", 0L);
+                stats.put("completedTasks", 0L);
+                stats.put("failedTasks", 0L);
+                stats.put("cancelledTasks", 0L);
+                stats.put("activeTasks", tasks.size());
+                stats.put("totalExecutions", 0L);
+                stats.put("successRate", 0.0);
+            }
         } else {
+            logger.warn("MetricsService not available, returning empty statistics");
+            // Fallback to basic statistics
+            stats.put("totalTasks", 0L);
+            stats.put("completedTasks", 0L);
+            stats.put("failedTasks", 0L);
+            stats.put("cancelledTasks", 0L);
+            stats.put("activeTasks", tasks.size());
+            stats.put("totalExecutions", 0L);
             stats.put("successRate", 0.0);
         }
 
@@ -368,6 +392,24 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
         saveStatisticsToStorage(stats);
 
         return stats;
+    }
+
+    /**
+     * Record metrics for an operation.
+     * 
+     * @param domain the operation domain
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param durationNanos the operation duration in nanoseconds
+     */
+    private void recordMetrics(String domain, String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+        } else {
+            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                    operation);
+        }
     }
 
     private void saveStatisticsToStorage(Map<String, Object> stats) {
@@ -440,24 +482,8 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
             if (statisticsStorage != null) {
                 Map<String, Object> stats = statisticsStorage.get("current");
                 if (stats != null) {
-                    // Restore statistics from storage
-                    Long total = (Long) stats.get("totalTasks");
-                    if (total != null)
-                        totalTasks.set(total);
-
-                    Long completed = (Long) stats.get("completedTasks");
-                    if (completed != null)
-                        completedTasks.set(completed);
-
-                    Long failed = (Long) stats.get("failedTasks");
-                    if (failed != null)
-                        failedTasks.set(failed);
-
-                    Long cancelled = (Long) stats.get("cancelledTasks");
-                    if (cancelled != null)
-                        cancelledTasks.set(cancelled);
-
-                    logger.debug("Loaded statistics from StorageService");
+                    // Statistics are now handled by MetricsService, just log the load
+                    logger.debug("Loaded statistics from StorageService (handled by MetricsService)");
                 }
             } else {
                 logger.warn("StatisticsStorage is not available, cannot load statistics.");
