@@ -16,8 +16,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.common.response.ModelResponse;
+import org.osgi.service.component.annotations.Reference;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -25,7 +29,7 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.config.LMStudioConfiguration;
-import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +56,9 @@ public class LMStudioClient implements ModelClient {
     private final ModelClientInfo providerInfo;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+
+    @Reference
+    private MetricsService metricsService;
 
     public LMStudioClient(LMStudioConfiguration config, @Nullable ActionRegistry actionRegistry) {
         this.config = config;
@@ -240,15 +247,37 @@ public class LMStudioClient implements ModelClient {
     }
 
     @Override
-    public ModelHealthMetrics getHealthStatus() {
+    public HealthMetrics getHealthStatus() {
         try {
             boolean available = isAvailable();
-            return ModelHealthMetrics.builder("lmstudio-client")
-                    .withStatus(available ? HealthStatus.HEALTHY : HealthStatus.UNHEALTHY).withAvailable(available)
-                    .withAverageResponseTimeMs(available ? 100L : 0L).withSuccessRate(available ? 1.0 : 0.0).build();
+
+            // Record health check operation
+            metricsService.recordOperation("model", "health-check")
+                .withSuccess(available)
+                .withDuration(100)
+                .withData(Map.of(
+                    "provider", "lmstudio",
+                    "model", config.getModelName()
+                ))
+                .record();
+
+            // Return health metrics from service
+            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
+            
         } catch (Exception e) {
-            return ModelHealthMetrics.builder("lmstudio-client").withStatus(HealthStatus.UNHEALTHY).withAvailable(false)
-                    .withAverageResponseTimeMs(0L).withSuccessRate(0.0).withLastError(e.getMessage()).build();
+            // Record failed health check
+            metricsService.recordOperation("model", "health-check")
+                .withSuccess(false)
+                .withDuration(100)
+                .withData(Map.of(
+                    "provider", "lmstudio",
+                    "model", config.getModelName(),
+                    "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
+                ))
+                .record();
+
+            // Return health metrics from service (will reflect the failure)
+            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
         }
     }
 

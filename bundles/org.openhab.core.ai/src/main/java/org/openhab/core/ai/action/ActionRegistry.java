@@ -9,13 +9,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionMetadata;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.ActionExecutionSnapshot;
 import org.openhab.core.ai.model.ActionExecutionEventStatus;
@@ -72,10 +73,18 @@ public class ActionRegistry {
     // Performance monitoring
     @Reference
     private @Nullable MetricsService metricsService;
-    private final AtomicLong totalExecutions = new AtomicLong(0);
-    private final AtomicLong successfulExecutions = new AtomicLong(0);
-    private final AtomicLong failedExecutions = new AtomicLong(0);
-    private final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
+
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for ActionRegistry");
+    }
+
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalExecutions = new AtomicLong(0);
+    // private final AtomicLong successfulExecutions = new AtomicLong(0);
+    // private final AtomicLong failedExecutions = new AtomicLong(0);
+    // private final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
     private final AtomicReference<Instant> lastExecutionTime = new AtomicReference<>(Instant.now());
 
     // Security validation
@@ -84,8 +93,8 @@ public class ActionRegistry {
 
     // Caching and optimization
     private final Map<String, ActionCacheEntry> actionCache = new ConcurrentHashMap<>();
-    private final AtomicLong cacheHits = new AtomicLong(0);
-    private final AtomicLong cacheMisses = new AtomicLong(0);
+    // private final AtomicLong cacheHits = new AtomicLong(0);
+    // private final AtomicLong cacheMisses = new AtomicLong(0);
 
     // Versioning and compatibility
     private final Map<String, ActionVersionInfo> versionInfo = new ConcurrentHashMap<>();
@@ -412,19 +421,22 @@ public class ActionRegistry {
             return;
         }
 
-        totalExecutions.incrementAndGet();
-        if (success) {
-            successfulExecutions.incrementAndGet();
-        } else {
-            failedExecutions.incrementAndGet();
-        }
-        totalExecutionTimeMs.addAndGet(executionTimeMs);
-        lastExecutionTime.set(Instant.now());
-
         // Update action-specific metrics
-        // Record action execution metrics
+        // Record action execution metrics with builder pattern
         if (metricsService != null) {
-            metricsService.recordOperation("action", actionId, success, Duration.ofMillis(executionTimeMs));
+            try {
+                metricsService.recordOperation("action", "execution")
+                    .withSuccess(success)
+                    .withDuration(Duration.ofMillis(executionTimeMs).toNanos())
+                    .withData("actionId", actionId)
+                    .withData("agentId", agentId)
+                    .withData("executionTimeMs", executionTimeMs)
+                    .withData("error", error != null ? error : "null")
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record action execution metrics for action {} by agent {}: {}", actionId, agentId, e.getMessage());
+                // Graceful degradation: continue with execution history even if metrics recording fails
+            }
         }
 
         // Record execution event
@@ -453,7 +465,11 @@ public class ActionRegistry {
      * @return the performance metrics, or null if not found
      */
     public @Nullable ActionExecutionSnapshot getPerformanceMetrics(String actionId) {
-        return metricsService != null ? metricsService.getActionExecutionSnapshot(actionId) : null;
+        if (metricsService != null) {
+            MetricKey actionKey = MetricKeys.actionExecution(actionId);
+            return metricsService.getSnapshot(actionKey, ActionExecutionSnapshot.class);
+        }
+        return null;
     }
 
     /**
@@ -462,8 +478,11 @@ public class ActionRegistry {
      * @return the overall performance metrics
      */
     public ActionExecutionSnapshot getOverallPerformanceMetrics() {
-        return metricsService != null ? metricsService.getActionExecutionSnapshot("overall")
-                : ActionExecutionSnapshot.empty("overall");
+        if (metricsService != null) {
+            MetricKey overallKey = MetricKeys.actionExecution("overall");
+            return metricsService.getSnapshot(overallKey, ActionExecutionSnapshot.class);
+        }
+        return ActionExecutionSnapshot.empty("overall");
     }
 
     /**
@@ -562,17 +581,17 @@ public class ActionRegistry {
         ActionCacheEntry entry = actionCache.get(cacheKey);
 
         if (entry == null) {
-            cacheMisses.incrementAndGet();
+            // cacheMisses.incrementAndGet(); // Removed AtomicLong
             return null;
         }
 
         if (entry.isExpired()) {
             actionCache.remove(cacheKey);
-            cacheMisses.incrementAndGet();
+            // cacheMisses.incrementAndGet(); // Removed AtomicLong
             return null;
         }
 
-        cacheHits.incrementAndGet();
+        // cacheHits.incrementAndGet(); // Removed AtomicLong
         actionCache.put(cacheKey, entry.withAccess());
         return entry.getResult();
     }
@@ -602,8 +621,8 @@ public class ActionRegistry {
      */
     public Map<String, Object> getCacheStatistics() {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("cacheHits", cacheHits.get());
-        stats.put("cacheMisses", cacheMisses.get());
+        // stats.put("cacheHits", cacheHits.get()); // Removed AtomicLong
+        // stats.put("cacheMisses", cacheMisses.get()); // Removed AtomicLong
         stats.put("cacheSize", actionCache.size());
         stats.put("maxCacheSize", maxCacheSize);
         stats.put("enableCaching", enableCaching);

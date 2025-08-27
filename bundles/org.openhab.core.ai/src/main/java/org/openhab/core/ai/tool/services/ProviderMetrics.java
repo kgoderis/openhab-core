@@ -5,6 +5,9 @@ import java.util.Map;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -111,20 +114,27 @@ public class ProviderMetrics {
         if (metrics != null) {
             try {
                 // Get statistics from metrics service for specific provider
-                var snapshot = metrics.getDomainAggregatedSnapshot("provider");
-
-                statistics.put("provider", provider.name());
-                statistics.put("totalExecutions", snapshot.totalOperations());
-                statistics.put("successfulExecutions", snapshot.successfulOperations());
-                statistics.put("failedExecutions", snapshot.failedOperations());
-                statistics.put("totalExecutionTimeMs", snapshot.totalDurationNanos() / 1_000_000); // Convert from
-                                                                                                   // nanoseconds
-                statistics.put("averageExecutionTimeMs",
-                        snapshot.totalOperations() > 0
-                                ? snapshot.totalDurationNanos() / (snapshot.totalOperations() * 1_000_000)
-                                : 0);
-                statistics.put("successRate", snapshot.getSuccessRate());
-                statistics.put("lastUpdated", System.currentTimeMillis());
+                MetricKey providerKey = MetricKeys.custom("provider", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(providerKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    long totalOperations = snapshot.getLong("total");
+                    long successfulOperations = snapshot.getLong("success");
+                    long failedOperations = snapshot.getLong("failure");
+                    long totalDurationNanos = snapshot.getLong("totalDurationNanos");
+                    
+                    statistics.put("provider", provider.name());
+                    statistics.put("totalExecutions", totalOperations);
+                    statistics.put("successfulExecutions", successfulOperations);
+                    statistics.put("failedExecutions", failedOperations);
+                    statistics.put("totalExecutionTimeMs", totalDurationNanos / 1_000_000); // Convert from nanoseconds
+                    statistics.put("averageExecutionTimeMs",
+                            totalOperations > 0
+                                    ? totalDurationNanos / (totalOperations * 1_000_000)
+                                    : 0);
+                    statistics.put("successRate", totalOperations > 0 ? (double) successfulOperations / totalOperations : 0.0);
+                    statistics.put("lastUpdated", System.currentTimeMillis());
+                }
             } catch (Exception e) {
                 logger.debug("Failed to get provider statistics: {}", e.getMessage());
             }
@@ -143,19 +153,26 @@ public class ProviderMetrics {
         if (metrics != null) {
             try {
                 // Get statistics from metrics service for all providers
-                var snapshot = metrics.getDomainAggregatedSnapshot("provider");
-
-                statistics.put("totalProviderExecutions", snapshot.totalOperations());
-                statistics.put("successfulProviderExecutions", snapshot.successfulOperations());
-                statistics.put("failedProviderExecutions", snapshot.failedOperations());
-                statistics.put("totalExecutionTimeMs", snapshot.totalDurationNanos() / 1_000_000); // Convert from
-                                                                                                   // nanoseconds
-                statistics.put("averageExecutionTimeMs",
-                        snapshot.totalOperations() > 0
-                                ? snapshot.totalDurationNanos() / (snapshot.totalOperations() * 1_000_000)
-                                : 0);
-                statistics.put("successRate", snapshot.getSuccessRate());
-                statistics.put("lastUpdated", System.currentTimeMillis());
+                MetricKey providerKey = MetricKeys.custom("provider", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(providerKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    long totalOperations = snapshot.getLong("total");
+                    long successfulOperations = snapshot.getLong("success");
+                    long failedOperations = snapshot.getLong("failure");
+                    long totalDurationNanos = snapshot.getLong("totalDurationNanos");
+                    
+                    statistics.put("totalProviderExecutions", totalOperations);
+                    statistics.put("successfulProviderExecutions", successfulOperations);
+                    statistics.put("failedProviderExecutions", failedOperations);
+                    statistics.put("totalExecutionTimeMs", totalDurationNanos / 1_000_000); // Convert from nanoseconds
+                    statistics.put("averageExecutionTimeMs",
+                            totalOperations > 0
+                                    ? totalDurationNanos / (totalOperations * 1_000_000)
+                                    : 0);
+                    statistics.put("successRate", totalOperations > 0 ? (double) successfulOperations / totalOperations : 0.0);
+                    statistics.put("lastUpdated", System.currentTimeMillis());
+                }
             } catch (Exception e) {
                 logger.debug("Failed to get all provider statistics: {}", e.getMessage());
             }

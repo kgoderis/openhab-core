@@ -12,6 +12,9 @@ import java.util.concurrent.Executors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.reasoning.input.AutonomousReasoningInputManager;
@@ -153,13 +156,24 @@ public class EventProcessingAnalytics {
      * @param duration the operation duration
      */
     public void recordPerformanceMetric(String component, String operation, boolean success, Duration duration) {
-        try {
-            // Use centralized metrics service
-            if (metricsService != null) {
-                metricsService.recordOperation("event-processing", component + "." + operation, success, duration);
+        // Use centralized metrics service with builder pattern
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("event-processing", "performance")
+                    .withSuccess(success)
+                    .withDuration(duration.toNanos())
+                    .withData("component", component)
+                    .withData("operation", operation)
+                    .withData("durationMs", duration.toMillis())
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record performance metrics for component {} operation {}: {}", component, operation, e.getMessage());
+                // Graceful degradation: continue with local storage even if metrics recording fails
             }
+        }
 
-            // Store locally for analytics
+        // Store locally for analytics
+        try {
             String key = component + "." + operation;
             PerformanceMetric metric = performanceMetrics.computeIfAbsent(key, k -> new PerformanceMetric());
             metric.recordOperation(success, duration);
@@ -167,7 +181,7 @@ public class EventProcessingAnalytics {
             logger.debug("Recorded performance metric: {} (success={}, duration={}ms)", key, success,
                     duration.toMillis());
         } catch (Exception e) {
-            logger.debug("Failed to record performance metric: {}", e.getMessage());
+            logger.warn("Failed to store performance metric locally for component {} operation {}: {}", component, operation, e.getMessage());
         }
     }
 
@@ -236,17 +250,33 @@ public class EventProcessingAnalytics {
      * @param exception the exception (optional)
      */
     public void recordError(String component, String operation, String error, @Nullable Throwable exception) {
-        // Record error using metrics service
+        // Record error using metrics service with builder pattern
         if (metricsService != null) {
-            metricsService.recordOperation("event-processing", component + "." + operation, false, Duration.ZERO);
+            try {
+                metricsService.recordOperation("event-processing", "error")
+                    .withSuccess(false)
+                    .withDuration(0L)
+                    .withData("component", component)
+                    .withData("operation", operation)
+                    .withData("error", error)
+                    .withData("exception", exception != null ? exception.getClass().getSimpleName() : "null")
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record error metrics for component {} operation {}: {}", component, operation, e.getMessage());
+                // Graceful degradation: continue with local storage even if metrics recording fails
+            }
         }
 
         // Store locally for analytics
-        String key = component + "." + operation;
-        QualityMetric metric = qualityMetrics.computeIfAbsent(key, k -> new QualityMetric());
-        metric.recordError(error, exception);
+        try {
+            String key = component + "." + operation;
+            QualityMetric metric = qualityMetrics.computeIfAbsent(key, k -> new QualityMetric());
+            metric.recordError(error, exception);
 
-        logger.debug("Recorded error: {} - {}: {}", component, operation, error);
+            logger.debug("Recorded error: {} - {}: {}", component, operation, error);
+        } catch (Exception e) {
+            logger.warn("Failed to store error metric locally for component {} operation {}: {}", component, operation, e.getMessage());
+        }
     }
 
     /**
@@ -257,17 +287,32 @@ public class EventProcessingAnalytics {
      * @param warning the warning message
      */
     public void recordWarning(String component, String operation, String warning) {
-        // Record warning using metrics service
+        // Record warning using metrics service with builder pattern
         if (metricsService != null) {
-            metricsService.recordOperation("event-processing", component + "." + operation, true, Duration.ZERO);
+            try {
+                metricsService.recordOperation("event-processing", "warning")
+                    .withSuccess(true)
+                    .withDuration(0L)
+                    .withData("component", component)
+                    .withData("operation", operation)
+                    .withData("warning", warning)
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record warning metrics for component {} operation {}: {}", component, operation, e.getMessage());
+                // Graceful degradation: continue with local storage even if metrics recording fails
+            }
         }
 
         // Store locally for analytics
-        String key = component + "." + operation;
-        QualityMetric metric = qualityMetrics.computeIfAbsent(key, k -> new QualityMetric());
-        metric.recordWarning(warning);
+        try {
+            String key = component + "." + operation;
+            QualityMetric metric = qualityMetrics.computeIfAbsent(key, k -> new QualityMetric());
+            metric.recordWarning(warning);
 
-        logger.debug("Recorded warning: {} - {}: {}", component, operation, warning);
+            logger.debug("Recorded warning: {} - {}: {}", component, operation, warning);
+        } catch (Exception e) {
+            logger.warn("Failed to store warning metric locally for component {} operation {}: {}", component, operation, e.getMessage());
+        }
     }
 
     /**
@@ -390,9 +435,13 @@ public class EventProcessingAnalytics {
 
         if (metricsService != null) {
             try {
-                var snapshot = metricsService.getDomainAggregatedSnapshot("event-processing");
-                totalEvents = snapshot.totalOperations();
-                totalProcessingTime = snapshot.totalDurationNanos() / 1_000_000; // Convert to milliseconds
+                MetricKey eventProcessingKey = MetricKeys.custom("event-processing", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(eventProcessingKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    totalEvents = snapshot.getLong("total");
+                    totalProcessingTime = snapshot.getLong("totalDurationNanos") / 1_000_000; // Convert to milliseconds
+                }
             } catch (Exception e) {
                 logger.debug("Failed to get event processing metrics: {}", e.getMessage());
             }
@@ -416,8 +465,9 @@ public class EventProcessingAnalytics {
 
         if (metricsService != null) {
             try {
-                var snapshot = metricsService.getDomainAggregatedSnapshot("event-processing");
-                double successRate = snapshot.successRate();
+                MetricKey eventProcessingKey = MetricKeys.custom("event-processing", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(eventProcessingKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                double successRate = snapshot != null ? snapshot.getDouble("successRate") : 0.0;
                 if (successRate < performanceThreshold) {
                     bottlenecks.add(new PerformanceBottleneck("event-processing", successRate, Duration.ZERO));
                 }
@@ -439,11 +489,16 @@ public class EventProcessingAnalytics {
 
         if (metricsService != null) {
             try {
-                var snapshot = metricsService.getDomainAggregatedSnapshot("event-processing");
-                long totalErrors = snapshot.failedOperations();
-                if (totalErrors > 0) {
-                    issues.add(new QualityIssue("event-processing",
-                            1.0 - (double) totalErrors / snapshot.totalOperations()));
+                MetricKey eventProcessingKey = MetricKeys.custom("event-processing", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(eventProcessingKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    long totalErrors = snapshot.getLong("failure");
+                    long totalOperations = snapshot.getLong("total");
+                    if (totalErrors > 0) {
+                        issues.add(new QualityIssue("event-processing",
+                                1.0 - (double) totalErrors / totalOperations));
+                    }
                 }
             } catch (Exception e) {
                 logger.debug("Failed to get quality issues: {}", e.getMessage());

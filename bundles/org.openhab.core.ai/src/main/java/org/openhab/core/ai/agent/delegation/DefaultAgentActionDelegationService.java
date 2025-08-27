@@ -21,7 +21,7 @@ import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.monitoring.api.Counts;
 import org.openhab.core.ai.common.monitoring.api.Timing;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
 import org.openhab.core.ai.common.monitoring.snapshot.DelegationMetricsSnapshot;
 import org.openhab.core.ai.common.services.LoadBalancingStrategy;
 import org.osgi.service.component.annotations.Component;
@@ -55,7 +55,7 @@ public class DefaultAgentActionDelegationService implements AgentActionDelegatio
 
     // Performance monitoring
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsRegistry monitoringRegistry;
 
     // Agent registry and load balancing
     private final ConcurrentHashMap<String, AgentInfo> agentRegistry = new ConcurrentHashMap<>();

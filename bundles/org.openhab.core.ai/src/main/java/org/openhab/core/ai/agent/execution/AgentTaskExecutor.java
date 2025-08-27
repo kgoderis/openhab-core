@@ -44,6 +44,9 @@ import io.a2a.spec.Task;
 import io.a2a.spec.TaskNotCancelableError;
 import io.a2a.spec.TaskState;
 import io.a2a.spec.TextPart;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 
 /**
  * A2A SDK Compliant Task Execution.
@@ -142,6 +145,14 @@ public class AgentTaskExecutor implements AgentExecutor {
 
     @Reference
     private @Nullable AgentSkillManager agentSkillManager;
+
+    private @Nullable MetricsService metricsService;
+
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for AgentTaskExecutor");
+    }
 
     private @Nullable BundleContext bundleContext;
 

@@ -12,6 +12,10 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -535,9 +539,13 @@ public class ProtocolSecurityFilter implements Filter {
             return new FilterStatistics(0, 0, System.currentTimeMillis() - startTime);
         }
 
-        var snapshot = metrics.getDomainAggregatedSnapshot("protocol-security");
-        return new FilterStatistics(snapshot.totalOperations(), snapshot.failedOperations(),
-                System.currentTimeMillis() - startTime);
+        MetricKey protocolSecurityKey = MetricKeys.custom("protocol-security", Map.of(), Set.of("counts", "latency"));
+        var snapshot = metrics.getSnapshot(protocolSecurityKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+        if (snapshot != null) {
+            return new FilterStatistics(snapshot.getLong("total"), snapshot.getLong("failure"),
+                    System.currentTimeMillis() - startTime);
+        }
+        return new FilterStatistics(0, 0, System.currentTimeMillis() - startTime);
     }
 
     /**

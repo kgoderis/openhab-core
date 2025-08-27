@@ -7,12 +7,9 @@ import java.util.Objects;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.Counts;
 import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
-import org.openhab.core.ai.common.monitoring.api.Health;
-import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthStatus;
 import org.openhab.core.ai.common.monitoring.api.LatencyMetrics;
-import org.openhab.core.ai.common.monitoring.api.Metrics;
 import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
-import org.openhab.core.ai.common.monitoring.api.MonitoringType;
 import org.openhab.core.ai.common.monitoring.api.Timing;
 
 /**
@@ -31,7 +28,7 @@ import org.openhab.core.ai.common.monitoring.api.Timing;
 public record ExecutionMetricsSnapshot(Counts counts, Timing timing, long timestampMs,
         // Health-related fields
         HealthStatus healthStatus, String statusMessage, long lastFailureTime, long lastSuccessTime, String lastError,
-        long consecutiveFailures) implements MetricsSnapshot, CountsMetrics, LatencyMetrics, Metrics, Health {
+        long consecutiveFailures) implements MetricsSnapshot, CountsMetrics, LatencyMetrics {
 
     public ExecutionMetricsSnapshot {
         Objects.requireNonNull(healthStatus, "healthStatus");
@@ -49,6 +46,15 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing, long timest
 
     public long failure() {
         return counts.failure();
+    }
+
+    /**
+     * Calculate success rate as a percentage.
+     * 
+     * @return success rate as percentage (0.0-100.0)
+     */
+    public double successRate() {
+        return successRatePercent();
     }
 
     public long totalDurationNanos() {
@@ -138,32 +144,7 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing, long timest
         return successRatePercent() >= 95.0 && averageLatencyMs() < 5000.0 && healthStatus == HealthStatus.HEALTHY;
     }
 
-    // ===== Health Interface Implementation =====
 
-    @Override
-    public HealthStatus getStatus() {
-        return healthStatus;
-    }
-
-    @Override
-    public String getStatusMessage() {
-        return statusMessage;
-    }
-
-    @Override
-    public Map<String, Object> getHealthIndicators() {
-        Map<String, Object> indicators = new HashMap<>();
-        indicators.put("successRate", successRatePercent());
-        indicators.put("failureRate", failureRatePercent());
-        indicators.put("averageLatency", averageLatencyMs());
-        indicators.put("operationsPerSecond", operationsPerSecond());
-        indicators.put("lastFailureTime", lastFailureTime);
-        indicators.put("lastSuccessTime", lastSuccessTime);
-        indicators.put("lastError", lastError);
-        indicators.put("consecutiveFailures", consecutiveFailures);
-        indicators.put("efficiencyScore", efficiencyScore());
-        return indicators;
-    }
 
     // ===== Health-Specific Methods =====
 
@@ -240,77 +221,7 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing, long timest
         return consecutiveFailures;
     }
 
-    // ===== Metrics Interface Implementation =====
 
-    @Override
-    public String getId() {
-        return "execution-metrics";
-    }
-
-    @Override
-    public java.time.Instant getTimestamp() {
-        return java.time.Instant.ofEpochMilli(timestampMs);
-    }
-
-    @Override
-    public MonitoringType getType() {
-        return MonitoringType.PERFORMANCE;
-    }
-
-    @Override
-    public java.util.Map<String, Object> getData() {
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("totalOperations", getTotalOperations());
-        data.put("successfulOperations", getSuccessfulOperations());
-        data.put("failedOperations", getFailedOperations());
-        data.put("totalProcessingTime", getTotalProcessingTime());
-        data.put("averageResponseTime", getAverageResponseTime());
-        data.put("successRate", getSuccessRate());
-        data.put("operationsPerSecond", getOperationsPerSecond());
-        return data;
-    }
-
-    @Override
-    public String getDomain() {
-        return "execution";
-    }
-
-    @Override
-    public String getSource() {
-        return "execution-collector";
-    }
-
-    @Override
-    public long getTotalOperations() {
-        return total();
-    }
-
-    @Override
-    public long getSuccessfulOperations() {
-        return success();
-    }
-
-    @Override
-    public long getFailedOperations() {
-        return failure();
-    }
-
-    @Override
-    public long getTotalProcessingTime() {
-        return totalDurationNanos() / 1_000_000L; // Convert nanoseconds to milliseconds
-    }
-
-    @Override
-    public double getAverageResponseTime() {
-        return averageMs();
-    }
-
-    @Override
-    public java.time.Instant getLastOperationTime() {
-        // This would need to be tracked separately in the collector
-        // For now, return the snapshot timestamp
-        return getTimestamp();
-    }
 
     /**
      * Builder for ExecutionMetricsSnapshot.
@@ -482,7 +393,7 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing, long timest
                 .append(String.format("%.3f", efficiencyScore())).append(", healthStatus=").append(healthStatus)
                 .append(", healthScore=").append(String.format("%.3f", healthScore())).append(", consecutiveFailures=")
                 .append(consecutiveFailures).append(", requiresAttention=").append(requiresImmediateAttention())
-                .append(", timestamp=").append(getTimestamp()).append("}").toString();
+                .append(", timestamp=").append(timestampMs).append("}").toString();
     }
 
     /**

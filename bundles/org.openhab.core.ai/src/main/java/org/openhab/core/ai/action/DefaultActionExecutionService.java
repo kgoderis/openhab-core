@@ -22,6 +22,10 @@ import org.openhab.core.ai.action.config.ActionExecutionConfiguration;
 import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -408,13 +412,17 @@ public class DefaultActionExecutionService implements ActionExecutionService {
         MetricsService metricsService = this.metricsService;
         if (metricsService != null) {
             try {
-                var snapshot = metricsService.getDomainAggregatedSnapshot("action-execution");
-                metrics.put("totalExecutions", snapshot.totalOperations());
-                metrics.put("successfulExecutions", snapshot.successfulOperations());
-                metrics.put("failedExecutions", snapshot.failedOperations());
-                metrics.put("totalExecutionTime", snapshot.totalDurationNanos() / 1_000_000); // Convert to milliseconds
-                metrics.put("successRate", snapshot.getSuccessRate());
-                metrics.put("averageExecutionTime", snapshot.getAverageDurationMs()); // Already in milliseconds
+                MetricKey actionExecKey = MetricKeys.custom("action-execution", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(actionExecKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    metrics.put("totalExecutions", snapshot.getLong("total"));
+                    metrics.put("successfulExecutions", snapshot.getLong("success"));
+                    metrics.put("failedExecutions", snapshot.getLong("failure"));
+                    metrics.put("totalExecutionTime", snapshot.getLong("totalDurationNanos") / 1_000_000); // Convert to milliseconds
+                    metrics.put("successRate", snapshot.getDouble("successRate"));
+                    metrics.put("averageExecutionTime", snapshot.getDouble("averageDurationMs")); // Already in milliseconds
+                }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for action-execution: {}", e.getMessage());
                 // Fallback to placeholder values
@@ -533,11 +541,15 @@ public class DefaultActionExecutionService implements ActionExecutionService {
         MetricsService metricsService = this.metricsService;
         if (metricsService != null) {
             try {
-                var snapshot = metricsService.getDomainAggregatedSnapshot("action-execution");
-                stats.put("totalExecutions", snapshot.totalOperations());
-                stats.put("successfulExecutions", snapshot.successfulOperations());
-                stats.put("failedExecutions", snapshot.failedOperations());
-                stats.put("totalExecutionTime", snapshot.totalDurationNanos() / 1_000_000); // Convert to milliseconds
+                MetricKey actionExecKey = MetricKeys.custom("action-execution", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(actionExecKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    stats.put("totalExecutions", snapshot.getLong("total"));
+                    stats.put("successfulExecutions", snapshot.getLong("success"));
+                    stats.put("failedExecutions", snapshot.getLong("failure"));
+                    stats.put("totalExecutionTime", snapshot.getLong("totalDurationNanos") / 1_000_000); // Convert to milliseconds
+                }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for action-execution: {}", e.getMessage());
                 // Fallback to placeholder values

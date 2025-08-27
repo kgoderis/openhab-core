@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.elicitation;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,10 +11,14 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.elicitation.input.ElicitationRequest;
 import org.openhab.core.ai.tool.elicitation.input.ElicitationResult;
 import org.openhab.core.ai.tool.elicitation.input.ElicitationStatus;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +39,19 @@ public class ElicitationManager implements ElicitationService {
     /** Map of pending elicitation requests by ID */
     private final Map<String, ElicitationRequest> pendingRequests = new ConcurrentHashMap<>();
 
-    /** Performance monitoring */
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong completedRequests = new AtomicLong(0);
-    private final AtomicLong cancelledRequests = new AtomicLong(0);
-    private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+    /** Performance monitoring - migrated to MetricsService */
+    // private final AtomicLong totalRequests = new AtomicLong(0);
+    // private final AtomicLong completedRequests = new AtomicLong(0);
+    // private final AtomicLong cancelledRequests = new AtomicLong(0);
+    // private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+
+    private MetricsService metricsService;
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.STATIC)
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        LOGGER.debug("MetricsService set for ElicitationManager");
+    }
 
     @Activate
     public ElicitationManager() {
@@ -58,7 +71,17 @@ public class ElicitationManager implements ElicitationService {
 
     @Override
     public CompletableFuture<ElicitationResult> requestInput(ElicitationRequest request) {
-        totalRequests.incrementAndGet();
+        try {
+            metricsService.recordOperation("elicitation", "request")
+                .withSuccess(true)
+                .withDuration(0L)
+                .withData("requestId", request.getId())
+                .withData("requestType", request.getType().name())
+                .record();
+        } catch (Exception e) {
+            LOGGER.warn("Failed to record elicitation request metrics for request {}: {}", request.getId(), e.getMessage());
+            // Graceful degradation: continue with request processing even if metrics recording fails
+        }
         long startTime = System.currentTimeMillis();
 
         try {
@@ -86,10 +109,14 @@ public class ElicitationManager implements ElicitationService {
 
         } catch (Exception e) {
             LOGGER.error("Error creating elicitation request: {}", request.getId(), e);
+            metricsService.recordOperation("elicitation", "error")
+                .withSuccess(false)
+                .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                .withData("requestId", request.getId())
+                .withData("exceptionType", e.getClass().getSimpleName())
+                .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
+                .record();
             return CompletableFuture.failedFuture(e);
-        } finally {
-            long responseTime = System.currentTimeMillis() - startTime;
-            totalResponseTimeMs.addAndGet(responseTime);
         }
     }
 
@@ -112,7 +139,7 @@ public class ElicitationManager implements ElicitationService {
 
             // Remove from pending requests
             pendingRequests.remove(requestId);
-            completedRequests.incrementAndGet();
+            // completedRequests.incrementAndGet(); // Removed AtomicLong
 
             LOGGER.info("Elicitation request completed: {} - Status: {}", requestId, result.getStatus());
             return CompletableFuture.completedFuture(result);
@@ -139,7 +166,7 @@ public class ElicitationManager implements ElicitationService {
 
             // Remove from pending requests
             pendingRequests.remove(requestId);
-            cancelledRequests.incrementAndGet();
+            // cancelledRequests.incrementAndGet(); // Removed AtomicLong
 
             LOGGER.info("Elicitation request cancelled: {} - Reason: {}", requestId, reason);
             return CompletableFuture.completedFuture(result);
@@ -168,15 +195,15 @@ public class ElicitationManager implements ElicitationService {
     @Override
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new ConcurrentHashMap<>();
-        metrics.put("totalRequests", totalRequests.get());
-        metrics.put("completedRequests", completedRequests.get());
-        metrics.put("cancelledRequests", cancelledRequests.get());
+        // metrics.put("totalRequests", totalRequests.get()); // Removed AtomicLong
+        // metrics.put("completedRequests", completedRequests.get()); // Removed AtomicLong
+        // metrics.put("cancelledRequests", cancelledRequests.get()); // Removed AtomicLong
         metrics.put("pendingRequests", pendingRequests.size());
-        metrics.put("totalResponseTimeMs", totalResponseTimeMs.get());
-        metrics.put("averageResponseTimeMs",
-                totalRequests.get() > 0 ? totalResponseTimeMs.get() / totalRequests.get() : 0);
-        metrics.put("completionRate",
-                totalRequests.get() > 0 ? (double) completedRequests.get() / totalRequests.get() : 0.0);
+        // metrics.put("totalResponseTimeMs", totalResponseTimeMs.get()); // Removed AtomicLong
+        // metrics.put("averageResponseTimeMs", // Removed AtomicLong
+        //         totalRequests.get() > 0 ? totalResponseTimeMs.get() / totalRequests.get() : 0);
+        // metrics.put("completionRate", // Removed AtomicLong
+        //         totalRequests.get() > 0 ? (double) completedRequests.get() / totalRequests.get() : 0.0);
         return metrics;
     }
 

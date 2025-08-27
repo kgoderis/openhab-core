@@ -10,7 +10,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.Health;
 import org.openhab.core.ai.common.monitoring.api.Metrics;
 import org.openhab.core.ai.common.monitoring.api.Statistics;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -28,7 +28,7 @@ import org.osgi.service.component.annotations.Reference;
 public class RESTMetricsExporter {
 
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsRegistry monitoringRegistry;
 
     private final Map<String, Object> responseCache = new ConcurrentHashMap<>();
     private static final long CACHE_TTL_MS = 5000; // 5 seconds cache
@@ -40,7 +40,7 @@ public class RESTMetricsExporter {
      * @return map containing all performance metrics data
      */
     public Map<String, Object> getPerformanceMetrics() {
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry == null) {
             return Map.of("error", "Monitoring registry not available");
         }
@@ -56,7 +56,7 @@ public class RESTMetricsExporter {
      * @return map containing all statistics data
      */
     public Map<String, Object> getStatisticsData() {
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry == null) {
             return Map.of("error", "Monitoring registry not available");
         }
@@ -72,7 +72,7 @@ public class RESTMetricsExporter {
      * @return map containing all health data
      */
     public Map<String, Object> getHealthData() {
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry == null) {
             return Map.of("error", "Monitoring registry not available");
         }
@@ -88,7 +88,7 @@ public class RESTMetricsExporter {
      * @return map containing aggregated metrics summary
      */
     public Map<String, Object> getMetricsSummary() {
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry == null) {
             return Map.of("error", "Monitoring registry not available");
         }
@@ -123,7 +123,7 @@ public class RESTMetricsExporter {
      * @return filtered metrics data
      */
     public Map<String, Object> getMetricsByDomain(String domain) {
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry == null) {
             return Map.of("error", "Monitoring registry not available");
         }
@@ -143,7 +143,7 @@ public class RESTMetricsExporter {
      * @return paginated metrics data
      */
     public Map<String, Object> getPaginatedMetrics(int page, int size) {
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry == null) {
             return Map.of("error", "Monitoring registry not available");
         }

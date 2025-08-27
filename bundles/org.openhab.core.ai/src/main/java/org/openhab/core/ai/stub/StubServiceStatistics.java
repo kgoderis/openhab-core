@@ -4,6 +4,10 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -38,23 +42,23 @@ public class StubServiceStatistics {
      * Record request handling using the new monitoring framework
      */
     public void recordRequest(String serviceName, long processingTimeMs, boolean success) {
-        try {
-            // Use centralized metrics service
-            if (metricsService != null) {
+        // Use centralized metrics service
+        if (metricsService != null) {
+            try {
                 metricsService.recordOperation("stub-service", serviceName, success,
                         java.time.Duration.ofMillis(processingTimeMs));
+            } catch (Exception e) {
+                logger.warn("Failed to record stub service request metrics for service {}: {}", serviceName, e.getMessage());
+                // Graceful degradation: continue with logging even if metrics recording fails
             }
+        }
 
-            // Log the operation
-            if (success) {
-                logger.debug("Stub service request successful - Service: {}, Duration: {}ms", serviceName,
-                        processingTimeMs);
-            } else {
-                logger.warn("Stub service request failed - Service: {}, Duration: {}ms", serviceName, processingTimeMs);
-            }
-
-        } catch (Exception e) {
-            logger.error("Error recording stub service request metrics for service: {}", serviceName, e);
+        // Log the operation
+        if (success) {
+            logger.debug("Stub service request successful - Service: {}, Duration: {}ms", serviceName,
+                    processingTimeMs);
+        } else {
+            logger.warn("Stub service request failed - Service: {}, Duration: {}ms", serviceName, processingTimeMs);
         }
     }
 
@@ -62,18 +66,23 @@ public class StubServiceStatistics {
      * Record error occurrence using the new monitoring framework
      */
     public void recordError(String serviceName, String errorType) {
-        try {
-            // Use centralized metrics service
-            if (metricsService != null) {
-                metricsService.recordOperation("stub-service", serviceName + "-error", false, java.time.Duration.ZERO);
+        // Use centralized metrics service with builder pattern
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("stub-service", "error")
+                    .withSuccess(false)
+                    .withDuration(0L)
+                    .withData("serviceName", serviceName)
+                    .withData("errorType", errorType)
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record stub service error metrics for service {}: {}", serviceName, e.getMessage());
+                // Graceful degradation: continue with logging even if metrics recording fails
             }
-
-            // Log the error
-            logger.warn("Stub service error recorded - Service: {}, Error: {}", serviceName, errorType);
-
-        } catch (Exception e) {
-            logger.error("Error recording stub service error metrics for service: {}", serviceName, e);
         }
+
+        // Log the error
+        logger.warn("Stub service error recorded - Service: {}, Error: {}", serviceName, errorType);
     }
 
     /**
@@ -85,18 +94,20 @@ public class StubServiceStatistics {
         if (metricsService != null) {
             try {
                 // Get statistics from metrics service for stub services
-                var snapshot = metricsService.getDomainAggregatedSnapshot("stub-service");
+                MetricKey stubKey = MetricKeys.custom("stub-service", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(stubKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
 
-                statistics.put("requestCount", snapshot.totalOperations());
-                statistics.put("successCount", snapshot.successfulOperations());
-                statistics.put("errorCount", snapshot.failedOperations());
-                statistics.put("totalProcessingTimeMs", snapshot.totalDurationNanos() / 1_000_000); // Convert from
-                                                                                                    // nanoseconds
-                statistics.put("averageProcessingTimeMs",
-                        snapshot.totalOperations() > 0
-                                ? snapshot.totalDurationNanos() / (snapshot.totalOperations() * 1_000_000)
-                                : 0);
-                statistics.put("successRate", snapshot.getSuccessRate());
+                if (snapshot != null) {
+                    statistics.put("requestCount", snapshot.getLong("total"));
+                    statistics.put("successCount", snapshot.getLong("success"));
+                    statistics.put("errorCount", snapshot.getLong("failure"));
+                    statistics.put("totalProcessingTimeMs", snapshot.getLong("totalDurationNanos") / 1_000_000); // Convert from nanoseconds
+                    statistics.put("averageProcessingTimeMs",
+                            snapshot.getLong("total") > 0
+                                    ? snapshot.getLong("totalDurationNanos") / (snapshot.getLong("total") * 1_000_000)
+                                    : 0);
+                    statistics.put("successRate", snapshot.getDouble("successRate"));
+                }
                 statistics.put("lastUpdated", System.currentTimeMillis());
             } catch (Exception e) {
                 logger.debug("Failed to get stub service statistics: {}", e.getMessage());

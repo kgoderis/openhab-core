@@ -9,7 +9,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.context.AgentModelContext;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
-import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 
 /**
  * Service for integrating AI models directly into autonomous agents
@@ -148,7 +148,7 @@ public interface AgentModelIntegrationService {
      * 
      * @return the model health status
      */
-    ModelHealthMetrics getModelHealthMetrics();
+    HealthMetrics getModelHealthMetrics();
 
     /**
      * Force model fallback for testing or emergency situations

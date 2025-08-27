@@ -12,7 +12,12 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.model.api.ModelProviderType;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.tool.monitoring.api.SystemHealthMonitor;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +79,9 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
     private final AtomicReference<Double> minSpecificationSuccessRate = new AtomicReference<>(0.9); // 90%
     private final AtomicReference<Integer> maxSpecificationThroughput = new AtomicReference<>(100); // 100 req/sec
 
+    @Reference
+    private MetricsService metricsService;
+
     /**
      * Check if a provider is healthy
      * 
@@ -84,7 +92,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
         ProviderHealthState state = providerHealthStates.get(provider);
         if (state == null) {
             // If no state exists, consider it healthy and create initial state
-            state = new ProviderHealthState(provider);
+            state = new ProviderHealthState(provider, metricsService);
             providerHealthStates.put(provider, state);
         }
         return state.isHealthy();
@@ -221,9 +229,24 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return provider health metrics
      */
     @Override
-    public ProviderHealthMetrics getProviderHealthMetrics(ModelProviderType provider) {
+    public HealthMetrics getProviderHealthMetrics(ModelProviderType provider) {
         ProviderHealthState state = getOrCreateProviderState(provider);
-        return state.getHealthMetrics();
+        
+        // Record health check operation
+        metricsService.recordOperation("tool", "provider-health-check")
+            .withSuccess(state.isHealthy())
+            .withDuration(50)
+            .withData(Map.of(
+                "provider", provider.name(),
+                "successRate", state.getSuccessRate(),
+                "avgResponseTime", state.getAverageResponseTime(),
+                "totalRequests", state.getTotalRequests(),
+                "failedRequests", state.getFailedRequestsCount()
+            ))
+            .record();
+
+        // Return health metrics from service
+        return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider(provider.name()));
     }
 
     /**
@@ -233,9 +256,20 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @return service health metrics
      */
     @Override
-    public ServiceHealthMetrics getServiceHealthMetrics(String serviceName) {
+    public HealthMetrics getServiceHealthMetrics(String serviceName) {
         ServiceHealthState state = getOrCreateServiceState(serviceName);
-        return state.getHealthMetrics();
+        
+        // Record health check operation
+        metricsService.recordOperation("service", "health-check")
+            .withSuccess(state.isHealthy())
+            .withDuration(50)
+            .withData(Map.of(
+                "serviceName", serviceName
+            ))
+            .record();
+
+        // Return health metrics from service
+        return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider(serviceName));
     }
 
     /**
@@ -245,8 +279,8 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      */
     @Override
     public SystemHealthStatus getSystemHealthStatus() {
-        Map<ModelProviderType, ProviderHealthMetrics> providerMetrics = new ConcurrentHashMap<>();
-        Map<String, ServiceHealthMetrics> serviceMetrics = new ConcurrentHashMap<>();
+        Map<ModelProviderType, HealthMetrics> providerMetrics = new ConcurrentHashMap<>();
+        Map<String, HealthMetrics> serviceMetrics = new ConcurrentHashMap<>();
 
         for (ModelProviderType provider : ModelProviderType.values()) {
             if (providerHealthStates.containsKey(provider)) {
@@ -528,12 +562,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
     // Helper methods
     private ProviderHealthState getOrCreateProviderState(ModelProviderType provider) {
-        ProviderHealthState state = providerHealthStates.computeIfAbsent(provider, ProviderHealthState::new);
-        if (state == null) {
-            state = new ProviderHealthState(provider);
-            providerHealthStates.put(provider, state);
-        }
-        return state;
+        return providerHealthStates.computeIfAbsent(provider, p -> new ProviderHealthState(p, metricsService));
     }
 
     private ServiceHealthState getOrCreateServiceState(String serviceName) {

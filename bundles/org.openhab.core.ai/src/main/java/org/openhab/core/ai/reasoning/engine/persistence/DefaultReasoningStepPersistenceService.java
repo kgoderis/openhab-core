@@ -27,6 +27,7 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +65,7 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
     private final ConcurrentHashMap<String, List<ReasoningStep>> sessionCache = new ConcurrentHashMap<>();
 
     // Metrics service for centralized metrics collection
-    @Reference(cardinality = ReferenceCardinality.OPTIONAL)
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     private @Nullable MetricsService metricsService;
 
     // Index for efficient searching
@@ -103,6 +104,7 @@ public class DefaultReasoningStepPersistenceService implements ReasoningStepPers
         logger.info("ReasoningStepPersistenceService deactivated");
     }
 
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     protected void setMetricsService(MetricsService metricsService) {
         this.metricsService = metricsService;
         logger.debug("MetricsService set for ReasoningStepPersistenceService");

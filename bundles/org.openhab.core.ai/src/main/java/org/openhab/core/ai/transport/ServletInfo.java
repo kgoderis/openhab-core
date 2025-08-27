@@ -1,9 +1,11 @@
 package org.openhab.core.ai.transport;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 
 /**
  * Servlet information container.
@@ -22,11 +24,18 @@ public class ServletInfo {
     private final String servletPattern;
     private final String protocol;
     private final long registrationTime;
-    private final AtomicLong requestCount = new AtomicLong(0);
-    private final AtomicLong errorCount = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong requestCount = new AtomicLong(0);
+    // private final AtomicLong errorCount = new AtomicLong(0);
     private final AtomicBoolean isHealthy = new AtomicBoolean(true);
     private volatile long lastRequestTime = 0;
     private volatile long lastErrorTime = 0;
+
+    private MetricsService metricsService;
+
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+    }
 
     public ServletInfo(String servletId, String servletName, String servletPattern, String protocol) {
         this.servletId = servletId;
@@ -57,11 +66,29 @@ public class ServletInfo {
     }
 
     public long getRequestCount() {
-        return requestCount.get();
+        if (metricsService != null) {
+            try {
+                GenericMetricsSnapshot snapshot = metricsService.getSnapshot("servlet", "request");
+                return snapshot.getMetricAsLong("total_count");
+            } catch (Exception e) {
+                // Fallback to default value if MetricsService fails
+                return 0L;
+            }
+        }
+        return 0L;
     }
 
     public long getErrorCount() {
-        return errorCount.get();
+        if (metricsService != null) {
+            try {
+                GenericMetricsSnapshot snapshot = metricsService.getSnapshot("servlet", "error");
+                return snapshot.getMetricAsLong("total_count");
+            } catch (Exception e) {
+                // Fallback to default value if MetricsService fails
+                return 0L;
+            }
+        }
+        return 0L;
     }
 
     public boolean isHealthy() {
@@ -77,12 +104,39 @@ public class ServletInfo {
     }
 
     public void incrementRequestCount() {
-        requestCount.incrementAndGet();
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("servlet", "request")
+                    .withSuccess(true)
+                    .withDuration(0L)
+                    .withData("servletId", servletId)
+                    .withData("servletName", servletName)
+                    .withData("protocol", protocol)
+                    .record();
+            } catch (Exception e) {
+                // Fallback to local logging if MetricsService fails
+                System.err.println("Failed to record servlet request metrics for servlet " + servletId + ": " + e.getMessage());
+                // Graceful degradation: continue with request processing even if metrics recording fails
+            }
+        }
         lastRequestTime = System.currentTimeMillis();
     }
 
     public void incrementErrorCount() {
-        errorCount.incrementAndGet();
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("servlet", "error")
+                    .withSuccess(false)
+                    .withDuration(0L)
+                    .withData("servletId", servletId)
+                    .withData("servletName", servletName)
+                    .withData("protocol", protocol)
+                    .record();
+            } catch (Exception e) {
+                // Fallback to local logging if MetricsService fails
+                System.err.println("Failed to record servlet error metrics: " + e.getMessage());
+            }
+        }
         lastErrorTime = System.currentTimeMillis();
     }
 
@@ -94,8 +148,8 @@ public class ServletInfo {
      * Reset the servlet statistics.
      */
     public void resetStatistics() {
-        requestCount.set(0);
-        errorCount.set(0);
+        // requestCount.set(0); // Removed AtomicLong
+        // errorCount.set(0); // Removed AtomicLong
         lastRequestTime = 0;
         lastErrorTime = 0;
     }
@@ -104,6 +158,6 @@ public class ServletInfo {
     public String toString() {
         return String.format(
                 "ServletInfo{servletId='%s', servletName='%s', protocol='%s', healthy=%s, requests=%d, errors=%d}",
-                servletId, servletName, protocol, isHealthy.get(), requestCount.get(), errorCount.get());
+                servletId, servletName, protocol, isHealthy.get(), getRequestCount(), getErrorCount());
     }
 }

@@ -1,15 +1,19 @@
 package org.openhab.core.ai.tool.validation.base;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.validation.api.RuleLifecycleState;
 import org.openhab.core.ai.tool.validation.api.ValidationRule;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 
 /**
  * Abstract base implementation of ValidationRule.
@@ -31,13 +35,21 @@ public abstract class AbstractValidationRule implements ValidationRule {
     protected final String version;
     protected final List<String> dependencies;
     protected final Map<String, Object> configuration;
-    protected final AtomicLong executionCount = new AtomicLong(0);
-    protected final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
-    protected final AtomicLong lastExecutionTimeMs = new AtomicLong(0);
-    protected final AtomicLong successCount = new AtomicLong(0);
-    protected final AtomicLong failureCount = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // protected final AtomicLong executionCount = new AtomicLong(0);
+    // protected final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
+    // protected final AtomicLong lastExecutionTimeMs = new AtomicLong(0);
+    // protected final AtomicLong successCount = new AtomicLong(0);
+    // protected final AtomicLong failureCount = new AtomicLong(0);
     protected boolean enabled = true;
     protected RuleLifecycleState lifecycleState = RuleLifecycleState.ACTIVE;
+
+    private MetricsService metricsService;
+
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+    }
 
     /**
      * Create a new abstract validation rule.
@@ -87,7 +99,12 @@ public abstract class AbstractValidationRule implements ValidationRule {
     @Override
     public ToolValidationResult validate(Map<String, Object> data) {
         long startTime = System.currentTimeMillis();
-        executionCount.incrementAndGet();
+        metricsService.recordOperation("validation_rule", "execution")
+            .withSuccess(true)
+            .withDuration(0L)
+            .withData("ruleId", ruleId)
+            .withData("ruleType", this.getClass().getSimpleName())
+            .record();
 
         try {
             // Check lifecycle state
@@ -95,24 +112,45 @@ public abstract class AbstractValidationRule implements ValidationRule {
                 return ToolValidationResult.invalid(List.of("Rule is not in active state: " + lifecycleState));
             }
 
+            // Check if rule is enabled
+            if (!enabled) {
+                return ToolValidationResult.invalid(List.of("Rule is disabled"));
+            }
+
             // Execute the actual validation logic
             ToolValidationResult result = executeValidation(data);
             long executionTime = System.currentTimeMillis() - startTime;
-            lastExecutionTimeMs.set(executionTime);
-            totalExecutionTimeMs.addAndGet(executionTime);
 
             if (result.isValid()) {
-                successCount.incrementAndGet();
+                metricsService.recordOperation("validation_rule", "success")
+                    .withSuccess(true)
+                    .withDuration(Duration.ofMillis(executionTime).toNanos())
+                    .withData("ruleId", ruleId)
+                    .withData("executionTimeMs", executionTime)
+                    .withData("validationErrors", result.getErrors().size())
+                    .record();
             } else {
-                failureCount.incrementAndGet();
+                metricsService.recordOperation("validation_rule", "failure")
+                    .withSuccess(false)
+                    .withDuration(Duration.ofMillis(executionTime).toNanos())
+                    .withData("ruleId", ruleId)
+                    .withData("executionTimeMs", executionTime)
+                    .withData("validationErrors", result.getErrors().size())
+                    .withData("errorDetails", result.getErrors().toString())
+                    .record();
             }
 
             return result;
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
-            lastExecutionTimeMs.set(executionTime);
-            totalExecutionTimeMs.addAndGet(executionTime);
-            failureCount.incrementAndGet();
+            metricsService.recordOperation("validation_rule", "error")
+                .withSuccess(false)
+                .withDuration(Duration.ofMillis(executionTime).toNanos())
+                .withData("ruleId", ruleId)
+                .withData("executionTimeMs", executionTime)
+                .withData("exceptionType", e.getClass().getSimpleName())
+                .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
+                .record();
             return ToolValidationResult.invalid(List.of("Rule execution failed: " + e.getMessage()));
         }
     }
@@ -135,22 +173,22 @@ public abstract class AbstractValidationRule implements ValidationRule {
     @Override
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
-        long totalExecutions = executionCount.get();
+        // long totalExecutions = executionCount.get(); // Removed AtomicLong
 
-        metrics.put("executionCount", totalExecutions);
-        metrics.put("totalExecutionTimeMs", totalExecutionTimeMs.get());
-        metrics.put("lastExecutionTimeMs", lastExecutionTimeMs.get());
-        metrics.put("successCount", successCount.get());
-        metrics.put("failureCount", failureCount.get());
+        // metrics.put("executionCount", totalExecutions); // Removed AtomicLong
+        // metrics.put("totalExecutionTimeMs", totalExecutionTimeMs.get()); // Removed AtomicLong
+        // metrics.put("lastExecutionTimeMs", lastExecutionTimeMs.get()); // Removed AtomicLong
+        // metrics.put("successCount", successCount.get()); // Removed AtomicLong
+        // metrics.put("failureCount", failureCount.get()); // Removed AtomicLong
         metrics.put("lifecycleState", lifecycleState.name());
 
-        if (totalExecutions > 0) {
-            metrics.put("averageExecutionTimeMs", totalExecutionTimeMs.get() / totalExecutions);
-            metrics.put("successRate", (double) successCount.get() / totalExecutions);
-        } else {
-            metrics.put("averageExecutionTimeMs", 0L);
-            metrics.put("successRate", 0.0);
-        }
+        // if (totalExecutions > 0) { // Removed AtomicLong
+        //     metrics.put("averageExecutionTimeMs", totalExecutionTimeMs.get() / totalExecutions); // Removed AtomicLong
+        //     metrics.put("successRate", (double) successCount.get() / totalExecutions); // Removed AtomicLong
+        // } else { // Removed AtomicLong
+        //     metrics.put("averageExecutionTimeMs", 0L); // Removed AtomicLong
+        //     metrics.put("successRate", 0.0); // Removed AtomicLong
+        // }
 
         return metrics;
     }

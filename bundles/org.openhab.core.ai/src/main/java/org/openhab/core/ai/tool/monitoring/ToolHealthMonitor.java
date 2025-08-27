@@ -12,7 +12,10 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -90,7 +93,7 @@ public class ToolHealthMonitor {
         ProviderHealthState state = providerHealthStates.get(provider);
         if (state == null) {
             // If no state exists, consider it healthy and create initial state
-            state = new ProviderHealthState(provider);
+            state = new ProviderHealthState(provider, metricsService);
             providerHealthStates.put(provider, state);
         }
         return state.isHealthy();
@@ -303,9 +306,24 @@ public class ToolHealthMonitor {
      * @param provider the provider
      * @return provider health metrics
      */
-    public ProviderHealthMetrics getProviderHealthMetrics(ModelProviderType provider) {
+    public HealthMetrics getProviderHealthMetrics(ModelProviderType provider) {
         ProviderHealthState state = getOrCreateProviderState(provider);
-        return state.getHealthMetrics();
+        
+        // Record health check operation
+        metricsService.recordOperation("tool", "provider-health-check")
+            .withSuccess(state.isHealthy())
+            .withDuration(50)
+            .withData(Map.of(
+                "provider", provider.name(),
+                "circuitBreakerState", state.getCircuitBreakerState().name(),
+                "isOpen", state.getCircuitBreakerState() == CircuitBreakerState.OPEN,
+                "failureCount", state.getFailedRequestsCount(),
+                "totalRequests", state.getTotalRequests()
+            ))
+            .record();
+
+        // Return health metrics from service
+        return metricsService.getSnapshot(MetricKeys.providerHealth(provider.name()), UnifiedMetricsSnapshot.class);
     }
 
     /**
@@ -314,9 +332,20 @@ public class ToolHealthMonitor {
      * @param serviceName the service name
      * @return service health metrics
      */
-    public ServiceHealthMetrics getServiceHealthMetrics(String serviceName) {
+    public HealthMetrics getServiceHealthMetrics(String serviceName) {
         ServiceHealthState state = getOrCreateServiceState(serviceName);
-        return state.getHealthMetrics();
+        
+        // Record health check operation
+        metricsService.recordOperation("service", "health-check")
+            .withSuccess(state.isHealthy())
+            .withDuration(50)
+            .withData(Map.of(
+                "serviceName", serviceName
+            ))
+            .record();
+
+        // Return health metrics from service
+        return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider(serviceName));
     }
 
     /**
@@ -325,8 +354,8 @@ public class ToolHealthMonitor {
      * @return system health status
      */
     public SystemHealthStatus getSystemHealthStatus() {
-        Map<ModelProviderType, ProviderHealthMetrics> providerMetrics = new ConcurrentHashMap<>();
-        Map<String, ServiceHealthMetrics> serviceMetrics = new ConcurrentHashMap<>();
+        Map<ModelProviderType, HealthMetrics> providerMetrics = new ConcurrentHashMap<>();
+        Map<String, HealthMetrics> serviceMetrics = new ConcurrentHashMap<>();
 
         // Collect provider metrics
         for (ModelProviderType provider : ModelProviderType.values()) {
@@ -648,12 +677,7 @@ public class ToolHealthMonitor {
 
     // Helper methods
     private ProviderHealthState getOrCreateProviderState(ModelProviderType provider) {
-        ProviderHealthState state = providerHealthStates.computeIfAbsent(provider, ProviderHealthState::new);
-        if (state == null) {
-            state = new ProviderHealthState(provider);
-            providerHealthStates.put(provider, state);
-        }
-        return state;
+        return providerHealthStates.computeIfAbsent(provider, p -> new ProviderHealthState(p, metricsService));
     }
 
     private ServiceHealthState getOrCreateServiceState(String serviceName) {

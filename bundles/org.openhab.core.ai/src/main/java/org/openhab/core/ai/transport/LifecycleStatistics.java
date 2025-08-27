@@ -97,7 +97,7 @@ public class LifecycleStatistics implements MetricsSnapshot, CountsMetrics, Late
 
     // MetricsSnapshot implementation
     @Override
-    public long timestampMs() {
+    public long getTimestampMs() {
         return System.currentTimeMillis();
     }
 

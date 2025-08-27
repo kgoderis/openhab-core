@@ -1,8 +1,10 @@
 package org.openhab.core.ai.tool.server.transport;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.Duration;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 
 /**
  * Backend server information for load balancing.
@@ -13,11 +15,18 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class BackendServer {
     private final String url;
-    private final AtomicLong requestCount = new AtomicLong(0);
-    private final AtomicLong errorCount = new AtomicLong(0);
-    private final AtomicLong responseTimeSum = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong requestCount = new AtomicLong(0);
+    // private final AtomicLong errorCount = new AtomicLong(0);
+    // private final AtomicLong responseTimeSum = new AtomicLong(0);
     private volatile boolean healthy = true;
     volatile long lastHealthCheck = 0;
+
+    private MetricsService metricsService;
+
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+    }
 
     public BackendServer(String url) {
         this.url = url;
@@ -28,16 +37,42 @@ public class BackendServer {
     }
 
     long getRequestCount() {
-        return requestCount.get();
+        if (metricsService != null) {
+            try {
+                GenericMetricsSnapshot snapshot = metricsService.getSnapshot("backend_server", "request");
+                return snapshot.getMetricAsLong("total_count");
+            } catch (Exception e) {
+                // Fallback to default value if MetricsService fails
+                return 0L;
+            }
+        }
+        return 0L;
     }
 
     long getErrorCount() {
-        return errorCount.get();
+        if (metricsService != null) {
+            try {
+                GenericMetricsSnapshot snapshot = metricsService.getSnapshot("backend_server", "error");
+                return snapshot.getMetricAsLong("total_count");
+            } catch (Exception e) {
+                // Fallback to default value if MetricsService fails
+                return 0L;
+            }
+        }
+        return 0L;
     }
 
     double getAverageResponseTime() {
-        long count = requestCount.get();
-        return count > 0 ? (double) responseTimeSum.get() / count : 0.0;
+        if (metricsService != null) {
+            try {
+                GenericMetricsSnapshot snapshot = metricsService.getSnapshot("backend_server", "request");
+                return snapshot.getMetricAsDouble("average_duration_ms");
+            } catch (Exception e) {
+                // Fallback to default value if MetricsService fails
+                return 0.0;
+            }
+        }
+        return 0.0;
     }
 
     boolean isHealthy() {
@@ -49,16 +84,55 @@ public class BackendServer {
     }
 
     void recordRequest(long responseTime) {
-        requestCount.incrementAndGet();
-        responseTimeSum.addAndGet(responseTime);
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("backend_server", "request")
+                    .withSuccess(true)
+                    .withDuration(Duration.ofMillis(responseTime).toNanos())
+                    .withData("url", url)
+                    .withData("responseTimeMs", responseTime)
+                    .record();
+            } catch (Exception e) {
+                // Fallback to local logging if MetricsService fails
+                System.err.println("Failed to record backend server request metrics for URL " + url + ": " + e.getMessage());
+                // Graceful degradation: continue with request processing even if metrics recording fails
+            }
+        }
     }
 
     void recordError() {
-        errorCount.incrementAndGet();
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("backend_server", "error")
+                    .withSuccess(false)
+                    .withDuration(0L)
+                    .withData("url", url)
+                    .record();
+            } catch (Exception e) {
+                // Fallback to local logging if MetricsService fails
+                System.err.println("Failed to record backend server error metrics: " + e.getMessage());
+            }
+        }
     }
 
     double getErrorRate() {
-        long total = requestCount.get();
-        return total > 0 ? (double) errorCount.get() / total : 0.0;
+        if (metricsService != null) {
+            try {
+                GenericMetricsSnapshot errorSnapshot = metricsService.getSnapshot("backend_server", "error");
+                GenericMetricsSnapshot requestSnapshot = metricsService.getSnapshot("backend_server", "request");
+                
+                long errorCount = errorSnapshot.getMetricAsLong("total_count");
+                long requestCount = requestSnapshot.getMetricAsLong("total_count");
+                
+                if (requestCount > 0) {
+                    return (double) errorCount / requestCount * 100.0;
+                }
+                return 0.0;
+            } catch (Exception e) {
+                // Fallback to default value if MetricsService fails
+                return 0.0;
+            }
+        }
+        return 0.0;
     }
 }

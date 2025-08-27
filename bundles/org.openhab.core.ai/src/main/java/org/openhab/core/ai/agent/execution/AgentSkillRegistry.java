@@ -11,6 +11,10 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
 import org.openhab.core.service.ReadyService.ReadyTracker;
@@ -290,18 +294,25 @@ public class AgentSkillRegistry implements ReadyTracker {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                var snapshot = metrics.getDomainAggregatedSnapshot("agent-skill");
-                stats.put("totalExecutions", snapshot.totalOperations());
-                stats.put("successfulExecutions", snapshot.totalOperations() - snapshot.failedOperations());
-                stats.put("failedExecutions", snapshot.failedOperations());
+                MetricKey agentSkillKey = MetricKeys.custom("agent-skill", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(agentSkillKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    long totalOperations = snapshot.getLong("total");
+                    long failedOperations = snapshot.getLong("failure");
+                    long successfulOperations = totalOperations - failedOperations;
+                    
+                    stats.put("totalExecutions", totalOperations);
+                    stats.put("successfulExecutions", successfulOperations);
+                    stats.put("failedExecutions", failedOperations);
 
-                // Calculate success rate
-                long total = snapshot.totalOperations();
-                if (total > 0) {
-                    double successRate = (double) (snapshot.totalOperations() - snapshot.failedOperations()) / total;
-                    stats.put("successRate", successRate);
-                } else {
-                    stats.put("successRate", 0.0);
+                    // Calculate success rate
+                    if (totalOperations > 0) {
+                        double successRate = (double) successfulOperations / totalOperations;
+                        stats.put("successRate", successRate);
+                    } else {
+                        stats.put("successRate", 0.0);
+                    }
                 }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for agent-skill: {}", e.getMessage());
@@ -424,8 +435,9 @@ public class AgentSkillRegistry implements ReadyTracker {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                var snapshot = metrics.getDomainAggregatedSnapshot("agent-skill");
-                return snapshot.totalOperations();
+                MetricKey agentSkillKey = MetricKeys.custom("agent-skill", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(agentSkillKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                return snapshot != null ? snapshot.getLong("total") : 0L;
             } catch (Exception e) {
                 logger.warn("Error retrieving execution count for skill {}: {}", skillId, e.getMessage());
             }

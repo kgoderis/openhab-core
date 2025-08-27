@@ -46,4 +46,59 @@ public interface CountsMetrics {
         long total = total();
         return total > 0 ? (double) success() / total : 0.0;
     }
+
+    /**
+     * Calculate the success rate as a percentage (0-100).
+     * 
+     * @return success rate percentage between 0.0 and 100.0, or 0.0 if no operations
+     */
+    default double successRatePercentage() {
+        return successRate() * 100.0;
+    }
+
+    /**
+     * Check if there are any operations recorded.
+     * 
+     * @return true if there are operations, false otherwise
+     */
+    default boolean hasOperations() {
+        return total() > 0;
+    }
+
+    /**
+     * Check if all operations were successful.
+     * 
+     * @return true if all operations were successful, false otherwise
+     */
+    default boolean allSuccessful() {
+        return hasOperations() && failure() == 0;
+    }
+
+    /**
+     * Check if all operations failed.
+     * 
+     * @return true if all operations failed, false otherwise
+     */
+    default boolean allFailed() {
+        return hasOperations() && success() == 0;
+    }
+
+    /**
+     * Get the failure rate as a percentage.
+     * 
+     * @return failure rate between 0.0 and 1.0, or 0.0 if no operations
+     */
+    default double failureRate() {
+        long total = total();
+        return total > 0 ? (double) failure() / total : 0.0;
+    }
+
+    /**
+     * Get the failure rate as a percentage (0-100).
+     * 
+     * @return failure rate percentage between 0.0 and 100.0, or 0.0 if no operations
+     */
+    default double failureRatePercentage() {
+        return failureRate() * 100.0;
+    }
 }

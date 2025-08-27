@@ -6,8 +6,10 @@ import java.util.Map;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -36,7 +38,10 @@ public class AgentModelRegistryMetrics {
 
     // NEW: Monitoring registry for centralized metrics collection
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsRegistry monitoringRegistry;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     /**
      * Record model registration using the new monitoring framework
@@ -46,7 +51,7 @@ public class AgentModelRegistryMetrics {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
                 MetricsCollector collector = monitoringRegistry
-                        .metricsCollector(MetricKeys.action("model-registration"));
+                        .getCollector(MetricKeys.action("model-registration"));
                 collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
             }
 
@@ -72,7 +77,7 @@ public class AgentModelRegistryMetrics {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
                 MetricsCollector collector = monitoringRegistry
-                        .metricsCollector(MetricKeys.action("model-unregistration"));
+                        .getCollector(MetricKeys.action("model-unregistration"));
                 collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
             }
 
@@ -95,7 +100,7 @@ public class AgentModelRegistryMetrics {
         try {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
-                MetricsCollector collector = monitoringRegistry.metricsCollector(MetricKeys.action("model-retrieval"));
+                MetricsCollector collector = monitoringRegistry.getCollector(MetricKeys.action("model-retrieval"));
                 collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
             }
 
@@ -118,7 +123,7 @@ public class AgentModelRegistryMetrics {
         try {
             // Use centralized monitoring registry
             if (monitoringRegistry != null) {
-                MetricsCollector collector = monitoringRegistry.metricsCollector(MetricKeys.action("model-validation"));
+                MetricsCollector collector = monitoringRegistry.getCollector(MetricKeys.action("model-validation"));
                 collector.recordExecution(success, duration * 1_000_000L); // Convert to nanoseconds
             }
 
@@ -140,34 +145,25 @@ public class AgentModelRegistryMetrics {
     public Map<String, Object> getStatistics() {
         Map<String, Object> statistics = new java.util.HashMap<>();
 
-        if (monitoringRegistry != null) {
-            // Get statistics from monitoring registry
-            MetricsCollector registrationCollector = monitoringRegistry
-                    .metricsCollector(MetricKeys.action("model-registration"));
-            MetricsCollector unregistrationCollector = monitoringRegistry
-                    .metricsCollector(MetricKeys.action("model-unregistration"));
-            MetricsCollector retrievalCollector = monitoringRegistry
-                    .metricsCollector(MetricKeys.action("model-retrieval"));
-            MetricsCollector validationCollector = monitoringRegistry
-                    .metricsCollector(MetricKeys.action("model-validation"));
+        if (metricsService != null) {
+            // Get statistics from MetricsService
+            var registrationSnapshot = metricsService.getSnapshot(MetricKeys.action("model-registration"), UnifiedMetricsSnapshot.class);
+            var unregistrationSnapshot = metricsService.getSnapshot(MetricKeys.action("model-unregistration"), UnifiedMetricsSnapshot.class);
+            var retrievalSnapshot = metricsService.getSnapshot(MetricKeys.action("model-retrieval"), UnifiedMetricsSnapshot.class);
+            var validationSnapshot = metricsService.getSnapshot(MetricKeys.action("model-validation"), UnifiedMetricsSnapshot.class);
 
-            var registrationSnapshot = registrationCollector.executionSnapshot();
-            var unregistrationSnapshot = unregistrationCollector.executionSnapshot();
-            var retrievalSnapshot = retrievalCollector.executionSnapshot();
-            var validationSnapshot = validationCollector.executionSnapshot();
-
-            statistics.put("totalRegistrations", registrationSnapshot.total());
-            statistics.put("successfulRegistrations", registrationSnapshot.success());
-            statistics.put("failedRegistrations", registrationSnapshot.failure());
-            statistics.put("totalUnregistrations", unregistrationSnapshot.total());
-            statistics.put("successfulUnregistrations", unregistrationSnapshot.success());
-            statistics.put("failedUnregistrations", unregistrationSnapshot.failure());
-            statistics.put("totalRetrievals", retrievalSnapshot.total());
-            statistics.put("successfulRetrievals", retrievalSnapshot.success());
-            statistics.put("failedRetrievals", retrievalSnapshot.failure());
-            statistics.put("totalValidations", validationSnapshot.total());
-            statistics.put("successfulValidations", validationSnapshot.success());
-            statistics.put("failedValidations", validationSnapshot.failure());
+            statistics.put("totalRegistrations", registrationSnapshot != null ? ((UnifiedMetricsSnapshot) registrationSnapshot).total() : 0);
+            statistics.put("successfulRegistrations", registrationSnapshot != null ? ((UnifiedMetricsSnapshot) registrationSnapshot).success() : 0);
+            statistics.put("failedRegistrations", registrationSnapshot != null ? ((UnifiedMetricsSnapshot) registrationSnapshot).failure() : 0);
+            statistics.put("totalUnregistrations", unregistrationSnapshot != null ? ((UnifiedMetricsSnapshot) unregistrationSnapshot).total() : 0);
+            statistics.put("successfulUnregistrations", unregistrationSnapshot != null ? ((UnifiedMetricsSnapshot) unregistrationSnapshot).success() : 0);
+            statistics.put("failedUnregistrations", unregistrationSnapshot != null ? ((UnifiedMetricsSnapshot) unregistrationSnapshot).failure() : 0);
+            statistics.put("totalRetrievals", retrievalSnapshot != null ? ((UnifiedMetricsSnapshot) retrievalSnapshot).total() : 0);
+            statistics.put("successfulRetrievals", retrievalSnapshot != null ? ((UnifiedMetricsSnapshot) retrievalSnapshot).success() : 0);
+            statistics.put("failedRetrievals", retrievalSnapshot != null ? ((UnifiedMetricsSnapshot) retrievalSnapshot).failure() : 0);
+            statistics.put("totalValidations", validationSnapshot != null ? ((UnifiedMetricsSnapshot) validationSnapshot).total() : 0);
+            statistics.put("successfulValidations", validationSnapshot != null ? ((UnifiedMetricsSnapshot) validationSnapshot).success() : 0);
+            statistics.put("failedValidations", validationSnapshot != null ? ((UnifiedMetricsSnapshot) validationSnapshot).failure() : 0);
             statistics.put("timestamp", Instant.now());
         } else {
             // Fallback to basic statistics

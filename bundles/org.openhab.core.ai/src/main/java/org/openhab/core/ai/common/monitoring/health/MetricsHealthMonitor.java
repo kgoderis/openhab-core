@@ -12,7 +12,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.Health;
 import org.openhab.core.ai.common.monitoring.api.Metrics;
 import org.openhab.core.ai.common.monitoring.api.Statistics;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -31,7 +31,7 @@ import org.osgi.service.component.annotations.Reference;
 public class MetricsHealthMonitor {
 
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsRegistry monitoringRegistry;
 
     private final AtomicBoolean isHealthy = new AtomicBoolean(true);
     private final AtomicLong lastHealthCheck = new AtomicLong(System.currentTimeMillis());
@@ -115,7 +115,7 @@ public class MetricsHealthMonitor {
      * @return true if the system is healthy, false otherwise
      */
     public boolean performHealthCheck() {
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry == null) {
             recordFailure("Monitoring registry not available");
             return false;
@@ -224,7 +224,7 @@ public class MetricsHealthMonitor {
     /**
      * Check registry availability.
      */
-    private boolean checkRegistryAvailability(MonitoringRegistry registry) {
+    private boolean checkRegistryAvailability(MetricsRegistry registry) {
         try {
             // Test basic registry operations
             registry.keys();
@@ -242,7 +242,7 @@ public class MetricsHealthMonitor {
     /**
      * Check metrics collection functionality.
      */
-    private boolean checkMetricsCollection(MonitoringRegistry registry) {
+    private boolean checkMetricsCollection(MetricsRegistry registry) {
         try {
             List<Metrics> metrics = registry.getMetricsSnapshots();
             List<Statistics> statistics = registry.getStatisticsSnapshots();
@@ -270,7 +270,7 @@ public class MetricsHealthMonitor {
     /**
      * Check data consistency.
      */
-    private boolean checkDataConsistency(MonitoringRegistry registry) {
+    private boolean checkDataConsistency(MetricsRegistry registry) {
         try {
             List<Metrics> metrics = registry.getMetricsSnapshots();
 
@@ -300,7 +300,7 @@ public class MetricsHealthMonitor {
     /**
      * Check performance characteristics.
      */
-    private boolean checkPerformance(MonitoringRegistry registry) {
+    private boolean checkPerformance(MetricsRegistry registry) {
         try {
             long startTime = System.currentTimeMillis();
 

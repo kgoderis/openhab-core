@@ -15,8 +15,12 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.common.response.ModelResponse;
+import org.osgi.service.component.annotations.Reference;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -24,7 +28,7 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.config.GoogleGenAIConfiguration;
-import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,15 +54,8 @@ public class GoogleGenAIClient implements ModelClient {
     private final ModelClientInfo providerInfo;
     private final Client genaiClient;
 
-    // Metrics tracking fields
-    private final AtomicLong totalResponseTime = new AtomicLong(0);
-    private final AtomicInteger totalRequests = new AtomicInteger(0);
-    private final AtomicInteger successfulRequests = new AtomicInteger(0);
-    private final AtomicInteger errorCount = new AtomicInteger(0);
-    private final AtomicReference<String> lastError = new AtomicReference<>();
-    private final AtomicReference<Instant> lastErrorTime = new AtomicReference<>();
-    private final AtomicLong minResponseTime = new AtomicLong(Long.MAX_VALUE);
-    private final AtomicLong maxResponseTime = new AtomicLong(0);
+    @Reference
+    private MetricsService metricsService;
 
     public GoogleGenAIClient(GoogleGenAIConfiguration config, @Nullable ActionRegistry actionRegistry) {
         this.config = config;
@@ -97,17 +94,34 @@ public class GoogleGenAIClient implements ModelClient {
                 // Extract response content
                 String responseContent = response.text();
 
-                // Track success metrics
+                // Record operation metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                trackMetrics(responseTime, true, null);
+                metricsService.recordOperation("model", "completion")
+                    .withSuccess(true)
+                    .withDuration(responseTime)
+                    .withData(Map.of(
+                        "provider", "google",
+                        "model", config.getModelName(),
+                        "promptLength", prompt.length(),
+                        "maxTokens", params.getMaxTokens()
+                    ))
+                    .record();
 
                 return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
                         .withProviderType(ModelProviderType.GOOGLE.name()).build();
 
             } catch (Exception e) {
-                // Track error metrics
+                // Record error metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                trackMetrics(responseTime, false, e.getMessage() != null ? e.getMessage() : "Unknown error");
+                metricsService.recordOperation("model", "completion")
+                    .withSuccess(false)
+                    .withDuration(responseTime)
+                    .withData(Map.of(
+                        "provider", "google",
+                        "model", config.getModelName(),
+                        "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
+                    ))
+                    .record();
 
                 logger.error("Error completing Google GenAI request", e);
                 throw new RuntimeException("Google GenAI completion failed", e);
@@ -158,17 +172,34 @@ public class GoogleGenAIClient implements ModelClient {
                         .withModelName(this.config.getModelName()).withProviderType(ModelProviderType.GOOGLE.name())
                         .build();
 
-                // Track success metrics
+                // Record operation metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                trackMetrics(responseTime, true, null);
+                metricsService.recordOperation("model", "streaming-completion")
+                    .withSuccess(true)
+                    .withDuration(responseTime)
+                    .withData(Map.of(
+                        "provider", "google",
+                        "model", config.getModelName(),
+                        "promptLength", prompt.length(),
+                        "maxTokens", params.getMaxTokens()
+                    ))
+                    .record();
 
                 handler.onComplete(llmResponse);
                 return llmResponse;
 
             } catch (Exception e) {
-                // Track error metrics
+                // Record error metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                trackMetrics(responseTime, false, e.getMessage() != null ? e.getMessage() : "Unknown error");
+                metricsService.recordOperation("model", "streaming-completion")
+                    .withSuccess(false)
+                    .withDuration(responseTime)
+                    .withData(Map.of(
+                        "provider", "google",
+                        "model", config.getModelName(),
+                        "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
+                    ))
+                    .record();
 
                 logger.error("Error completing Google GenAI streaming request", e);
                 handler.onError(e);
@@ -194,21 +225,37 @@ public class GoogleGenAIClient implements ModelClient {
     }
 
     @Override
-    public ModelHealthMetrics getHealthStatus() {
+    public HealthMetrics getHealthStatus() {
         try {
             boolean available = isAvailable();
-            long avgResponseTime = totalRequests.get() > 0 ? totalResponseTime.get() / totalRequests.get() : -1;
-            double successRate = totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get()
-                    : 0.0;
 
-            return ModelHealthMetrics.builder("google-genai-client")
-                    .withStatus(available ? HealthStatus.HEALTHY : HealthStatus.UNHEALTHY).withAvailable(available)
-                    .withAverageResponseTimeMs(avgResponseTime).withSuccessRate(successRate)
-                    .withLastError(lastError.get()).build();
+            // Record health check operation
+            metricsService.recordOperation("model", "health-check")
+                .withSuccess(available)
+                .withDuration(100)
+                .withData(Map.of(
+                    "provider", "google",
+                    "model", config.getModelName()
+                ))
+                .record();
+
+            // Return health metrics from service
+            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
+            
         } catch (Exception e) {
-            return ModelHealthMetrics.builder("google-genai-client").withStatus(HealthStatus.UNHEALTHY)
-                    .withAvailable(false).withAverageResponseTimeMs(-1).withSuccessRate(0.0)
-                    .withLastError(e.getMessage() != null ? e.getMessage() : "Unknown error").build();
+            // Record failed health check
+            metricsService.recordOperation("model", "health-check")
+                .withSuccess(false)
+                .withDuration(100)
+                .withData(Map.of(
+                    "provider", "google",
+                    "model", config.getModelName(),
+                    "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
+                ))
+                .record();
+
+            // Return health metrics from service (will reflect the failure)
+            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
         }
     }
 
@@ -282,27 +329,7 @@ public class GoogleGenAIClient implements ModelClient {
         return null;
     }
 
-    /**
-     * Track metrics for request performance and errors
-     */
-    private void trackMetrics(long responseTime, boolean success, @Nullable String errorMessage) {
-        totalResponseTime.addAndGet(responseTime);
-        totalRequests.incrementAndGet();
 
-        if (success) {
-            successfulRequests.incrementAndGet();
-        } else {
-            errorCount.incrementAndGet();
-            if (errorMessage != null) {
-                lastError.set(errorMessage);
-                lastErrorTime.set(Instant.now());
-            }
-        }
-
-        // Update min/max response times
-        minResponseTime.updateAndGet(current -> Math.min(current, responseTime));
-        maxResponseTime.updateAndGet(current -> Math.max(current, responseTime));
-    }
 
     /**
      * Get available actions from the registry

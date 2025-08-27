@@ -22,7 +22,7 @@ public interface MetricsSnapshot {
      * 
      * @return timestamp in milliseconds since epoch
      */
-    default long timestampMs() {
+    default long getTimestampMs() {
         return System.currentTimeMillis();
     }
 }

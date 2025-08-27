@@ -1,15 +1,17 @@
 package org.openhab.core.ai.common.monitoring.api;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * Interface for identifying metric streams.
+ * Interface for identifying metric streams with bounded labels and capabilities.
  * 
  * <p>
- * This interface provides a way to identify metric streams with bounded labels
- * to control cardinality.
+ * MetricKey provides a way to uniquely identify metric streams and declare
+ * what capabilities they support. This enables type-safe snapshot creation
+ * and validation of compatible snapshot types.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
@@ -17,28 +19,39 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  */
 @NonNullByDefault
 public interface MetricKey {
-
+    
     /**
-     * Get the kind of metric.
+     * Get the kind/type of metric this key represents.
      * 
-     * @return metric kind
+     * @return the metric kind
      */
     String kind();
-
+    
     /**
-     * Get the labels for this metric.
+     * Get the labels associated with this metric key.
+     * Labels provide additional context and filtering capabilities.
      * 
-     * @return map of label key-value pairs
+     * @return the labels map
      */
     Map<String, String> labels();
-
+    
+    /**
+     * Get the capabilities this metric key supports.
+     * Capabilities determine what types of snapshots can be created from this key.
+     * 
+     * @return the set of supported capabilities
+     */
+    Set<String> capabilities();
+    
     /**
      * Get a unique identifier for this metric key.
      * 
-     * @return unique identifier
+     * @return the unique identifier
      */
     default String id() {
-        return kind() + "|" + labels().entrySet().stream().sorted(Map.Entry.comparingByKey())
-                .map(e -> e.getKey() + "=" + e.getValue()).reduce((a, b) -> a + "," + b).orElse("");
+        return kind() + "|" + labels().entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .map(e -> e.getKey() + "=" + e.getValue())
+            .reduce((a, b) -> a + "," + b).orElse("");
     }
 }

@@ -15,6 +15,9 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -392,7 +395,8 @@ public class ModelResponseActionParser {
     public Object getPerformanceMetrics() {
         MetricsService service = metricsService;
         if (service != null) {
-            return service.getDomainAggregatedSnapshot("model-response-parser");
+            MetricKey modelResponseParserKey = MetricKeys.custom("model-response-parser", Map.of(), Set.of("counts", "latency"));
+            return service.getSnapshot(modelResponseParserKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
         }
         return null;
     }

@@ -1,15 +1,23 @@
 package org.openhab.core.ai.tool.monitoring.health;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,24 +46,22 @@ public class DefaultSystemCheck implements SystemCheck {
     private final AtomicReference<Boolean> enabled = new AtomicReference<>(true);
     private final Map<String, Object> configuration = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalChecks = new AtomicLong(0);
-    private final AtomicLong successfulChecks = new AtomicLong(0);
-    private final AtomicLong failedChecks = new AtomicLong(0);
-    private final AtomicLong totalCheckTime = new AtomicLong(0);
-    private final AtomicLong lastCheckTime = new AtomicLong(0);
-    private final AtomicLong minCheckTime = new AtomicLong(Long.MAX_VALUE);
-    private final AtomicLong maxCheckTime = new AtomicLong(0);
+    // Performance monitoring - using centralized MetricsService instead of AtomicLong counters
+    private final AtomicReference<Long> lastCheckTime = new AtomicReference<>(0L);
+    private final AtomicReference<Long> minCheckTime = new AtomicReference<>(Long.MAX_VALUE);
+    private final AtomicReference<Long> maxCheckTime = new AtomicReference<>(0L);
 
     // Health check dependencies
     private final List<SystemCheck> dependencies = new ArrayList<>();
     private final AtomicInteger dependencyDepth = new AtomicInteger(0);
-    private final AtomicLong totalDependencyChecks = new AtomicLong(0);
 
     // Versioning
     private final String version;
     private final AtomicReference<String> currentVersion = new AtomicReference<>();
     private final Map<String, String> versionHistory = new ConcurrentHashMap<>();
+
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    private volatile @Nullable MetricsService metricsService;
 
     /**
      * Create a new default system check.
@@ -121,7 +127,6 @@ public class DefaultSystemCheck implements SystemCheck {
     public SystemCheckResult performCheck() {
         // Implement health check logic
         long startTime = System.currentTimeMillis();
-        totalChecks.incrementAndGet();
 
         try {
             logger.debug("Starting health check: {}", healthCheckName);
@@ -137,7 +142,7 @@ public class DefaultSystemCheck implements SystemCheck {
             // Execute primary health check logic
             SystemCheckResult result = executePrimaryCheck();
 
-            // Record performance metrics
+            // Record performance metrics using centralized MetricsService
             long checkTime = System.currentTimeMillis() - startTime;
             recordCheckMetrics(result, checkTime);
 
@@ -145,7 +150,23 @@ public class DefaultSystemCheck implements SystemCheck {
 
         } catch (Exception e) {
             logger.error("Error during health check execution: {}", e.getMessage(), e);
-            failedChecks.incrementAndGet();
+            
+            // Record failure metrics using centralized MetricsService
+            long checkTime = System.currentTimeMillis() - startTime;
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("system-check", "health-check")
+                        .withSuccess(false)
+                        .withDuration(Duration.ofMillis(checkTime).toNanos())
+                        .withData("healthCheckId", healthCheckId)
+                        .withData("healthCheckName", healthCheckName)
+                        .withData("category", category)
+                        .withData("error", e.getMessage())
+                        .record();
+                } catch (Exception metricsError) {
+                    logger.warn("Failed to record health check failure metrics", metricsError);
+                }
+            }
 
             return new SystemCheckResult(false, "FAILED", "Health check execution failed: " + e.getMessage(),
                     Map.of("error", e.getMessage(), "check", healthCheckName), System.currentTimeMillis());
@@ -200,25 +221,61 @@ public class DefaultSystemCheck implements SystemCheck {
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
 
-        long total = totalChecks.get();
-        long successful = successfulChecks.get();
-        long failed = failedChecks.get();
-        long totalTime = totalCheckTime.get();
-        long lastCheck = lastCheckTime.get();
-        long minTime = minCheckTime.get();
-        long maxTime = maxCheckTime.get();
-
-        metrics.put("totalChecks", total);
-        metrics.put("successfulChecks", successful);
-        metrics.put("failedChecks", failed);
-        metrics.put("successRate", total > 0 ? (double) successful / total : 0.0);
-        metrics.put("averageCheckTimeMs", total > 0 ? (double) totalTime / total : 0.0);
-        metrics.put("minCheckTimeMs", minTime == Long.MAX_VALUE ? 0 : minTime);
-        metrics.put("maxCheckTimeMs", maxTime);
-        metrics.put("lastCheckTimeMs", lastCheck);
-        metrics.put("totalDependencyChecks", totalDependencyChecks.get());
-        metrics.put("currentDependencyDepth", dependencyDepth.get());
-        metrics.put("dependenciesCount", dependencies.size());
+        if (metricsService != null) {
+            try {
+                // Get health check metrics from centralized MetricsService
+                MetricKey healthCheckKey = MetricKeys.execution("health-check");
+                ExecutionMetricsSnapshot healthCheckSnapshot = metricsService.getSnapshot(healthCheckKey, ExecutionMetricsSnapshot.class);
+                
+                if (healthCheckSnapshot != null) {
+                    metrics.put("totalChecks", healthCheckSnapshot.total());
+                    metrics.put("successfulChecks", healthCheckSnapshot.success());
+                    metrics.put("failedChecks", healthCheckSnapshot.failure());
+                    metrics.put("successRate", healthCheckSnapshot.successRate());
+                    metrics.put("averageCheckTimeMs", healthCheckSnapshot.averageMs());
+                } else {
+                    // Fallback to default values if no metrics available
+                    metrics.put("totalChecks", 0L);
+                    metrics.put("successfulChecks", 0L);
+                    metrics.put("failedChecks", 0L);
+                    metrics.put("successRate", 0.0);
+                    metrics.put("averageCheckTimeMs", 0.0);
+                }
+                
+                // Add local timing metrics
+                metrics.put("minCheckTimeMs", minCheckTime.get() == Long.MAX_VALUE ? 0 : minCheckTime.get());
+                metrics.put("maxCheckTimeMs", maxCheckTime.get());
+                metrics.put("lastCheckTimeMs", lastCheckTime.get());
+                metrics.put("currentDependencyDepth", dependencyDepth.get());
+                metrics.put("dependenciesCount", dependencies.size());
+                
+            } catch (Exception e) {
+                logger.warn("Failed to retrieve performance metrics from MetricsService", e);
+                // Fallback to default values
+                metrics.put("totalChecks", 0L);
+                metrics.put("successfulChecks", 0L);
+                metrics.put("failedChecks", 0L);
+                metrics.put("successRate", 0.0);
+                metrics.put("averageCheckTimeMs", 0.0);
+                metrics.put("minCheckTimeMs", 0L);
+                metrics.put("maxCheckTimeMs", 0L);
+                metrics.put("lastCheckTimeMs", 0L);
+                metrics.put("currentDependencyDepth", dependencyDepth.get());
+                metrics.put("dependenciesCount", dependencies.size());
+            }
+        } else {
+            // No MetricsService available, return default values
+            metrics.put("totalChecks", 0L);
+            metrics.put("successfulChecks", 0L);
+            metrics.put("failedChecks", 0L);
+            metrics.put("successRate", 0.0);
+            metrics.put("averageCheckTimeMs", 0.0);
+            metrics.put("minCheckTimeMs", 0L);
+            metrics.put("maxCheckTimeMs", 0L);
+            metrics.put("lastCheckTimeMs", 0L);
+            metrics.put("currentDependencyDepth", dependencyDepth.get());
+            metrics.put("dependenciesCount", dependencies.size());
+        }
 
         return metrics;
     }
@@ -270,7 +327,6 @@ public class DefaultSystemCheck implements SystemCheck {
                 boolean isHealthy = performCategorySpecificCheck();
 
                 if (isHealthy) {
-                    successfulChecks.incrementAndGet();
                     return new SystemCheckResult(true, "HEALTHY", "Health check passed on attempt " + attempt,
                             Map.of("attempt", attempt, "category", category, "check", healthCheckName),
                             System.currentTimeMillis());
@@ -285,7 +341,6 @@ public class DefaultSystemCheck implements SystemCheck {
             }
         }
 
-        failedChecks.incrementAndGet();
         return new SystemCheckResult(false, "FAILED", "Health check failed after " + retryAttempts + " attempts",
                 Map.of("attempts", retryAttempts, "category", category, "check", healthCheckName),
                 System.currentTimeMillis());
@@ -298,7 +353,6 @@ public class DefaultSystemCheck implements SystemCheck {
      */
     private SystemCheckResult performDependencyCheck() {
         dependencyDepth.incrementAndGet();
-        totalDependencyChecks.incrementAndGet();
 
         logger.debug("Performing dependency check, depth: {}", dependencyDepth.get());
 
@@ -308,7 +362,6 @@ public class DefaultSystemCheck implements SystemCheck {
                 if (dependency.isEnabled()) {
                     SystemCheckResult dependencyResult = dependency.performCheck();
                     if (!dependencyResult.isHealthy()) {
-                        failedChecks.incrementAndGet();
                         return new SystemCheckResult(false, "FAILED",
                                 "Dependency check failed: " + dependency.getHealthCheckName(),
                                 Map.of("failedDependency", dependency.getHealthCheckName(), "check", healthCheckName),
@@ -425,18 +478,35 @@ public class DefaultSystemCheck implements SystemCheck {
     }
 
     /**
-     * Record check metrics
+     * Record check metrics using centralized MetricsService
      * 
      * @param result the check result
      * @param checkTime the check time in milliseconds
      */
     private void recordCheckMetrics(SystemCheckResult result, long checkTime) {
-        totalCheckTime.addAndGet(checkTime);
+        // Update local timing metrics
         lastCheckTime.set(checkTime);
-
-        // Update min/max check times
         minCheckTime.updateAndGet(current -> Math.min(current, checkTime));
         maxCheckTime.updateAndGet(current -> Math.max(current, checkTime));
+
+        // Record metrics using centralized MetricsService
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-check", "health-check")
+                    .withSuccess(result.isHealthy())
+                    .withDuration(Duration.ofMillis(checkTime).toNanos())
+                    .withData("healthCheckId", healthCheckId)
+                    .withData("healthCheckName", healthCheckName)
+                    .withData("category", category)
+                    .withData("priority", priority)
+                    .withData("checkTimeMs", checkTime)
+                    .withData("dependenciesCount", dependencies.size())
+                    .withData("dependencyDepth", dependencyDepth.get())
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record health check metrics", e);
+            }
+        }
 
         logger.debug("Recorded check metrics - Check: {}, Success: {}, Time: {}ms", healthCheckName, result.isHealthy(),
                 checkTime);

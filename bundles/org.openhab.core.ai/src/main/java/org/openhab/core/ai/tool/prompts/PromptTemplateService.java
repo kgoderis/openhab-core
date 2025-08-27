@@ -1,15 +1,16 @@
 package org.openhab.core.ai.tool.prompts;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.prompts.api.PromptRegistry;
 import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
 import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -34,12 +35,12 @@ public class PromptTemplateService {
     private static final Logger logger = LoggerFactory.getLogger(PromptTemplateService.class);
 
     private final Map<String, Prompt> templates = new ConcurrentHashMap<>();
-    private final AtomicLong totalTemplateRequests = new AtomicLong(0);
-    private final AtomicLong totalTemplateCompletions = new AtomicLong(0);
-    private final AtomicLong totalTemplateTime = new AtomicLong(0);
 
     @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     private volatile @Nullable PromptRegistry promptRegistry;
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.STATIC)
+    private volatile @Nullable MetricsService metricsService;
 
     @Activate
     protected void activate() {
@@ -69,13 +70,39 @@ public class PromptTemplateService {
     }
 
     public Map<String, Prompt> listTemplates() {
-        totalTemplateRequests.incrementAndGet();
         long start = System.currentTimeMillis();
         try {
+            // Record template request metrics
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("prompt_template", "request")
+                        .withSuccess(true)
+                        .withDuration(0L)
+                        .withData("templateCount", templates.size())
+                        .record();
+                } catch (Exception e) {
+                    logger.warn("Failed to record prompt template request metrics: {}", e.getMessage());
+                    // Graceful degradation: continue with template listing even if metrics recording fails
+                }
+            }
+            
             return Map.copyOf(templates);
         } finally {
-            totalTemplateCompletions.incrementAndGet();
-            totalTemplateTime.addAndGet(System.currentTimeMillis() - start);
+            long duration = System.currentTimeMillis() - start;
+            // Record template completion metrics
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("prompt_template", "completion")
+                        .withSuccess(true)
+                        .withDuration(Duration.ofMillis(duration).toNanos())
+                        .withData("templateCount", templates.size())
+                        .withData("durationMs", duration)
+                        .record();
+                } catch (Exception e) {
+                    logger.warn("Failed to record prompt template completion metrics: {}", e.getMessage());
+                    // Graceful degradation: continue with template listing even if metrics recording fails
+                }
+            }
         }
     }
 }

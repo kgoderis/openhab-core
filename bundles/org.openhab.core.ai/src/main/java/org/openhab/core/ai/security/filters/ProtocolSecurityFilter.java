@@ -12,9 +12,11 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
+import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -62,7 +64,7 @@ public class ProtocolSecurityFilter implements Filter {
 
     private @Nullable AuthenticationManager authenticationManager;
     private @Nullable MetricsService metricsService;
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsRegistry monitoringRegistry;
 
     /**
      * Create a new protocol security filter instance.
@@ -119,7 +121,7 @@ public class ProtocolSecurityFilter implements Filter {
      * @param monitoringRegistry the monitoring registry
      */
     @Reference
-    public void setMonitoringRegistry(MonitoringRegistry monitoringRegistry) {
+    public void setMonitoringRegistry(MetricsRegistry monitoringRegistry) {
         this.monitoringRegistry = monitoringRegistry;
         logger.debug("Monitoring registry set for protocol security filter");
     }
@@ -129,7 +131,7 @@ public class ProtocolSecurityFilter implements Filter {
      * 
      * @param monitoringRegistry the monitoring registry
      */
-    public void unsetMonitoringRegistry(@Nullable MonitoringRegistry monitoringRegistry) {
+    public void unsetMonitoringRegistry(@Nullable MetricsRegistry monitoringRegistry) {
         this.monitoringRegistry = null;
         logger.debug("Monitoring registry unset for protocol security filter");
     }
@@ -560,21 +562,28 @@ public class ProtocolSecurityFilter implements Filter {
             return new FilterStatistics(0, 0, System.currentTimeMillis() - startTime);
         }
 
-        var snapshot = metrics.getDomainAggregatedSnapshot("protocol-security");
-        return new FilterStatistics(snapshot.totalOperations(), snapshot.failedOperations(),
-                System.currentTimeMillis() - startTime);
+        MetricKey protocolSecurityKey = MetricKeys.custom("protocol-security", Map.of(), Set.of("counts", "latency"));
+        var snapshot = metrics.getSnapshot(protocolSecurityKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+        
+        if (snapshot != null) {
+            long totalOperations = snapshot.getLong("total");
+            long failedOperations = snapshot.getLong("failure");
+            return new FilterStatistics(totalOperations, failedOperations, System.currentTimeMillis() - startTime);
+        } else {
+            return new FilterStatistics(0, 0, System.currentTimeMillis() - startTime);
+        }
     }
 
     /**
      * Reset the filter statistics.
      */
     public void resetStatistics() {
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry != null) {
             // Reset all metrics for the protocol-security domain
             Collection<MetricKey> keys = registry.getKeysByDomain("protocol-security");
             for (MetricKey key : keys) {
-                registry.reset(key);
+                registry.resetCollector(key);
             }
             logger.info("Protocol Security Filter statistics reset for {} keys", keys.size());
         } else {

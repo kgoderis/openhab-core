@@ -528,7 +528,12 @@ public class AgentMessagingService {
     private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            metrics.recordOperation(domain, operation, success, duration);
+            try {
+                metrics.recordOperation(domain, operation, success, duration);
+            } catch (Exception e) {
+                logger.warn("Failed to record agent messaging metrics for operation {} - {}: {}", domain, operation, e.getMessage());
+                // Graceful degradation: continue with messaging operations even if metrics recording fails
+            }
         } else {
             logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
                     operation);

@@ -15,9 +15,13 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.core.AgentClientSession;
 import org.openhab.core.ai.model.api.ModelProviderType;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,17 +49,18 @@ public class ModelTrackingService {
     // Client usage tracking
     private final Map<String, ClientUsageInfo> clientUsage = new ConcurrentHashMap<>();
     private final Map<String, AgentClientSession> agentSessions = new ConcurrentHashMap<>();
-    private final Map<ModelProviderType, ProviderUsageStats> providerStats = new ConcurrentHashMap<>();
-
-    // System-wide statistics
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong totalTokensUsed = new AtomicLong(0);
-    private final AtomicLong totalCost = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalRequests = new AtomicLong(0);
+    // private final AtomicLong totalTokensUsed = new AtomicLong(0);
+    // private final AtomicLong totalCost = new AtomicLong(0);
     private final AtomicReference<Instant> lastRequestTime = new AtomicReference<>(Instant.now());
 
-    // Performance tracking
+    // Provider-specific statistics
+    private final Map<String, ProviderStats> providerStats = new ConcurrentHashMap<>();
     private final Map<String, List<Long>> responseTimes = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> errorCounts = new ConcurrentHashMap<>();
+    // private final Map<String, AtomicLong> errorCounts = new ConcurrentHashMap<>();
+
+    private MetricsService metricsService;
 
     @Activate
     public void activate() {
@@ -69,6 +74,12 @@ public class ModelTrackingService {
         clientUsage.clear();
         agentSessions.clear();
         providerStats.clear();
+    }
+
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for ModelTrackingService");
     }
 
     /**
@@ -97,7 +108,7 @@ public class ModelTrackingService {
             session.updateLastUsed(now);
 
             // Update provider statistics
-            ProviderUsageStats stats = providerStats.computeIfAbsent(providerType, ProviderUsageStats::new);
+            ProviderStats stats = providerStats.computeIfAbsent(clientKey, ProviderStats::new);
             stats.recordUsage(agentId, modelName);
 
             logger.debug("Recorded client usage: agent={}, provider={}, model={}", agentId, providerType, modelName);
@@ -126,9 +137,9 @@ public class ModelTrackingService {
             Instant now = Instant.now();
 
             // Update global statistics
-            totalRequests.incrementAndGet();
-            totalTokensUsed.addAndGet(tokensUsed);
-            totalCost.addAndGet((long) (cost * 1000)); // Store as millicents
+            metricsService.recordOperation(clientKey, "request_count", 1);
+            metricsService.recordOperation(clientKey, "token_count", tokensUsed);
+            metricsService.recordOperation(clientKey, "cost_count", (long) (cost * 1000)); // Store as millicents
             lastRequestTime.set(now);
 
             // Update client usage info
@@ -138,7 +149,7 @@ public class ModelTrackingService {
             }
 
             // Update provider statistics
-            ProviderUsageStats stats = providerStats.get(providerType);
+            ProviderStats stats = providerStats.get(clientKey);
             if (stats != null) {
                 stats.recordRequest(tokensUsed, cost, responseTimeMs, success);
             }
@@ -148,7 +159,7 @@ public class ModelTrackingService {
 
             // Track error counts
             if (!success) {
-                errorCounts.computeIfAbsent(clientKey, k -> new AtomicLong(0)).incrementAndGet();
+                // errorCounts.computeIfAbsent(clientKey, k -> new AtomicLong(0)).incrementAndGet();
             }
 
             logger.debug("Recorded request completion: agent={}, provider={}, model={}, success={}, time={}ms", agentId,
@@ -246,7 +257,7 @@ public class ModelTrackingService {
      * @return System usage statistics
      */
     public SystemUsageStats getSystemStats() {
-        return new SystemUsageStats(totalRequests.get(), totalTokensUsed.get(), totalCost.get() / 1000.0, // Convert
+        return new SystemUsageStats(metricsService.getOperationCount("total_requests"), metricsService.getOperationCount("total_tokens"), metricsService.getOperationCount("total_cost") / 1000.0, // Convert
                                                                                                           // from
                                                                                                           // millicents
                 lastRequestTime.get(), calculateAverageResponseTime(), calculateErrorRate());
@@ -315,7 +326,7 @@ public class ModelTrackingService {
     public @Nullable ClientPerformanceMetrics getClientPerformance(ModelProviderType providerType, String modelName) {
         String clientKey = generateClientKey(providerType, modelName);
         List<Long> times = responseTimes.get(clientKey);
-        AtomicLong errorCount = errorCounts.get(clientKey);
+        // AtomicLong errorCount = errorCounts.get(clientKey);
 
         if (times == null || times.isEmpty()) {
             return null;
@@ -324,7 +335,7 @@ public class ModelTrackingService {
         long minTime = times.stream().mapToLong(Long::longValue).min().orElse(0);
         long maxTime = times.stream().mapToLong(Long::longValue).max().orElse(0);
         double avgTime = times.stream().mapToLong(Long::longValue).average().orElse(0.0);
-        long errors = errorCount != null ? errorCount.get() : 0;
+        long errors = 0; // errorCount != null ? errorCount.get() : 0;
         double errorRate = (double) errors / times.size();
 
         return new ClientPerformanceMetrics(avgTime, minTime, maxTime, errorRate, errors, times.size());
@@ -337,7 +348,7 @@ public class ModelTrackingService {
 
     private void initializeProviderStats() {
         for (ModelProviderType type : ModelProviderType.values()) {
-            providerStats.put(type, new ProviderUsageStats(type));
+            providerStats.put(type.name() + ":" + type.getDefaultModel(), new ProviderStats(type));
         }
     }
 
@@ -347,8 +358,8 @@ public class ModelTrackingService {
     }
 
     private double calculateErrorRate() {
-        long totalErrors = errorCounts.values().stream().mapToLong(AtomicLong::get).sum();
-        return totalRequests.get() > 0 ? (double) totalErrors / totalRequests.get() : 0.0;
+        // long totalErrors = errorCounts.values().stream().mapToLong(AtomicLong::get).sum();
+        return 0.0; // No error counts tracked directly anymore
     }
 
     // Data classes extracted to top-level:

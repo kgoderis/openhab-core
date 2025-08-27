@@ -228,7 +228,7 @@ public record SecurityMonitoringStatistics(List<SecurityMonitoringSnapshot> snap
         if (snapshots.isEmpty()) {
             return null;
         }
-        return java.time.Instant.ofEpochMilli(snapshots.get(snapshots.size() - 1).timestampMs());
+        return java.time.Instant.ofEpochMilli(snapshots.get(snapshots.size() - 1).getTimestampMs());
     }
 
     // PercentileMetrics implementation

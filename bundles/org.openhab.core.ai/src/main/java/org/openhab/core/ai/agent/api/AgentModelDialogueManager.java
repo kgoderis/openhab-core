@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.StatisticsMetrics;
 
 /**
  * Dialogue manager for autonomous agents
@@ -96,7 +97,7 @@ public interface AgentModelDialogueManager {
      * @param sessionId the dialogue session ID
      * @return CompletableFuture with the dialogue statistics
      */
-    CompletableFuture<AgentModelDialogueStatistics> getDialogueStatistics(String sessionId);
+    CompletableFuture<StatisticsMetrics> getDialogueStatistics(String sessionId);
 
     /**
      * Optimize dialogue flow

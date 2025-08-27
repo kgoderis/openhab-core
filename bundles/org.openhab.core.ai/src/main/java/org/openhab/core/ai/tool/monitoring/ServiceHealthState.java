@@ -48,10 +48,7 @@ final class ServiceHealthState {
         return getSuccessRate() >= 0.8 && getAverageResponseTime() <= 5000;
     }
 
-    ServiceHealthMetrics getHealthMetrics() {
-        return new ServiceHealthMetrics(totalRequests.get(), successfulRequests.get(), failedRequests.get(),
-                totalResponseTime.get(), getSuccessRate(), getAverageResponseTime(), isHealthy());
-    }
+
 
     double getSuccessRate() {
         long total = totalRequests.get();

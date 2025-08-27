@@ -6,10 +6,8 @@ import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
-import org.openhab.core.ai.common.monitoring.api.Health;
-import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthStatus;
 import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
-import org.openhab.core.ai.common.monitoring.api.MonitoringType;
 
 /**
  * Immutable snapshot of provider health metrics.
@@ -24,7 +22,7 @@ import org.openhab.core.ai.common.monitoring.api.MonitoringType;
 @NonNullByDefault
 public record ProviderHealthSnapshot(HealthStatus status, String statusMessage, long totalOperations,
         long successfulOperations, long failedOperations, double successRate, long lastFailureTime,
-        long lastSuccessTime, String lastError, long timestampMs) implements MetricsSnapshot, Health, CountsMetrics {
+        long lastSuccessTime, String lastError, long timestampMs) implements MetricsSnapshot, CountsMetrics {
 
     public ProviderHealthSnapshot {
         Objects.requireNonNull(status, "status");
@@ -32,66 +30,7 @@ public record ProviderHealthSnapshot(HealthStatus status, String statusMessage, 
         Objects.requireNonNull(lastError, "lastError");
     }
 
-    @Override
-    public String getId() {
-        return "provider-health";
-    }
 
-    @Override
-    public java.time.Instant getTimestamp() {
-        return java.time.Instant.ofEpochMilli(timestampMs);
-    }
-
-    @Override
-    public MonitoringType getType() {
-        return MonitoringType.HEALTH;
-    }
-
-    @Override
-    public String getDomain() {
-        return "provider";
-    }
-
-    @Override
-    public String getSource() {
-        return "health-collector";
-    }
-
-    @Override
-    public Map<String, Object> getData() {
-        Map<String, Object> data = new HashMap<>();
-        data.put("status", status.name());
-        data.put("statusMessage", statusMessage);
-        data.put("totalOperations", totalOperations);
-        data.put("successfulOperations", successfulOperations);
-        data.put("failedOperations", failedOperations);
-        data.put("successRate", successRate);
-        data.put("lastFailureTime", lastFailureTime);
-        data.put("lastSuccessTime", lastSuccessTime);
-        data.put("lastError", lastError);
-        return data;
-    }
-
-    @Override
-    public HealthStatus getStatus() {
-        return status;
-    }
-
-    @Override
-    public String getStatusMessage() {
-        return statusMessage;
-    }
-
-    @Override
-    public Map<String, Object> getHealthIndicators() {
-        Map<String, Object> indicators = new HashMap<>();
-        indicators.put("successRate", successRate);
-        indicators.put("totalOperations", totalOperations);
-        indicators.put("lastFailureTime", lastFailureTime);
-        indicators.put("lastSuccessTime", lastSuccessTime);
-        indicators.put("lastError", lastError);
-        return indicators;
-    }
 
     @Override
     public long total() {
@@ -345,7 +284,7 @@ public record ProviderHealthSnapshot(HealthStatus status, String statusMessage, 
                 .append(String.format("%.2f%%", errorRatePercent())).append(", totalOps=").append(totalOperations)
                 .append(", healthScore=").append(String.format("%.3f", healthScore())).append(", requiresAttention=")
                 .append(requiresImmediateAttention()).append(", lastError='").append(lastError).append("'")
-                .append(", timestamp=").append(getTimestamp()).append("}").toString();
+                .append(", timestamp=").append(timestampMs).append("}").toString();
     }
 
     /**

@@ -42,9 +42,20 @@ public class ToolLoggingManager {
     public void logToolExecution(String toolId, Map<String, Object> parameters, long executionTime, boolean success,
             @Nullable String result) {
 
-        // Use centralized metrics service
+        // Use centralized metrics service with builder pattern
         if (metricsService != null) {
-            metricsService.recordOperation("tool", toolId, success, java.time.Duration.ofMillis(executionTime));
+            try {
+                metricsService.recordOperation("tool", "execution")
+                    .withSuccess(success)
+                    .withDuration(java.time.Duration.ofMillis(executionTime).toNanos())
+                    .withData("toolId", toolId)
+                    .withData("executionTimeMs", executionTime)
+                    .withData("result", result != null ? result.substring(0, Math.min(result.length(), 100)) + "..." : "null")
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record tool execution metrics for tool {}: {}", toolId, e.getMessage());
+                // Graceful degradation: continue with logging even if metrics recording fails
+            }
         }
 
         // Structured logging
@@ -69,9 +80,21 @@ public class ToolLoggingManager {
     public void logServerRequest(String requestType, TransportType transportType, long processingTime, boolean success,
             @Nullable Map<String, Object> details) {
 
-        // Use centralized metrics service
+        // Use centralized metrics service with builder pattern
         if (metricsService != null) {
-            metricsService.recordOperation("server", requestType, success, java.time.Duration.ofMillis(processingTime));
+            try {
+                metricsService.recordOperation("server", "request")
+                    .withSuccess(success)
+                    .withDuration(java.time.Duration.ofMillis(processingTime).toNanos())
+                    .withData("requestType", requestType)
+                    .withData("transportType", transportType.name())
+                    .withData("processingTimeMs", processingTime)
+                    .withData("details", details != null ? details.toString() : "null")
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record server request metrics for request type {}: {}", requestType, e.getMessage());
+                // Graceful degradation: continue with logging even if metrics recording fails
+            }
         }
 
         // Structured logging
@@ -94,10 +117,20 @@ public class ToolLoggingManager {
     public void logTransportHealth(TransportType transportType, String healthStatus,
             @Nullable Map<String, Object> details) {
 
-        // Use centralized metrics service
+        // Use centralized metrics service with builder pattern
         if (metricsService != null) {
-            metricsService.recordOperation("transport", "health-check", "UP".equals(healthStatus),
-                    java.time.Duration.ZERO);
+            try {
+                metricsService.recordOperation("transport", "health-check")
+                    .withSuccess("UP".equals(healthStatus))
+                    .withDuration(0L)
+                    .withData("transportType", transportType.name())
+                    .withData("healthStatus", healthStatus)
+                    .withData("details", details != null ? details.toString() : "null")
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record transport health metrics for transport type {}: {}", transportType, e.getMessage());
+                // Graceful degradation: continue with logging even if metrics recording fails
+            }
         }
 
         // Structured logging
@@ -113,9 +146,20 @@ public class ToolLoggingManager {
      */
     public void logSecurityEvent(String eventType, String severity, @Nullable Map<String, Object> details) {
 
-        // Use centralized metrics service
+        // Use centralized metrics service with builder pattern
         if (metricsService != null) {
-            metricsService.recordOperation("security", eventType, true, java.time.Duration.ZERO);
+            try {
+                metricsService.recordOperation("security", "event")
+                    .withSuccess(true)
+                    .withDuration(0L)
+                    .withData("eventType", eventType)
+                    .withData("severity", severity)
+                    .withData("details", details != null ? details.toString() : "null")
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record security event metrics for event type {}: {}", eventType, e.getMessage());
+                // Graceful degradation: continue with logging even if metrics recording fails
+            }
         }
 
         // Structured logging
@@ -132,10 +176,20 @@ public class ToolLoggingManager {
      */
     public void logPerformanceMetric(String component, String operation, long duration, boolean success) {
 
-        // Use centralized metrics service
+        // Use centralized metrics service with builder pattern
         if (metricsService != null) {
-            metricsService.recordOperation("performance", component + "." + operation, success,
-                    java.time.Duration.ofMillis(duration));
+            try {
+                metricsService.recordOperation("performance", "metric")
+                    .withSuccess(success)
+                    .withDuration(java.time.Duration.ofMillis(duration).toNanos())
+                    .withData("component", component)
+                    .withData("operation", operation)
+                    .withData("durationMs", duration)
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record performance metrics for component {} operation {}: {}", component, operation, e.getMessage());
+                // Graceful degradation: continue with logging even if metrics recording fails
+            }
         }
 
         // Structured logging

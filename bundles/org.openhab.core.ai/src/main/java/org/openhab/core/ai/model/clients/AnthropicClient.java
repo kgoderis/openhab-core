@@ -1,5 +1,6 @@
 package org.openhab.core.ai.model.clients;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -7,15 +8,17 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
@@ -24,7 +27,7 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.config.AnthropicConfiguration;
-import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,15 +52,21 @@ public class AnthropicClient implements ModelClient {
     private final ModelClientInfo providerInfo;
     private final com.anthropic.client.AnthropicClient anthropicClient;
 
-    // Metrics tracking fields
-    private final AtomicLong totalResponseTime = new AtomicLong(0);
-    private final AtomicInteger totalRequests = new AtomicInteger(0);
-    private final AtomicInteger successfulRequests = new AtomicInteger(0);
-    private final AtomicInteger errorCount = new AtomicInteger(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalResponseTime = new AtomicLong(0);
+    // private final AtomicInteger totalRequests = new AtomicInteger(0);
+    // private final AtomicInteger successfulRequests = new AtomicInteger(0);
+    // private final AtomicInteger errorCount = new AtomicInteger(0);
     private final AtomicReference<String> lastError = new AtomicReference<>();
     private final AtomicReference<Instant> lastErrorTime = new AtomicReference<>();
-    private final AtomicLong minResponseTime = new AtomicLong(Long.MAX_VALUE);
-    private final AtomicLong maxResponseTime = new AtomicLong(0);
+    // private final AtomicLong minResponseTime = new AtomicLong(Long.MAX_VALUE);
+    // private final AtomicLong maxResponseTime = new AtomicLong(0);
+
+    private MetricsService metricsService;
+
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+    }
 
     public AnthropicClient(AnthropicConfiguration config, @Nullable ActionRegistry actionRegistry) {
         this.config = config;
@@ -214,24 +223,37 @@ public class AnthropicClient implements ModelClient {
     }
 
     @Override
-    public ModelHealthMetrics getHealthStatus() {
+    public HealthMetrics getHealthStatus() {
         try {
             boolean available = isAvailable();
-            long avgResponseTime = totalRequests.get() > 0 ? totalResponseTime.get() / totalRequests.get() : -1;
-            double successRate = totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get()
-                    : 0.0;
 
-            return ModelHealthMetrics.builder("anthropic-client")
-                    .withStatus(available ? HealthStatus.HEALTHY : HealthStatus.UNHEALTHY).withAvailable(available)
-                    .withAverageResponseTimeMs(avgResponseTime).withSuccessRate(successRate)
-                    .withErrorCount(errorCount.get()).withLastError(lastError.get())
-                    .withLastErrorTime(lastErrorTime.get()).build();
+            // Record health check operation
+            metricsService.recordOperation("model", "health-check")
+                .withSuccess(available)
+                .withDuration(100)
+                .withData(Map.of(
+                    "provider", "anthropic",
+                    "model", config.getModelName()
+                ))
+                .record();
+
+            // Return health metrics from service
+            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
+            
         } catch (Exception e) {
-            return ModelHealthMetrics.builder("anthropic-client").withStatus(HealthStatus.UNHEALTHY)
-                    .withAvailable(false).withAverageResponseTimeMs(-1).withSuccessRate(0.0)
-                    .withErrorCount(errorCount.get() + 1)
-                    .withLastError(e.getMessage() != null ? e.getMessage() : "Unknown error")
-                    .withLastErrorTime(Instant.now()).build();
+            // Record failed health check
+            metricsService.recordOperation("model", "health-check")
+                .withSuccess(false)
+                .withDuration(100)
+                .withData(Map.of(
+                    "provider", "anthropic",
+                    "model", config.getModelName(),
+                    "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
+                ))
+                .record();
+
+            // Return health metrics from service (will reflect the failure)
+            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
         }
     }
 
@@ -311,22 +333,25 @@ public class AnthropicClient implements ModelClient {
      * Track metrics for request performance and errors
      */
     private void trackMetrics(long responseTime, boolean success, @Nullable String errorMessage) {
-        totalResponseTime.addAndGet(responseTime);
-        totalRequests.incrementAndGet();
-
-        if (success) {
-            successfulRequests.incrementAndGet();
-        } else {
-            errorCount.incrementAndGet();
-            if (errorMessage != null) {
-                lastError.set(errorMessage);
-                lastErrorTime.set(Instant.now());
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("anthropic_client", "request")
+                    .withSuccess(success)
+                    .withDuration(Duration.ofMillis(responseTime).toNanos())
+                    .withData("provider", "anthropic")
+                    .withData("model", config.getModelName())
+                    .withData("responseTimeMs", responseTime)
+                    .withData("errorMessage", errorMessage != null ? errorMessage : "null")
+                    .record();
+            } catch (Exception e) {
+                logger.debug("Failed to record Anthropic client metrics: {}", e.getMessage());
             }
         }
-
-        // Update min/max response times
-        minResponseTime.updateAndGet(current -> Math.min(current, responseTime));
-        maxResponseTime.updateAndGet(current -> Math.max(current, responseTime));
+        
+        if (!success && errorMessage != null) {
+            lastError.set(errorMessage);
+            lastErrorTime.set(Instant.now());
+        }
     }
 
     /**

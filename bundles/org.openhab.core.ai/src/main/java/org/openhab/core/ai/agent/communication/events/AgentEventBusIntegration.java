@@ -25,6 +25,10 @@ import org.openhab.core.ai.common.builder.EventSubscriptionBuilder;
 import org.openhab.core.ai.common.events.EventFilter;
 import org.openhab.core.ai.common.events.EventRouter;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.events.Event;
 import org.openhab.core.events.EventPublisher;
 import org.openhab.core.events.EventSubscriber;
@@ -304,11 +308,17 @@ public class AgentEventBusIntegration implements EventSubscriber {
         }
 
         // Retrieve domain aggregated snapshot for agent-event-bus operations
-        var eventBusSnapshot = metrics.getDomainAggregatedSnapshot("agent-event-bus");
+        MetricKey eventBusKey = MetricKeys.custom("agent-event-bus", Map.of(), Set.of("counts", "latency"));
+        var eventBusSnapshot = metrics.getSnapshot(eventBusKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
 
-        return new EventBusStatistics(eventBusSnapshot.totalOperations(), eventBusSnapshot.totalOperations(),
-                eventBusSnapshot.totalOperations(), eventBusSnapshot.totalOperations(),
-                eventBusSnapshot.totalOperations(), eventStore.size(), subscriptions.size(), eventSchemas.size(),
+        if (eventBusSnapshot != null) {
+            long totalOperations = eventBusSnapshot.getLong("total");
+            return new EventBusStatistics(totalOperations, totalOperations,
+                    totalOperations, totalOperations,
+                    totalOperations, eventStore.size(), subscriptions.size(), eventSchemas.size(),
+                    deadLetterQueue.size());
+        }
+        return new EventBusStatistics(0, 0, 0, 0, 0, eventStore.size(), subscriptions.size(), eventSchemas.size(),
                 deadLetterQueue.size());
     }
 

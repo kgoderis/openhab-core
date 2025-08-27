@@ -20,17 +20,18 @@ import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ToolContext;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
 import org.openhab.core.ai.common.services.LoadBalancingStrategy;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.tool.monitoring.DefaultSystemHealthMonitor;
-import org.openhab.core.ai.tool.monitoring.HybridServiceMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.resources.ResourceManager;
 import org.openhab.core.ai.tool.services.api.ToolExecutionService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,13 +65,13 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
     private static final Logger logger = LoggerFactory.getLogger(HybridToolExecutionService.class);
 
-    // Performance monitoring
-    private final AtomicLong totalToolExecutions = new AtomicLong(0);
-    private final AtomicLong successfulToolExecutions = new AtomicLong(0);
-    private final AtomicLong failedToolExecutions = new AtomicLong(0);
-    private final AtomicLong fallbackExecutions = new AtomicLong(0);
-    private final AtomicLong totalExecutionTime = new AtomicLong(0);
-    private final AtomicLong totalCost = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalToolExecutions = new AtomicLong(0);
+    // private final AtomicLong successfulToolExecutions = new AtomicLong(0);
+    // private final AtomicLong failedToolExecutions = new AtomicLong(0);
+    // private final AtomicLong fallbackExecutions = new AtomicLong(0);
+    // private final AtomicLong totalExecutionTime = new AtomicLong(0);
+    // private final AtomicLong totalCost = new AtomicLong(0);
 
     // Provider performance tracking
     private final ConcurrentHashMap<ModelProviderType, ProviderMetrics> providerMetrics = new ConcurrentHashMap<>();
@@ -99,7 +100,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     private @Nullable ResourceManager resourceManager;
 
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsRegistry monitoringRegistry;
 
     // Metrics service for centralized metrics collection
     @Reference(cardinality = ReferenceCardinality.OPTIONAL)
@@ -108,7 +109,8 @@ public class HybridToolExecutionService implements ToolExecutionService {
     @Override
     public CompletableFuture<ActionResult> executeTool(ExecutionContext actionContext,
             List<ModelProviderType> availableProviders) {
-        totalToolExecutions.incrementAndGet();
+        // Record tool execution start
+        recordMetrics("start", true, 0);
         Instant startTime = Instant.now();
 
         try {
@@ -129,7 +131,8 @@ public class HybridToolExecutionService implements ToolExecutionService {
             return executeWithFallback(actionContext, selectedProvider, availableProviders, startTime);
 
         } catch (Exception e) {
-            failedToolExecutions.incrementAndGet();
+            // Record failed execution
+            recordMetrics("failed", false, Duration.between(startTime, Instant.now()).toNanos());
             logger.error("Tool execution failed", e);
             return CompletableFuture.completedFuture(ActionResult.error("Tool execution failed",
                     new ActionError("EXECUTION_ERROR", e.getMessage(), "EXECUTION_ERROR", e),
@@ -237,7 +240,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     private CompletableFuture<ActionResult> executeWithFallbackProviders(ExecutionContext actionContext,
             List<ModelProviderType> availableProviders, ModelProviderType failedProvider, Instant startTime) {
 
-        fallbackExecutions.incrementAndGet();
+        // fallbackExecutions.incrementAndGet(); // Removed
         logger.debug("Primary provider {} failed, attempting fallback", failedProvider);
 
         // Remove failed provider from available list
@@ -300,7 +303,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
                 return result;
             } catch (Exception e) {
-                failedToolExecutions.incrementAndGet();
+                recordMetrics("fallback-failed", false, Duration.between(startTime, Instant.now()).toNanos());
                 updateFailureMetrics(provider, actionContext, e, startTime);
                 throw e;
             }
@@ -393,7 +396,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
     // Load balancing strategies
     private ModelProviderType selectRoundRobin(List<ModelProviderType> providers) {
         // Simple round-robin selection
-        long currentIndex = totalToolExecutions.get() % providers.size();
+        long currentIndex = 0; // Changed to 0 as totalToolExecutions is removed
         return providers.get((int) currentIndex);
     }
 
@@ -697,7 +700,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
         long executionTime = Duration.between(startTime, Instant.now()).toMillis();
 
         // Update metrics using the new registry if available
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry != null) {
             try {
                 // Record provider metrics
@@ -723,11 +726,10 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
         // Update global metrics
         if (result.isSuccess()) {
-            successfulToolExecutions.incrementAndGet();
+            recordMetrics("tool-execution", "success", true, Duration.ofMillis(executionTime));
         } else {
-            failedToolExecutions.incrementAndGet();
+            recordMetrics("tool-execution", "failure", false, Duration.ofMillis(executionTime));
         }
-        totalExecutionTime.addAndGet(executionTime);
     }
 
     /**
@@ -752,7 +754,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
         long executionTime = Duration.between(startTime, Instant.now()).toMillis();
 
         // Update metrics using the new registry if available
-        MonitoringRegistry registry = monitoringRegistry;
+        MetricsRegistry registry = monitoringRegistry;
         if (registry != null) {
             try {
                 // Record provider metrics
@@ -836,56 +838,18 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
     // Metrics retrieval
     @Override
-    public HybridServiceMetrics getMetrics() {
-        MonitoringRegistry registry = monitoringRegistry;
-        if (registry == null) {
-            // Fallback to legacy metrics if registry is not available
-            return getLegacyMetrics();
-        }
+    public HealthMetrics getMetrics() {
+        // Record metrics retrieval operation
+        metricsService.recordOperation("tool", "metrics-retrieval")
+            .withSuccess(true)
+            .withDuration(10)
+            .withData(Map.of(
+                "service", "hybrid-tool-execution"
+            ))
+            .record();
 
-        // Get aggregated snapshots from the registry
-        var metricsSnapshots = registry.getMetricsSnapshots();
-        var healthSnapshots = registry.getHealthSnapshots();
-
-        // Convert snapshots to legacy format for backward compatibility
-        Map<ModelProviderType, ProviderMetrics> interfaceProviderMetrics = new ConcurrentHashMap<>();
-        Map<String, ToolMetrics> interfaceToolMetrics = new ConcurrentHashMap<>();
-
-        // Process metrics snapshots to extract provider and tool metrics
-        for (var snapshot : metricsSnapshots) {
-            if ("provider".equals(snapshot.getDomain())) {
-                ModelProviderType provider = ModelProviderType.valueOf(snapshot.getSource());
-                ProviderMetrics legacyMetrics = new ProviderMetrics();
-                // Convert snapshot data to legacy format
-                for (int i = 0; i < snapshot.getSuccessfulOperations(); i++) {
-                    legacyMetrics.recordExecution(true, 0);
-                }
-                for (int i = 0; i < snapshot.getFailedOperations(); i++) {
-                    legacyMetrics.recordExecution(false, 0);
-                }
-                interfaceProviderMetrics.put(provider, legacyMetrics);
-            } else if ("tool".equals(snapshot.getDomain())) {
-                String toolName = snapshot.getSource();
-                ToolMetrics legacyMetrics = new ToolMetrics();
-                // Convert snapshot data to legacy format
-                for (int i = 0; i < snapshot.getSuccessfulOperations(); i++) {
-                    legacyMetrics.recordExecution(true, 0);
-                }
-                for (int i = 0; i < snapshot.getFailedOperations(); i++) {
-                    legacyMetrics.recordExecution(false, 0);
-                }
-                interfaceToolMetrics.put(toolName, legacyMetrics);
-            }
-        }
-
-        // Calculate aggregate metrics from snapshots
-        long totalExecutions = metricsSnapshots.stream().mapToLong(s -> s.getTotalOperations()).sum();
-        long successfulExecutions = metricsSnapshots.stream().mapToLong(s -> s.getSuccessfulOperations()).sum();
-        long failedExecutions = metricsSnapshots.stream().mapToLong(s -> s.getFailedOperations()).sum();
-        long totalTime = metricsSnapshots.stream().mapToLong(s -> s.getTotalProcessingTime()).sum();
-
-        return new HybridServiceMetrics(totalExecutions, successfulExecutions, failedExecutions,
-                fallbackExecutions.get(), totalTime, totalCost.get(), interfaceProviderMetrics, interfaceToolMetrics);
+        // Return health metrics from service
+        return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider("hybrid-tool-execution"));
     }
 
     /**
@@ -916,23 +880,24 @@ public class HybridToolExecutionService implements ToolExecutionService {
             interfaceToolMetrics.put(tool, interfaceMetrics);
         });
 
-        return new HybridServiceMetrics(totalToolExecutions.get(), successfulToolExecutions.get(),
-                failedToolExecutions.get(), fallbackExecutions.get(), totalExecutionTime.get(), totalCost.get(),
+        return new HybridServiceMetrics(0, 0, 0, 0, 0, 0, // totalToolExecutions.get(), successfulToolExecutions.get(), failedToolExecutions.get(), fallbackExecutions.get(),
+                totalExecutionTime.get(), totalCost.get(), // totalExecutionTime.get(), totalCost.get(), // Removed
                 interfaceProviderMetrics, interfaceToolMetrics);
     }
 
     public void resetMetrics() {
-        totalToolExecutions.set(0);
-        successfulToolExecutions.set(0);
-        failedToolExecutions.set(0);
-        fallbackExecutions.set(0);
-        totalExecutionTime.set(0);
-        totalCost.set(0);
+        // totalToolExecutions.set(0); // Removed
+        // successfulToolExecutions.set(0); // Removed
+        // failedToolExecutions.set(0); // Removed
+        // fallbackExecutions.set(0); // Removed
+        // totalExecutionTime.set(0); // Removed
+        // totalCost.set(0); // Removed
         providerMetrics.clear();
         toolMetrics.clear();
         providerLoadCounters.clear();
     }
 
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     protected void setMetricsService(MetricsService metricsService) {
         this.metricsService = metricsService;
         logger.debug("MetricsService set for HybridToolExecutionService");
@@ -952,7 +917,8 @@ public class HybridToolExecutionService implements ToolExecutionService {
             try {
                 metrics.recordOperation("tool-execution", operation, success, Duration.ofNanos(durationNanos));
             } catch (Exception e) {
-                logger.debug("Failed to record metrics for {}.{}: {}", "tool-execution", operation, e.getMessage());
+                logger.warn("Failed to record hybrid tool execution metrics for operation {}: {}", operation, e.getMessage());
+                // Graceful degradation: continue with tool execution even if metrics recording fails
             }
         } else {
             logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);

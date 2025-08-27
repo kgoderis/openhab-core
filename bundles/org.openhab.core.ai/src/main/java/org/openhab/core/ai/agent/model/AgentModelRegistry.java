@@ -18,6 +18,7 @@ import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -362,6 +363,7 @@ public final class AgentModelRegistry {
                 Duration.ofDays(1));
     }
 
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     protected void setMetricsService(MetricsService metricsService) {
         this.metricsService = metricsService;
         logger.debug("MetricsService set for AgentModelRegistry");

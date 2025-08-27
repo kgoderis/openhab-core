@@ -13,6 +13,9 @@ import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.openhab.core.ai.common.context.ToolContext;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
 import org.openhab.core.ai.tool.api.ToolException;
@@ -1817,12 +1820,16 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
 
         if (metrics != null) {
             try {
-                var snapshot = metrics.getDomainAggregatedSnapshot("mcp-servlet");
-                totalRequests = snapshot.totalOperations();
-                failedRequests = snapshot.failedOperations();
-                successfulRequests = totalRequests - failedRequests;
-                totalResponseTime = snapshot.totalDurationNanos() / 1_000_000; // Convert to milliseconds
-                averageResponseTime = totalRequests > 0 ? (double) totalResponseTime / totalRequests : 0.0;
+                MetricKey mcpServletKey = MetricKeys.custom("mcp-servlet", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(mcpServletKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    totalRequests = snapshot.getLong("total");
+                    failedRequests = snapshot.getLong("failure");
+                    successfulRequests = totalRequests - failedRequests;
+                    totalResponseTime = snapshot.getLong("totalDurationNanos") / 1_000_000; // Convert to milliseconds
+                    averageResponseTime = totalRequests > 0 ? (double) totalResponseTime / totalRequests : 0.0;
+                }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for MCP servlet: {}", e.getMessage());
             }
@@ -1849,7 +1856,12 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
     private void recordMetrics(String domain, String operation, boolean success, long durationNanos) {
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+            try {
+                metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.warn("Failed to record metrics for operation {} - {}: {}", domain, operation, e.getMessage());
+                // Graceful degradation: continue with request handling even if metrics recording fails
+            }
         } else {
             logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
                     operation);

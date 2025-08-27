@@ -1,15 +1,15 @@
 package org.openhab.core.ai.tool.sampling.models;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,12 +36,15 @@ public class SamplingModel {
 
     // Caching and versioning support
     private final Map<String, Object> cache = new ConcurrentHashMap<>();
-    private final AtomicInteger cacheHits = new AtomicInteger(0);
-    private final AtomicInteger cacheMisses = new AtomicInteger(0);
-    private final AtomicLong totalExecutionTime = new AtomicLong(0);
-    private final AtomicInteger totalSamplesGenerated = new AtomicInteger(0);
     private final AtomicReference<String> version = new AtomicReference<>("1.0.0");
     private final Random random = new Random();
+    
+    // Metrics service for performance monitoring
+    private MetricsService metricsService;
+    
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+    }
 
     /**
      * Create a new sampling model.
@@ -131,12 +134,38 @@ public class SamplingModel {
         String cacheKey = generateCacheKey(input);
         Object cachedResult = cache.get(cacheKey);
         if (cachedResult != null) {
-            cacheHits.incrementAndGet();
+            // Record cache hit metrics
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("sampling_model", "cache_hit")
+                        .withSuccess(true)
+                        .withDuration(0L)
+                        .withData("modelId", id)
+                        .withData("cacheKey", cacheKey)
+                        .record();
+                } catch (Exception e) {
+                    logger.warn("Failed to record sampling model cache hit metrics for model {}: {}", id, e.getMessage());
+                    // Graceful degradation: continue with sampling even if metrics recording fails
+                }
+            }
             logger.debug("Cache hit for key: {}", cacheKey);
             return cachedResult;
         }
 
-        cacheMisses.incrementAndGet();
+        // Record cache miss metrics
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("sampling_model", "cache_miss")
+                    .withSuccess(true)
+                    .withDuration(0L)
+                    .withData("modelId", id)
+                    .withData("cacheKey", cacheKey)
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record sampling model cache miss metrics for model {}: {}", id, e.getMessage());
+                // Graceful degradation: continue with sampling even if metrics recording fails
+            }
+        }
 
         // Execute sampling model
         Object result = executeSamplingModel(input);
@@ -144,9 +173,22 @@ public class SamplingModel {
         // Cache the result
         cacheResult(cacheKey, result);
 
-        // Update metrics
-        totalExecutionTime.addAndGet(System.currentTimeMillis() - startTime);
-        totalSamplesGenerated.incrementAndGet();
+        // Record sample generation metrics
+        long duration = System.currentTimeMillis() - startTime;
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("sampling_model", "sample_generation")
+                    .withSuccess(true)
+                    .withDuration(Duration.ofMillis(duration).toNanos())
+                    .withData("modelId", id)
+                    .withData("modelType", type)
+                    .withData("durationMs", duration)
+                    .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record sampling model generation metrics for model {}: {}", id, e.getMessage());
+                // Graceful degradation: continue with sampling even if metrics recording fails
+            }
+        }
 
         logger.debug("Generated sample for model: {} in {}ms", id, System.currentTimeMillis() - startTime);
         return result;

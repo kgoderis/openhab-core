@@ -12,21 +12,12 @@ import org.openhab.core.ai.common.monitoring.service.snapshot.AgentTaskSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.CommunicationSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.DomainAggregatedSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.ErrorRecoverySnapshot;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.ModelCompletionSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.SecurityMonitoringSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.ToolExecutionSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.ToolFileReadSnapshot;
-import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
-import org.openhab.core.ai.common.monitoring.service.statistics.AgentPersistenceStatistics;
-import org.openhab.core.ai.common.monitoring.service.statistics.CoordinationStatistics;
-import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
-import org.openhab.core.ai.common.monitoring.service.statistics.ModelCompletionStatistics;
-import org.openhab.core.ai.common.monitoring.service.statistics.OptimizationStatistics;
-import org.openhab.core.ai.common.monitoring.service.statistics.ReasoningPerformanceStatistics;
-import org.openhab.core.ai.common.monitoring.service.statistics.SecurityMonitoringStatistics;
-import org.openhab.core.ai.common.monitoring.service.statistics.ToolFileReadStatistics;
-import org.openhab.core.ai.common.security.MessageSecurityStatistics;
-import org.openhab.core.ai.tool.monitoring.MonitoringStatistics;
+
 
 /**
  * Centralized metrics service for collecting and managing operation metrics.
@@ -42,6 +33,90 @@ import org.openhab.core.ai.tool.monitoring.MonitoringStatistics;
  */
 @NonNullByDefault
 public interface MetricsService {
+
+    /**
+     * Get a builder for flexible operation recording.
+     * 
+     * @param domain the operation domain
+     * @param operation the operation name
+     * @return operation recorder builder
+     */
+    OperationRecorder recordOperation(String domain, String operation);
+
+    // ===== Unified Generic Retrieval with Type Safety =====
+
+    /**
+     * Get a snapshot by MetricKey with type safety.
+     * 
+     * @param <T> the snapshot type
+     * @param key the metric key
+     * @param snapshotType the snapshot class
+     * @return snapshot of the specified type, or null if not found
+     */
+    <T extends MetricsSnapshot> T getSnapshot(MetricKey key, Class<T> snapshotType);
+
+    /**
+     * Get a snapshot by MetricKey, returning the most appropriate type.
+     * 
+     * @param key the metric key
+     * @return snapshot, or null if not found
+     */
+    MetricsSnapshot getSnapshot(MetricKey key);
+
+    /**
+     * Get snapshots by capability type.
+     * 
+     * @param <T> the snapshot type
+     * @param capabilityType the capability class
+     * @return list of snapshots with the specified capability
+     */
+    <T extends MetricsSnapshot> List<T> getSnapshotsByCapability(Class<T> capabilityType);
+
+    /**
+     * Get snapshots by domain.
+     * 
+     * @param <T> the snapshot type
+     * @param domain the domain name
+     * @param snapshotType the snapshot class
+     * @return list of snapshots for the domain
+     */
+    <T extends MetricsSnapshot> List<T> getSnapshotsByDomain(String domain, Class<T> snapshotType);
+
+    // ===== Generic Statistics Retrieval =====
+
+    /**
+     * Get statistics by MetricKey with type safety.
+     * 
+     * @param <T> the statistics type
+     * @param key the metric key
+     * @param statisticsType the statistics class
+     * @param timeRange the time range for aggregation
+     * @return statistics of the specified type
+     */
+    <T extends org.openhab.core.ai.common.monitoring.service.statistics.StatisticsSnapshot> T getStatistics(MetricKey key, Class<T> statisticsType, Duration timeRange);
+
+    /**
+     * Get statistics by capability type.
+     * 
+     * @param <T> the statistics type
+     * @param capabilityType the capability class
+     * @param timeRange the time range for aggregation
+     * @return list of statistics with the specified capability
+     */
+    <T extends org.openhab.core.ai.common.monitoring.service.statistics.StatisticsSnapshot> List<T> getStatisticsByCapability(Class<T> capabilityType, Duration timeRange);
+
+    /**
+     * Get statistics by domain.
+     * 
+     * @param <T> the statistics type
+     * @param domain the domain name
+     * @param statisticsType the statistics class
+     * @param timeRange the time range for aggregation
+     * @return list of statistics for the domain
+     */
+    <T extends org.openhab.core.ai.common.monitoring.service.statistics.StatisticsSnapshot> List<T> getStatisticsByDomain(String domain, Class<T> statisticsType, Duration timeRange);
+
+    // ===== Recording Methods =====
 
     /**
      * Record a basic operation with success/failure status.
@@ -128,169 +203,16 @@ public interface MetricsService {
     void recordErrorRecovery(String errorType, boolean success, Duration duration, String recoveryStrategy,
             boolean fallbackUsed);
 
-    /**
-     * Get a builder for flexible operation recording.
-     * 
-     * @param domain the operation domain
-     * @param operation the operation name
-     * @return operation recorder builder
-     */
-    OperationRecorder recordOperation(String domain, String operation);
+
 
     /**
-     * Get model completion snapshot.
+     * Get a generic snapshot for a specific domain and operation.
      * 
-     * @param modelId the model identifier
-     * @return model completion snapshot
+     * @param domain the operation domain (e.g., "model", "tool", "agent")
+     * @param operation the operation name (e.g., "completion", "file_read", "task_execution")
+     * @return generic snapshot containing metrics for the specified domain and operation
      */
-    ModelCompletionSnapshot getModelCompletionSnapshot(String modelId);
-
-    /**
-     * Get tool file read snapshot.
-     * 
-     * @param toolId the tool identifier
-     * @return tool file read snapshot
-     */
-    ToolFileReadSnapshot getToolFileReadSnapshot(String toolId);
-
-    /**
-     * Get agent task snapshot.
-     * 
-     * @param agentId the agent identifier
-     * @return agent task snapshot
-     */
-    AgentTaskSnapshot getAgentTaskSnapshot(String agentId);
-
-    /**
-     * Get agent model snapshot.
-     * 
-     * @param modelId the model identifier
-     * @return agent model snapshot
-     */
-    AgentModelSnapshot getAgentModelSnapshot(String modelId);
-
-    /**
-     * Get action execution snapshot.
-     * 
-     * @param actionId the action identifier
-     * @return action execution snapshot
-     */
-    ActionExecutionSnapshot getActionExecutionSnapshot(String actionId);
-
-    /**
-     * Get tool execution snapshot.
-     * 
-     * @param toolId the tool identifier
-     * @return tool execution snapshot
-     */
-    ToolExecutionSnapshot getToolExecutionSnapshot(String toolId);
-
-    /**
-     * Get communication snapshot.
-     * 
-     * @param communicationId the communication identifier
-     * @return communication snapshot
-     */
-    CommunicationSnapshot getCommunicationSnapshot(String communicationId);
-
-    /**
-     * Get error recovery snapshot.
-     * 
-     * @param errorType the error type
-     * @return error recovery snapshot
-     */
-    ErrorRecoverySnapshot getErrorRecoverySnapshot(String errorType);
-
-    /**
-     * Get model completion statistics.
-     * 
-     * @param modelId the model identifier
-     * @param timeRange the time range for statistics
-     * @return model completion statistics
-     */
-    ModelCompletionStatistics getModelCompletionStatistics(String modelId, Duration timeRange);
-
-    /**
-     * Get tool file read statistics.
-     * 
-     * @param toolId the tool identifier
-     * @param timeRange the time range for statistics
-     * @return tool file read statistics
-     */
-    ToolFileReadStatistics getToolFileReadStatistics(String toolId, Duration timeRange);
-
-    /**
-     * Get agent behavior statistics.
-     * 
-     * @param agentId the agent identifier
-     * @param timeRange the time range for statistics
-     * @return agent behavior statistics
-     */
-    AgentBehaviorStatistics getAgentBehaviorStatistics(String agentId, Duration timeRange);
-
-    /**
-     * Get agent persistence statistics.
-     * 
-     * @param agentId the agent identifier
-     * @param timeRange the time range for statistics
-     * @return agent persistence statistics
-     */
-    AgentPersistenceStatistics getAgentPersistenceStatistics(String agentId, Duration timeRange);
-
-    /**
-     * Get monitoring statistics.
-     * 
-     * @param monitoringId the monitoring identifier
-     * @param timeRange the time range for statistics
-     * @return monitoring statistics
-     */
-    MonitoringStatistics getMonitoringStatistics(String monitoringId, Duration timeRange);
-
-    /**
-     * Get error recovery statistics.
-     * 
-     * @param errorType the error type
-     * @param timeRange the time range for statistics
-     * @return error recovery statistics
-     */
-    ErrorRecoveryStatistics getErrorRecoveryStatistics(String errorType, Duration timeRange);
-
-    /**
-     * Get reasoning performance statistics.
-     * 
-     * @param agentId the agent identifier
-     * @param timeRange the time range for statistics
-     * @return reasoning performance statistics
-     */
-    ReasoningPerformanceStatistics getReasoningPerformanceStatistics(String agentId, Duration timeRange);
-
-    /**
-     * Get coordination statistics.
-     * 
-     * @param agentId the agent identifier
-     * @param timeRange the time range for statistics
-     * @return coordination statistics
-     */
-    CoordinationStatistics getCoordinationStatistics(String agentId, Duration timeRange);
-
-    /**
-     * Get coordination statistics for agent coordination manager.
-     * 
-     * @param agentId the agent identifier
-     * @param timeRange the time range for statistics
-     * @return coordination statistics in local format
-     */
-    org.openhab.core.ai.agent.collaboration.coordination.CoordinationStatistics getAgentCoordinationStatistics(
-            String agentId, Duration timeRange);
-
-    /**
-     * Get optimization statistics.
-     * 
-     * @param agentId the agent identifier
-     * @param timeRange the time range for statistics
-     * @return optimization statistics
-     */
-    OptimizationStatistics getOptimizationStatistics(String agentId, Duration timeRange);
+    GenericMetricsSnapshot getSnapshot(String domain, String operation);
 
     /**
      * Get all snapshots of a specific type.
@@ -300,38 +222,4 @@ public interface MetricsService {
      * @return list of snapshots
      */
     <T extends MetricsSnapshot> List<T> getAllSnapshots(Class<T> snapshotType);
-
-    /**
-     * Get domain aggregated snapshot.
-     * 
-     * @param domain the domain
-     * @return domain aggregated snapshot
-     */
-    DomainAggregatedSnapshot getDomainAggregatedSnapshot(String domain);
-
-    /**
-     * Get security monitoring snapshot.
-     * 
-     * @param securityId the security identifier
-     * @return security monitoring snapshot
-     */
-    SecurityMonitoringSnapshot getSecurityMonitoringSnapshot(String securityId);
-
-    /**
-     * Get security monitoring statistics.
-     * 
-     * @param securityId the security identifier
-     * @param timeRange the time range for statistics
-     * @return security monitoring statistics
-     */
-    SecurityMonitoringStatistics getSecurityMonitoringStatistics(String securityId, Duration timeRange);
-
-    /**
-     * Get message security statistics.
-     * 
-     * @param securityId the security identifier
-     * @param timeRange the time range for statistics
-     * @return message security statistics
-     */
-    MessageSecurityStatistics getMessageSecurityStatistics(String securityId, Duration timeRange);
 }

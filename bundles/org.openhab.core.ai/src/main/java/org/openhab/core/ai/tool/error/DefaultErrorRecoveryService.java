@@ -15,6 +15,8 @@ import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.error.api.ErrorRecoveryService;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +36,13 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
 
     private final AuditLogger auditLogger;
 
-    @Reference
     private @Nullable MetricsService metricsService;
+
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for DefaultErrorRecoveryService");
+    }
 
     // Error tracking
     private final Map<String, AtomicInteger> errorCounters = new ConcurrentHashMap<>();
@@ -110,7 +117,12 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
         // Record error recovery metrics
         MetricsService service = metricsService;
         if (service != null) {
-            service.recordErrorRecovery(errorType, false, Duration.ofMillis(0), "none", false);
+            try {
+                service.recordErrorRecovery(errorType, false, Duration.ofMillis(0), "none", false);
+            } catch (Exception e) {
+                logger.warn("Failed to record error recovery metrics for error type {}: {}", errorType, e.getMessage());
+                // Graceful degradation: continue with error handling even if metrics recording fails
+            }
         }
 
         // Log error

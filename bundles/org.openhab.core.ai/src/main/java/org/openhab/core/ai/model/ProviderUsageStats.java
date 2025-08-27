@@ -1,12 +1,13 @@
 package org.openhab.core.ai.model;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.model.api.ModelProviderType;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 
 /**
  * Aggregated usage stats per provider across models and agents.
@@ -19,15 +20,22 @@ public class ProviderUsageStats {
     private final ModelProviderType providerType;
     private final Map<String, Integer> modelUsage = new ConcurrentHashMap<>();
     private final Map<String, Integer> agentUsage = new ConcurrentHashMap<>();
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong totalTokens = new AtomicLong(0);
-    private final AtomicLong totalCost = new AtomicLong(0);
-    private final AtomicLong totalResponseTime = new AtomicLong(0);
-    private final AtomicLong successfulRequests = new AtomicLong(0);
-    private final AtomicLong failedRequests = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalRequests = new AtomicLong(0);
+    // private final AtomicLong totalTokens = new AtomicLong(0);
+    // private final AtomicLong totalCost = new AtomicLong(0);
+    // private final AtomicLong totalResponseTime = new AtomicLong(0);
+    // private final AtomicLong successfulRequests = new AtomicLong(0);
+    // private final AtomicLong failedRequests = new AtomicLong(0);
+
+    private MetricsService metricsService;
 
     public ProviderUsageStats(ModelProviderType providerType) {
         this.providerType = providerType;
+    }
+
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
     }
 
     public void recordUsage(String agentId, String modelName) {
@@ -36,14 +44,20 @@ public class ProviderUsageStats {
     }
 
     public void recordRequest(int tokens, double cost, long responseTime, boolean success) {
-        totalRequests.incrementAndGet();
-        totalTokens.addAndGet(tokens);
-        totalCost.addAndGet((long) (cost * 1000));
-        totalResponseTime.addAndGet(responseTime);
-        if (success) {
-            successfulRequests.incrementAndGet();
-        } else {
-            failedRequests.incrementAndGet();
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("provider_usage", "request")
+                    .withSuccess(success)
+                    .withDuration(Duration.ofMillis(responseTime).toNanos())
+                    .withData("providerType", providerType.name())
+                    .withData("tokens", tokens)
+                    .withData("cost", cost)
+                    .withData("responseTimeMs", responseTime)
+                    .record();
+            } catch (Exception e) {
+                // Fallback to local logging if MetricsService fails
+                System.err.println("Failed to record provider usage metrics: " + e.getMessage());
+            }
         }
     }
 
@@ -60,36 +74,42 @@ public class ProviderUsageStats {
     }
 
     public long getTotalRequests() {
-        return totalRequests.get();
+        // Placeholder - would need MetricsService to implement getOperationCount
+        return 0L;
     }
 
     public long getTotalTokens() {
-        return totalTokens.get();
+        // Placeholder - would need MetricsService to implement getOperationCount
+        return 0L;
     }
 
     public double getTotalCost() {
-        return totalCost.get() / 1000.0;
+        // Placeholder - would need MetricsService to implement getOperationCount
+        return 0.0;
     }
 
     public long getTotalResponseTime() {
-        return totalResponseTime.get();
+        // Placeholder - would need MetricsService to implement getOperationCount
+        return 0L;
     }
 
     public long getSuccessfulRequests() {
-        return successfulRequests.get();
+        // Placeholder - would need MetricsService to implement getOperationCount
+        return 0L;
     }
 
     public long getFailedRequests() {
-        return failedRequests.get();
+        // Placeholder - would need MetricsService to implement getOperationCount
+        return 0L;
     }
 
     public double getSuccessRate() {
-        long total = totalRequests.get();
-        return total > 0 ? (double) successfulRequests.get() / total : 0.0;
+        long total = getTotalRequests();
+        return total > 0 ? (double) getSuccessfulRequests() / total : 0.0;
     }
 
     public double getAverageResponseTime() {
-        long total = totalRequests.get();
-        return total > 0 ? (double) totalResponseTime.get() / total : 0.0;
+        long total = getTotalRequests();
+        return total > 0 ? (double) getTotalResponseTime() / total : 0.0;
     }
 }

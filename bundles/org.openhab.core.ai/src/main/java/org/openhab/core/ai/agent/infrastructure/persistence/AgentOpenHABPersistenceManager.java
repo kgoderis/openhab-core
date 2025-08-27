@@ -9,6 +9,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
@@ -342,22 +345,27 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                var snapshot = metrics.getDomainAggregatedSnapshot("agent-persistence");
-                stats.put("totalTasks", snapshot.totalOperations());
-                stats.put("completedTasks", snapshot.totalOperations() - snapshot.failedOperations());
-                stats.put("failedTasks", snapshot.failedOperations());
-                stats.put("cancelledTasks", 0L); // Not tracked separately in current metrics
-                stats.put("activeTasks", tasks.size());
-                stats.put("totalExecutions", snapshot.totalOperations());
+                MetricKey agentPersistenceKey = MetricKeys.custom("agent-persistence", Map.of(), Set.of("counts", "latency"));
+        var snapshot = metrics.getSnapshot(agentPersistenceKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                if (snapshot != null) {
+                    long totalOperations = snapshot.getLong("total");
+                    long failedOperations = snapshot.getLong("failure");
+                    long successfulOperations = totalOperations - failedOperations;
+                    
+                    stats.put("totalTasks", totalOperations);
+                    stats.put("completedTasks", successfulOperations);
+                    stats.put("failedTasks", failedOperations);
+                    stats.put("cancelledTasks", 0L); // Not tracked separately in current metrics
+                    stats.put("activeTasks", tasks.size());
+                    stats.put("totalExecutions", totalOperations);
 
-                // Calculate success rate
-                long totalExecuted = snapshot.totalOperations();
-                if (totalExecuted > 0) {
-                    double successRate = (double) (snapshot.totalOperations() - snapshot.failedOperations())
-                            / totalExecuted;
-                    stats.put("successRate", successRate);
-                } else {
-                    stats.put("successRate", 0.0);
+                    // Calculate success rate
+                    if (totalOperations > 0) {
+                        double successRate = (double) successfulOperations / totalOperations;
+                        stats.put("successRate", successRate);
+                    } else {
+                        stats.put("successRate", 0.0);
+                    }
                 }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for agent-persistence: {}", e.getMessage());

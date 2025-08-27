@@ -9,9 +9,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.Counts;
 import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
 import org.openhab.core.ai.common.monitoring.api.LatencyMetrics;
-import org.openhab.core.ai.common.monitoring.api.Metrics;
 import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
-import org.openhab.core.ai.common.monitoring.api.MonitoringType;
 import org.openhab.core.ai.common.monitoring.api.Timing;
 
 /**
@@ -32,7 +30,7 @@ import org.openhab.core.ai.common.monitoring.api.Timing;
 @NonNullByDefault
 public record AgentModelDialoguePerformanceMetrics(Counts counts, Timing timing, long timestampMs, long sessionCount,
         long messageCount,
-        double comprehensionAccuracy) implements MetricsSnapshot, CountsMetrics, LatencyMetrics, Metrics {
+        double comprehensionAccuracy) implements MetricsSnapshot, CountsMetrics, LatencyMetrics {
 
     /**
      * Validation constructor for the record.
@@ -71,6 +69,15 @@ public record AgentModelDialoguePerformanceMetrics(Counts counts, Timing timing,
         return counts.failure();
     }
 
+    /**
+     * Calculate success rate as a percentage.
+     * 
+     * @return success rate as percentage (0.0-100.0)
+     */
+    public double successRate() {
+        return CountsMetrics.super.successRate();
+    }
+
     // ===== LatencyMetrics Implementation =====
 
     @Override
@@ -87,81 +94,7 @@ public record AgentModelDialoguePerformanceMetrics(Counts counts, Timing timing,
         return LatencyMetrics.super.averageMs(total());
     }
 
-    // ===== Metrics Interface Implementation =====
 
-    @Override
-    public String getId() {
-        return "dialogue-performance";
-    }
-
-    @Override
-    public Instant getTimestamp() {
-        return Instant.ofEpochMilli(timestampMs);
-    }
-
-    @Override
-    public MonitoringType getType() {
-        return MonitoringType.PERFORMANCE;
-    }
-
-    @Override
-    public Map<String, Object> getData() {
-        Map<String, Object> data = new HashMap<>();
-        data.put("totalOperations", getTotalOperations());
-        data.put("successfulOperations", getSuccessfulOperations());
-        data.put("failedOperations", getFailedOperations());
-        data.put("totalProcessingTime", getTotalProcessingTime());
-        data.put("averageResponseTime", getAverageResponseTime());
-        data.put("successRate", getSuccessRate());
-        data.put("operationsPerSecond", getOperationsPerSecond());
-        data.put("sessionCount", sessionCount);
-        data.put("messageCount", messageCount);
-        data.put("comprehensionAccuracy", comprehensionAccuracy);
-        data.put("averageMessagesPerSession", getAverageMessagesPerSession());
-        return data;
-    }
-
-    @Override
-    public String getDomain() {
-        return "dialogue";
-    }
-
-    @Override
-    public String getSource() {
-        return "dialogue-collector";
-    }
-
-    @Override
-    public long getTotalOperations() {
-        return total();
-    }
-
-    @Override
-    public long getSuccessfulOperations() {
-        return success();
-    }
-
-    @Override
-    public long getFailedOperations() {
-        return failure();
-    }
-
-    @Override
-    public long getTotalProcessingTime() {
-        return totalDurationNanos() / 1_000_000L; // Convert nanoseconds to milliseconds
-    }
-
-    @Override
-    public double getAverageResponseTime() {
-        return averageMs();
-    }
-
-    @Override
-    public Instant getLastOperationTime() {
-        // This would need to be tracked separately in the collector
-        // For now, return the snapshot timestamp
-        return getTimestamp();
-    }
 
     // ===== Dialogue Specific Metrics =====
 

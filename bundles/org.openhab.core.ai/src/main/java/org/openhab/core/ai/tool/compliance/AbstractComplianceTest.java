@@ -1,12 +1,13 @@
 package org.openhab.core.ai.tool.compliance;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 
 /**
  * Abstract base implementation of {@link ComplianceTest}.
@@ -25,12 +26,19 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
     protected final String version;
     protected final List<String> dependencies;
     protected final Map<String, Object> configuration;
-    protected final AtomicLong executionCount = new AtomicLong(0);
-    protected final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
-    protected final AtomicLong lastExecutionTimeMs = new AtomicLong(0);
-    protected final AtomicLong successCount = new AtomicLong(0);
-    protected final AtomicLong failureCount = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // protected final AtomicLong executionCount = new AtomicLong(0);
+    // protected final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
+    // protected final AtomicLong lastExecutionTimeMs = new AtomicLong(0);
+    // protected final AtomicLong successCount = new AtomicLong(0);
+    // protected final AtomicLong failureCount = new AtomicLong(0);
     protected boolean enabled = true;
+
+    private MetricsService metricsService;
+
+    public void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+    }
 
     protected AbstractComplianceTest(String testId, String testName, String testDescription, String category,
             int priority, String version) {
@@ -82,26 +90,50 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
     @Override
     public ComplianceTestResult runTest(Map<String, Object> parameters) {
         long startTime = System.currentTimeMillis();
-        executionCount.incrementAndGet();
+        // executionCount.incrementAndGet(); // Removed
         try {
             if (!areDependenciesSatisfied(new ArrayList<>())) {
                 return ComplianceTestResult.failed("Dependencies not satisfied", List.of("Dependencies not satisfied"));
             }
             ComplianceTestResult result = executeTest(parameters);
             long executionTime = System.currentTimeMillis() - startTime;
-            lastExecutionTimeMs.set(executionTime);
-            totalExecutionTimeMs.addAndGet(executionTime);
+            // lastExecutionTimeMs.set(executionTime); // Removed
+            // totalExecutionTimeMs.addAndGet(executionTime); // Removed
             if (result.isPassed()) {
-                successCount.incrementAndGet();
+                // successCount.incrementAndGet(); // Removed
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordOperation("compliance_test", "success", true, Duration.ofMillis(executionTime));
+                    } catch (Exception e) {
+                        // Fallback to local logging if MetricsService fails
+                        System.err.println("Failed to record compliance test success metrics: " + e.getMessage());
+                    }
+                }
             } else {
-                failureCount.incrementAndGet();
+                // failureCount.incrementAndGet(); // Removed
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordOperation("compliance_test", "failure", false, Duration.ofMillis(executionTime));
+                    } catch (Exception e) {
+                        // Fallback to local logging if MetricsService fails
+                        System.err.println("Failed to record compliance test failure metrics: " + e.getMessage());
+                    }
+                }
             }
             return result;
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
-            lastExecutionTimeMs.set(executionTime);
-            totalExecutionTimeMs.addAndGet(executionTime);
-            failureCount.incrementAndGet();
+            // lastExecutionTimeMs.set(executionTime); // Removed
+            // totalExecutionTimeMs.addAndGet(executionTime); // Removed
+            // failureCount.incrementAndGet(); // Removed
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("compliance_test", "failure", false, Duration.ofMillis(executionTime));
+                } catch (Exception e2) {
+                    // Fallback to local logging if MetricsService fails
+                    System.err.println("Failed to record compliance test failure metrics: " + e2.getMessage());
+                }
+            }
             return ComplianceTestResult.failed("Test execution failed: " + e.getMessage(), List.of(e.getMessage()));
         }
     }
@@ -130,19 +162,19 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
     @Override
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
-        long totalExecutions = executionCount.get();
-        metrics.put("executionCount", totalExecutions);
-        metrics.put("totalExecutionTimeMs", totalExecutionTimeMs.get());
-        metrics.put("lastExecutionTimeMs", lastExecutionTimeMs.get());
-        metrics.put("successCount", successCount.get());
-        metrics.put("failureCount", failureCount.get());
-        if (totalExecutions > 0) {
-            metrics.put("averageExecutionTimeMs", totalExecutionTimeMs.get() / totalExecutions);
-            metrics.put("successRate", (double) successCount.get() / totalExecutions);
-        } else {
-            metrics.put("averageExecutionTimeMs", 0L);
-            metrics.put("successRate", 0.0);
-        }
+        // long totalExecutions = executionCount.get(); // Removed
+        // metrics.put("executionCount", totalExecutions); // Removed
+        // metrics.put("totalExecutionTimeMs", totalExecutionTimeMs.get()); // Removed
+        // metrics.put("lastExecutionTimeMs", lastExecutionTimeMs.get()); // Removed
+        // metrics.put("successCount", successCount.get()); // Removed
+        // metrics.put("failureCount", failureCount.get()); // Removed
+        // if (totalExecutions > 0) { // Removed
+        //     metrics.put("averageExecutionTimeMs", totalExecutionTimeMs.get() / totalExecutions); // Removed
+        //     metrics.put("successRate", (double) successCount.get() / totalExecutions); // Removed
+        // } else { // Removed
+        //     metrics.put("averageExecutionTimeMs", 0L); // Removed
+        //     metrics.put("successRate", 0.0); // Removed
+        // } // Removed
         return metrics;
     }
 

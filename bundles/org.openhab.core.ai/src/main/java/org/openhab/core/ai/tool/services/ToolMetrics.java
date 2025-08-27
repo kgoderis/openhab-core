@@ -5,6 +5,10 @@ import java.util.Map;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -86,19 +90,26 @@ public class ToolMetrics {
         if (metrics != null) {
             try {
                 // Get statistics from metrics service for specific tool
-                var snapshot = metrics.getDomainAggregatedSnapshot("tool");
+                MetricKey toolKey = MetricKeys.custom("tool", Map.of("toolName", toolName), Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(toolKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
 
-                statistics.put("toolName", toolName);
-                statistics.put("totalExecutions", snapshot.totalOperations());
-                statistics.put("successfulExecutions", snapshot.successfulOperations());
-                statistics.put("failedExecutions", snapshot.failedOperations());
-                statistics.put("totalExecutionTimeMs", snapshot.totalDurationNanos() / 1_000_000); // Convert from
-                                                                                                   // nanoseconds
-                statistics.put("averageExecutionTimeMs",
-                        snapshot.totalOperations() > 0
-                                ? snapshot.totalDurationNanos() / (snapshot.totalOperations() * 1_000_000)
-                                : 0);
-                statistics.put("successRate", snapshot.getSuccessRate());
+                if (snapshot != null) {
+                    long totalOperations = snapshot.getLong("total");
+                    long successfulOperations = snapshot.getLong("success");
+                    long failedOperations = snapshot.getLong("failure");
+                    long totalDurationNanos = snapshot.getLong("totalDurationNanos");
+                    
+                    statistics.put("toolName", toolName);
+                    statistics.put("totalExecutions", totalOperations);
+                    statistics.put("successfulExecutions", successfulOperations);
+                    statistics.put("failedExecutions", failedOperations);
+                    statistics.put("totalExecutionTimeMs", totalDurationNanos / 1_000_000); // Convert from nanoseconds
+                    statistics.put("averageExecutionTimeMs",
+                            totalOperations > 0
+                                    ? totalDurationNanos / (totalOperations * 1_000_000)
+                                    : 0);
+                    statistics.put("successRate", totalOperations > 0 ? (double) successfulOperations / totalOperations : 0.0);
+                }
                 statistics.put("lastUpdated", System.currentTimeMillis());
             } catch (Exception e) {
                 logger.debug("Failed to get tool statistics: {}", e.getMessage());
@@ -118,19 +129,26 @@ public class ToolMetrics {
         if (metrics != null) {
             try {
                 // Get statistics from metrics service for all tools
-                var snapshot = metrics.getDomainAggregatedSnapshot("tool");
-
-                statistics.put("totalToolExecutions", snapshot.totalOperations());
-                statistics.put("successfulToolExecutions", snapshot.successfulOperations());
-                statistics.put("failedToolExecutions", snapshot.failedOperations());
-                statistics.put("totalExecutionTimeMs", snapshot.totalDurationNanos() / 1_000_000); // Convert from
-                                                                                                   // nanoseconds
-                statistics.put("averageExecutionTimeMs",
-                        snapshot.totalOperations() > 0
-                                ? snapshot.totalDurationNanos() / (snapshot.totalOperations() * 1_000_000)
-                                : 0);
-                statistics.put("successRate", snapshot.getSuccessRate());
-                statistics.put("lastUpdated", System.currentTimeMillis());
+                MetricKey toolKey = MetricKeys.custom("tool", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(toolKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    long totalOperations = snapshot.getLong("total");
+                    long successfulOperations = snapshot.getLong("success");
+                    long failedOperations = snapshot.getLong("failure");
+                    long totalDurationNanos = snapshot.getLong("totalDurationNanos");
+                    
+                    statistics.put("totalToolExecutions", totalOperations);
+                    statistics.put("successfulToolExecutions", successfulOperations);
+                    statistics.put("failedToolExecutions", failedOperations);
+                    statistics.put("totalExecutionTimeMs", totalDurationNanos / 1_000_000); // Convert from nanoseconds
+                    statistics.put("averageExecutionTimeMs",
+                            totalOperations > 0
+                                    ? totalDurationNanos / (totalOperations * 1_000_000)
+                                    : 0);
+                    statistics.put("successRate", totalOperations > 0 ? (double) successfulOperations / totalOperations : 0.0);
+                    statistics.put("lastUpdated", System.currentTimeMillis());
+                }
             } catch (Exception e) {
                 logger.debug("Failed to get all tool statistics: {}", e.getMessage());
             }

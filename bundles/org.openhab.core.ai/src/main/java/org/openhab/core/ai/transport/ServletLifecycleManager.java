@@ -9,6 +9,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -191,8 +194,9 @@ public class ServletLifecycleManager {
             return 0;
         }
 
-        var snapshot = metrics.getDomainAggregatedSnapshot("servlet-lifecycle");
-        return snapshot.totalOperations();
+        MetricKey servletLifecycleKey = MetricKeys.custom("servlet-lifecycle", Map.of(), Set.of("counts", "latency"));
+        var snapshot = metrics.getSnapshot(servletLifecycleKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+        return snapshot != null ? snapshot.getLong("total") : 0L;
     }
 
     /**
@@ -207,8 +211,9 @@ public class ServletLifecycleManager {
             return 0;
         }
 
-        var snapshot = metrics.getDomainAggregatedSnapshot("servlet-lifecycle");
-        return snapshot.failedOperations();
+        MetricKey servletLifecycleKey = MetricKeys.custom("servlet-lifecycle", Map.of(), Set.of("counts", "latency"));
+        var snapshot = metrics.getSnapshot(servletLifecycleKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+        return snapshot != null ? snapshot.getLong("failure") : 0L;
     }
 
     /**

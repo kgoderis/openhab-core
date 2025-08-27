@@ -1,5 +1,6 @@
 package org.openhab.core.ai.tool.notifications;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -9,10 +10,14 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.tool.notifications.api.events.Notification;
 import org.openhab.core.ai.tool.notifications.api.events.NotificationListener;
 import org.openhab.core.ai.tool.notifications.api.events.NotificationType;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,11 +38,20 @@ public class DefaultNotificationService implements NotificationService {
     /** Map of notification listeners by ID */
     private final Map<String, NotificationListener> listeners = new ConcurrentHashMap<>();
 
-    /** Performance monitoring */
-    private final AtomicLong totalNotifications = new AtomicLong(0);
-    private final AtomicLong successfulNotifications = new AtomicLong(0);
-    private final AtomicLong failedNotifications = new AtomicLong(0);
-    private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+    /** Performance monitoring - migrated to MetricsService */
+    // private final AtomicLong totalNotifications = new AtomicLong(0);
+    // private final AtomicLong successfulNotifications = new AtomicLong(0);
+    // private final AtomicLong failedNotifications = new AtomicLong(0);
+    // private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.STATIC)
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        LOGGER.debug("MetricsService set for DefaultNotificationService");
+    }
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.STATIC)
+    private MetricsService metricsService;
 
     @Activate
     public DefaultNotificationService() {
@@ -58,7 +72,12 @@ public class DefaultNotificationService implements NotificationService {
     @Override
     public boolean notify(String notificationId, NotificationType type, String message,
             @Nullable Map<String, Object> data) {
-        totalNotifications.incrementAndGet();
+        metricsService.recordOperation("notification", "total")
+            .withSuccess(true)
+            .withDuration(0L)
+            .withData("notificationId", notificationId)
+            .withData("type", type.name())
+            .record();
         long startTime = System.currentTimeMillis();
 
         try {
@@ -85,18 +104,30 @@ public class DefaultNotificationService implements NotificationService {
                 try {
                     listener.onNotification(notification);
                 } catch (Exception e) {
+                    LOGGER.warn("Failed to send notification to listener: {}", listener.getClass().getSimpleName(), e);
                     sentToAll = false;
-                    LOGGER.error("Error sending notification to listener: {}", listener.getListenerId(), e);
                 }
             }
 
             // Update counters
             if (sentToAll) {
-                successfulNotifications.incrementAndGet();
+                metricsService.recordOperation("notification", "success")
+                    .withSuccess(true)
+                    .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                    .withData("notificationId", notificationId)
+                    .withData("type", type.name())
+                    .withData("recipientCount", listeners.size())
+                    .record();
                 LOGGER.info("Notification sent successfully: {} - Type: {} - Recipients: {}", notificationId, type,
                         listeners.size());
             } else {
-                failedNotifications.incrementAndGet();
+                metricsService.recordOperation("notification", "partial_failure")
+                    .withSuccess(false)
+                    .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                    .withData("notificationId", notificationId)
+                    .withData("type", type.name())
+                    .withData("recipientCount", listeners.size())
+                    .record();
                 LOGGER.warn("Notification partially failed: {} - Type: {}", notificationId, type);
             }
 
@@ -104,11 +135,15 @@ public class DefaultNotificationService implements NotificationService {
 
         } catch (Exception e) {
             LOGGER.error("Error sending notification: {} - Type: {}", notificationId, type, e);
-            failedNotifications.incrementAndGet();
+            metricsService.recordOperation("notification", "failure")
+                .withSuccess(false)
+                .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                .withData("notificationId", notificationId)
+                .withData("type", type.name())
+                .withData("exceptionType", e.getClass().getSimpleName())
+                .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
+                .record();
             return false;
-        } finally {
-            long responseTime = System.currentTimeMillis() - startTime;
-            totalResponseTimeMs.addAndGet(responseTime);
         }
     }
 
@@ -177,15 +212,15 @@ public class DefaultNotificationService implements NotificationService {
     @Override
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new ConcurrentHashMap<>();
-        metrics.put("totalNotifications", totalNotifications.get());
-        metrics.put("successfulNotifications", successfulNotifications.get());
-        metrics.put("failedNotifications", failedNotifications.get());
+        // metrics.put("totalNotifications", totalNotifications.get()); // Removed
+        // metrics.put("successfulNotifications", successfulNotifications.get()); // Removed
+        // metrics.put("failedNotifications", failedNotifications.get()); // Removed
         metrics.put("activeListeners", listeners.size());
-        metrics.put("totalResponseTimeMs", totalResponseTimeMs.get());
-        metrics.put("averageResponseTimeMs",
-                totalNotifications.get() > 0 ? totalResponseTimeMs.get() / totalNotifications.get() : 0);
-        metrics.put("successRate",
-                totalNotifications.get() > 0 ? (double) successfulNotifications.get() / totalNotifications.get() : 0.0);
+        // metrics.put("totalResponseTimeMs", totalResponseTimeMs.get()); // Removed
+        // metrics.put("averageResponseTimeMs", // Removed
+        //         totalNotifications.get() > 0 ? totalResponseTimeMs.get() / totalNotifications.get() : 0); // Removed
+        // metrics.put("successRate", // Removed
+        //         totalNotifications.get() > 0 ? (double) successfulNotifications.get() / totalNotifications.get() : 0.0); // Removed
         return metrics;
     }
 

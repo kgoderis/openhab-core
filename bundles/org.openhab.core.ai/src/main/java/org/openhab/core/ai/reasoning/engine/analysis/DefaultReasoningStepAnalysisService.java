@@ -549,11 +549,16 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
 
     private void recordAnalysis(String analysisType, long startTime) {
         long durationNanos = System.nanoTime() - startTime;
-        totalAnalyses.incrementAndGet();
-        totalAnalysisTimeNanos.addAndGet(durationNanos);
-        successfulAnalyses.incrementAndGet(); // Assume success for now, could be enhanced to track actual failures
-        analysisTypeCounter.merge(analysisType, 1, Integer::sum);
-        lastAnalysisTime = Instant.now();
+        try {
+            totalAnalyses.incrementAndGet();
+            totalAnalysisTimeNanos.addAndGet(durationNanos);
+            successfulAnalyses.incrementAndGet(); // Assume success for now, could be enhanced to track actual failures
+            analysisTypeCounter.merge(analysisType, 1, Integer::sum);
+            lastAnalysisTime = Instant.now();
+        } catch (Exception e) {
+            logger.warn("Failed to record reasoning analysis metrics for type {}: {}", analysisType, e.getMessage());
+            // Graceful degradation: continue with analysis even if metrics recording fails
+        }
     }
 
     // Basic helper methods for analysis

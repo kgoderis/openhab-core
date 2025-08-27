@@ -22,6 +22,10 @@ import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.common.context.AgentContext;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
 import org.openhab.core.ai.reasoning.input.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
@@ -567,10 +571,17 @@ public abstract class BaseAutonomousAgent {
      * @param duration the execution duration
      */
     private void recordSkillMetrics(String skillName, AgentSkillResult result, Duration duration) {
-        // Record metrics using MetricsService
+        // Record metrics using MetricsService with builder pattern
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            metrics.recordOperation("agent", "skill-execution", result.isSuccess(), duration);
+            metrics.recordOperation("agent", "skill-execution")
+                .withSuccess(result.isSuccess())
+                .withDuration(duration.toNanos())
+                .withData("agentId", getAgentId())
+                .withData("skillName", skillName)
+                .withData("executionTimeMs", duration.toMillis())
+                .withData("errorMessage", result.getErrorMessage() != null ? result.getErrorMessage() : "null")
+                .record();
         }
 
         totalProcessingTime.addAndGet(duration.toMillis());
@@ -712,10 +723,13 @@ public abstract class BaseAutonomousAgent {
 
         if (metrics != null) {
             try {
-                var snapshot = metrics.getDomainAggregatedSnapshot("agent");
-                totalSkillsExecuted = snapshot.totalOperations();
-                totalSkillsSucceeded = snapshot.totalOperations() - snapshot.failedOperations();
-                totalSkillsFailed = snapshot.failedOperations();
+                MetricKey agentKey = MetricKeys.custom("agent", Map.of(), Set.of("counts", "latency"));
+        var snapshot = metrics.getSnapshot(agentKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                if (snapshot != null) {
+                    totalSkillsExecuted = snapshot.getLong("total");
+                    totalSkillsSucceeded = snapshot.getLong("total") - snapshot.getLong("failure");
+                    totalSkillsFailed = snapshot.getLong("failure");
+                }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for agent {}: {}", getAgentId(), e.getMessage());
             }

@@ -157,7 +157,7 @@ public class MessageSecurityStatistics extends BaseSecurityStatistics
 
     // MetricsSnapshot implementation
     @Override
-    public long timestampMs() {
+    public long getTimestampMs() {
         return getLastOperationTime() != null ? getLastOperationTime().toEpochMilli() : System.currentTimeMillis();
     }
 

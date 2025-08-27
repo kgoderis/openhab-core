@@ -29,6 +29,8 @@ import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.SecurityIncident;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.service.statistics.SecurityMonitoringStatistics;
 import org.openhab.core.ai.common.security.MessageSecurityStatistics;
 import org.openhab.core.ai.common.security.QuickSecurityResult;
@@ -354,7 +356,24 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                return metrics.getMessageSecurityStatistics("agent-security", Duration.ofDays(30));
+                var snapshot = metrics.getSnapshot(MetricKeys.custom("message-security", Map.of("name", "agent-security"), Set.of("counts", "latency")), UnifiedMetricsSnapshot.class);
+                if (snapshot != null) {
+                    // Convert snapshot to MessageSecurityStatistics
+                    return new MessageSecurityStatistics(
+                        snapshot.total(), // totalOperations
+                        snapshot.success(), // successfulOperations
+                        snapshot.failure(), // failedOperations
+                        0L, // securityViolations - would need to be tracked separately
+                        Instant.ofEpochMilli(snapshot.getTimestampMs()), // lastOperationTime
+                        0L, // totalMessagesEncrypted
+                        0L, // totalMessagesDecrypted
+                        0L, // totalSignaturesVerified
+                        0L, // totalAuthenticationFailures
+                        securityPolicies.size(), // securityPolicies
+                        agentKeyPairs.size(), // agentKeyPairs
+                        auditLogs.size() // auditLogs
+                    );
+                }
             } catch (Exception e) {
                 logger.debug("Failed to get message security statistics from MetricsService: {}", e.getMessage());
             }
@@ -467,7 +486,7 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     @Override
     public SecurityStatistics getStatistics() {
         if (metricsService != null) {
-            return metricsService.getSecurityMonitoringStatistics("agent-security", Duration.ofDays(30));
+            return metricsService.getStatistics(MetricKeys.custom("security-monitoring", Map.of("name", "agent-security"), Set.of("counts", "latency")), SecurityMonitoringStatistics.class, Duration.ofDays(30));
         }
         // Fallback to empty statistics if MetricsService is not available
         return new SecurityMonitoringStatistics(List.of(), Duration.ofDays(30), System.currentTimeMillis());

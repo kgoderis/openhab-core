@@ -144,8 +144,13 @@ public final class HealthHandler implements HttpHandler {
             // Record metrics for the request
             long duration = System.nanoTime() - startTime;
             if (metricsService != null) {
-                metricsService.recordOperation("tool-metrics", "endpoint", success,
-                        java.time.Duration.ofNanos(duration));
+                try {
+                    metricsService.recordOperation("tool-metrics", "endpoint", success,
+                            java.time.Duration.ofNanos(duration));
+                } catch (Exception e) {
+                    logger.warn("Failed to record health check metrics: {}", e.getMessage());
+                    // Graceful degradation: continue with request handling even if metrics recording fails
+                }
             }
         }
     }

@@ -23,6 +23,10 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.context.AgentModelContext;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.reasoning.memory.CacheEntry;
 import org.osgi.service.component.annotations.Activate;
@@ -200,12 +204,23 @@ public class AgentModelContextCache {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                var snapshot = metrics.getDomainAggregatedSnapshot("agent-model-context-cache");
-                long hits = snapshot.totalOperations() - snapshot.failedOperations(); // Approximate hits
-                long misses = snapshot.failedOperations(); // Approximate misses
-                long evictions = 0L; // Placeholder - would need domain-specific data
-                return new AgentModelContextCacheStatistics(cache.size(), hits, misses, evictions, maxCacheSize,
-                        defaultExpiration);
+                try {
+                    MetricKey agentModelContextCacheKey = MetricKeys.custom("agent-model-context-cache", Map.of(), Set.of("counts", "latency"));
+                    var snapshot = metrics.getSnapshot(agentModelContextCacheKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                    if (snapshot != null) {
+                        long totalOperations = snapshot.getLong("total");
+                        long failedOperations = snapshot.getLong("failure");
+                        long hits = totalOperations - failedOperations; // Approximate hits
+                        long misses = failedOperations; // Approximate misses
+                        long evictions = 0L; // Placeholder - would need domain-specific data
+                        return new AgentModelContextCacheStatistics(cache.size(), hits, misses, evictions, maxCacheSize,
+                            defaultExpiration);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Error retrieving metrics for agent-model-context-cache: {}", e.getMessage());
+                    // Fallback to default values
+                    return new AgentModelContextCacheStatistics(cache.size(), 0L, 0L, 0L, maxCacheSize, defaultExpiration);
+                }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for agent-model-context-cache: {}", e.getMessage());
                 // Fallback to default values
@@ -215,6 +230,9 @@ public class AgentModelContextCache {
             // Fallback to default values if MetricsService is not available
             return new AgentModelContextCacheStatistics(cache.size(), 0L, 0L, 0L, maxCacheSize, defaultExpiration);
         }
+        
+        // Fallback to default values if no snapshot was found
+        return new AgentModelContextCacheStatistics(cache.size(), 0L, 0L, 0L, maxCacheSize, defaultExpiration);
     }
 
     /**
@@ -286,7 +304,12 @@ public class AgentModelContextCache {
     private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            metrics.recordOperation(domain, operation, success, duration);
+            try {
+                metrics.recordOperation(domain, operation, success, duration);
+            } catch (Exception e) {
+                logger.warn("Failed to record agent model context cache metrics for operation {} - {}: {}", domain, operation, e.getMessage());
+                // Graceful degradation: continue with cache operations even if metrics recording fails
+            }
         } else {
             logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
                     operation);

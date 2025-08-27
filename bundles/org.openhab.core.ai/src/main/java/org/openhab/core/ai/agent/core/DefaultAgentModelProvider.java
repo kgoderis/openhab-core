@@ -15,7 +15,10 @@ import org.openhab.core.ai.agent.api.AgentModelIntegrationService;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.model.AgentModelConfiguration;
 import org.openhab.core.ai.common.context.AgentModelContext;
-import org.openhab.core.ai.common.monitoring.api.Health.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
@@ -27,7 +30,7 @@ import org.openhab.core.ai.model.clients.AnthropicClient;
 import org.openhab.core.ai.model.clients.GoogleGenAIClient;
 import org.openhab.core.ai.model.clients.OpenAIClient;
 import org.openhab.core.ai.model.clients.StubModelClient;
-import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +75,9 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
     private final @Nullable ModelConfigurationService modelConfigurationService;
     private final @Nullable ActionRegistry actionRegistry;
     private final @Nullable ModelTrackingService trackingService;
+
+    @Reference
+    private MetricsService metricsService;
 
     // Configuration
     private AgentModelConfiguration configuration;
@@ -301,7 +307,7 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
     }
 
     @Override
-    public ModelHealthMetrics getHealthStatus() {
+    public HealthMetrics getHealthStatus() {
         double errorRate = totalRequests > 0 ? (double) failedRequests / totalRequests : 0.0;
         double avgResponseTime = calculateAverageResponseTime();
 
@@ -314,12 +320,20 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
             healthStatus = HealthStatus.UNHEALTHY;
         }
 
-        return ModelHealthMetrics.builder("agent-" + agentId).withStatus(healthStatus)
-                .withStatusMessage("Agent health status")
-                .withHealthIndicators(Map.of("errorRate", errorRate, "avgResponseTime", avgResponseTime))
-                .withAvailable(!fallbackActive).withAverageResponseTimeMs((long) avgResponseTime)
-                .withSuccessRate(1.0 - errorRate).withErrorCount((int) failedRequests).withLastError(lastError)
-                .withLastErrorTime(lastFailureTime).build();
+        // Record health check operation
+        metricsService.recordOperation("agent", "health-check")
+            .withSuccess(healthStatus == HealthStatus.HEALTHY)
+            .withDuration(50)
+            .withData(Map.of(
+                "agentId", agentId,
+                "errorRate", errorRate,
+                "avgResponseTime", avgResponseTime,
+                "fallbackActive", fallbackActive
+            ))
+            .record();
+
+        // Return health metrics from service
+        return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider("agent-" + agentId));
     }
 
     @Override

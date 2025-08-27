@@ -19,6 +19,7 @@ import org.openhab.core.ai.tool.server.api.ToolServerState;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,9 +103,20 @@ public class DefaultToolServer implements ToolServer {
      * 
      * @param securityManager Security manager instance
      */
+    @Reference(cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.STATIC)
     public void setSecurityManager(DefaultToolSecurityService securityManager) {
         this.securityManager = securityManager;
         logger.info("Security manager set for MCP Tool server instance: {}", serverId);
+    }
+
+    /**
+     * Unset the security manager.
+     * 
+     * @param securityManager Security manager instance
+     */
+    public void unsetSecurityManager(@Nullable DefaultToolSecurityService securityManager) {
+        this.securityManager = null;
+        logger.debug("Security manager unset for MCP Tool server instance: {}", serverId);
     }
 
     /**
@@ -112,9 +124,20 @@ public class DefaultToolServer implements ToolServer {
      * 
      * @param errorRecoveryManager Error recovery manager instance
      */
+    @Reference(cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.STATIC)
     public void setErrorRecoveryManager(DefaultErrorRecoveryService errorRecoveryManager) {
         this.errorRecoveryManager = errorRecoveryManager;
         logger.info("Error recovery manager set for MCP Tool server instance: {}", serverId);
+    }
+
+    /**
+     * Unset the error recovery manager.
+     * 
+     * @param errorRecoveryManager Error recovery manager instance
+     */
+    public void unsetErrorRecoveryManager(@Nullable DefaultErrorRecoveryService errorRecoveryManager) {
+        this.errorRecoveryManager = null;
+        logger.debug("Error recovery manager unset for MCP Tool server instance: {}", serverId);
     }
 
     /**
@@ -686,8 +709,8 @@ public class DefaultToolServer implements ToolServer {
                 metrics.recordOperation("tool-server-transport", operation, success,
                         java.time.Duration.ofNanos(durationNanos));
             } catch (Exception e) {
-                logger.debug("Failed to record metrics for {}.{}: {}", "tool-server-transport", operation,
-                        e.getMessage());
+                logger.warn("Failed to record tool server transport metrics for operation {}: {}", operation, e.getMessage());
+                // Graceful degradation: continue with transport operations even if metrics recording fails
             }
         } else {
             logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);

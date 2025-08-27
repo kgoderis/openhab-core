@@ -10,8 +10,8 @@ import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.tool.monitoring.HealthCheckResult;
 import org.openhab.core.ai.tool.monitoring.PerformanceAlert;
 import org.openhab.core.ai.tool.monitoring.PerformanceOptimization;
-import org.openhab.core.ai.tool.monitoring.ProviderHealthMetrics;
-import org.openhab.core.ai.tool.monitoring.ServiceHealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.tool.monitoring.SystemHealthStatus;
 
 /**
@@ -103,7 +103,7 @@ public interface SystemHealthMonitor {
      * @param serviceName the service name
      * @return service health metrics
      */
-    ServiceHealthMetrics getServiceHealthMetrics(String serviceName);
+    HealthMetrics getServiceHealthMetrics(String serviceName);
 
     /**
      * Force recovery for a provider
@@ -235,7 +235,7 @@ public interface SystemHealthMonitor {
      * @param provider the provider
      * @return provider health metrics
      */
-    ProviderHealthMetrics getProviderHealthMetrics(ModelProviderType provider);
+    HealthMetrics getProviderHealthMetrics(ModelProviderType provider);
 
     /**
      * Check if monitoring is enabled

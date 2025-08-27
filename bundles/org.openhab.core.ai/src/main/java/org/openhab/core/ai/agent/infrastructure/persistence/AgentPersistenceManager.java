@@ -17,10 +17,13 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import java.util.Map;
+import java.util.Set;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
-import org.openhab.core.ai.common.monitoring.registry.MonitoringRegistry;
+import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
 import org.openhab.core.ai.common.monitoring.service.statistics.AgentPersistenceStatistics;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
@@ -83,7 +86,7 @@ public class AgentPersistenceManager implements ReadyTracker {
 
     // NEW: Monitoring registry for centralized metrics collection
     @Reference
-    private @Nullable MonitoringRegistry monitoringRegistry;
+    private @Nullable MetricsRegistry monitoringRegistry;
 
     @Reference
     private @Nullable MetricsService metricsService;
@@ -272,8 +275,9 @@ public class AgentPersistenceManager implements ReadyTracker {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                var snapshot = metrics.getDomainAggregatedSnapshot("agent-persistence");
-                return snapshot.totalOperations();
+                MetricKey agentPersistenceKey = MetricKeys.custom("agent-persistence", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(agentPersistenceKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                return snapshot != null ? snapshot.getLong("total") : 0L;
             } catch (Exception e) {
                 logger.warn("Error retrieving execution count for task {}: {}", taskId, e.getMessage());
             }
@@ -331,7 +335,7 @@ public class AgentPersistenceManager implements ReadyTracker {
             // Update statistics based on state change using monitoring registry
             if (monitoringRegistry != null) {
                 MetricsCollector collector = monitoringRegistry
-                        .metricsCollector(MetricKeys.action("task-state-update"));
+                        .getCollector(MetricKeys.action("task-state-update"));
 
                 if (newState == TaskState.COMPLETED) {
                     collector.recordExecution(true, 0L);
@@ -380,7 +384,7 @@ public class AgentPersistenceManager implements ReadyTracker {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                return metrics.getAgentPersistenceStatistics("default", Duration.ofHours(1));
+                return metrics.getStatistics(MetricKeys.custom("agent-persistence", Map.of("name", "default"), Set.of("counts", "latency")), AgentPersistenceStatistics.class, Duration.ofHours(1));
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for agent-persistence: {}", e.getMessage());
             }
@@ -662,17 +666,25 @@ public class AgentPersistenceManager implements ReadyTracker {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                var snapshot = metrics.getDomainAggregatedSnapshot("agent-persistence");
-                statistics.put("totalTasks", tasks.size());
-                statistics.put("totalTaskSaves", snapshot.totalOperations());
-                statistics.put("successfulTaskSaves", snapshot.totalOperations() - snapshot.failedOperations());
-                statistics.put("failedTaskSaves", snapshot.failedOperations());
-                statistics.put("totalTaskDeletions", snapshot.totalOperations());
-                statistics.put("successfulTaskDeletions", snapshot.totalOperations() - snapshot.failedOperations());
-                statistics.put("failedTaskDeletions", snapshot.failedOperations());
-                statistics.put("totalStateUpdates", snapshot.totalOperations());
-                statistics.put("successfulStateUpdates", snapshot.totalOperations() - snapshot.failedOperations());
-                statistics.put("failedStateUpdates", snapshot.failedOperations());
+                MetricKey agentPersistenceKey = MetricKeys.custom("agent-persistence", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(agentPersistenceKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                
+                if (snapshot != null) {
+                    long totalOperations = snapshot.getLong("total");
+                    long failedOperations = snapshot.getLong("failure");
+                    long successfulOperations = totalOperations - failedOperations;
+                    
+                    statistics.put("totalTasks", tasks.size());
+                    statistics.put("totalTaskSaves", totalOperations);
+                    statistics.put("successfulTaskSaves", successfulOperations);
+                    statistics.put("failedTaskSaves", failedOperations);
+                    statistics.put("totalTaskDeletions", totalOperations);
+                    statistics.put("successfulTaskDeletions", successfulOperations);
+                    statistics.put("failedTaskDeletions", failedOperations);
+                    statistics.put("totalStateUpdates", totalOperations);
+                    statistics.put("successfulStateUpdates", successfulOperations);
+                    statistics.put("failedStateUpdates", failedOperations);
+                }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for agent-persistence: {}", e.getMessage());
                 // Fallback to basic statistics
@@ -716,7 +728,12 @@ public class AgentPersistenceManager implements ReadyTracker {
     private void recordMetrics(String domain, String operation, boolean success, long durationNanos) {
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+            try {
+                metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.warn("Failed to record agent persistence metrics for operation {} - {}: {}", domain, operation, e.getMessage());
+                // Graceful degradation: continue with persistence operations even if metrics recording fails
+            }
         } else {
             logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
                     operation);

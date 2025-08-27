@@ -9,7 +9,7 @@ import org.openhab.core.ai.agent.model.AgentModelConfiguration;
 import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
-import org.openhab.core.ai.model.monitoring.ModelHealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 
 /**
  * Agent-specific model provider interface
@@ -114,7 +114,7 @@ public interface AgentModelProvider {
      * 
      * @return the agent-specific model health status
      */
-    ModelHealthMetrics getHealthStatus();
+    HealthMetrics getHealthStatus();
 
     /**
      * Update agent-specific configuration

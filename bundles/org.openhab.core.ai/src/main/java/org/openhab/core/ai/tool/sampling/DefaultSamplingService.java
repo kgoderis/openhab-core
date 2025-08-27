@@ -1,17 +1,24 @@
 package org.openhab.core.ai.tool.sampling;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.openhab.core.ai.common.sampling.SamplingStatus;
 import org.openhab.core.ai.tool.sampling.models.DefaultSamplingRequest;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,12 +45,9 @@ public class DefaultSamplingService implements SamplingService {
     /** Map of rejected sampling requests by ID */
     private final Map<String, SamplingRequest> rejectedRequests = new ConcurrentHashMap<>();
 
-    /** Performance monitoring */
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong approvedRequestCount = new AtomicLong(0);
-    private final AtomicLong rejectedRequestCount = new AtomicLong(0);
-    private final AtomicLong pendingRequestCount = new AtomicLong(0);
-    private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+    // Performance monitoring - using centralized MetricsService instead of AtomicLong counters
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    private volatile @Nullable MetricsService metricsService;
 
     @Activate
     public DefaultSamplingService() {
@@ -63,7 +67,6 @@ public class DefaultSamplingService implements SamplingService {
 
     @Override
     public SamplingRequest createMessage(String modelName, String message, boolean includeContext) {
-        totalRequests.incrementAndGet();
         long startTime = System.currentTimeMillis();
 
         try {
@@ -83,17 +86,48 @@ public class DefaultSamplingService implements SamplingService {
 
             // Store pending request
             pendingRequests.put(request.getId(), request);
-            pendingRequestCount.incrementAndGet();
+
+            // Record metrics using centralized MetricsService
+            long responseTime = System.currentTimeMillis() - startTime;
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("sampling-service", "create-message")
+                        .withSuccess(true)
+                        .withDuration(Duration.ofMillis(responseTime).toNanos())
+                        .withData("modelName", modelName)
+                        .withData("includeContext", includeContext)
+                        .withData("responseTimeMs", responseTime)
+                        .withData("pendingRequests", pendingRequests.size())
+                        .record();
+                } catch (Exception e) {
+                    LOGGER.warn("Failed to record sampling service create message metrics", e);
+                }
+            }
 
             LOGGER.info("Created sampling request: {} for model: {}", request.getId(), modelName);
             return request;
 
         } catch (Exception e) {
+            long responseTime = System.currentTimeMillis() - startTime;
+            
+            // Record failure metrics using centralized MetricsService
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("sampling-service", "create-message")
+                        .withSuccess(false)
+                        .withDuration(Duration.ofMillis(responseTime).toNanos())
+                        .withData("modelName", modelName)
+                        .withData("includeContext", includeContext)
+                        .withData("error", e.getMessage())
+                        .withData("responseTimeMs", responseTime)
+                        .record();
+                } catch (Exception metricsError) {
+                    LOGGER.warn("Failed to record sampling service create message failure metrics", metricsError);
+                }
+            }
+            
             LOGGER.error("Error creating sampling message", e);
             throw new RuntimeException("Failed to create sampling message", e);
-        } finally {
-            long responseTime = System.currentTimeMillis() - startTime;
-            totalResponseTimeMs.addAndGet(responseTime);
         }
     }
 
@@ -131,12 +165,31 @@ public class DefaultSamplingService implements SamplingService {
 
     @Override
     public boolean approveRequest(String requestId) {
+        long startTime = System.currentTimeMillis();
+        
         try {
             LOGGER.debug("Approving sampling request: {}", requestId);
 
             SamplingRequest request = pendingRequests.remove(requestId);
             if (request == null) {
                 LOGGER.warn("Sampling request not found for approval: {}", requestId);
+                
+                // Record failure metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordOperation("sampling-service", "approve-request")
+                            .withSuccess(false)
+                            .withDuration(Duration.ofMillis(responseTime).toNanos())
+                            .withData("requestId", requestId)
+                            .withData("error", "Request not found")
+                            .withData("responseTimeMs", responseTime)
+                            .record();
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to record sampling service approve request failure metrics", e);
+                    }
+                }
+                
                 return false;
             }
 
@@ -144,14 +197,44 @@ public class DefaultSamplingService implements SamplingService {
             request.setStatus(SamplingStatus.APPROVED);
             approvedRequests.put(requestId, request);
 
-            // Update counters
-            pendingRequestCount.decrementAndGet();
-            approvedRequestCount.incrementAndGet();
+            // Record success metrics using centralized MetricsService
+            long responseTime = System.currentTimeMillis() - startTime;
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("sampling-service", "approve-request")
+                        .withSuccess(true)
+                        .withDuration(Duration.ofMillis(responseTime).toNanos())
+                        .withData("requestId", requestId)
+                        .withData("responseTimeMs", responseTime)
+                        .withData("pendingRequests", pendingRequests.size())
+                        .withData("approvedRequests", approvedRequests.size())
+                        .record();
+                } catch (Exception e) {
+                    LOGGER.warn("Failed to record sampling service approve request metrics", e);
+                }
+            }
 
             LOGGER.info("Approved sampling request: {}", requestId);
             return true;
 
         } catch (Exception e) {
+            long responseTime = System.currentTimeMillis() - startTime;
+            
+            // Record failure metrics using centralized MetricsService
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("sampling-service", "approve-request")
+                        .withSuccess(false)
+                        .withDuration(Duration.ofMillis(responseTime).toNanos())
+                        .withData("requestId", requestId)
+                        .withData("error", e.getMessage())
+                        .withData("responseTimeMs", responseTime)
+                        .record();
+                } catch (Exception metricsError) {
+                    LOGGER.warn("Failed to record sampling service approve request failure metrics", metricsError);
+                }
+            }
+            
             LOGGER.error("Error approving sampling request: {}", requestId, e);
             return false;
         }
@@ -159,12 +242,31 @@ public class DefaultSamplingService implements SamplingService {
 
     @Override
     public boolean rejectRequest(String requestId, String reason) {
+        long startTime = System.currentTimeMillis();
+        
         try {
             LOGGER.debug("Rejecting sampling request: {} with reason: {}", requestId, reason);
 
             SamplingRequest request = pendingRequests.remove(requestId);
             if (request == null) {
                 LOGGER.warn("Sampling request not found for rejection: {}", requestId);
+                
+                // Record failure metrics
+                long responseTime = System.currentTimeMillis() - startTime;
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordOperation("sampling-service", "reject-request")
+                            .withSuccess(false)
+                            .withDuration(Duration.ofMillis(responseTime).toNanos())
+                            .withData("requestId", requestId)
+                            .withData("error", "Request not found")
+                            .withData("responseTimeMs", responseTime)
+                            .record();
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to record sampling service reject request failure metrics", e);
+                    }
+                }
+                
                 return false;
             }
 
@@ -173,14 +275,45 @@ public class DefaultSamplingService implements SamplingService {
             request.setRejectionReason(reason);
             rejectedRequests.put(requestId, request);
 
-            // Update counters
-            pendingRequestCount.decrementAndGet();
-            rejectedRequestCount.incrementAndGet();
+            // Record success metrics using centralized MetricsService
+            long responseTime = System.currentTimeMillis() - startTime;
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("sampling-service", "reject-request")
+                        .withSuccess(true)
+                        .withDuration(Duration.ofMillis(responseTime).toNanos())
+                        .withData("requestId", requestId)
+                        .withData("reason", reason)
+                        .withData("responseTimeMs", responseTime)
+                        .withData("pendingRequests", pendingRequests.size())
+                        .withData("rejectedRequests", rejectedRequests.size())
+                        .record();
+                } catch (Exception e) {
+                    LOGGER.warn("Failed to record sampling service reject request metrics", e);
+                }
+            }
 
             LOGGER.info("Rejected sampling request: {} with reason: {}", requestId, reason);
             return true;
 
         } catch (Exception e) {
+            long responseTime = System.currentTimeMillis() - startTime;
+            
+            // Record failure metrics using centralized MetricsService
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("sampling-service", "reject-request")
+                        .withSuccess(false)
+                        .withDuration(Duration.ofMillis(responseTime).toNanos())
+                        .withData("requestId", requestId)
+                        .withData("error", e.getMessage())
+                        .withData("responseTimeMs", responseTime)
+                        .record();
+                } catch (Exception metricsError) {
+                    LOGGER.warn("Failed to record sampling service reject request failure metrics", metricsError);
+                }
+            }
+            
             LOGGER.error("Error rejecting sampling request: {}", requestId, e);
             return false;
         }
@@ -203,7 +336,7 @@ public class DefaultSamplingService implements SamplingService {
 
     @Override
     public int getPendingRequestCount() {
-        return (int) pendingRequestCount.get();
+        return pendingRequests.size();
     }
 
     @Override
@@ -219,15 +352,67 @@ public class DefaultSamplingService implements SamplingService {
     @Override
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new ConcurrentHashMap<>();
-        metrics.put("totalRequests", totalRequests.get());
-        metrics.put("approvedRequests", approvedRequestCount.get());
-        metrics.put("rejectedRequests", rejectedRequestCount.get());
-        metrics.put("pendingRequests", pendingRequestCount.get());
-        metrics.put("totalResponseTimeMs", totalResponseTimeMs.get());
-        metrics.put("averageResponseTimeMs",
-                totalRequests.get() > 0 ? totalResponseTimeMs.get() / totalRequests.get() : 0);
-        metrics.put("approvalRate",
-                totalRequests.get() > 0 ? (double) approvedRequestCount.get() / totalRequests.get() : 0.0);
+        
+        if (metricsService != null) {
+            try {
+                // Get create message metrics
+                MetricKey createKey = MetricKeys.execution("create-message");
+                ExecutionMetricsSnapshot createSnapshot = metricsService.getSnapshot(createKey, ExecutionMetricsSnapshot.class);
+                
+                if (createSnapshot != null) {
+                    metrics.put("totalRequests", createSnapshot.total());
+                    metrics.put("averageResponseTimeMs", createSnapshot.averageMs());
+                } else {
+                    metrics.put("totalRequests", 0L);
+                    metrics.put("averageResponseTimeMs", 0.0);
+                }
+                
+                // Get approve request metrics
+                MetricKey approveKey = MetricKeys.execution("approve-request");
+                ExecutionMetricsSnapshot approveSnapshot = metricsService.getSnapshot(approveKey, ExecutionMetricsSnapshot.class);
+                
+                if (approveSnapshot != null) {
+                    metrics.put("approvedRequests", approveSnapshot.success());
+                } else {
+                    metrics.put("approvedRequests", 0L);
+                }
+                
+                // Get reject request metrics
+                MetricKey rejectKey = MetricKeys.execution("reject-request");
+                ExecutionMetricsSnapshot rejectSnapshot = metricsService.getSnapshot(rejectKey, ExecutionMetricsSnapshot.class);
+                
+                if (rejectSnapshot != null) {
+                    metrics.put("rejectedRequests", rejectSnapshot.success());
+                } else {
+                    metrics.put("rejectedRequests", 0L);
+                }
+                
+                // Calculate approval rate
+                long totalRequests = (Long) metrics.get("totalRequests");
+                long approvedRequests = (Long) metrics.get("approvedRequests");
+                metrics.put("approvalRate", totalRequests > 0 ? (double) approvedRequests / totalRequests : 0.0);
+                
+            } catch (Exception e) {
+                LOGGER.warn("Failed to retrieve performance metrics from MetricsService", e);
+                // Fallback to default values
+                metrics.put("totalRequests", 0L);
+                metrics.put("approvedRequests", 0L);
+                metrics.put("rejectedRequests", 0L);
+                metrics.put("averageResponseTimeMs", 0.0);
+                metrics.put("approvalRate", 0.0);
+            }
+        } else {
+            // No MetricsService available, return default values
+            metrics.put("totalRequests", 0L);
+            metrics.put("approvedRequests", 0L);
+            metrics.put("rejectedRequests", 0L);
+            metrics.put("averageResponseTimeMs", 0.0);
+            metrics.put("approvalRate", 0.0);
+        }
+        
+        // Add current counts
+        metrics.put("pendingRequests", pendingRequests.size());
+        
         return metrics;
     }
 
