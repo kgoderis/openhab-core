@@ -356,7 +356,11 @@ public class DefaultFilterValidator implements FilterValidator {
         }
 
         try {
-            metrics.recordOperation(domain, operation, success, duration);
+            Map<String, Object> context = Map.of(
+                "domain", domain,
+                "operation", operation
+            );
+            metrics.recordOperationWithData(domain, operation, success, duration, context);
         } catch (Exception e) {
             LOGGER.warn("Failed to record metrics for {}.{}: {}", domain, operation, e.getMessage());
         }

@@ -103,8 +103,13 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
                 // successCount.incrementAndGet(); // Removed
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("compliance_test", "success", true,
-                                Duration.ofMillis(executionTime));
+                        Map<String, Object> context = Map.of(
+                            "testId", testId,
+                            "category", category,
+                            "executionTime", executionTime
+                        );
+                        metricsService.recordOperationWithData("compliance_test", "success", true,
+                                Duration.ofMillis(executionTime), context);
                     } catch (Exception e) {
                         // Fallback to local logging if MetricsService fails
                         System.err.println("Failed to record compliance test success metrics: " + e.getMessage());
@@ -114,8 +119,13 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
                 // failureCount.incrementAndGet(); // Removed
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("compliance_test", "failure", false,
-                                Duration.ofMillis(executionTime));
+                        Map<String, Object> context = Map.of(
+                            "testId", testId,
+                            "category", category,
+                            "executionTime", executionTime
+                        );
+                        metricsService.recordOperationWithData("compliance_test", "failure", false,
+                                Duration.ofMillis(executionTime), context);
                     } catch (Exception e) {
                         // Fallback to local logging if MetricsService fails
                         System.err.println("Failed to record compliance test failure metrics: " + e.getMessage());
@@ -130,8 +140,14 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
             // failureCount.incrementAndGet(); // Removed
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("compliance_test", "failure", false,
-                            Duration.ofMillis(executionTime));
+                    Map<String, Object> context = Map.of(
+                        "testId", testId,
+                        "category", category,
+                        "executionTime", executionTime,
+                        "error", e.getMessage()
+                    );
+                    metricsService.recordOperationWithData("compliance_test", "failure", false,
+                            Duration.ofMillis(executionTime), context);
                 } catch (Exception e2) {
                     // Fallback to local logging if MetricsService fails
                     System.err.println("Failed to record compliance test failure metrics: " + e2.getMessage());

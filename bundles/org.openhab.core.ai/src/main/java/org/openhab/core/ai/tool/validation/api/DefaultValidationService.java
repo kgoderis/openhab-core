@@ -804,9 +804,11 @@ public class DefaultValidationService implements ValidationService {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                metrics.recordOperation("validation", validationType).withSuccess(success).withDuration(durationNanos)
-                        .withData("validationType", validationType)
-                        .withData("durationMs", Duration.ofNanos(durationNanos).toMillis()).record();
+                Map<String, Object> context = Map.of(
+                    "validationType", validationType,
+                    "durationMs", Duration.ofNanos(durationNanos).toMillis()
+                );
+                metrics.recordOperationWithData("validation", validationType, success, Duration.ofNanos(durationNanos), context);
             } catch (Exception e) {
                 System.err.println(
                         "Failed to record validation metrics for type " + validationType + ": " + e.getMessage());

@@ -20,12 +20,14 @@ import org.openhab.core.ai.agent.lifecycle.AgentMessage;
 import org.openhab.core.ai.agent.lifecycle.AgentRegistrationResult;
 import org.openhab.core.ai.agent.lifecycle.AgentSecurityContext;
 import org.openhab.core.ai.agent.lifecycle.AgentValidationResult;
-import org.openhab.core.ai.agent.lifecycle.DefaultAgentMetrics;
+
 import org.openhab.core.ai.agent.lifecycle.MessageHandler;
 import org.openhab.core.ai.agent.lifecycle.MessageStatus;
+import org.openhab.core.ai.common.monitoring.service.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +66,15 @@ public class AgentRegistry {
     // Validation and health monitoring
     private final Map<String, AgentValidationResult> agentValidationResults = new ConcurrentHashMap<>();
     private final ScheduledExecutorService healthMonitor = Executors.newSingleThreadScheduledExecutor();
+
+    // Metrics service
+    private @Nullable MetricsService metricsService;
+
+    @Reference
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for AgentRegistry");
+    }
 
     @Activate
     public void activate() {
@@ -108,7 +119,7 @@ public class AgentRegistry {
         agents.put(agentId, agent);
         agentCapabilities.putIfAbsent(agentId, new CopyOnWriteArraySet<>());
         agentStatus.put(agentId, AgentStatus.OFFLINE);
-        agentMetrics.putIfAbsent(agentId, new DefaultAgentMetrics(agentId));
+        // Legacy metrics removed - using MetricsService instead
 
         // Set up security context
         agentSecurityContexts.put(agentId, securityContext);
@@ -298,16 +309,30 @@ public class AgentRegistry {
         if (!hasPermission(requestingUserId, agentId, "read")) {
             return null;
         }
-        return agentMetrics.computeIfAbsent(agentId, k -> new DefaultAgentMetrics(k));
+        // Legacy metrics removed - use MetricsService.getStatistics() instead
+        return null;
     }
 
     /**
      * Record an agent execution for metrics.
      */
     public void recordAgentExecution(String agentId, long executionTime, boolean success) {
-        DefaultAgentMetrics metrics = (DefaultAgentMetrics) agentMetrics.computeIfAbsent(agentId,
-                k -> new DefaultAgentMetrics(k));
-        metrics.recordExecution(executionTime, success);
+        // Record metrics using MetricsService
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                Map<String, Object> context = Map.of(
+                    "agentId", agentId,
+                    "executionTimeMs", executionTime
+                );
+                metrics.recordOperationWithData("agent", "execution", success, 
+                    java.time.Duration.ofMillis(executionTime), context);
+            } catch (Exception e) {
+                logger.warn("Failed to record agent execution metrics for agent {}: {}", agentId, e.getMessage());
+            }
+        }
+        
+        // Legacy metrics removed - all metrics now handled by MetricsService
     }
 
     /**

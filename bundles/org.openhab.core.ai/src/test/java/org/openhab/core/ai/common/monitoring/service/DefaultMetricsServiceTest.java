@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
 import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
+import org.openhab.core.ai.common.monitoring.service.snapshot.DomainAggregatedSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 
@@ -284,5 +287,145 @@ class DefaultMetricsServiceTest {
         assertFalse(snapshot.hasMetric("input_tokens"));
         assertFalse(snapshot.hasMetric("output_tokens"));
         assertFalse(snapshot.hasMetric("model_cost"));
+    }
+
+    // ===== Phase 4: Advanced Features - Aggregation Tests =====
+
+    @Test
+    void testGetAggregatedSnapshots() {
+        // Given
+        MetricKey key1 = mock(MetricKey.class);
+        MetricKey key2 = mock(MetricKey.class);
+        when(monitoringRegistry.getKeys()).thenReturn(List.of(key1, key2));
+        when(key1.kind()).thenReturn("test_domain");
+        when(key2.kind()).thenReturn("test_domain");
+        when(monitoringRegistry.getCollector(key1)).thenReturn(metricsCollector);
+        when(monitoringRegistry.getCollector(key2)).thenReturn(metricsCollector);
+        when(metricsCollector.executionSnapshot()).thenReturn(executionSnapshot);
+        when(executionSnapshot.total()).thenReturn(50L);
+        when(executionSnapshot.success()).thenReturn(45L);
+        when(executionSnapshot.failure()).thenReturn(5L);
+        when(executionSnapshot.totalDurationNanos()).thenReturn(1000_000_000L);
+
+        // When
+        List<GenericMetricsSnapshot> snapshots = metricsService.getAggregatedSnapshots("test_domain",
+                GenericMetricsSnapshot.class);
+
+        // Then
+        assertNotNull(snapshots);
+        assertEquals(2, snapshots.size());
+        for (GenericMetricsSnapshot snapshot : snapshots) {
+            assertEquals("test_domain", snapshot.getDomain());
+            assertEquals(50L, snapshot.getMetricAsLong("total_count"));
+            assertEquals(45L, snapshot.getMetricAsLong("success_count"));
+            assertEquals(5L, snapshot.getMetricAsLong("failure_count"));
+        }
+    }
+
+    @Test
+    void testGetSnapshotsInRange() {
+        // Given
+        Instant start = Instant.now().minusSeconds(3600); // 1 hour ago
+        Instant end = Instant.now();
+        MetricKey key = mock(MetricKey.class);
+        when(monitoringRegistry.getKeys()).thenReturn(List.of(key));
+        when(key.kind()).thenReturn("test_domain");
+        when(monitoringRegistry.getCollector(key)).thenReturn(metricsCollector);
+        when(metricsCollector.executionSnapshot()).thenReturn(executionSnapshot);
+        when(executionSnapshot.total()).thenReturn(25L);
+        when(executionSnapshot.success()).thenReturn(20L);
+        when(executionSnapshot.failure()).thenReturn(5L);
+        when(executionSnapshot.totalDurationNanos()).thenReturn(500_000_000L);
+
+        // When
+        List<GenericMetricsSnapshot> snapshots = metricsService.getSnapshotsInRange(start, end,
+                GenericMetricsSnapshot.class);
+
+        // Then
+        assertNotNull(snapshots);
+        assertEquals(1, snapshots.size());
+        GenericMetricsSnapshot snapshot = snapshots.get(0);
+        assertEquals("test_domain", snapshot.getDomain());
+        assertEquals(25L, snapshot.getMetricAsLong("total_count"));
+        assertEquals(20L, snapshot.getMetricAsLong("success_count"));
+        assertEquals(5L, snapshot.getMetricAsLong("failure_count"));
+    }
+
+    @Test
+    void testGetDomainAggregatedSnapshot() {
+        // Given
+        MetricKey key1 = mock(MetricKey.class);
+        MetricKey key2 = mock(MetricKey.class);
+        when(monitoringRegistry.getKeys()).thenReturn(List.of(key1, key2));
+        when(key1.kind()).thenReturn("test_domain");
+        when(key2.kind()).thenReturn("test_domain");
+        when(monitoringRegistry.getCollector(key1)).thenReturn(metricsCollector);
+        when(monitoringRegistry.getCollector(key2)).thenReturn(metricsCollector);
+        when(metricsCollector.executionSnapshot()).thenReturn(executionSnapshot);
+        when(executionSnapshot.total()).thenReturn(30L);
+        when(executionSnapshot.success()).thenReturn(25L);
+        when(executionSnapshot.failure()).thenReturn(5L);
+        when(executionSnapshot.totalDurationNanos()).thenReturn(1500_000_000L);
+
+        // When
+        DomainAggregatedSnapshot snapshot = metricsService.getDomainAggregatedSnapshot("test_domain");
+
+        // Then
+        assertNotNull(snapshot);
+        assertEquals("test_domain", snapshot.getDomain());
+        assertEquals(60L, snapshot.getTotalOperations()); // 30 + 30
+        assertEquals(50L, snapshot.getSuccessfulOperations()); // 25 + 25
+        assertEquals(10L, snapshot.getFailedOperations()); // 5 + 5
+        assertEquals(3000L, snapshot.getTotalDurationMs()); // 1500 + 1500 in ms
+        assertEquals(0.833, snapshot.getSuccessRate(), 0.001); // 50/60
+    }
+
+    @Test
+    void testGetAggregatedSnapshotsWithNoRegistry() {
+        // Given
+        DefaultMetricsService serviceWithoutRegistry = new DefaultMetricsService();
+        // Don't set the monitoring registry
+
+        // When
+        List<GenericMetricsSnapshot> snapshots = serviceWithoutRegistry.getAggregatedSnapshots("test_domain",
+                GenericMetricsSnapshot.class);
+
+        // Then
+        assertNotNull(snapshots);
+        assertTrue(snapshots.isEmpty());
+    }
+
+    @Test
+    void testGetSnapshotsInRangeWithNoRegistry() {
+        // Given
+        DefaultMetricsService serviceWithoutRegistry = new DefaultMetricsService();
+        Instant start = Instant.now().minusSeconds(3600);
+        Instant end = Instant.now();
+
+        // When
+        List<GenericMetricsSnapshot> snapshots = serviceWithoutRegistry.getSnapshotsInRange(start, end,
+                GenericMetricsSnapshot.class);
+
+        // Then
+        assertNotNull(snapshots);
+        assertTrue(snapshots.isEmpty());
+    }
+
+    @Test
+    void testGetDomainAggregatedSnapshotWithNoRegistry() {
+        // Given
+        DefaultMetricsService serviceWithoutRegistry = new DefaultMetricsService();
+
+        // When
+        DomainAggregatedSnapshot snapshot = serviceWithoutRegistry.getDomainAggregatedSnapshot("test_domain");
+
+        // Then
+        assertNotNull(snapshot);
+        assertEquals("test_domain", snapshot.getDomain());
+        assertEquals(0L, snapshot.getTotalOperations());
+        assertEquals(0L, snapshot.getSuccessfulOperations());
+        assertEquals(0L, snapshot.getFailedOperations());
+        assertEquals(0L, snapshot.getTotalDurationMs());
+        assertEquals(0.0, snapshot.getSuccessRate(), 0.001);
     }
 }

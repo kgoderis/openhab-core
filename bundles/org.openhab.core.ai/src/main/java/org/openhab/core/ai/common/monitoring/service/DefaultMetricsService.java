@@ -1,6 +1,7 @@
 package org.openhab.core.ai.common.monitoring.service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
 import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
 import org.openhab.core.ai.common.monitoring.service.factory.SnapshotFactory;
 import org.openhab.core.ai.common.monitoring.service.factory.StatisticsFactory;
+import org.openhab.core.ai.common.monitoring.service.snapshot.DomainAggregatedSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -291,5 +293,204 @@ public class DefaultMetricsService implements MetricsService {
         }
 
         return statistics;
+    }
+
+    // ===== Phase 4: Advanced Features - Aggregation and Filtering =====
+
+    @Override
+    public <T extends MetricsSnapshot> List<T> getAggregatedSnapshots(String domain, Class<T> snapshotType) {
+        logger.debug("Getting aggregated snapshots for domain: {} type: {}", domain, snapshotType.getSimpleName());
+
+        MetricsRegistry registry = monitoringRegistry;
+        if (registry == null) {
+            logger.warn("Monitoring registry not available for aggregated snapshots: {}:{}", domain,
+                    snapshotType.getSimpleName());
+            return List.of();
+        }
+
+        List<T> aggregatedSnapshots = new ArrayList<>();
+
+        try {
+            // Get all keys for the domain
+            Collection<MetricKey> domainKeys = registry.getKeysByDomain(domain);
+
+            // Group snapshots by operation type for aggregation
+            Map<String, List<MetricsSnapshot>> operationGroups = new java.util.HashMap<>();
+
+            for (MetricKey key : domainKeys) {
+                try {
+                    MetricsCollector collector = registry.getCollector(key);
+                    GenericMetricsSnapshot snapshot = SnapshotFactory.createSnapshot(collector,
+                            GenericMetricsSnapshot.class, key);
+
+                    String operation = key.labels().get("operation");
+                    if (operation != null) {
+                        operationGroups.computeIfAbsent(operation, k -> new ArrayList<>()).add(snapshot);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to process snapshot for key: {}", key.id(), e);
+                }
+            }
+
+            // Create aggregated snapshots for each operation group
+            for (Map.Entry<String, List<MetricsSnapshot>> entry : operationGroups.entrySet()) {
+                String operation = entry.getKey();
+                List<MetricsSnapshot> snapshots = entry.getValue();
+
+                if (!snapshots.isEmpty()) {
+                    // Aggregate the snapshots
+                    T aggregatedSnapshot = createAggregatedSnapshot(domain, operation, snapshots, snapshotType);
+                    if (aggregatedSnapshot != null) {
+                        aggregatedSnapshots.add(aggregatedSnapshot);
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            logger.warn("Failed to get aggregated snapshots for domain: {}", domain, e);
+        }
+
+        return aggregatedSnapshots;
+    }
+
+    @Override
+    public <T extends MetricsSnapshot> List<T> getSnapshotsInRange(String domain, String operation,
+            Class<T> snapshotType, Instant start, Instant end) {
+        logger.debug("Getting snapshots in range for domain: {} operation: {} type: {} from {} to {}", domain,
+                operation, snapshotType.getSimpleName(), start, end);
+
+        MetricsRegistry registry = monitoringRegistry;
+        if (registry == null) {
+            logger.warn("Monitoring registry not available for time range snapshots: {}:{}", domain, operation);
+            return List.of();
+        }
+
+        List<T> rangeSnapshots = new ArrayList<>();
+
+        try {
+            // Get all keys for the domain and operation
+            Collection<MetricKey> allKeys = registry.getAllKeys();
+
+            for (MetricKey key : allKeys) {
+                if (domain.equals(key.labels().get("domain"))
+                        && (operation == null || operation.equals(key.labels().get("operation")))) {
+
+                    try {
+                        MetricsCollector collector = registry.getCollector(key);
+                        GenericMetricsSnapshot snapshot = SnapshotFactory.createSnapshot(collector,
+                                GenericMetricsSnapshot.class, key);
+
+                        // Check if snapshot timestamp is within range
+                        if (snapshot.getTimestamp().isAfter(start) && snapshot.getTimestamp().isBefore(end)) {
+                            T typedSnapshot = snapshot.as(snapshotType);
+                            rangeSnapshots.add(typedSnapshot);
+                        }
+                    } catch (Exception e) {
+                        logger.warn("Failed to process snapshot for key: {}", key.id(), e);
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            logger.warn("Failed to get snapshots in range for domain: {} operation: {}", domain, operation, e);
+        }
+
+        return rangeSnapshots;
+    }
+
+    @Override
+    public DomainAggregatedSnapshot getDomainAggregatedSnapshot(String domain) {
+        logger.debug("Getting domain aggregated snapshot for domain: {}", domain);
+
+        MetricsRegistry registry = monitoringRegistry;
+        if (registry == null) {
+            logger.warn("Monitoring registry not available for domain aggregated snapshot: {}", domain);
+            return DomainAggregatedSnapshot.empty(domain);
+        }
+
+        try {
+            // Get all keys for the domain
+            Collection<MetricKey> domainKeys = registry.getKeysByDomain(domain);
+
+            long totalOperations = 0L;
+            long successfulOperations = 0L;
+            long failedOperations = 0L;
+            long totalDurationNanos = 0L;
+            List<MetricsSnapshot> operationSnapshots = new ArrayList<>();
+
+            for (MetricKey key : domainKeys) {
+                try {
+                    MetricsCollector collector = registry.getCollector(key);
+                    GenericMetricsSnapshot snapshot = SnapshotFactory.createSnapshot(collector,
+                            GenericMetricsSnapshot.class, key);
+
+                    // Aggregate the metrics
+                    totalOperations += snapshot.total();
+                    successfulOperations += snapshot.success();
+                    failedOperations += snapshot.failure();
+                    totalDurationNanos += snapshot.totalDurationNanos();
+                    operationSnapshots.add(snapshot);
+
+                } catch (Exception e) {
+                    logger.warn("Failed to process snapshot for key: {}", key.id(), e);
+                }
+            }
+
+            // Calculate average success rate
+            double averageSuccessRate = totalOperations > 0 ? (successfulOperations * 100.0) / totalOperations : 0.0;
+
+            return new DomainAggregatedSnapshot(domain, totalOperations, successfulOperations, failedOperations,
+                    totalDurationNanos, averageSuccessRate, operationSnapshots, Instant.now());
+
+        } catch (Exception e) {
+            logger.warn("Failed to get domain aggregated snapshot for domain: {}", domain, e);
+            return DomainAggregatedSnapshot.empty(domain);
+        }
+    }
+
+    // ===== Private Helper Methods =====
+
+    /**
+     * Create an aggregated snapshot from a list of snapshots.
+     * 
+     * @param <T> the snapshot type
+     * @param domain the domain
+     * @param operation the operation
+     * @param snapshots the snapshots to aggregate
+     * @param snapshotType the target snapshot type
+     * @return aggregated snapshot or null if aggregation fails
+     */
+    @SuppressWarnings("unchecked")
+    private <T extends MetricsSnapshot> T createAggregatedSnapshot(String domain, String operation,
+            List<MetricsSnapshot> snapshots, Class<T> snapshotType) {
+        try {
+            // Aggregate basic metrics
+            long totalOperations = snapshots.stream().filter(s -> s instanceof GenericMetricsSnapshot)
+                    .mapToLong(s -> ((GenericMetricsSnapshot) s).total()).sum();
+            long successfulOperations = snapshots.stream().filter(s -> s instanceof GenericMetricsSnapshot)
+                    .mapToLong(s -> ((GenericMetricsSnapshot) s).success()).sum();
+            long failedOperations = snapshots.stream().filter(s -> s instanceof GenericMetricsSnapshot)
+                    .mapToLong(s -> ((GenericMetricsSnapshot) s).failure()).sum();
+            long totalDurationNanos = snapshots.stream().filter(s -> s instanceof GenericMetricsSnapshot)
+                    .mapToLong(s -> ((GenericMetricsSnapshot) s).totalDurationNanos()).sum();
+
+            // Create a generic aggregated snapshot
+            GenericMetricsSnapshot aggregated = GenericMetricsSnapshot.builder(domain, operation)
+                    .withMetric("total_count", totalOperations).withMetric("success_count", successfulOperations)
+                    .withMetric("failure_count", failedOperations)
+                    .withMetric("total_duration_nanos", totalDurationNanos).withMetric("success_rate",
+                            totalOperations > 0 ? (successfulOperations * 100.0) / totalOperations : 0.0)
+                    .build();
+
+            // Convert to the requested type if possible
+            if (snapshotType == GenericMetricsSnapshot.class) {
+                return (T) aggregated;
+            } else {
+                return aggregated.as(snapshotType);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to create aggregated snapshot for domain: {} operation: {}", domain, operation, e);
+            return null;
+        }
     }
 }

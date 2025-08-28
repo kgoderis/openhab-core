@@ -12,6 +12,9 @@ import java.util.UUID;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 
 /**
  * Individual action step within a model-based action plan
@@ -62,8 +65,8 @@ public final class AgentModelActionStep {
     private final @Nullable String errorMessage;
     private final @Nullable Exception exception;
 
-    // Performance metrics
-    private final @Nullable AgentModelActionStepPerformanceMetrics performanceMetrics;
+    // Performance metrics key for MetricsService lookup
+    private final @Nullable MetricKey performanceMetricsKey;
 
     private AgentModelActionStep(Builder builder) {
         this.stepId = builder.stepId;
@@ -87,7 +90,7 @@ public final class AgentModelActionStep {
         this.result = builder.result;
         this.errorMessage = builder.errorMessage;
         this.exception = builder.exception;
-        this.performanceMetrics = builder.performanceMetrics;
+        this.performanceMetricsKey = builder.performanceMetricsKey;
     }
 
     /**
@@ -230,8 +233,21 @@ public final class AgentModelActionStep {
         return exception;
     }
 
-    public @Nullable AgentModelActionStepPerformanceMetrics getPerformanceMetrics() {
-        return performanceMetrics;
+    public @Nullable MetricKey getPerformanceMetricsKey() {
+        return performanceMetricsKey;
+    }
+
+    /**
+     * Get performance metrics from MetricsService using the stored key.
+     * 
+     * @param metricsService the metrics service to query
+     * @return performance metrics snapshot, or null if key is not available
+     */
+    public @Nullable GenericMetricsSnapshot getPerformanceMetrics(@Nullable MetricsService metricsService) {
+        if (performanceMetricsKey != null && metricsService != null) {
+            return metricsService.getSnapshot(performanceMetricsKey, GenericMetricsSnapshot.class);
+        }
+        return null;
     }
 
     /**
@@ -335,7 +351,7 @@ public final class AgentModelActionStep {
         private @Nullable ActionResult result;
         private @Nullable String errorMessage;
         private @Nullable Exception exception;
-        private @Nullable AgentModelActionStepPerformanceMetrics performanceMetrics;
+        private @Nullable MetricKey performanceMetricsKey;
 
         public Builder(String stepName, String actionId, int stepOrder) {
             this.stepId = "step_" + UUID.randomUUID().toString().replace("-", "");
@@ -522,8 +538,8 @@ public final class AgentModelActionStep {
             return this;
         }
 
-        public Builder performanceMetrics(@Nullable AgentModelActionStepPerformanceMetrics performanceMetrics) {
-            this.performanceMetrics = performanceMetrics;
+        public Builder performanceMetricsKey(@Nullable MetricKey performanceMetricsKey) {
+            this.performanceMetricsKey = performanceMetricsKey;
             return this;
         }
 

@@ -25,7 +25,7 @@ import org.openhab.core.ai.common.monitoring.api.ModelMetrics;
  * @since 1.0.0
  */
 @NonNullByDefault
-public final class GenericMetricsSnapshot implements MetricsSnapshot {
+public final class GenericMetricsSnapshot implements MetricsSnapshot, CountsMetrics, LatencyMetrics, ModelMetrics {
 
     private final String domain;
     private final String operation;
@@ -78,6 +78,44 @@ public final class GenericMetricsSnapshot implements MetricsSnapshot {
      */
     public String getOperation() {
         return operation;
+    }
+
+    // ===== Capability Interface Methods =====
+
+    /**
+     * Get the operation domain (alias for getDomain).
+     * 
+     * @return the domain
+     */
+    public String domain() {
+        return domain;
+    }
+
+    /**
+     * Get the operation name (alias for getOperation).
+     * 
+     * @return the operation
+     */
+    public String operation() {
+        return operation;
+    }
+
+    /**
+     * Get the timestamp as an Instant (alias for getTimestamp).
+     * 
+     * @return the timestamp as Instant
+     */
+    public Instant timestamp() {
+        return getTimestamp();
+    }
+
+    /**
+     * Get all metrics as an unmodifiable map (alias for getMetrics).
+     * 
+     * @return unmodifiable map of metrics
+     */
+    public Map<String, Object> data() {
+        return getMetrics();
     }
 
     /**
@@ -257,6 +295,43 @@ public final class GenericMetricsSnapshot implements MetricsSnapshot {
     }
 
     /**
+     * Get a metric as a long value (alias for getLong with 0L default).
+     * 
+     * @param key the metric key
+     * @return the long value, or 0L if not found
+     */
+    public long getMetricAsLong(String key) {
+        return getLong(key, 0L);
+    }
+
+    /**
+     * Get a metric as a double value (alias for getDouble with 0.0 default).
+     * 
+     * @param key the metric key
+     * @return the double value, or 0.0 if not found
+     */
+    public double getMetricAsDouble(String key) {
+        return getDouble(key, 0.0);
+    }
+
+    // ===== CountsMetrics Interface Implementation =====
+
+    @Override
+    public long total() {
+        return getTotal();
+    }
+
+    @Override
+    public long success() {
+        return getSuccess();
+    }
+
+    @Override
+    public long failure() {
+        return getFailure();
+    }
+
+    /**
      * Calculate success rate as percentage.
      * 
      * @return success rate percentage (0.0-100.0), or 0.0 if no data
@@ -273,6 +348,13 @@ public final class GenericMetricsSnapshot implements MetricsSnapshot {
      */
     public long getTotalDurationNanos() {
         return getLong("totalDurationNanos", 0L);
+    }
+
+    // ===== LatencyMetrics Interface Implementation =====
+
+    @Override
+    public long totalDurationNanos() {
+        return getTotalDurationNanos();
     }
 
     /**
@@ -310,6 +392,33 @@ public final class GenericMetricsSnapshot implements MetricsSnapshot {
      */
     public double getThroughput() {
         return getDouble("throughput", 0.0);
+    }
+
+    // ===== ModelMetrics Interface Implementation =====
+
+    @Override
+    public double tokensPerSecond() {
+        long tokens = getTokens();
+        long totalDurationNanos = getTotalDurationNanos();
+        if (totalDurationNanos > 0) {
+            double durationSeconds = totalDurationNanos / 1_000_000_000.0;
+            return tokens / durationSeconds;
+        }
+        return 0.0;
+    }
+
+    @Override
+    public double costPerRequest() {
+        double cost = getCost();
+        long total = getTotal();
+        return total > 0 ? cost / total : 0.0;
+    }
+
+    @Override
+    public double averageTokensPerRequest() {
+        long tokens = getTokens();
+        long total = getTotal();
+        return total > 0 ? (double) tokens / total : 0.0;
     }
 
     // ===== Capability Detection =====

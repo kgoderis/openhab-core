@@ -7,7 +7,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.model.AgentModelConfiguration;
 import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
-
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 
@@ -101,8 +100,6 @@ public interface AgentModelProvider {
      * @return true if the response is valid for this agent
      */
     boolean validateResponse(ModelResponse response);
-
-
 
     /**
      * Get agent-specific model health status

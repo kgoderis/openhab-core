@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -12,7 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.service.snapshot.ModelCompletionSnapshot;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 
 /**
  * Unit tests for MetricsService functionality.
@@ -74,31 +75,38 @@ class MetricsServiceTest {
         int outputTokens = 50;
         double cost = 0.01;
 
-        // When
-        doNothing().when(metricsService).recordModelCompletion(modelId, success, duration, inputTokens, outputTokens,
-                cost);
-        metricsService.recordModelCompletion(modelId, success, duration, inputTokens, outputTokens, cost);
+        // When - Use generic recordOperation method
+        doNothing().when(metricsService).recordOperation("model", "completion").withSuccess(success)
+                .withDuration(duration.toNanos()).withData("modelId", modelId).withData("inputTokens", inputTokens)
+                .withData("outputTokens", outputTokens).withData("cost", cost).record();
+        metricsService.recordOperation("model", "completion").withSuccess(success).withDuration(duration.toNanos())
+                .withData("modelId", modelId).withData("inputTokens", inputTokens)
+                .withData("outputTokens", outputTokens).withData("cost", cost).record();
 
         // Then
-        verify(metricsService, times(1)).recordModelCompletion(modelId, success, duration, inputTokens, outputTokens,
-                cost);
+        verify(metricsService, times(1)).recordOperation("model", "completion").withSuccess(success)
+                .withDuration(duration.toNanos()).withData("modelId", modelId).withData("inputTokens", inputTokens)
+                .withData("outputTokens", outputTokens).withData("cost", cost).record();
     }
 
     @Test
     void testGetModelCompletionSnapshot() {
         // Given
-        String modelId = "test-model";
-        ModelCompletionSnapshot expectedSnapshot = new ModelCompletionSnapshot(null, null, System.currentTimeMillis(),
-                0L, 0.0);
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("total", 1L);
+        metrics.put("success", 1L);
+        metrics.put("failure", 0L);
+        metrics.put("totalDurationNanos", 100_000_000L);
+        GenericMetricsSnapshot expectedSnapshot = new GenericMetricsSnapshot("model", "completion", metrics);
 
         // When
-        when(metricsService.getModelCompletionSnapshot(modelId)).thenReturn(expectedSnapshot);
-        ModelCompletionSnapshot result = metricsService.getModelCompletionSnapshot(modelId);
+        when(metricsService.getSnapshot("model", "completion")).thenReturn(expectedSnapshot);
+        GenericMetricsSnapshot result = metricsService.getSnapshot("model", "completion");
 
         // Then
         assertNotNull(result);
         assertEquals(expectedSnapshot, result);
-        verify(metricsService, times(1)).getModelCompletionSnapshot(modelId);
+        verify(metricsService, times(1)).getSnapshot("model", "completion");
     }
 
     @Test
@@ -224,9 +232,8 @@ class MetricsServiceTest {
                 Duration.class));
         assertNotNull(MetricsService.class.getMethod("recordOperationWithData", String.class, String.class,
                 boolean.class, Duration.class, Map.class));
-        assertNotNull(MetricsService.class.getMethod("recordModelCompletion", String.class, boolean.class,
-                Duration.class, int.class, int.class, double.class));
-        assertNotNull(MetricsService.class.getMethod("getModelCompletionSnapshot", String.class));
+        assertNotNull(MetricsService.class.getMethod("getSnapshot", String.class, String.class));
+        assertNotNull(MetricsService.class.getMethod("getAllSnapshots", Class.class));
     }
 
     @Test

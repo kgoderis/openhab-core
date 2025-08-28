@@ -1,6 +1,5 @@
 package org.openhab.core.ai.reasoning.engine.analysis;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,7 +9,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.monitoring.service.statistics.ReasoningPerformanceStatistics;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepStatus;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepType;
@@ -44,6 +45,11 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
     private static final Logger logger = LoggerFactory.getLogger(DefaultReasoningStepAnalysisService.class);
 
     private final ReasoningStepPersistenceService persistenceService;
+    
+    // Metrics service
+    private @Nullable MetricsService metricsService;
+    
+    // Legacy counters (deprecated - use MetricsService instead)
     private final AtomicLong totalAnalyses = new AtomicLong(0);
     private final AtomicLong successfulAnalyses = new AtomicLong(0);
     private final AtomicLong failedAnalyses = new AtomicLong(0);
@@ -51,10 +57,37 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
     private final Map<String, Integer> analysisTypeCounter = new HashMap<>();
     private volatile Instant lastAnalysisTime = Instant.now();
 
+    @Reference
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for ReasoningStepAnalysisService");
+    }
+
     @Activate
     public DefaultReasoningStepAnalysisService(@Reference ReasoningStepPersistenceService persistenceService) {
         this.persistenceService = persistenceService;
         logger.info("DefaultReasoningStepAnalysisService initialized");
+    }
+
+    /**
+     * Record reasoning efficiency metrics using MetricsService.
+     * 
+     * @param operation the operation being performed
+     * @param success whether the operation was successful
+     * @param duration the duration of the operation
+     * @param context additional context data
+     */
+    private void recordMetrics(String operation, boolean success, Duration duration, Map<String, Object> context) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperationWithData("reasoning-efficiency", operation, success, duration, context);
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+            }
+        } catch (Exception e) {
+            logger.warn("Error recording reasoning efficiency metrics for operation {}: {}", operation, e.getMessage());
+        }
     }
 
     @Override
@@ -200,7 +233,7 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
     }
 
     @Override
-    public ReasoningEfficiencyMetrics calculateEfficiencyMetrics(List<ReasoningStep> steps) {
+    public GenericMetricsSnapshot calculateEfficiencyMetrics(List<ReasoningStep> steps) {
         long startTime = System.nanoTime();
 
         try {
@@ -238,10 +271,13 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
                             Collectors.collectingAndThen(Collectors.toList(), this::calculateModelEfficiency)));
 
             // Create a simple efficiency metrics result
-            return ReasoningEfficiencyMetrics.builder().withOverallEfficiency(overallEfficiency)
-                    .withTimeEfficiency(timeEfficiency).withCostEfficiency(costEfficiency)
-                    .withTokenEfficiency(tokenEfficiency).withEfficiencyByModel(efficiencyByModel)
-                    .withCalculationTime(Instant.now()).build();
+            return GenericMetricsSnapshot.builder("reasoning", "efficiency")
+                    .withCounts(steps.size(), (long) (steps.size() * successRate))
+                    .withLatency((long) (avgTime * 1_000_000)) // Convert to nanoseconds
+                    .withMetric("overallEfficiency", overallEfficiency).withMetric("timeEfficiency", timeEfficiency)
+                    .withMetric("costEfficiency", costEfficiency).withMetric("tokenEfficiency", tokenEfficiency)
+                    .withMetric("avgCost", avgCost).withMetric("avgTokens", avgTokens)
+                    .withMetric("efficiencyByModel", efficiencyByModel).build();
 
         } finally {
             recordAnalysis("efficiency", startTime);
@@ -520,29 +556,6 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
     @Override
     public boolean isHealthy() {
         return persistenceService.isHealthy();
-    }
-
-    @Override
-    public ReasoningPerformanceStatistics getStatistics() {
-        // Create ReasoningPerformanceStatistics from analysis data
-        return ReasoningPerformanceStatistics.fromReasoningData(totalAnalyses.get(), // totalStepCount
-                0L, // totalStorageSizeBytes
-                successfulAnalyses.get(), // activeStepCount
-                0L, // archivedStepCount
-                0L, // compressedStepCount
-                0L, // totalTokensUsed
-                0.0, // totalCostUsd
-                totalAnalysisTimeNanos.get() / 1_000_000, // totalProcessingTimeMs
-                0.8, // averageQualityScore
-                0.7, // averageConfidence
-                1024.0, // averageStepSizeBytes
-                5.0, // averageStepsPerSession
-                null, // statusDistribution
-                null, // typeDistribution
-                null, // modelUsageDistribution
-                null, // sessionDistribution
-                Duration.ofDays(1) // timeRange
-        );
     }
 
     // Helper methods for the analysis implementations

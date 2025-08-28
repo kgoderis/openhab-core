@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepStatus;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepType;
@@ -65,7 +66,7 @@ public interface ReasoningStepAnalysisService {
      * @param steps the reasoning steps to analyze
      * @return efficiency metrics
      */
-    ReasoningEfficiencyMetrics calculateEfficiencyMetrics(List<ReasoningStep> steps);
+    GenericMetricsSnapshot calculateEfficiencyMetrics(List<ReasoningStep> steps);
 
     /**
      * Generate recommendations for improving reasoning.
@@ -163,11 +164,4 @@ public interface ReasoningStepAnalysisService {
      * @return true if the service is healthy
      */
     boolean isHealthy();
-
-    /**
-     * Get analysis service statistics.
-     * 
-     * @return service statistics
-     */
-    Object getStatistics();
 }

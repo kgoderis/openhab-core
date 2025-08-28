@@ -1,16 +1,12 @@
 package org.openhab.core.ai.agent.infrastructure.performance;
 
 import java.time.Duration;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.snapshot.ThroughputSnapshot;
-import org.openhab.core.ai.common.monitoring.statistics.ThroughputStatistics;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -104,12 +100,6 @@ public class ThroughputMetrics {
         return agentId;
     }
 
-    public long getTotalMessages() {
-        // Get total messages from StatisticsFactory
-        ThroughputStatistics statistics = getStatistics();
-        return statistics.activeOperations(); // Use available method
-    }
-
     /**
      * Get throughput statistics using StatisticsFactory.
      * 
@@ -120,25 +110,6 @@ public class ThroughputMetrics {
      * 
      * @return throughput statistics from StatisticsFactory, or empty statistics if service unavailable
      */
-    public ThroughputStatistics getStatistics() {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                // Use MetricKeys for standardized key generation
-                var metricKey = MetricKeys.custom("throughput", Map.of("agentId", agentId),
-                        Set.of("throughput", "counts"));
-                
-                // Get statistics using StatisticsFactory instead of creating snapshots directly
-                return metrics.getStatistics(metricKey, ThroughputStatistics.class, java.time.Duration.ofHours(24));
-            } catch (Exception e) {
-                logger.warn("Failed to retrieve throughput statistics for agent {}: {}", agentId, e.getMessage());
-                // Graceful degradation - return empty statistics if MetricsService fails
-            }
-        } else {
-            logger.debug("MetricsService not available, returning empty throughput statistics for agent {}", agentId);
-        }
-        return new ThroughputStatistics(java.util.List.of(), java.time.Duration.ofHours(24));
-    }
 
     /**
      * Create a default throughput snapshot based on current local data.
@@ -147,12 +118,14 @@ public class ThroughputMetrics {
      */
     private ThroughputSnapshot createDefaultSnapshot() {
         org.openhab.core.ai.common.monitoring.api.Counts counts = new org.openhab.core.ai.common.monitoring.api.Counts(
-                getTotalMessages(), getTotalMessages(), 0);
+                0L, 0L, 0L);
         org.openhab.core.ai.common.monitoring.api.Timing timing = new org.openhab.core.ai.common.monitoring.api.Timing(
                 0L);
 
-        long avgThroughput = getAverageThroughput();
-        return new ThroughputSnapshot(counts, timing, System.currentTimeMillis(), avgThroughput, avgThroughput,
-                avgThroughput, avgThroughput, 0, 100, 60); // Default values for missing data
+        return new ThroughputSnapshot(counts, timing, System.currentTimeMillis(), 0L, 0L, 0L, 0L, 0, 100, 60); // Default
+                                                                                                               // values
+                                                                                                               // for
+                                                                                                               // missing
+                                                                                                               // data
     }
 }

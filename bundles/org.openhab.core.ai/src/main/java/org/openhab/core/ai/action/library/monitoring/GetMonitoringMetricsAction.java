@@ -21,6 +21,8 @@ import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsResponseBuilder;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,48 +129,72 @@ public class GetMonitoringMetricsAction implements Action {
             Boolean includeNetworkMetrics = (Boolean) parameters.getOrDefault("includeNetworkMetrics", false);
             Boolean includeProcessMetrics = (Boolean) parameters.getOrDefault("includeProcessMetrics", true);
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("timestamp", Instant.now().toString());
+            // Create a metrics snapshot with all collected data
+            GenericMetricsSnapshot.Builder snapshotBuilder = GenericMetricsSnapshot.builder("monitoring",
+                    "get_metrics");
 
             // Collect system metrics
             if (includeSystemMetrics) {
-                result.put("systemMetrics", getSystemMetrics());
+                Map<String, Object> systemMetrics = getSystemMetrics();
+                for (Map.Entry<String, Object> entry : systemMetrics.entrySet()) {
+                    snapshotBuilder.withMetric("system_" + entry.getKey(), entry.getValue());
+                }
             }
 
             // Collect JVM metrics
             if (includeJvmMetrics) {
-                result.put("jvmMetrics", getJvmMetrics());
+                Map<String, Object> jvmMetrics = getJvmMetrics();
+                for (Map.Entry<String, Object> entry : jvmMetrics.entrySet()) {
+                    snapshotBuilder.withMetric("jvm_" + entry.getKey(), entry.getValue());
+                }
             }
 
             // Collect thread metrics
             if (includeThreadMetrics) {
-                result.put("threadMetrics", getThreadMetrics());
+                Map<String, Object> threadMetrics = getThreadMetrics();
+                for (Map.Entry<String, Object> entry : threadMetrics.entrySet()) {
+                    snapshotBuilder.withMetric("thread_" + entry.getKey(), entry.getValue());
+                }
             }
 
             // Collect disk metrics
             if (includeDiskMetrics) {
-                result.put("diskMetrics", getDiskMetrics());
+                Map<String, Object> diskMetrics = getDiskMetrics();
+                for (Map.Entry<String, Object> entry : diskMetrics.entrySet()) {
+                    snapshotBuilder.withMetric("disk_" + entry.getKey(), entry.getValue());
+                }
             }
 
             // Collect network metrics
             if (includeNetworkMetrics) {
-                result.put("networkMetrics", getNetworkMetrics());
+                Map<String, Object> networkMetrics = getNetworkMetrics();
+                for (Map.Entry<String, Object> entry : networkMetrics.entrySet()) {
+                    snapshotBuilder.withMetric("network_" + entry.getKey(), entry.getValue());
+                }
             }
 
             // Collect process metrics
             if (includeProcessMetrics) {
-                result.put("processMetrics", getProcessMetrics());
+                Map<String, Object> processMetrics = getProcessMetrics();
+                for (Map.Entry<String, Object> entry : processMetrics.entrySet()) {
+                    snapshotBuilder.withMetric("process_" + entry.getKey(), entry.getValue());
+                }
             }
 
-            result.put("message", "Monitoring metrics collected successfully");
-
+            // Add execution metadata
             long executionTime = System.currentTimeMillis() - startTime;
+            snapshotBuilder.withMetric("executionTimeMs", executionTime);
+            snapshotBuilder.withMetric("message", "Monitoring metrics collected successfully");
+
+            // Build the snapshot and create standardized response
+            GenericMetricsSnapshot snapshot = snapshotBuilder.build();
+            Map<String, Object> result = MetricsResponseBuilder.buildResponse(snapshot);
+
             logger.debug("Get monitoring metrics action completed in {}ms", executionTime);
 
             return ActionResult.success(result, executionTime);
 
         } catch (Exception e) {
-            long executionTime = System.currentTimeMillis() - startTime;
             logger.error("Failed to get monitoring metrics", e);
             throw new ActionException(ACTION_ID, "Failed to get monitoring metrics: " + e.getMessage(), e);
         }

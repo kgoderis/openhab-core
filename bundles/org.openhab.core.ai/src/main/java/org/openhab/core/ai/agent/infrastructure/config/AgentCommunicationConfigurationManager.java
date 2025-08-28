@@ -358,14 +358,6 @@ public class AgentCommunicationConfigurationManager {
     }
 
     /**
-     * Get configuration statistics
-     */
-    public ConfigurationStatistics getStatistics() {
-        return new ConfigurationStatistics(totalConfigurations.get(), successfulLoads.get(), failedLoads.get(),
-                hotReloads.get(), configurations.size(), templates.size(), presets.size(), versionHistory.size());
-    }
-
-    /**
      * Get configuration version history
      */
     public List<ConfigurationVersion> getVersionHistory(String configId) {

@@ -741,7 +741,11 @@ public class DefaultToolSecurityService implements ToolSecurityService {
         try {
             MetricsService metrics = metricsService;
             if (metrics != null) {
-                metrics.recordOperation(domain, operation, success, duration);
+                Map<String, Object> context = Map.of(
+                    "domain", domain,
+                    "operation", operation
+                );
+                metrics.recordOperationWithData(domain, operation, success, duration, context);
             } else {
                 logger.debug("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
                         operation);

@@ -255,7 +255,11 @@ public class ProgressTrackingManager implements ProgressService {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                metrics.recordOperation(domain, operation, success, Duration.ofNanos(durationNanos));
+                Map<String, Object> context = Map.of(
+                    "domain", domain,
+                    "operation", operation
+                );
+                metrics.recordOperationWithData(domain, operation, success, Duration.ofNanos(durationNanos), context);
             } catch (Exception e) {
                 LOGGER.warn("Failed to record progress tracking metrics for operation {} - {}: {}", domain, operation,
                         e.getMessage());

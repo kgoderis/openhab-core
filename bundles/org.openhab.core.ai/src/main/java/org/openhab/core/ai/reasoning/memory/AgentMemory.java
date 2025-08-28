@@ -17,10 +17,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.context.ReasoningContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.reasoning.learning.LearningEntry;
 import org.openhab.core.ai.reasoning.learning.LearningHistory;
 import org.openhab.core.ai.reasoning.memory.api.MemoryManager;
-import org.openhab.core.ai.reasoning.memory.api.MemoryPerformanceMetrics;
 import org.openhab.core.ai.reasoning.memory.api.MemorySearchResult;
 import org.openhab.core.ai.reasoning.patterns.PatternEntry;
 import org.openhab.core.ai.reasoning.session.MemoryReasoningSession;
@@ -29,6 +30,7 @@ import org.openhab.core.ai.reasoning.session.SessionContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +67,10 @@ public class AgentMemory implements MemoryManager {
     private final Map<String, SessionContext> sessionContexts = new ConcurrentHashMap<>();
     private final Map<String, LearningHistory> learningHistory = new ConcurrentHashMap<>();
 
-    // Performance monitoring
+    // Metrics service
+    private @Nullable MetricsService metricsService;
+    
+    // Performance monitoring (legacy - use MetricsService instead)
     private final AtomicLong totalMemoryStores = new AtomicLong(0);
     private final AtomicLong totalMemoryRetrievals = new AtomicLong(0);
     private final AtomicLong totalMemoryConsolidations = new AtomicLong(0);
@@ -84,6 +89,12 @@ public class AgentMemory implements MemoryManager {
     private boolean enableLearning = true;
     private boolean enablePatternRecognition = true;
 
+    @Reference
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService set for AgentMemory");
+    }
+
     @Activate
     public void activate() {
         logger.debug("Unified Agent Memory System activated");
@@ -94,6 +105,27 @@ public class AgentMemory implements MemoryManager {
     public void deactivate() {
         logger.debug("Unified Agent Memory System deactivated");
         cleanupMemory();
+    }
+
+    /**
+     * Record memory performance metrics using MetricsService.
+     * 
+     * @param operation the operation being performed
+     * @param success whether the operation was successful
+     * @param duration the duration of the operation
+     * @param context additional context data
+     */
+    private void recordMetrics(String operation, boolean success, Duration duration, Map<String, Object> context) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperationWithData("memory-performance", operation, success, duration, context);
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+            }
+        } catch (Exception e) {
+            logger.warn("Error recording memory performance metrics for operation {}: {}", operation, e.getMessage());
+        }
     }
 
     // ===== EXISTING MEMORY METHODS =====
@@ -265,11 +297,13 @@ public class AgentMemory implements MemoryManager {
     /**
      * Get memory performance metrics
      */
-    public MemoryPerformanceMetrics getPerformanceMetrics() {
-        return new MemoryPerformanceMetrics(totalMemoryStores.get() + totalMemoryRetrievals.get(),
-                shortTermMemories.size(), longTermMemories.size(), 0.0, // averageSearchTime - would need to track this
-                0.0 // averageStorageTime - would need to track this
-        );
+    public GenericMetricsSnapshot getPerformanceMetrics() {
+        return GenericMetricsSnapshot.builder("memory", "performance")
+                .withCounts(totalMemoryStores.get() + totalMemoryRetrievals.get(), totalMemoryStores.get())
+                .withMetric("shortTermMemories", shortTermMemories.size())
+                .withMetric("longTermMemories", longTermMemories.size())
+                .withMetric("totalMemoryStores", totalMemoryStores.get())
+                .withMetric("totalMemoryRetrievals", totalMemoryRetrievals.get()).build();
     }
 
     // ===== UNIFIED MEMORY ARCHITECTURE - NEW METHODS =====
@@ -640,17 +674,13 @@ public class AgentMemory implements MemoryManager {
     }
 
     @Override
-    public CompletableFuture<MemoryPerformanceMetrics> getPerformanceMetrics(String agentId) {
+    public CompletableFuture<GenericMetricsSnapshot> getPerformanceMetrics(String agentId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                MemoryPerformanceMetrics metrics = getPerformanceMetrics();
-                return new MemoryPerformanceMetrics(
-                        metrics.getTotalMemories() + metrics.getShortTermMemories() + metrics.getLongTermMemories(),
-                        metrics.getShortTermMemories(), metrics.getLongTermMemories(), metrics.getAverageSearchTime(),
-                        metrics.getAverageStorageTime());
+                return getPerformanceMetrics();
             } catch (Exception e) {
                 logger.error("Error getting performance metrics for agent: {}", agentId, e);
-                return new MemoryPerformanceMetrics(0, 0, 0, 0.0, 0.0);
+                return GenericMetricsSnapshot.builder("memory", "performance").withCounts(0, 0).build();
             }
         });
     }

@@ -3,17 +3,23 @@ package org.openhab.core.ai.tool.server.http;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsResponseBuilder;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.server.DefaultToolServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
@@ -53,75 +59,14 @@ public final class MetricsHandler implements HttpHandler {
         try {
             totalRequests.incrementAndGet();
 
-            long uptimeSeconds = (System.currentTimeMillis() - startTime) / 1000;
+            // Check if client wants JSON format (standardized) or Prometheus format
+            String acceptHeader = exchange.getRequestHeaders().getFirst("Accept");
+            boolean wantsJson = acceptHeader != null && acceptHeader.contains("application/json");
 
-            StringBuilder response = new StringBuilder();
-            response.append("# HELP mcp_requests_total Total number of requests\n");
-            response.append("# TYPE mcp_requests_total counter\n");
-            response.append("mcp_requests_total ").append(totalRequests.get()).append("\n");
-            response.append("# HELP mcp_errors_total Total number of errors\n");
-            response.append("# TYPE mcp_errors_total counter\n");
-            response.append("mcp_errors_total ").append(totalErrors.get()).append("\n");
-            response.append("# HELP mcp_uptime_seconds Uptime in seconds\n");
-            response.append("# TYPE mcp_uptime_seconds gauge\n");
-            response.append("mcp_uptime_seconds ").append(uptimeSeconds).append("\n");
-            response.append("# HELP mcp_server_healthy Server health status\n");
-            response.append("# TYPE mcp_server_healthy gauge\n");
-            response.append("mcp_server_healthy ").append(serverInstance.isHealthy() ? 1 : 0).append("\n");
-
-            if (serverInstance.isSecurityEnabled()) {
-                ToolSecurityStatistics securityStats = serverInstance.getSecurityStatistics();
-                if (securityStats != null) {
-                    response.append("# HELP mcp_security_total_requests Total number of security requests\n");
-                    response.append("# TYPE mcp_security_total_requests counter\n");
-                    response.append("mcp_security_total_requests ").append(securityStats.getTotalAccessAttempts())
-                            .append("\n");
-                    response.append("# HELP mcp_security_allowed_requests Number of allowed requests\n");
-                    response.append("# TYPE mcp_security_allowed_requests counter\n");
-                    response.append("mcp_security_allowed_requests ").append(securityStats.getAllowedAccessAttempts())
-                            .append("\n");
-                    response.append("# HELP mcp_security_denied_requests Number of denied requests\n");
-                    response.append("# TYPE mcp_security_denied_requests counter\n");
-                    response.append("mcp_security_denied_requests ").append(securityStats.getDeniedAccessAttempts())
-                            .append("\n");
-                }
-            }
-
-            if (serverInstance.isErrorRecoveryEnabled()) {
-                ErrorRecoveryStatistics errorStats = serverInstance.getErrorRecoveryStatistics();
-                if (errorStats != null) {
-                    response.append("# HELP mcp_recovery_attempts_total Total number of recovery attempts\n");
-                    response.append("# TYPE mcp_recovery_attempts_total counter\n");
-                    response.append("mcp_recovery_attempts_total ").append(errorStats.getTotalRecoveryAttempts())
-                            .append("\n");
-                    response.append("# HELP mcp_successful_recoveries_total Total number of successful recoveries\n");
-                    response.append("# TYPE mcp_successful_recoveries_total counter\n");
-                    response.append("mcp_successful_recoveries_total ").append(errorStats.getSuccessfulRecoveries())
-                            .append("\n");
-                    response.append("# HELP mcp_failed_recoveries_total Total number of failed recoveries\n");
-                    response.append("# TYPE mcp_failed_recoveries_total counter\n");
-                    response.append("mcp_failed_recoveries_total ").append(errorStats.getFailedRecoveries())
-                            .append("\n");
-                    double recoveryRate = errorStats.getTotalRecoveryAttempts() > 0
-                            ? (double) errorStats.getSuccessfulRecoveries() / errorStats.getTotalRecoveryAttempts()
-                            : 0.0;
-                    response.append("# HELP mcp_recovery_rate Recovery rate\n");
-                    response.append("# TYPE mcp_recovery_rate gauge\n");
-                    response.append("mcp_recovery_rate ").append(recoveryRate).append("\n");
-                }
-            }
-
-            byte[] responseBytes = response.toString().getBytes(StandardCharsets.UTF_8);
-            var headers = exchange.getResponseHeaders();
-            if (headers != null) {
-                headers.add("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
-            }
-            exchange.sendResponseHeaders(200, responseBytes.length);
-
-            try (OutputStream os = exchange.getResponseBody()) {
-                if (os != null) {
-                    os.write(responseBytes);
-                }
+            if (wantsJson) {
+                handleJsonMetrics(exchange);
+            } else {
+                handlePrometheusMetrics(exchange);
             }
 
         } catch (Exception e) {
@@ -130,5 +75,136 @@ public final class MetricsHandler implements HttpHandler {
             exchange.sendResponseHeaders(500, 0);
             exchange.close();
         }
+    }
+
+    /**
+     * Handle metrics request with standardized JSON response format.
+     */
+    private void handleJsonMetrics(HttpExchange exchange) throws IOException {
+        Map<String, Object> response;
+
+        if (metricsService != null) {
+            // Get metrics from MetricsService
+            List<MetricsSnapshot> snapshots = metricsService.getAllSnapshots(MetricsSnapshot.class);
+            if (snapshots.isEmpty()) {
+                // Create a snapshot from legacy data if no MetricsService data available
+                GenericMetricsSnapshot legacySnapshot = createLegacySnapshot();
+                response = MetricsResponseBuilder.buildResponse(legacySnapshot);
+            } else {
+                response = MetricsResponseBuilder.buildResponse(snapshots);
+            }
+        } else {
+            // Fallback to legacy data when MetricsService is not available
+            GenericMetricsSnapshot legacySnapshot = createLegacySnapshot();
+            response = MetricsResponseBuilder.buildResponse(legacySnapshot);
+        }
+
+        // Convert to JSON
+        ObjectMapper mapper = new ObjectMapper();
+        String jsonResponse = mapper.writeValueAsString(response);
+        byte[] responseBytes = jsonResponse.getBytes(StandardCharsets.UTF_8);
+
+        var headers = exchange.getResponseHeaders();
+        if (headers != null) {
+            headers.add("Content-Type", "application/json; charset=utf-8");
+        }
+        exchange.sendResponseHeaders(200, responseBytes.length);
+
+        try (OutputStream os = exchange.getResponseBody()) {
+            if (os != null) {
+                os.write(responseBytes);
+            }
+        }
+    }
+
+    /**
+     * Handle metrics request with Prometheus format (legacy support).
+     */
+    private void handlePrometheusMetrics(HttpExchange exchange) throws IOException {
+        long uptimeSeconds = (System.currentTimeMillis() - startTime) / 1000;
+
+        StringBuilder response = new StringBuilder();
+        response.append("# HELP mcp_requests_total Total number of requests\n");
+        response.append("# TYPE mcp_requests_total counter\n");
+        response.append("mcp_requests_total ").append(totalRequests.get()).append("\n");
+        response.append("# HELP mcp_errors_total Total number of errors\n");
+        response.append("# TYPE mcp_errors_total counter\n");
+        response.append("mcp_errors_total ").append(totalErrors.get()).append("\n");
+        response.append("# HELP mcp_uptime_seconds Uptime in seconds\n");
+        response.append("# TYPE mcp_uptime_seconds gauge\n");
+        response.append("mcp_uptime_seconds ").append(uptimeSeconds).append("\n");
+        response.append("# HELP mcp_server_healthy Server health status\n");
+        response.append("# TYPE mcp_server_healthy gauge\n");
+        response.append("mcp_server_healthy ").append(serverInstance.isHealthy() ? 1 : 0).append("\n");
+
+        if (serverInstance.isSecurityEnabled()) {
+            ToolSecurityStatistics securityStats = serverInstance.getSecurityStatistics();
+            if (securityStats != null) {
+                response.append("# HELP mcp_security_total_requests Total number of security requests\n");
+                response.append("# TYPE mcp_security_total_requests counter\n");
+                response.append("mcp_security_total_requests ").append(securityStats.getTotalAccessAttempts())
+                        .append("\n");
+                response.append("# HELP mcp_security_allowed_requests Number of allowed requests\n");
+                response.append("# TYPE mcp_security_allowed_requests counter\n");
+                response.append("mcp_security_allowed_requests ").append(securityStats.getAllowedAccessAttempts())
+                        .append("\n");
+                response.append("# HELP mcp_security_denied_requests Number of denied requests\n");
+                response.append("# TYPE mcp_security_denied_requests counter\n");
+                response.append("mcp_security_denied_requests ").append(securityStats.getDeniedAccessAttempts())
+                        .append("\n");
+            }
+        }
+
+        if (serverInstance.isErrorRecoveryEnabled()) {
+            ErrorRecoveryStatistics errorStats = serverInstance.getErrorRecoveryStatistics();
+            if (errorStats != null) {
+                response.append("# HELP mcp_recovery_attempts_total Total number of recovery attempts\n");
+                response.append("# TYPE mcp_recovery_attempts_total counter\n");
+                response.append("mcp_recovery_attempts_total ").append(errorStats.getTotalRecoveryAttempts())
+                        .append("\n");
+                response.append("# HELP mcp_successful_recoveries_total Total number of successful recoveries\n");
+                response.append("# TYPE mcp_successful_recoveries_total counter\n");
+                response.append("mcp_successful_recoveries_total ").append(errorStats.getSuccessfulRecoveries())
+                        .append("\n");
+                response.append("# HELP mcp_failed_recoveries_total Total number of failed recoveries\n");
+                response.append("# TYPE mcp_failed_recoveries_total counter\n");
+                response.append("mcp_failed_recoveries_total ").append(errorStats.getFailedRecoveries()).append("\n");
+                double recoveryRate = errorStats.getTotalRecoveryAttempts() > 0
+                        ? (double) errorStats.getSuccessfulRecoveries() / errorStats.getTotalRecoveryAttempts()
+                        : 0.0;
+                response.append("# HELP mcp_recovery_rate Recovery rate\n");
+                response.append("# TYPE mcp_recovery_rate gauge\n");
+                response.append("mcp_recovery_rate ").append(recoveryRate).append("\n");
+            }
+        }
+
+        byte[] responseBytes = response.toString().getBytes(StandardCharsets.UTF_8);
+        var headers = exchange.getResponseHeaders();
+        if (headers != null) {
+            headers.add("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
+        }
+        exchange.sendResponseHeaders(200, responseBytes.length);
+
+        try (OutputStream os = exchange.getResponseBody()) {
+            if (os != null) {
+                os.write(responseBytes);
+            }
+        }
+    }
+
+    /**
+     * Create a legacy snapshot from current server state when MetricsService data is not available.
+     */
+    private GenericMetricsSnapshot createLegacySnapshot() {
+        long uptimeSeconds = (System.currentTimeMillis() - startTime) / 1000;
+        long totalRequestsCount = totalRequests.get();
+        long totalErrorsCount = totalErrors.get();
+        long totalSuccess = totalRequestsCount - totalErrorsCount;
+
+        return GenericMetricsSnapshot.builder("tool-server", "metrics-endpoint")
+                .withCounts(totalRequestsCount, totalSuccess).withLatency(0L) // No timing data available in legacy mode
+                .withMetric("uptimeSeconds", uptimeSeconds).withMetric("serverHealthy", serverInstance.isHealthy())
+                .withMetric("securityEnabled", serverInstance.isSecurityEnabled())
+                .withMetric("errorRecoveryEnabled", serverInstance.isErrorRecoveryEnabled()).build();
     }
 }

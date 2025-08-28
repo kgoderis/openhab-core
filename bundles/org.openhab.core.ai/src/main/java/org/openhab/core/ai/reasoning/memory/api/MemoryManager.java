@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.reasoning.memory.MemoryConsolidationResult;
 import org.openhab.core.ai.reasoning.memory.MemoryStoreResult;
 
@@ -78,7 +79,7 @@ public interface MemoryManager {
      * @param agentId The agent identifier
      * @return A CompletableFuture containing the performance metrics
      */
-    CompletableFuture<MemoryPerformanceMetrics> getPerformanceMetrics(String agentId);
+    CompletableFuture<GenericMetricsSnapshot> getPerformanceMetrics(String agentId);
 
     /**
      * Clear all memories for an agent.

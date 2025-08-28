@@ -4,9 +4,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -14,8 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.service.snapshot.ModelCompletionSnapshot;
+import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentContext;
@@ -229,17 +232,19 @@ class MetricsServiceIntegrationTest {
 
         // When - Perform metrics operations while service is active
         metricsServiceImpl.recordOperation("test-domain", "test-operation", true, Duration.ofMillis(100));
-        metricsServiceImpl.recordModelCompletion("test-model", true, Duration.ofMillis(200), 100, 50, 0.01);
+        metricsServiceImpl.recordOperation("model", "completion").withSuccess(true)
+                .withDuration(Duration.ofMillis(200).toNanos()).withData("modelId", "test-model")
+                .withData("inputTokens", 100).withData("outputTokens", 50).withData("cost", 0.01).record();
 
         // Then
         assertTrue(metricsServiceImpl.isActive());
 
         // Verify operations were recorded
-        ModelCompletionSnapshot snapshot = metricsServiceImpl.getModelCompletionSnapshot("test-model");
+        GenericMetricsSnapshot snapshot = metricsServiceImpl.getSnapshot("model", "completion");
         assertNotNull(snapshot);
-        assertEquals(1, snapshot.counts().total());
-        assertEquals(1, snapshot.counts().success());
-        assertEquals(0, snapshot.counts().failure());
+        assertEquals(1, snapshot.getTotal());
+        assertEquals(1, snapshot.getSuccess());
+        assertEquals(0, snapshot.getFailure());
     }
 
     @Test
@@ -254,11 +259,13 @@ class MetricsServiceIntegrationTest {
         });
 
         assertThrows(IllegalStateException.class, () -> {
-            metricsServiceImpl.recordModelCompletion("test-model", true, Duration.ofMillis(200), 100, 50, 0.01);
+            metricsServiceImpl.recordOperation("model", "completion").withSuccess(true)
+                    .withDuration(Duration.ofMillis(200).toNanos()).withData("modelId", "test-model")
+                    .withData("inputTokens", 100).withData("outputTokens", 50).withData("cost", 0.01).record();
         });
 
         assertThrows(IllegalStateException.class, () -> {
-            metricsServiceImpl.getModelCompletionSnapshot("test-model");
+            metricsServiceImpl.getSnapshot("model", "completion");
         });
     }
 
@@ -275,11 +282,13 @@ class MetricsServiceIntegrationTest {
         });
 
         assertThrows(IllegalStateException.class, () -> {
-            metricsServiceImpl.recordModelCompletion("test-model", true, Duration.ofMillis(200), 100, 50, 0.01);
+            metricsServiceImpl.recordOperation("model", "completion").withSuccess(true)
+                    .withDuration(Duration.ofMillis(200).toNanos()).withData("modelId", "test-model")
+                    .withData("inputTokens", 100).withData("outputTokens", 50).withData("cost", 0.01).record();
         });
 
         assertThrows(IllegalStateException.class, () -> {
-            metricsServiceImpl.getModelCompletionSnapshot("test-model");
+            metricsServiceImpl.getSnapshot("model", "completion");
         });
     }
 
@@ -298,8 +307,10 @@ class MetricsServiceIntegrationTest {
                     for (int j = 0; j < 100; j++) {
                         metricsServiceImpl.recordOperation("domain-" + threadId, "operation-" + j, true,
                                 Duration.ofMillis(10));
-                        metricsServiceImpl.recordModelCompletion("model-" + threadId, true, Duration.ofMillis(20), 10,
-                                5, 0.001);
+                        metricsServiceImpl.recordOperation("model", "completion").withSuccess(true)
+                                .withDuration(Duration.ofMillis(20).toNanos()).withData("modelId", "model-" + threadId)
+                                .withData("inputTokens", 10).withData("outputTokens", 5).withData("cost", 0.001)
+                                .record();
                     }
                 });
             }
@@ -516,21 +527,92 @@ class MetricsServiceIntegrationTest {
         }
 
         @Override
-        public void recordModelCompletion(String modelId, boolean success, Duration duration, int inputTokens,
-                int outputTokens, double cost) {
+        public OperationRecorder recordOperation(String domain, String operation) {
             if (!active) {
                 throw new IllegalStateException("Service is not active");
             }
-            // Mock implementation
+            // Return a mock operation recorder
+            return new OperationRecorder(this, domain, operation);
         }
 
         @Override
-        public ModelCompletionSnapshot getModelCompletionSnapshot(String modelId) {
+        public <T extends MetricsSnapshot> T getSnapshot(MetricKey key, Class<T> snapshotType) {
             if (!active) {
                 throw new IllegalStateException("Service is not active");
             }
-            // Return a mock snapshot
-            return new ModelCompletionSnapshot(null, null, Instant.now().toEpochMilli(), 0L, 0.0);
+            return null;
+        }
+
+        @Override
+        public MetricsSnapshot getSnapshot(MetricKey key) {
+            if (!active) {
+                throw new IllegalStateException("Service is not active");
+            }
+            return null;
+        }
+
+        @Override
+        public <T extends MetricsSnapshot> List<T> getSnapshotsByCapability(Class<T> capabilityType) {
+            if (!active) {
+                throw new IllegalStateException("Service is not active");
+            }
+            return List.of();
+        }
+
+        @Override
+        public <T extends MetricsSnapshot> List<T> getSnapshotsByDomain(String domain, Class<T> snapshotType) {
+            if (!active) {
+                throw new IllegalStateException("Service is not active");
+            }
+            return List.of();
+        }
+
+        @Override
+        public <T extends org.openhab.core.ai.common.monitoring.service.statistics.StatisticsSnapshot> T getStatistics(
+                MetricKey key, Class<T> statisticsType, Duration timeRange) {
+            if (!active) {
+                throw new IllegalStateException("Service is not active");
+            }
+            return null;
+        }
+
+        @Override
+        public <T extends org.openhab.core.ai.common.monitoring.service.statistics.StatisticsSnapshot> List<T> getStatisticsByCapability(
+                Class<T> capabilityType, Duration timeRange) {
+            if (!active) {
+                throw new IllegalStateException("Service is not active");
+            }
+            return List.of();
+        }
+
+        @Override
+        public <T extends org.openhab.core.ai.common.monitoring.service.statistics.StatisticsSnapshot> List<T> getStatisticsByDomain(
+                String domain, Class<T> statisticsType, Duration timeRange) {
+            if (!active) {
+                throw new IllegalStateException("Service is not active");
+            }
+            return List.of();
+        }
+
+        @Override
+        public GenericMetricsSnapshot getSnapshot(String domain, String operation) {
+            if (!active) {
+                throw new IllegalStateException("Service is not active");
+            }
+            Map<String, Object> metrics = new HashMap<>();
+            metrics.put("total", 1L);
+            metrics.put("success", 1L);
+            metrics.put("failure", 0L);
+            metrics.put("totalDurationNanos", 100_000_000L);
+            return new GenericMetricsSnapshot(domain, operation, metrics);
+        }
+
+        @Override
+        public <T extends MetricsSnapshot> List<T> getAllSnapshots(Class<T> snapshotType) {
+            if (!active) {
+                throw new IllegalStateException("Service is not active");
+            }
+            return List.of();
         }
     }
 }

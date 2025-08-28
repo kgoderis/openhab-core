@@ -226,11 +226,19 @@ public class ProgressInfo {
     /**
      * Get progress metrics.
      * 
-     * @return progress metrics
+     * @return progress metrics as a map
+     * @deprecated Use MetricsService.getStatistics() directly instead
      */
-    public ProgressMetrics getMetrics() {
-        return new ProgressMetrics(currentStep, totalSteps, getProgressPercentage(), isCompleted(), timestamp,
-                System.currentTimeMillis());
+    @Deprecated
+    public Map<String, Object> getMetrics() {
+        return Map.of(
+            "currentStep", currentStep,
+            "totalSteps", totalSteps,
+            "progressPercentage", getProgressPercentage(),
+            "isCompleted", isCompleted(),
+            "timestamp", timestamp,
+            "timestampMs", System.currentTimeMillis()
+        );
     }
 
     /**

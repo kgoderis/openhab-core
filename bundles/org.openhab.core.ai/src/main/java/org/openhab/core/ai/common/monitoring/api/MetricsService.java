@@ -1,11 +1,13 @@
 package org.openhab.core.ai.common.monitoring.api;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.service.OperationRecorder;
+import org.openhab.core.ai.common.monitoring.service.snapshot.DomainAggregatedSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 
 /**
@@ -149,4 +151,38 @@ public interface MetricsService {
      * @return list of snapshots
      */
     <T extends MetricsSnapshot> List<T> getAllSnapshots(Class<T> snapshotType);
+
+    // ===== Phase 4: Advanced Features - Aggregation and Filtering =====
+
+    /**
+     * Get aggregated metrics across multiple operations.
+     * 
+     * @param <T> the snapshot type
+     * @param domain the domain to aggregate
+     * @param snapshotType the snapshot class
+     * @return list of aggregated snapshots
+     */
+    <T extends MetricsSnapshot> List<T> getAggregatedSnapshots(String domain, Class<T> snapshotType);
+
+    /**
+     * Get metrics within time range.
+     * 
+     * @param <T> the snapshot type
+     * @param domain the domain to filter
+     * @param operation the operation to filter
+     * @param snapshotType the snapshot class
+     * @param start the start time
+     * @param end the end time
+     * @return list of snapshots within the time range
+     */
+    <T extends MetricsSnapshot> List<T> getSnapshotsInRange(String domain, String operation, Class<T> snapshotType,
+            Instant start, Instant end);
+
+    /**
+     * Get domain-wide aggregated metrics.
+     * 
+     * @param domain the domain to aggregate
+     * @return domain aggregated snapshot
+     */
+    DomainAggregatedSnapshot getDomainAggregatedSnapshot(String domain);
 }

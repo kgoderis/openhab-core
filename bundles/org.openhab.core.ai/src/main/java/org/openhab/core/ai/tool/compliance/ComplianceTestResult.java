@@ -324,10 +324,21 @@ public class ComplianceTestResult {
      * Get compliance test metrics for this result.
      * 
      * @return compliance test metrics
+     * @deprecated Use MetricsService to get ComplianceTestStatistics instead
      */
-    public ComplianceTestMetrics getMetrics() {
-        return new ComplianceTestMetrics(testId, category, passed, durationMs, failures.size(), warnings.size(),
-                details.size(), timestamp);
+    @Deprecated
+    public Object getMetrics() {
+        // Return a simple map instead of the deleted value object
+        return Map.of(
+            "testId", testId,
+            "category", category,
+            "passed", passed,
+            "durationMs", durationMs,
+            "failureCount", failures.size(),
+            "warningCount", warnings.size(),
+            "detailCount", details.size(),
+            "timestamp", timestamp
+        );
     }
 
     // ===== INNER CLASSES =====

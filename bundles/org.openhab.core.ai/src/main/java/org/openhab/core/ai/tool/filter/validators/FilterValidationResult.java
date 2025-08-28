@@ -211,10 +211,18 @@ public class FilterValidationResult {
      * Get filter validation metrics for this result.
      * 
      * @return filter validation metrics
+     * @deprecated Use MetricsService.getStatistics(FilterValidationStatistics.class) instead
      */
-    public FilterValidationMetrics getMetrics() {
-        return new FilterValidationMetrics(valid, errors.size(), warnings.size(), details.size(),
-                System.currentTimeMillis());
+    @Deprecated
+    public Object getMetrics() {
+        // Return a simple map instead of the deleted value object
+        return Map.of(
+            "valid", valid,
+            "errorCount", errors.size(),
+            "warningCount", warnings.size(),
+            "detailCount", details.size(),
+            "timestamp", System.currentTimeMillis()
+        );
     }
 
     // ===== INNER CLASSES =====

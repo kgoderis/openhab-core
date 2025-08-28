@@ -5,11 +5,6 @@ import java.time.Duration;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-
-import org.openhab.core.ai.common.monitoring.service.statistics.MessageLatencyStatistics;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import java.util.Map;
-import java.util.Set;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,13 +48,6 @@ public class MessageLatencyMetrics {
         }
     }
 
-    public @Nullable Duration getAverageLatency() {
-        // Get average latency from StatisticsFactory - centralized only approach
-        MessageLatencyStatistics statistics = getStatistics();
-        double avgLatencyMs = statistics.communicationLatency();
-        return avgLatencyMs > 0 ? Duration.ofMillis((long) avgLatencyMs) : null;
-    }
-
     public String getAgentId() {
         return agentId;
     }
@@ -74,42 +62,4 @@ public class MessageLatencyMetrics {
      * 
      * @return message latency statistics from StatisticsFactory, or empty statistics if service unavailable
      */
-    public MessageLatencyStatistics getStatistics() {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                // Use MetricKeys for standardized key generation
-                var metricKey = MetricKeys.custom("message-latency", Map.of("agentId", agentId),
-                        Set.of("latency", "counts"));
-                
-                // Get statistics using StatisticsFactory instead of creating snapshots directly
-                return metrics.getStatistics(metricKey, MessageLatencyStatistics.class, java.time.Duration.ofHours(24));
-            } catch (Exception e) {
-                logger.warn("Failed to retrieve message latency statistics for agent {}: {}", agentId, e.getMessage());
-                // Graceful degradation - return empty statistics if MetricsService fails
-            }
-        } else {
-            logger.debug("MetricsService not available, returning empty message latency statistics for agent {}", agentId);
-        }
-        return MessageLatencyStatistics.empty(agentId);
-    }
-
-    /**
-     * Get total message count from the statistics.
-     * 
-     * @return total message count
-     */
-    public long getTotalMessages() {
-        return getStatistics().total();
-    }
-
-    /**
-     * Get message throughput from the statistics.
-     * 
-     * @return message throughput per second from StatisticsFactory
-     */
-    public double getThroughput() {
-        MessageLatencyStatistics statistics = getStatistics();
-        return statistics.messageThroughput();
-    }
 }

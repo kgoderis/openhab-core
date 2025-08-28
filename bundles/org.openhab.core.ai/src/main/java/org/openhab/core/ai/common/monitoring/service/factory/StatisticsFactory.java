@@ -22,6 +22,8 @@ import org.openhab.core.ai.common.monitoring.service.snapshot.HttpTransportSnaps
 import org.openhab.core.ai.common.monitoring.service.snapshot.NotificationSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.OpenHABPersistenceSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.TaskSnapshot;
+import org.openhab.core.ai.agent.lifecycle.AgentSnapshot;
+import org.openhab.core.ai.agent.lifecycle.AgentStatistics;
 import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
 import org.openhab.core.ai.common.monitoring.service.statistics.AgentPersistenceStatistics;
 import org.openhab.core.ai.common.monitoring.service.statistics.AuditStatistics;
@@ -46,9 +48,16 @@ import org.openhab.core.ai.common.monitoring.service.statistics.ToolFileReadStat
 import org.openhab.core.ai.common.monitoring.service.statistics.TransportStatistics;
 import org.openhab.core.ai.common.monitoring.service.statistics.ValidationStatistics;
 import org.openhab.core.ai.common.monitoring.snapshot.ProviderResourceStatistics;
+import org.openhab.core.ai.common.monitoring.snapshot.SecurityFilterSnapshot;
+import org.openhab.core.ai.common.monitoring.snapshot.SecurityFilterStatistics;
 import org.openhab.core.ai.common.monitoring.statistics.ThroughputStatistics;
 import org.openhab.core.ai.common.security.MessageSecurityStatistics;
+import org.openhab.core.ai.tool.filter.validators.FilterValidatorSnapshot;
+import org.openhab.core.ai.tool.filter.validators.FilterValidatorStatistics;
 import org.openhab.core.ai.tool.monitoring.MonitoringStatistics;
+import org.openhab.core.ai.agent.lifecycle.DefaultAgentSnapshot;
+import org.openhab.core.ai.agent.lifecycle.DefaultAgentStatistics;
+import org.openhab.core.ai.common.security.SecuritySnapshot;
 
 /**
  * Factory for creating statistics from metrics snapshots with capability validation.
@@ -107,6 +116,8 @@ public final class StatisticsFactory {
             return (T) createToolFileReadStatistics(filteredSnapshots, timeRange);
         } else if (statisticsType == AgentBehaviorStatistics.class) {
             return (T) createAgentBehaviorStatistics(filteredSnapshots, timeRange);
+        } else if (statisticsType == AgentStatistics.class) {
+            return (T) createAgentStatistics(filteredSnapshots, timeRange);
         } else if (statisticsType == AgentPersistenceStatistics.class) {
             return (T) createAgentPersistenceStatistics(filteredSnapshots, timeRange);
         } else if (statisticsType == OpenHABPersistenceStatistics.class) {
@@ -138,6 +149,10 @@ public final class StatisticsFactory {
             return (T) createConfigurationStatistics(filteredSnapshots, timeRange);
         } else if (statisticsType == ValidationStatistics.class) {
             return (T) createValidationStatistics(filteredSnapshots, timeRange);
+        } else if (statisticsType == FilterValidatorStatistics.class) {
+            return (T) createFilterValidatorStatistics(filteredSnapshots, timeRange);
+        } else if (statisticsType == DefaultAgentStatistics.class) {
+            return (T) createDefaultAgentStatistics(filteredSnapshots, timeRange);
         } else if (statisticsType == ProviderResourceStatistics.class) {
             return (T) createProviderResourceStatistics(filteredSnapshots, timeRange);
         } else if (statisticsType == MessagingStatistics.class) {
@@ -156,6 +171,8 @@ public final class StatisticsFactory {
             return (T) createNotificationStatistics(filteredSnapshots, timeRange);
         } else if (statisticsType == CardBuildingStatistics.class) {
             return (T) createCardBuildingStatistics(filteredSnapshots, timeRange);
+        } else if (statisticsType == SecurityFilterStatistics.class) {
+            return (T) createSecurityFilterStatistics(filteredSnapshots, timeRange);
             // Enhanced metrics support - using MonitoringStatistics as base for new types
         } else if (statisticsType.getSimpleName().contains("Configuration")
                 || statisticsType.getSimpleName().contains("EventProcessing")
@@ -212,6 +229,16 @@ public final class StatisticsFactory {
         return new AgentBehaviorStatistics(agentSnapshots, timeRange, System.currentTimeMillis());
     }
 
+    private static AgentStatistics createAgentStatistics(List<MetricsSnapshot> snapshots, Duration timeRange) {
+        // Convert snapshots to AgentSnapshot if needed
+        List<AgentSnapshot> agentSnapshots = snapshots.stream()
+                .filter(s -> s instanceof AgentSnapshot)
+                .map(s -> (AgentSnapshot) s)
+                .collect(Collectors.toList());
+
+        return AgentStatistics.of(agentSnapshots, timeRange);
+    }
+
     private static AgentPersistenceStatistics createAgentPersistenceStatistics(List<MetricsSnapshot> snapshots,
             Duration timeRange) {
 
@@ -238,51 +265,39 @@ public final class StatisticsFactory {
         Map<String, Long> integrationHealthCounts = new HashMap<>();
 
         for (MetricsSnapshot snapshot : snapshots) {
-            if (snapshot == null) continue;
+            if (snapshot == null)
+                continue;
 
             // Extract enhanced persistence metrics from context data
             // This would come from the enhanced metric recording in AgentPersistenceManager
             totalOperations++;
-            
+
             // Simulate enhanced metrics extraction (in real implementation, these would come from context data)
             // Task lifecycle events
             totalTaskCreations += 1; // Would extract from context: "taskCreations"
             totalTaskActivations += 1; // Would extract from context: "taskActivations"
             totalTaskCompletions += 1; // Would extract from context: "taskCompletions"
             totalTaskCancellations += 0; // Would extract from context: "taskCancellations"
-            
+
             // Active task count
             totalActiveTasks += 1; // Would extract from context: "activeTaskCount"
-            
+
             // Service availability
             totalServiceAvailabilityEvents += 1; // Would extract from context: "serviceAvailabilityEvents"
-            
+
             // Integration health
             totalIntegrationHealthChanges += 1; // Would extract from context: "integrationHealthChanges"
-            
+
             successfulOperations++;
             totalDurationNanos += 2000000; // 2ms in nanoseconds
         }
 
         // Create enhanced agent persistence statistics
-        return new AgentPersistenceStatistics(
-            totalOperations,
-            successfulOperations,
-            failedOperations,
-            totalDurationNanos,
-            totalTaskCreations,
-            totalTaskActivations,
-            totalTaskCompletions,
-            totalTaskCancellations,
-            totalActiveTasks,
-            totalServiceAvailabilityEvents,
-            totalIntegrationHealthChanges,
-            taskLifecycleCounts,
-            serviceStatusCounts,
-            integrationHealthCounts,
-            timeRange,
-            System.currentTimeMillis()
-        );
+        return new AgentPersistenceStatistics(totalOperations, successfulOperations, failedOperations,
+                totalDurationNanos, totalTaskCreations, totalTaskActivations, totalTaskCompletions,
+                totalTaskCancellations, totalActiveTasks, totalServiceAvailabilityEvents, totalIntegrationHealthChanges,
+                taskLifecycleCounts, serviceStatusCounts, integrationHealthCounts, timeRange,
+                System.currentTimeMillis());
     }
 
     private static OpenHABPersistenceStatistics createOpenHABPersistenceStatistics(List<MetricsSnapshot> snapshots,
@@ -492,55 +507,42 @@ public final class StatisticsFactory {
         Map<String, Long> fileDiscoveryCounts = new HashMap<>();
 
         for (MetricsSnapshot snapshot : snapshots) {
-            if (snapshot == null) continue;
+            if (snapshot == null)
+                continue;
 
             // Extract enhanced configuration metrics from context data
             // This would come from the enhanced metric recording in DefaultConfigurationManager
             totalOperations++;
-            
+
             // Simulate enhanced metrics extraction (in real implementation, these would come from context data)
             // Cache operations
             totalCacheHits += 1; // Would extract from context: "cacheHits"
             totalCacheMisses += 0; // Would extract from context: "cacheMisses"
-            
+
             // Reload events
             totalReloadEvents += 1; // Would extract from context: "reloadEvents"
-            
+
             // File discovery
             totalYamlFileCount += 2; // Would extract from context: "yamlFileCount"
             totalEnvironmentVariableCount += 5; // Would extract from context: "envVarCount"
-            
+
             // Cache size changes
             totalCacheSizeChanges += 1; // Would extract from context: "cacheSizeChanges"
-            
+
             successfulOperations++;
             totalDurationNanos += 1000000; // 1ms in nanoseconds
         }
 
         // Calculate cache hit rate
-        double cacheHitRate = (totalCacheHits + totalCacheMisses) > 0 
-            ? (double) totalCacheHits / (totalCacheHits + totalCacheMisses) * 100.0 
-            : 0.0;
+        double cacheHitRate = (totalCacheHits + totalCacheMisses) > 0
+                ? (double) totalCacheHits / (totalCacheHits + totalCacheMisses) * 100.0
+                : 0.0;
 
         // Create enhanced configuration statistics
-        return new ConfigurationStatistics(
-            totalOperations,
-            successfulOperations, 
-            failedOperations,
-            totalDurationNanos,
-            totalCacheHits,
-            totalCacheMisses,
-            cacheHitRate,
-            totalReloadEvents,
-            totalYamlFileCount,
-            totalEnvironmentVariableCount,
-            totalCacheSizeChanges,
-            cacheHitRates,
-            reloadEventCounts,
-            fileDiscoveryCounts,
-            timeRange,
-            System.currentTimeMillis()
-        );
+        return new ConfigurationStatistics(totalOperations, successfulOperations, failedOperations, totalDurationNanos,
+                totalCacheHits, totalCacheMisses, cacheHitRate, totalReloadEvents, totalYamlFileCount,
+                totalEnvironmentVariableCount, totalCacheSizeChanges, cacheHitRates, reloadEventCounts,
+                fileDiscoveryCounts, timeRange, System.currentTimeMillis());
     }
 
     private static ValidationStatistics createValidationStatistics(List<MetricsSnapshot> snapshots,
@@ -602,24 +604,25 @@ public final class StatisticsFactory {
         Map<String, Long> resourceUtilizationPatterns = new HashMap<>();
 
         for (MetricsSnapshot snapshot : snapshots) {
-            if (snapshot == null) continue;
+            if (snapshot == null)
+                continue;
 
             // Extract enhanced resource metrics from context data
             // This would come from the enhanced metric recording in ProviderResourceUsage
             totalOperations++;
-            
+
             // Simulate enhanced metrics extraction (in real implementation, these would come from context data)
             // Time-series memory/CPU data
             double cpuUsage = 25.0 + (Math.random() * 50.0); // Simulate 25-75% CPU usage
             double memoryUsage = 30.0 + (Math.random() * 40.0); // Simulate 30-70% memory usage
-            
+
             totalCpuUsage += cpuUsage;
             totalMemoryUsage += memoryUsage;
-            
+
             // Peak detection from historical data
             peakCpuUsage = Math.max(peakCpuUsage, cpuUsage);
             peakMemoryUsage = Math.max(peakMemoryUsage, memoryUsage);
-            
+
             // Resource constraint violations
             if (cpuUsage > 80.0) {
                 resourceConstraintViolations.merge("highCpuUsage", 1L, Long::sum);
@@ -627,7 +630,7 @@ public final class StatisticsFactory {
             if (memoryUsage > 85.0) {
                 resourceConstraintViolations.merge("highMemoryUsage", 1L, Long::sum);
             }
-            
+
             successfulOperations++;
             totalDurationNanos += 5000000; // 5ms in nanoseconds
         }
@@ -636,23 +639,18 @@ public final class StatisticsFactory {
         double avgCpuUsage = totalSamples > 0 ? totalCpuUsage / totalSamples : 0.0;
         double avgMemoryUsage = totalSamples > 0 ? totalMemoryUsage / totalSamples : 0.0;
 
-        return ProviderResourceStatistics.builder(providerId)
-                .withTotalSamples(totalSamples)
-                .withTimeWindow(timeRange.toMillis())
-                .withAverageCpuUsage(avgCpuUsage)
-                .withAverageMemoryUsage(avgMemoryUsage)
-                .withPeakCpuUsage(peakCpuUsage)
-                .withPeakMemoryUsage(peakMemoryUsage)
-                .withTotalOperations(totalOperations)
-                .withSuccessfulOperations(successfulOperations)
-                .withFailedOperations(failedOperations)
+        return ProviderResourceStatistics.builder(providerId).withTotalSamples(totalSamples)
+                .withTimeWindow(timeRange.toMillis()).withAverageCpuUsage(avgCpuUsage)
+                .withAverageMemoryUsage(avgMemoryUsage).withPeakCpuUsage(peakCpuUsage)
+                .withPeakMemoryUsage(peakMemoryUsage).withTotalOperations(totalOperations)
+                .withSuccessfulOperations(successfulOperations).withFailedOperations(failedOperations)
                 .withTotalDurationNanos(totalDurationNanos)
                 .withResourceConstraintViolations(resourceConstraintViolations)
-                .withResourceUtilizationPatterns(resourceUtilizationPatterns)
-                .build();
+                .withResourceUtilizationPatterns(resourceUtilizationPatterns).build();
     }
 
-    private static MonitoringStatistics createEventProcessingStatistics(List<MetricsSnapshot> snapshots, Duration timeRange) {
+    private static MonitoringStatistics createEventProcessingStatistics(List<MetricsSnapshot> snapshots,
+            Duration timeRange) {
 
         // Process enhanced event processing metrics from snapshots:
         // - Queue operation events (enqueue, dequeue, overflow)
@@ -677,34 +675,35 @@ public final class StatisticsFactory {
         double peakQueueSize = 0.0;
 
         for (MetricsSnapshot snapshot : snapshots) {
-            if (snapshot == null) continue;
+            if (snapshot == null)
+                continue;
 
             // Extract enhanced event processing metrics from context data
             // This would come from the enhanced metric recording in EventProcessingAnalytics
             totalOperations++;
-            
+
             // Simulate enhanced metrics extraction (in real implementation, these would come from context data)
             // Queue operations
             totalEnqueueEvents += 1; // Would extract from context: "enqueueEvents"
             totalDequeueEvents += 1; // Would extract from context: "dequeueEvents"
             totalOverflowEvents += 0; // Would extract from context: "overflowEvents"
-            
+
             // Event drops
             totalDroppedEvents += 0; // Would extract from context: "droppedEvents"
-            
+
             // Queue size tracking
             double queueSize = 10.0 + (Math.random() * 50.0); // Simulate 10-60 queue size
             totalQueueSize += queueSize;
             peakQueueSize = Math.max(peakQueueSize, queueSize);
             totalQueueSizeSamples++;
-            
+
             // Queue utilization patterns
             if (queueSize > 40.0) {
                 queueUtilizationPatterns.merge("highUtilization", 1L, Long::sum);
             } else if (queueSize < 10.0) {
                 queueUtilizationPatterns.merge("lowUtilization", 1L, Long::sum);
             }
-            
+
             successfulOperations++;
             totalDurationNanos += 1000000; // 1ms in nanoseconds
         }
@@ -712,30 +711,18 @@ public final class StatisticsFactory {
         // Calculate queue utilization metrics
         double averageQueueSize = totalQueueSizeSamples > 0 ? totalQueueSize / totalQueueSizeSamples : 0.0;
         double queueUtilizationRate = peakQueueSize > 0 ? (averageQueueSize / peakQueueSize) * 100.0 : 0.0;
-        double dropRate = (totalEnqueueEvents + totalDroppedEvents) > 0 
-            ? (double) totalDroppedEvents / (totalEnqueueEvents + totalDroppedEvents) * 100.0 
-            : 0.0;
+        double dropRate = (totalEnqueueEvents + totalDroppedEvents) > 0
+                ? (double) totalDroppedEvents / (totalEnqueueEvents + totalDroppedEvents) * 100.0
+                : 0.0;
 
         // Create enhanced event processing statistics using MonitoringStatistics as base
-        return new MonitoringStatistics(
-            "event-processing",
-            totalOperations,
-            successfulOperations,
-            failedOperations,
-            totalDurationNanos,
-            Map.of(
-                "totalEnqueueEvents", totalEnqueueEvents,
-                "totalDequeueEvents", totalDequeueEvents,
-                "totalOverflowEvents", totalOverflowEvents,
-                "totalDroppedEvents", totalDroppedEvents,
-                "averageQueueSize", (long) averageQueueSize,
-                "peakQueueSize", (long) peakQueueSize,
-                "queueUtilizationRate", (long) queueUtilizationRate,
-                "dropRate", (long) dropRate
-            ),
-            timeRange,
-            System.currentTimeMillis()
-        );
+        return new MonitoringStatistics("event-processing", totalOperations, successfulOperations, failedOperations,
+                totalDurationNanos,
+                Map.of("totalEnqueueEvents", totalEnqueueEvents, "totalDequeueEvents", totalDequeueEvents,
+                        "totalOverflowEvents", totalOverflowEvents, "totalDroppedEvents", totalDroppedEvents,
+                        "averageQueueSize", (long) averageQueueSize, "peakQueueSize", (long) peakQueueSize,
+                        "queueUtilizationRate", (long) queueUtilizationRate, "dropRate", (long) dropRate),
+                timeRange, System.currentTimeMillis());
     }
 
     private static MessagingStatistics createMessagingStatistics(List<MetricsSnapshot> snapshots, Duration timeRange) {
@@ -830,6 +817,15 @@ public final class StatisticsFactory {
                 .collect(Collectors.toList());
 
         return new CardBuildingStatistics(cardSnapshots, timeRange, System.currentTimeMillis());
+    }
+
+    private static SecurityFilterStatistics createSecurityFilterStatistics(List<MetricsSnapshot> snapshots,
+            Duration timeRange) {
+        List<SecurityFilterSnapshot> filterSnapshots = snapshots.stream().filter(Objects::nonNull)
+                .filter(s -> s instanceof SecurityFilterSnapshot).map(s -> (SecurityFilterSnapshot) s)
+                .collect(Collectors.toList());
+
+        return new SecurityFilterStatistics(filterSnapshots, timeRange, System.currentTimeMillis());
     }
 
     // ===== Enhanced Statistics Creation Methods =====
@@ -1190,6 +1186,9 @@ public final class StatisticsFactory {
         if (statisticsType == AgentBehaviorStatistics.class) {
             return capabilities.contains("behavior-stats");
         }
+        if (statisticsType == AgentStatistics.class) {
+            return capabilities.contains("agent-stats");
+        }
         if (statisticsType == AgentPersistenceStatistics.class) {
             return capabilities.contains("persistence-stats");
         }
@@ -1254,6 +1253,14 @@ public final class StatisticsFactory {
             return capabilities.contains("card-building-stats") || capabilities.contains("counts")
                     || capabilities.contains("latency");
         }
+        if (statisticsType == SecurityFilterStatistics.class) {
+            return capabilities.contains("security-filter-stats") || capabilities.contains("counts")
+                    || capabilities.contains("security");
+        }
+        if (statisticsType == FilterValidatorStatistics.class) {
+            return capabilities.contains("filter-validator-stats") || capabilities.contains("counts")
+                    || capabilities.contains("validation");
+        }
         // Enhanced metrics support - checking for new statistics types by name
         if (statisticsType.getSimpleName().contains("Configuration")
                 || statisticsType.getSimpleName().contains("EventProcessing")
@@ -1262,8 +1269,77 @@ public final class StatisticsFactory {
             return capabilities.contains("monitoring") || capabilities.contains("counts")
                     || capabilities.contains("latency");
         }
+        if (statisticsType == DefaultAgentStatistics.class) {
+            return capabilities.contains("default-agent-stats") || capabilities.contains("counts")
+                    || capabilities.contains("latency");
+        }
 
         // Default to compatible for unknown types
         return true;
+    }
+
+    /**
+     * Create FilterValidatorStatistics from snapshots.
+     * 
+     * @param snapshots the metrics snapshots
+     * @param timeRange the time range for statistics
+     * @return FilterValidatorStatistics instance
+     */
+    private static FilterValidatorStatistics createFilterValidatorStatistics(List<MetricsSnapshot> snapshots,
+            Duration timeRange) {
+        List<FilterValidatorSnapshot> filterSnapshots = snapshots.stream().filter(Objects::nonNull)
+                .filter(s -> s instanceof FilterValidatorSnapshot).map(s -> (FilterValidatorSnapshot) s)
+                .collect(Collectors.toList());
+
+        if (filterSnapshots.isEmpty()) {
+            return FilterValidatorStatistics.empty();
+        }
+
+        // Calculate trends
+        double validationTrend = calculateTrend(filterSnapshots, s -> (double) s.total());
+        double successTrend = calculateTrend(filterSnapshots, s -> s.validationSuccessRate());
+        double latencyTrend = calculateTrend(filterSnapshots, s -> s.validationLatency());
+        double cacheEfficiencyTrend = calculateTrend(filterSnapshots, s -> s.cacheEfficiency());
+
+        // Calculate percentiles
+        List<Double> latencies = filterSnapshots.stream().mapToDouble(s -> s.validationLatency()).boxed()
+                .collect(Collectors.toList());
+        double p50LatencyMs = calculatePercentile(latencies, 50.0);
+        double p95LatencyMs = calculatePercentile(latencies, 95.0);
+        double p99LatencyMs = calculatePercentile(latencies, 99.0);
+        double maxLatencyMs = latencies.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+        double minLatencyMs = latencies.stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
+
+        // Get recent data (last 10 snapshots)
+        List<Double> recentSuccessRates = filterSnapshots.stream().limit(10).mapToDouble(s -> s.validationSuccessRate())
+                .boxed().collect(Collectors.toList());
+        List<Double> recentLatencies = filterSnapshots.stream().limit(10).mapToDouble(s -> s.validationLatency())
+                .boxed().collect(Collectors.toList());
+        List<Double> recentCacheHitRates = filterSnapshots.stream().limit(10)
+                .mapToDouble(s -> s.cacheHitRatePercentage()).boxed().collect(Collectors.toList());
+
+        return FilterValidatorStatistics.of(validationTrend, successTrend, latencyTrend, cacheEfficiencyTrend,
+                p50LatencyMs, p95LatencyMs, p99LatencyMs, maxLatencyMs, minLatencyMs, recentSuccessRates,
+                recentLatencies, recentCacheHitRates);
+    }
+
+    /**
+     * Create DefaultAgentStatistics from a list of DefaultAgentSnapshot instances.
+     * 
+     * @param snapshots the list of snapshots
+     * @param timeRange the time range covered
+     * @return DefaultAgentStatistics instance
+     */
+    private DefaultAgentStatistics createDefaultAgentStatistics(List<MetricsSnapshot> snapshots, Duration timeRange) {
+        List<DefaultAgentSnapshot> defaultAgentSnapshots = snapshots.stream()
+                .filter(DefaultAgentSnapshot.class::isInstance)
+                .map(DefaultAgentSnapshot.class::cast)
+                .collect(Collectors.toList());
+
+        if (defaultAgentSnapshots.isEmpty()) {
+            return DefaultAgentStatistics.of(List.of(), timeRange);
+        }
+
+        return DefaultAgentStatistics.of(defaultAgentSnapshots, timeRange);
     }
 }

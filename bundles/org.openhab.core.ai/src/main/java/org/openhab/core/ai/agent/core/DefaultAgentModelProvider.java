@@ -3,7 +3,6 @@ package org.openhab.core.ai.agent.core;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
-
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,7 +18,6 @@ import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.common.monitoring.api.HealthStatus;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelTrackingService;
@@ -294,8 +292,6 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
         // This could include content safety checks, format validation, etc.
         return response != null && response.getContent() != null;
     }
-
-
 
     @Override
     public HealthMetrics getHealthStatus() {

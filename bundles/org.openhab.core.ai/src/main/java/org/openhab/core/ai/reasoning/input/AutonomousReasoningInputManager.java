@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.validation.InputValidationResult;
 import org.openhab.core.ai.events.EventSystemIntegration;
 import org.openhab.core.ai.events.LogEntry;
@@ -613,10 +614,14 @@ public class AutonomousReasoningInputManager {
     /**
      * Get performance metrics
      */
-    public InputPerformanceMetrics getPerformanceMetrics() {
-        return new InputPerformanceMetrics(totalInputsProcessed.get(), totalBatchesCreated.get(),
-                totalInputsRouted.get(), totalProcessingTime.get(), inputQueue.size(), activeInputs.size(),
-                inputBatches.size(), agentRouters.size());
+    public GenericMetricsSnapshot getPerformanceMetrics() {
+        return GenericMetricsSnapshot.builder("reasoning-input", "performance")
+                .withCounts(totalInputsProcessed.get(), totalInputsProcessed.get() - totalInputsRouted.get())
+                .withLatency(totalProcessingTime.get() * 1_000_000L) // Convert to nanoseconds
+                .withMetric("totalBatchesCreated", totalBatchesCreated.get())
+                .withMetric("totalInputsRouted", totalInputsRouted.get()).withMetric("queueSize", inputQueue.size())
+                .withMetric("activeInputsCount", activeInputs.size()).withMetric("batchCount", inputBatches.size())
+                .withMetric("routerCount", agentRouters.size()).build();
     }
 
     /**

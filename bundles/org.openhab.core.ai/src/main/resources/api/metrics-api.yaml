@@ -1,0 +1,363 @@
+openapi: 3.0.3
+info:
+  title: OpenHAB AI Metrics API
+  description: |
+    Standardized API for retrieving metrics from the OpenHAB AI system.
+    This API provides a consistent JSON structure for all metrics endpoints
+    following the standardized format defined in the metrics plan.
+  version: 1.0.0
+  contact:
+    name: OpenHAB AI Team
+    email: ai@openhab.org
+  license:
+    name: Eclipse Public License 2.0
+    url: https://www.eclipse.org/legal/epl-2.0/
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://openhab.example.com
+    description: Production server
+
+paths:
+  /metrics:
+    get:
+      summary: Get standardized metrics
+      description: |
+        Retrieve metrics in the standardized JSON format. The response includes
+        structured metrics with counts, latency, and domain-specific data.
+        
+        To get Prometheus format, omit the Accept header or set it to text/plain.
+      parameters:
+        - name: Accept
+          in: header
+          description: |
+            Content type preference. Use 'application/json' for standardized format,
+            or omit for Prometheus format.
+          schema:
+            type: string
+            enum: [application/json, text/plain]
+            default: text/plain
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+              example:
+                timestamp: "2024-01-01T12:00:00Z"
+                domain: "model-client"
+                operation: "gpt4-completion"
+                metrics:
+                  counts:
+                    total: 1000
+                    success: 950
+                    failure: 50
+                    successRate: 95.0
+                  latency:
+                    averageMs: 250.5
+                    minMs: 50.0
+                    maxMs: 2000.0
+                    totalDurationNanos: 250500000000
+                  domain_specific:
+                    tokensPerSecond: 156.7
+                    costPerRequest: 0.002
+                    averageTokensPerRequest: 150
+            text/plain:
+              schema:
+                type: string
+                description: Prometheus format metrics
+              example: |
+                # HELP mcp_requests_total Total number of requests
+                # TYPE mcp_requests_total counter
+                mcp_requests_total 1000
+                # HELP mcp_errors_total Total number of errors
+                # TYPE mcp_errors_total counter
+                mcp_errors_total 50
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      summary: Get health status
+      description: Get the health status of the metrics endpoint
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    MetricsResponse:
+      type: object
+      required:
+        - timestamp
+        - domain
+        - operation
+        - metrics
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when metrics were collected
+          example: "2024-01-01T12:00:00Z"
+        domain:
+          type: string
+          description: The operation domain (e.g., "model-client", "tool-server", "agent")
+          example: "model-client"
+        operation:
+          type: string
+          description: The specific operation name (e.g., "gpt4-completion", "file-read")
+          example: "gpt4-completion"
+        metrics:
+          $ref: '#/components/schemas/MetricsData'
+
+    MetricsData:
+      type: object
+      required:
+        - counts
+        - latency
+        - domain_specific
+      properties:
+        counts:
+          $ref: '#/components/schemas/CountsMetrics'
+        latency:
+          $ref: '#/components/schemas/LatencyMetrics'
+        domain_specific:
+          $ref: '#/components/schemas/DomainSpecificMetrics'
+
+    CountsMetrics:
+      type: object
+      required:
+        - total
+        - success
+        - failure
+        - successRate
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: Total number of operations
+          example: 1000
+        success:
+          type: integer
+          format: int64
+          description: Number of successful operations
+          example: 950
+        failure:
+          type: integer
+          format: int64
+          description: Number of failed operations
+          example: 50
+        successRate:
+          type: number
+          format: double
+          description: Success rate as percentage (0.0-100.0)
+          example: 95.0
+
+    LatencyMetrics:
+      type: object
+      required:
+        - averageMs
+        - minMs
+        - maxMs
+        - totalDurationNanos
+      properties:
+        averageMs:
+          type: number
+          format: double
+          description: Average operation duration in milliseconds
+          example: 250.5
+        minMs:
+          type: number
+          format: double
+          description: Minimum operation duration in milliseconds
+          example: 50.0
+        maxMs:
+          type: number
+          format: double
+          description: Maximum operation duration in milliseconds
+          example: 2000.0
+        totalDurationNanos:
+          type: integer
+          format: int64
+          description: Total duration of all operations in nanoseconds
+          example: 250500000000
+
+    DomainSpecificMetrics:
+      type: object
+      description: |
+        Domain-specific metrics that vary based on the operation type.
+        Common fields include model-specific metrics like tokens and cost.
+      properties:
+        tokensPerSecond:
+          type: number
+          format: double
+          description: Tokens processed per second (for model operations)
+          example: 156.7
+        costPerRequest:
+          type: number
+          format: double
+          description: Cost per request in currency units (for model operations)
+          example: 0.002
+        averageTokensPerRequest:
+          type: integer
+          format: int64
+          description: Average number of tokens per request (for model operations)
+          example: 150
+        uptimeSeconds:
+          type: integer
+          format: int64
+          description: Server uptime in seconds (for server operations)
+          example: 86400
+        serverHealthy:
+          type: boolean
+          description: Server health status (for server operations)
+          example: true
+        securityEnabled:
+          type: boolean
+          description: Whether security is enabled (for server operations)
+          example: true
+        errorRecoveryEnabled:
+          type: boolean
+          description: Whether error recovery is enabled (for server operations)
+          example: true
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          description: Overall health status
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the health check was performed
+          example: "2024-01-01T12:00:00Z"
+        uptime:
+          type: integer
+          format: int64
+          description: Server uptime in seconds
+          example: 86400
+        version:
+          type: string
+          description: Service version
+          example: "1.0.0"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error type or code
+          example: "INTERNAL_ERROR"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Failed to retrieve metrics"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2024-01-01T12:00:00Z"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+
+  examples:
+    ModelClientMetrics:
+      summary: Model client metrics example
+      value:
+        timestamp: "2024-01-01T12:00:00Z"
+        domain: "model-client"
+        operation: "gpt4-completion"
+        metrics:
+          counts:
+            total: 1000
+            success: 950
+            failure: 50
+            successRate: 95.0
+          latency:
+            averageMs: 250.5
+            minMs: 50.0
+            maxMs: 2000.0
+            totalDurationNanos: 250500000000
+          domain_specific:
+            tokensPerSecond: 156.7
+            costPerRequest: 0.002
+            averageTokensPerRequest: 150
+
+    ToolServerMetrics:
+      summary: Tool server metrics example
+      value:
+        timestamp: "2024-01-01T12:00:00Z"
+        domain: "tool-server"
+        operation: "metrics-endpoint"
+        metrics:
+          counts:
+            total: 500
+            success: 495
+            failure: 5
+            successRate: 99.0
+          latency:
+            averageMs: 15.2
+            minMs: 2.0
+            maxMs: 100.0
+            totalDurationNanos: 7600000000
+          domain_specific:
+            uptimeSeconds: 86400
+            serverHealthy: true
+            securityEnabled: true
+            errorRecoveryEnabled: true
+
+    AgentMetrics:
+      summary: Agent metrics example
+      value:
+        timestamp: "2024-01-01T12:00:00Z"
+        domain: "agent"
+        operation: "task-execution"
+        metrics:
+          counts:
+            total: 100
+            success: 95
+            failure: 5
+            successRate: 95.0
+          latency:
+            averageMs: 5000.0
+            minMs: 1000.0
+            maxMs: 30000.0
+            totalDurationNanos: 500000000000
+          domain_specific:
+            averageTasksPerExecution: 3.2
+            averageSkillsPerTask: 2.1
+            autonomousDecisions: 45
+
+tags:
+  - name: metrics
+    description: Metrics and monitoring operations
+  - name: health
+    description: Health check operations

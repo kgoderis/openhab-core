@@ -19,6 +19,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -709,15 +710,19 @@ public class EventLogCorrelationEngine {
     /**
      * Get performance metrics from MetricsService
      */
-    public CorrelationPerformanceMetrics getPerformanceMetrics() {
+    public GenericMetricsSnapshot getPerformanceMetrics() {
         long totalCorrelationsCreated = getCorrelationCount("events-with-logs") + getCorrelationCount("event-with-logs")
                 + getCorrelationCount("logs-with-events");
         long totalCorrelationsValidated = getCorrelationCount("correlation-validation");
         long totalProcessingTime = getTotalProcessingTime();
 
-        return new CorrelationPerformanceMetrics(totalCorrelationsCreated, totalCorrelationsValidated,
-                totalProcessingTime, correlations.size(), eventCorrelations.size(), logCorrelations.size(),
-                correlationPatterns.size());
+        return GenericMetricsSnapshot.builder("correlation", "performance")
+                .withCounts(totalCorrelationsCreated, totalCorrelationsValidated)
+                .withLatency(totalProcessingTime * 1_000_000L) // Convert to nanoseconds
+                .withMetric("correlationCount", correlations.size())
+                .withMetric("eventCorrelationCount", eventCorrelations.size())
+                .withMetric("logCorrelationCount", logCorrelations.size())
+                .withMetric("patternCount", correlationPatterns.size()).build();
     }
 
     /**

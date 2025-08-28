@@ -23,6 +23,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -427,15 +428,20 @@ public class LogIngestionPipeline {
     /**
      * Get performance metrics from MetricsService
      */
-    public LogPerformanceMetrics getPerformanceMetrics() {
+    public GenericMetricsSnapshot getPerformanceMetrics() {
         long totalLogLinesProcessed = getLogProcessingCount("log-lines-processing");
         long totalAnomaliesDetected = getLogProcessingCount("anomaly-detection");
         long totalCorrelationsFound = getLogProcessingCount("log-correlation");
         long totalProcessingTime = getLogProcessingDuration("log-lines-processing");
 
-        return new LogPerformanceMetrics(totalLogLinesProcessed, totalAnomaliesDetected, totalCorrelationsFound,
-                totalProcessingTime, recentLogs.size(), detectedAnomalies.size(), logCorrelations.size(),
-                logMonitors.size());
+        return GenericMetricsSnapshot.builder("log-ingestion", "performance")
+                .withCounts(totalLogLinesProcessed, totalLogLinesProcessed - totalAnomaliesDetected)
+                .withLatency(totalProcessingTime * 1_000_000L) // Convert to nanoseconds
+                .withMetric("totalAnomaliesDetected", totalAnomaliesDetected)
+                .withMetric("totalCorrelationsFound", totalCorrelationsFound)
+                .withMetric("recentLogsCount", recentLogs.size()).withMetric("anomaliesCount", detectedAnomalies.size())
+                .withMetric("correlationsCount", logCorrelations.size())
+                .withMetric("activeMonitorsCount", logMonitors.size()).build();
     }
 
     /**

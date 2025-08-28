@@ -47,8 +47,11 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
         operations.put(operationId, operation);
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("progress_tracking", "start").withSuccess(true).withDuration(0L)
-                        .withData("operationId", operationId).withData("totalSteps", totalSteps).record();
+                Map<String, Object> context = Map.of(
+                    "operationId", operationId,
+                    "totalSteps", totalSteps
+                );
+                metricsService.recordOperationWithData("progress_tracking", "start", true, Duration.ofNanos(0L), context);
             } catch (Exception e) {
                 logger.debug("Failed to record progress tracking start metrics: {}", e.getMessage());
             }
@@ -85,10 +88,13 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
             if (metricsService != null) {
                 try {
                     long processingTime = operation.getCompletionTime() - operation.getStartTime();
-                    metricsService.recordOperation("progress_tracking", "complete").withSuccess(true)
-                            .withDuration(Duration.ofMillis(processingTime).toNanos())
-                            .withData("operationId", operationId).withData("totalSteps", operation.getTotalSteps())
-                            .withData("processingTimeMs", processingTime).record();
+                    Map<String, Object> context = Map.of(
+                        "operationId", operationId,
+                        "totalSteps", operation.getTotalSteps(),
+                        "processingTimeMs", processingTime
+                    );
+                    metricsService.recordOperationWithData("progress_tracking", "complete", true,
+                            Duration.ofMillis(processingTime), context);
                 } catch (Exception e) {
                     logger.debug("Failed to record progress tracking completion metrics: {}", e.getMessage());
                 }

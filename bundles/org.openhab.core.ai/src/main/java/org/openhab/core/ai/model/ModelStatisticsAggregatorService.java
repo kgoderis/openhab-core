@@ -102,14 +102,12 @@ public class ModelStatisticsAggregatorService {
                 try {
                     // Get agent behavior statistics from MetricsService for each provider
                     AgentBehaviorStatistics stats = metrics.getStatistics(
-                        org.openhab.core.ai.common.monitoring.api.MetricKeys.agentTask(provider.getAgentId()),
-                        AgentBehaviorStatistics.class,
-                        java.time.Duration.ofHours(24)
-                    );
-                    
+                            org.openhab.core.ai.common.monitoring.api.MetricKeys.agentTask(provider.getAgentId()),
+                            AgentBehaviorStatistics.class, java.time.Duration.ofHours(24));
+
                     if (stats != null) {
                         agentStats.add(stats);
-                        
+
                         // Extract values from the statistics object using CountsMetrics interface
                         totalAgentRequests += stats.total();
                         totalAgentSuccessfulRequests += stats.success();
@@ -120,8 +118,8 @@ public class ModelStatisticsAggregatorService {
                         totalAgentCost += 0.0;
                     }
                 } catch (Exception e) {
-                    logger.warn("Failed to get statistics from MetricsService for agent {}: {}", 
-                        provider.getAgentId(), e.getMessage());
+                    logger.warn("Failed to get statistics from MetricsService for agent {}: {}", provider.getAgentId(),
+                            e.getMessage());
                 }
             }
         } else {
@@ -163,11 +161,9 @@ public class ModelStatisticsAggregatorService {
             try {
                 // Get agent behavior statistics from MetricsService
                 AgentBehaviorStatistics stats = metrics.getStatistics(
-                    org.openhab.core.ai.common.monitoring.api.MetricKeys.agentTask(agentId),
-                    AgentBehaviorStatistics.class,
-                    java.time.Duration.ofHours(24)
-                );
-                
+                        org.openhab.core.ai.common.monitoring.api.MetricKeys.agentTask(agentId),
+                        AgentBehaviorStatistics.class, java.time.Duration.ofHours(24));
+
                 return stats;
             } catch (Exception e) {
                 logger.warn("Failed to get statistics from MetricsService for agent: {}", agentId, e);

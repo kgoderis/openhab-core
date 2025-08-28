@@ -1,13 +1,8 @@
 package org.openhab.core.ai.agent.infrastructure.performance;
 
-import java.util.Map;
-import java.util.Set;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.service.statistics.BandwidthStatistics;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,12 +52,6 @@ public class BandwidthMetrics {
         }
     }
 
-    public long getAverageBandwidth() {
-        // Get average bandwidth from StatisticsFactory - centralized only approach
-        BandwidthStatistics statistics = getStatistics();
-        return (long) statistics.getAverageBandwidth();
-    }
-
     public String getAgentId() {
         return agentId;
     }
@@ -77,25 +66,6 @@ public class BandwidthMetrics {
      * 
      * @return bandwidth statistics from StatisticsFactory, or empty statistics if service unavailable
      */
-    public BandwidthStatistics getStatistics() {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                // Use MetricKeys for standardized key generation
-                var metricKey = MetricKeys.custom("bandwidth", Map.of("agentId", agentId),
-                        Set.of("bandwidth", "counts"));
-                
-                // Get statistics using StatisticsFactory instead of creating snapshots directly
-                return metrics.getStatistics(metricKey, BandwidthStatistics.class, java.time.Duration.ofHours(24));
-            } catch (Exception e) {
-                logger.warn("Failed to retrieve bandwidth statistics for agent {}: {}", agentId, e.getMessage());
-                // Graceful degradation - return empty statistics if MetricsService fails
-            }
-        } else {
-            logger.debug("MetricsService not available, returning empty bandwidth statistics for agent {}", agentId);
-        }
-        return BandwidthStatistics.empty(java.time.Duration.ofHours(24));
-    }
 
     /**
      * Get total bytes transferred from the centralized MetricsService.
@@ -107,8 +77,4 @@ public class BandwidthMetrics {
      * 
      * @return total bytes transferred from MetricsService
      */
-    public long getTotalBytes() {
-        BandwidthStatistics statistics = getStatistics();
-        return statistics.getTotalBytesTransferred();
-    }
 }

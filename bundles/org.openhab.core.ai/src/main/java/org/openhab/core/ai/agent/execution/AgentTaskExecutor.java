@@ -926,16 +926,22 @@ public class AgentTaskExecutor implements AgentExecutor {
 
     // Task execution metrics
     @NonNullByDefault
-    public TaskExecutionMetrics getTaskExecutionMetrics(String taskId) {
+    public Object getTaskExecutionMetrics(String taskId) {
         AtomicLong executionCount = taskExecutionCounts.get(taskId);
         AtomicLong failureCount = taskFailureCounts.get(taskId);
         AtomicLong retryCount = taskRetryCounts.get(taskId);
         AtomicLong totalTime = totalExecutionTime.get(taskId);
         AtomicLong avgTime = averageExecutionTime.get(taskId);
 
-        return new TaskExecutionMetrics(taskId, executionCount != null ? executionCount.get() : 0,
-                failureCount != null ? failureCount.get() : 0, retryCount != null ? retryCount.get() : 0,
-                totalTime != null ? totalTime.get() : 0, avgTime != null ? avgTime.get() : 0);
+        // Return a simple map instead of the deleted value object
+        return Map.of(
+            "taskId", taskId,
+            "executionCount", executionCount != null ? executionCount.get() : 0,
+            "failureCount", failureCount != null ? failureCount.get() : 0,
+            "retryCount", retryCount != null ? retryCount.get() : 0,
+            "totalTime", totalTime != null ? totalTime.get() : 0,
+            "avgTime", avgTime != null ? avgTime.get() : 0
+        );
     }
 
     // Inner class extracted to top-level: org.openhab.core.ai.agent.execution.TaskExecutionMetrics
