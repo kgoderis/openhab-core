@@ -10,6 +10,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ToolSecurityMetrics;
 import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
@@ -97,25 +98,16 @@ public abstract class AbstractSecurityFilter implements SecurityFilter {
             if (cached != null && !cached.isExpired()) {
                 // Cache hit
                 if (metricsService != null) {
-                    try {
-                        metricsService.recordOperation("security-filter", "cache-hit").withSuccess(true)
-                                .withDuration(0L).withData("filterId", filterId).withData("filterName", filterName)
-                                .record();
-                    } catch (Exception e) {
-                        logger.warn("Failed to record cache hit metrics", e);
-                    }
+                    ToolSecurityMetrics.recordSecurityFilter(metricsService, "cache-hit", "cache", true, 
+                        Duration.ofNanos(0L), "hit");
                 }
                 return cached.result;
             }
 
             // Cache miss - perform authentication
             if (metricsService != null) {
-                try {
-                    metricsService.recordOperation("security-filter", "cache-miss").withSuccess(true).withDuration(0L)
-                            .withData("filterId", filterId).withData("filterName", filterName).record();
-                } catch (Exception e) {
-                    logger.warn("Failed to record cache miss metrics", e);
-                }
+                ToolSecurityMetrics.recordSecurityFilter(metricsService, "cache-miss", "cache", true, 
+                    Duration.ofNanos(0L), "miss");
             }
 
             SecurityResult result = performAuthentication(request);
@@ -134,20 +126,10 @@ public abstract class AbstractSecurityFilter implements SecurityFilter {
             return SecurityResult.failure("Authentication error: " + e.getMessage());
         } finally {
             // Record authentication metrics using centralized MetricsService
-            if (metricsService != null) {
-                try {
-                    Map<String, Object> context = Map.of(
-                        "filterId", filterId,
-                        "filterName", filterName,
-                        "enabled", enabled,
-                        "cacheSize", authCache.size()
-                    );
-                    metricsService.recordOperationWithData("security-filter", "authentication", success,
-                            Duration.ofMillis(executionTime), context);
-                } catch (Exception e) {
-                    logger.warn("Failed to record authentication metrics", e);
+                            if (metricsService != null) {
+                    ToolSecurityMetrics.recordAuthentication(metricsService, "security-filter", success, 
+                        Duration.ofMillis(executionTime), filterId, "filter");
                 }
-            }
         }
     }
 

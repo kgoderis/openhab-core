@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ToolComplianceMetrics;
 
 /**
  * Abstract base implementation of {@link ComplianceTest}.
@@ -102,34 +103,14 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
             if (result.isPassed()) {
                 // successCount.incrementAndGet(); // Removed
                 if (metricsService != null) {
-                    try {
-                        Map<String, Object> context = Map.of(
-                            "testId", testId,
-                            "category", category,
-                            "executionTime", executionTime
-                        );
-                        metricsService.recordOperationWithData("compliance_test", "success", true,
-                                Duration.ofMillis(executionTime), context);
-                    } catch (Exception e) {
-                        // Fallback to local logging if MetricsService fails
-                        System.err.println("Failed to record compliance test success metrics: " + e.getMessage());
-                    }
+                    ToolComplianceMetrics.recordComplianceSuccess(metricsService, testId, category, 
+                        Duration.ofMillis(executionTime), 1.0, Map.of("testId", testId, "category", category));
                 }
             } else {
                 // failureCount.incrementAndGet(); // Removed
                 if (metricsService != null) {
-                    try {
-                        Map<String, Object> context = Map.of(
-                            "testId", testId,
-                            "category", category,
-                            "executionTime", executionTime
-                        );
-                        metricsService.recordOperationWithData("compliance_test", "failure", false,
-                                Duration.ofMillis(executionTime), context);
-                    } catch (Exception e) {
-                        // Fallback to local logging if MetricsService fails
-                        System.err.println("Failed to record compliance test failure metrics: " + e.getMessage());
-                    }
+                    ToolComplianceMetrics.recordComplianceFailure(metricsService, testId, category, 
+                        Duration.ofMillis(executionTime), "test-failed", "medium");
                 }
             }
             return result;
@@ -139,19 +120,8 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
             // totalExecutionTimeMs.addAndGet(executionTime); // Removed
             // failureCount.incrementAndGet(); // Removed
             if (metricsService != null) {
-                try {
-                    Map<String, Object> context = Map.of(
-                        "testId", testId,
-                        "category", category,
-                        "executionTime", executionTime,
-                        "error", e.getMessage()
-                    );
-                    metricsService.recordOperationWithData("compliance_test", "failure", false,
-                            Duration.ofMillis(executionTime), context);
-                } catch (Exception e2) {
-                    // Fallback to local logging if MetricsService fails
-                    System.err.println("Failed to record compliance test failure metrics: " + e2.getMessage());
-                }
+                ToolComplianceMetrics.recordComplianceFailure(metricsService, testId, category, 
+                    Duration.ofMillis(executionTime), "execution-error", "high");
             }
             return ComplianceTestResult.failed("Test execution failed: " + e.getMessage(), List.of(e.getMessage()));
         }

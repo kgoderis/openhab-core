@@ -8,6 +8,7 @@ import java.util.Map;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.execution.AgentSkillRegistry;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.CardBuildingMetrics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -67,6 +68,7 @@ public class AgentCardBuilder {
 
         long startTime = System.nanoTime();
         boolean success = false;
+        MetricsService metrics = metricsService;
         try {
             // Build agent card using SDK patterns
             AgentCapabilities capabilities = buildCapabilities();
@@ -98,7 +100,10 @@ public class AgentCardBuilder {
             success = true;
             return card;
         } finally {
-            recordCardBuildingMetrics("build-agent-card", success, System.nanoTime() - startTime);
+            if (metrics != null) {
+                CardBuildingMetrics.recordCardGeneration(metrics, "agent-card-" + System.currentTimeMillis(), 
+                        "agent-card", "system", java.time.Duration.ofNanos(System.nanoTime() - startTime), 0L, success);
+            }
         }
     }
 
@@ -295,6 +300,7 @@ public class AgentCardBuilder {
 
         long startTime = System.nanoTime();
         boolean success = false;
+        MetricsService metrics = metricsService;
         try {
             AgentCapabilities capabilities = buildCapabilities();
             List<AgentSkill> skills = buildSkills();
@@ -324,7 +330,10 @@ public class AgentCardBuilder {
             success = true;
             return card;
         } finally {
-            recordCardBuildingMetrics("build-custom-card", success, System.nanoTime() - startTime);
+            if (metrics != null) {
+                CardBuildingMetrics.recordCardGeneration(metrics, "custom-card-" + System.currentTimeMillis(), 
+                        "custom-card", "system", java.time.Duration.ofNanos(System.nanoTime() - startTime), 0L, success);
+            }
         }
     }
 
@@ -337,6 +346,7 @@ public class AgentCardBuilder {
     public boolean validateAgentCard(AgentCard card) {
         long startTime = System.nanoTime();
         boolean success = false;
+        MetricsService metrics = metricsService;
 
         try {
             if (card == null) {
@@ -364,56 +374,12 @@ public class AgentCardBuilder {
                 context.put("validationType", "basic_validation");
             }
 
-            recordCardBuildingMetrics("validate-card", success, System.nanoTime() - startTime, context);
-        }
-    }
-
-    /**
-     * Record card building metrics using MetricsService with enhanced context.
-     */
-    private void recordCardBuildingMetrics(String operation, boolean success, long durationNanos) {
-        recordCardBuildingMetrics(operation, success, durationNanos, new HashMap<>());
-    }
-
-    /**
-     * Record card building metrics using MetricsService with enhanced context.
-     * 
-     * @param operation the card building operation (e.g., "build-custom-card", "validate-card", "build-capabilities")
-     * @param success whether the operation was successful
-     * @param durationNanos the operation duration in nanoseconds
-     * @param context additional context data
-     */
-    private void recordCardBuildingMetrics(String operation, boolean success, long durationNanos,
-            Map<String, Object> context) {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                // Create enhanced context with card building details
-                Map<String, Object> enhancedContext = new HashMap<>(context);
-                enhancedContext.put("operation", operation);
-                enhancedContext.put("success", success);
-                enhancedContext.put("durationNanos", durationNanos);
-                enhancedContext.put("timestamp", System.currentTimeMillis());
-
-                // Add skill registry information if available
-                AgentSkillRegistry registry = skillRegistry;
-                if (registry != null) {
-                    enhancedContext.put("skillRegistryAvailable", true);
-                    // Note: We don't expose internal registry details for security
-                } else {
-                    enhancedContext.put("skillRegistryAvailable", false);
-                }
-
-                // Record card building metrics using generic method with enhanced context
-                metrics.recordOperationWithData("card-building", operation, success,
-                        java.time.Duration.ofNanos(durationNanos), enhancedContext);
-
-                logger.debug("Recorded card building metrics: {} (success={}, duration={}ns)", operation, success,
-                        durationNanos);
-            } catch (Exception e) {
-                logger.warn("Failed to record card building metrics for operation {}: {}", operation, e.getMessage());
-                // Graceful degradation: continue with card building even if metrics recording fails
+            if (metrics != null) {
+                CardBuildingMetrics.recordCardValidation(metrics, "card-validation-" + System.currentTimeMillis(), 
+                        0, java.time.Duration.ofNanos(System.nanoTime() - startTime), 0, 0, success);
             }
         }
     }
+
+
 }

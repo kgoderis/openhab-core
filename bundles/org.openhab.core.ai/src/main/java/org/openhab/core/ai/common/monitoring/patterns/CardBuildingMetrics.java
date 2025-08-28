@@ -7,28 +7,28 @@ import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.utils.SystemMetricsCollector;
 
 /**
- * Utility class for recording agent card building metrics using the enhanced MetricsService.
+ * Static utility class for recording agent card building metrics using the enhanced MetricsService.
  * 
  * <p>
- * This class provides methods to record comprehensive metrics for agent card generation
- * including generation steps, validation, success rates, and performance characteristics.
+ * This class provides static methods to record comprehensive metrics for agent card generation
+ * including generation steps, validation, success rates, and performance characteristics with full context.
+ * All methods require a MetricsService instance as the first parameter.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
-public class CardBuildingMetrics {
+public final class CardBuildingMetrics {
 
-    private final MetricsService metricsService;
-
-    public CardBuildingMetrics(MetricsService metricsService) {
-        this.metricsService = metricsService;
+    private CardBuildingMetrics() {
+        // Utility class - prevent instantiation
     }
 
     /**
      * Record card generation metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param cardId the unique card identifier
      * @param cardType the type of card being generated
      * @param agentId the ID of the agent for which the card is generated
@@ -36,7 +36,7 @@ public class CardBuildingMetrics {
      * @param cardSize the size of the generated card
      * @param success whether the generation was successful
      */
-    public void recordCardGeneration(String cardId, String cardType, String agentId, Duration generationTime,
+    public static void recordCardGeneration(MetricsService metricsService, String cardId, String cardType, String agentId, Duration generationTime,
             long cardSize, boolean success) {
         metricsService.recordOperation("card", "generation").withSuccess(success).withDuration(generationTime.toNanos())
                 .withData("cardId", cardId).withData("cardType", cardType).withData("agentId", agentId)
@@ -64,6 +64,7 @@ public class CardBuildingMetrics {
     /**
      * Record card validation metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param cardId the unique card identifier
      * @param validationRules the number of validation rules applied
      * @param validationTime the time taken for validation
@@ -71,7 +72,7 @@ public class CardBuildingMetrics {
      * @param validationWarnings the number of validation warnings
      * @param validationSuccess whether validation passed
      */
-    public void recordCardValidation(String cardId, int validationRules, Duration validationTime, int validationErrors,
+    public static void recordCardValidation(MetricsService metricsService, String cardId, int validationRules, Duration validationTime, int validationErrors,
             int validationWarnings, boolean validationSuccess) {
         metricsService.recordOperation("card", "validation").withSuccess(validationSuccess)
                 .withDuration(validationTime.toNanos()).withData("cardId", cardId)
@@ -96,6 +97,7 @@ public class CardBuildingMetrics {
     /**
      * Record card rendering metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param cardId the unique card identifier
      * @param renderType the type of rendering (html, json, xml, etc.)
      * @param renderTime the time taken to render the card
@@ -103,7 +105,7 @@ public class CardBuildingMetrics {
      * @param renderSuccess whether rendering was successful
      * @param templateUsed the template used for rendering
      */
-    public void recordCardRendering(String cardId, String renderType, Duration renderTime, long outputSize,
+    public static void recordCardRendering(MetricsService metricsService, String cardId, String renderType, Duration renderTime, long outputSize,
             boolean renderSuccess, String templateUsed) {
         metricsService.recordOperation("card", "rendering").withSuccess(renderSuccess)
                 .withDuration(renderTime.toNanos()).withData("cardId", cardId).withData("renderType", renderType)
@@ -127,13 +129,14 @@ public class CardBuildingMetrics {
     /**
      * Record card caching metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param cardId the unique card identifier
      * @param cacheOperation the type of cache operation (hit, miss, store, evict)
      * @param cacheTime the time taken for the cache operation
      * @param cacheSize the size of the cached card
      * @param cacheSuccess whether the cache operation was successful
      */
-    public void recordCardCaching(String cardId, String cacheOperation, Duration cacheTime, long cacheSize,
+    public static void recordCardCaching(MetricsService metricsService, String cardId, String cacheOperation, Duration cacheTime, long cacheSize,
             boolean cacheSuccess) {
         boolean success = cacheTime.toNanos() < 100_000; // Cache operations should be very fast (< 0.1ms)
 
@@ -159,6 +162,7 @@ public class CardBuildingMetrics {
     /**
      * Record card update metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param cardId the unique card identifier
      * @param updateType the type of update (content, metadata, structure)
      * @param updateTime the time taken for the update
@@ -166,7 +170,7 @@ public class CardBuildingMetrics {
      * @param updateSuccess whether the update was successful
      * @param rollbackRequired whether rollback is required
      */
-    public void recordCardUpdate(String cardId, String updateType, Duration updateTime, int changesCount,
+    public static void recordCardUpdate(MetricsService metricsService, String cardId, String updateType, Duration updateTime, int changesCount,
             boolean updateSuccess, boolean rollbackRequired) {
         metricsService.recordOperation("card", "update").withSuccess(updateSuccess).withDuration(updateTime.toNanos())
                 .withData("cardId", cardId).withData("updateType", updateType).withData("changesCount", changesCount)
@@ -191,13 +195,14 @@ public class CardBuildingMetrics {
     /**
      * Record card performance metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param cardId the unique card identifier
      * @param performanceMetric the type of performance metric
      * @param metricValue the value of the performance metric
      * @param measurementTime the time when the measurement was taken
      * @param performanceScore the overall performance score (1-10)
      */
-    public void recordCardPerformance(String cardId, String performanceMetric, double metricValue,
+    public static void recordCardPerformance(MetricsService metricsService, String cardId, String performanceMetric, double metricValue,
             Duration measurementTime, int performanceScore) {
         boolean success = performanceScore >= 7; // Consider successful if performance score >= 7
 
@@ -223,13 +228,14 @@ public class CardBuildingMetrics {
     /**
      * Record card lifecycle metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param cardId the unique card identifier
      * @param lifecycleEvent the lifecycle event (created, activated, deactivated, deleted)
      * @param eventTime the time when the event occurred
      * @param cardAge the age of the card in milliseconds
      * @param usageCount the number of times the card has been used
      */
-    public void recordCardLifecycle(String cardId, String lifecycleEvent, Duration eventTime, long cardAge,
+    public static void recordCardLifecycle(MetricsService metricsService, String cardId, String lifecycleEvent, Duration eventTime, long cardAge,
             int usageCount) {
         boolean success = true; // Lifecycle events are generally successful
 

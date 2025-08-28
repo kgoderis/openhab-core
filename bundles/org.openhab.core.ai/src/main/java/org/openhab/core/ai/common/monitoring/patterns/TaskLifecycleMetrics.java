@@ -7,35 +7,35 @@ import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.utils.SystemMetricsCollector;
 
 /**
- * Utility class for recording task lifecycle metrics using the enhanced MetricsService.
+ * Static utility class for recording task lifecycle metrics using the enhanced MetricsService.
  * 
  * <p>
- * This class provides methods to record comprehensive metrics for task lifecycle events
+ * This class provides static methods to record comprehensive metrics for task lifecycle events
  * including creation, activation, completion, and cancellation with full performance context.
+ * All methods require a MetricsService instance as the first parameter.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
-public class TaskLifecycleMetrics {
+public final class TaskLifecycleMetrics {
 
-    private final MetricsService metricsService;
-
-    public TaskLifecycleMetrics(MetricsService metricsService) {
-        this.metricsService = metricsService;
+    private TaskLifecycleMetrics() {
+        // Utility class - prevent instantiation
     }
 
     /**
      * Record task creation metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param taskId the unique task identifier
      * @param taskType the type of task being created
      * @param priority the task priority level
      * @param estimatedDuration the estimated task duration
      * @param creationTime the time taken to create the task
      */
-    public void recordTaskCreation(String taskId, String taskType, String priority, Duration estimatedDuration,
+    public static void recordTaskCreation(MetricsService metricsService, String taskId, String taskType, String priority, Duration estimatedDuration,
             Duration creationTime) {
         metricsService.recordOperation("task", "creation").withSuccess(true).withDuration(creationTime.toNanos())
                 .withData("taskId", taskId).withData("taskType", taskType).withData("priority", priority)
@@ -58,13 +58,14 @@ public class TaskLifecycleMetrics {
     /**
      * Record task activation metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param taskId the unique task identifier
      * @param taskType the type of task being activated
      * @param activationTime the time taken to activate the task
      * @param queueWaitTime the time the task waited in queue
      * @param resourceAllocated the amount of resources allocated
      */
-    public void recordTaskActivation(String taskId, String taskType, Duration activationTime, Duration queueWaitTime,
+    public static void recordTaskActivation(MetricsService metricsService, String taskId, String taskType, Duration activationTime, Duration queueWaitTime,
             long resourceAllocated) {
         boolean success = activationTime.toMillis() < 5000; // Consider activation successful if under 5 seconds
 
@@ -90,6 +91,7 @@ public class TaskLifecycleMetrics {
     /**
      * Record task completion metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param taskId the unique task identifier
      * @param taskType the type of task completed
      * @param executionTime the total execution time
@@ -97,7 +99,7 @@ public class TaskLifecycleMetrics {
      * @param success whether the task completed successfully
      * @param errorMessage the error message if failed
      */
-    public void recordTaskCompletion(String taskId, String taskType, Duration executionTime, long resultSize,
+    public static void recordTaskCompletion(MetricsService metricsService, String taskId, String taskType, Duration executionTime, long resultSize,
             boolean success, String errorMessage) {
         metricsService.recordOperation("task", "completion").withSuccess(success).withDuration(executionTime.toNanos())
                 .withData("taskId", taskId).withData("taskType", taskType).withData("resultSize", resultSize)
@@ -125,13 +127,14 @@ public class TaskLifecycleMetrics {
     /**
      * Record task cancellation metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param taskId the unique task identifier
      * @param taskType the type of task cancelled
      * @param cancellationTime the time taken to cancel the task
      * @param executionProgress the progress made before cancellation (0-100)
      * @param reason the reason for cancellation
      */
-    public void recordTaskCancellation(String taskId, String taskType, Duration cancellationTime,
+    public static void recordTaskCancellation(MetricsService metricsService, String taskId, String taskType, Duration cancellationTime,
             double executionProgress, String reason) {
         metricsService.recordOperation("task", "cancellation").withSuccess(true)
                 .withDuration(cancellationTime.toNanos()).withData("taskId", taskId).withData("taskType", taskType)
@@ -154,6 +157,7 @@ public class TaskLifecycleMetrics {
     /**
      * Record task failure metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param taskId the unique task identifier
      * @param taskType the type of task that failed
      * @param failureTime the time when the failure occurred
@@ -161,7 +165,7 @@ public class TaskLifecycleMetrics {
      * @param retryCount the number of retries attempted
      * @param fallbackUsed whether a fallback mechanism was used
      */
-    public void recordTaskFailure(String taskId, String taskType, Duration failureTime, String errorCategory,
+    public static void recordTaskFailure(MetricsService metricsService, String taskId, String taskType, Duration failureTime, String errorCategory,
             int retryCount, boolean fallbackUsed) {
         metricsService.recordOperation("task", "failure").withSuccess(false).withDuration(failureTime.toNanos())
                 .withData("taskId", taskId).withData("taskType", taskType).withData("errorCategory", errorCategory)
@@ -180,5 +184,67 @@ public class TaskLifecycleMetrics {
                         SystemMetricsCollector.calculateResourceAvailability(),
                         SystemMetricsCollector.getSystemLoadAverage())
                 .record();
+    }
+
+    // Convenience methods for common use cases
+
+    /**
+     * Record task creation metrics with default parameters.
+     * 
+     * @param metricsService the metrics service instance
+     * @param taskId the unique task identifier
+     * @param taskType the type of task being created
+     */
+    public static void recordTaskCreation(MetricsService metricsService, String taskId, String taskType) {
+        recordTaskCreation(metricsService, taskId, taskType, "medium", Duration.ZERO, Duration.ZERO);
+    }
+
+    /**
+     * Record task activation metrics with default parameters.
+     * 
+     * @param metricsService the metrics service instance
+     * @param taskId the unique task identifier
+     * @param taskType the type of task being activated
+     * @param activationTime the time taken to activate the task
+     */
+    public static void recordTaskActivation(MetricsService metricsService, String taskId, String taskType, Duration activationTime) {
+        recordTaskActivation(metricsService, taskId, taskType, activationTime, Duration.ZERO, 0);
+    }
+
+    /**
+     * Record task completion metrics with default parameters.
+     * 
+     * @param metricsService the metrics service instance
+     * @param taskId the unique task identifier
+     * @param taskType the type of task completed
+     * @param executionTime the total execution time
+     * @param success whether the task completed successfully
+     */
+    public static void recordTaskCompletion(MetricsService metricsService, String taskId, String taskType, Duration executionTime, boolean success) {
+        recordTaskCompletion(metricsService, taskId, taskType, executionTime, 0, success, null);
+    }
+
+    /**
+     * Record task cancellation metrics with default parameters.
+     * 
+     * @param metricsService the metrics service instance
+     * @param taskId the unique task identifier
+     * @param taskType the type of task cancelled
+     * @param reason the reason for cancellation
+     */
+    public static void recordTaskCancellation(MetricsService metricsService, String taskId, String taskType, String reason) {
+        recordTaskCancellation(metricsService, taskId, taskType, Duration.ZERO, 0.0, reason);
+    }
+
+    /**
+     * Record task failure metrics with default parameters.
+     * 
+     * @param metricsService the metrics service instance
+     * @param taskId the unique task identifier
+     * @param taskType the type of task that failed
+     * @param errorCategory the category of error
+     */
+    public static void recordTaskFailure(MetricsService metricsService, String taskId, String taskType, String errorCategory) {
+        recordTaskFailure(metricsService, taskId, taskType, Duration.ZERO, errorCategory, 0, false);
     }
 }

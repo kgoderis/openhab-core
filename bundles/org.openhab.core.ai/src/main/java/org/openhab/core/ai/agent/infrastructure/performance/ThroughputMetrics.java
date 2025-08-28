@@ -6,6 +6,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.common.monitoring.snapshot.ThroughputSnapshot;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -62,11 +63,8 @@ public class ThroughputMetrics {
 
         // Record throughput using MetricsService
         if (metricsService != null) {
-            try {
-                metricsService.recordOperation("throughput", "message", true, Duration.ofMillis(1));
-            } catch (Exception e) {
-                logger.warn("Failed to record throughput metrics for agent: {}", agentId, e);
-            }
+            SystemPerformanceMetrics.recordThroughput(metricsService, "agent-message", 1.0, 
+                Duration.ofMillis(1), 1.0);
         }
     }
 
@@ -79,11 +77,8 @@ public class ThroughputMetrics {
     public void recordMessage(boolean success, Duration duration) {
         // Record message using MetricsService
         if (metricsService != null) {
-            try {
-                metricsService.recordOperation("throughput", "message", success, duration);
-            } catch (Exception e) {
-                logger.warn("Failed to record message for throughput metrics for agent: {}", agentId, e);
-            }
+            SystemPerformanceMetrics.recordThroughput(metricsService, "agent-message", 1.0, 
+                duration, success ? 1.0 : 0.0);
         }
     }
 

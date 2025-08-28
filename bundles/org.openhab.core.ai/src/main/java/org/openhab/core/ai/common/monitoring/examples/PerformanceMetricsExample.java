@@ -1,10 +1,17 @@
 package org.openhab.core.ai.common.monitoring.examples;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.TaskLifecycleMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.ValidationRuleMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.SkillExecutionMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.AuditEventMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.ConfigurationOperationMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.CardBuildingMetrics;
 
 /**
  * Example demonstrating the enhanced performance metrics capabilities.
@@ -213,5 +220,154 @@ public class PerformanceMetricsExample {
                         ThreadLocalRandom.current().nextDouble(60, 90), // Variable resource availability
                         ThreadLocalRandom.current().nextDouble(1.0, 3.0) // Higher system load during recovery
                 ).record();
+    }
+
+    /**
+     * Example: Task lifecycle metrics using static pattern methods.
+     */
+    public void recordTaskLifecycleWithStaticMethods() {
+        String taskId = "task-" + ThreadLocalRandom.current().nextInt(1000, 9999);
+        String taskType = "data-processing";
+        String priority = ThreadLocalRandom.current().nextBoolean() ? "high" : "medium";
+        Duration estimatedDuration = Duration.ofMillis(ThreadLocalRandom.current().nextLong(1000, 10000));
+        Duration creationTime = Duration.ofMillis(ThreadLocalRandom.current().nextLong(10, 100));
+        Duration activationTime = Duration.ofMillis(ThreadLocalRandom.current().nextLong(50, 500));
+        Duration executionTime = Duration.ofMillis(ThreadLocalRandom.current().nextLong(500, 5000));
+        boolean success = ThreadLocalRandom.current().nextBoolean();
+        long resultSize = ThreadLocalRandom.current().nextLong(1024, 1024 * 1024); // 1KB to 1MB
+        String errorMessage = success ? null : "Processing failed due to invalid input";
+
+        // Record task creation
+        TaskLifecycleMetrics.recordTaskCreation(metricsService, taskId, taskType, priority, estimatedDuration, creationTime);
+
+        // Record task activation
+        TaskLifecycleMetrics.recordTaskActivation(metricsService, taskId, taskType, activationTime, 
+                Duration.ofMillis(ThreadLocalRandom.current().nextLong(0, 100)), 
+                ThreadLocalRandom.current().nextLong(10_000_000, 50_000_000)); // 10-50MB allocated
+
+        // Record task completion
+        TaskLifecycleMetrics.recordTaskCompletion(metricsService, taskId, taskType, executionTime, resultSize, success, errorMessage);
+    }
+
+    /**
+     * Example: Validation rule metrics using static pattern methods.
+     */
+    public void recordValidationRuleWithStaticMethods() {
+        String ruleId = "rule-" + ThreadLocalRandom.current().nextInt(100, 999);
+        String ruleType = "data-validation";
+        Duration executionTime = Duration.ofMillis(ThreadLocalRandom.current().nextLong(10, 500));
+        boolean validationResult = ThreadLocalRandom.current().nextBoolean();
+        int inputDataSize = ThreadLocalRandom.current().nextInt(100, 10000);
+        String errorMessage = validationResult ? null : "Validation failed: Invalid data format";
+
+        // Record validation rule execution
+        ValidationRuleMetrics.recordValidationRuleExecution(metricsService, ruleId, ruleType, executionTime, 
+                validationResult, inputDataSize, errorMessage);
+
+        // Record validation rule error if validation failed
+        if (!validationResult) {
+            ValidationRuleMetrics.recordValidationRuleError(metricsService, ruleId, ruleType, 
+                    ThreadLocalRandom.current().nextInt(1, 5));
+        }
+    }
+
+    /**
+     * Example: Skill execution metrics using static pattern methods.
+     */
+    public void recordSkillExecutionWithStaticMethods() {
+        String skillId = "skill-" + ThreadLocalRandom.current().nextInt(100, 999);
+        String skillType = "data-transformation";
+        boolean success = ThreadLocalRandom.current().nextBoolean();
+        Duration executionTime = Duration.ofMillis(ThreadLocalRandom.current().nextLong(100, 2000));
+        int complexity = ThreadLocalRandom.current().nextInt(1, 10);
+        String context = "batch-processing";
+
+        // Record skill invocation
+        Map<String, Object> inputParameters = Map.of("complexity", complexity, "context", context);
+        SkillExecutionMetrics.recordSkillInvocation(metricsService, skillId, skillType, executionTime, 
+                inputParameters, "agent-" + ThreadLocalRandom.current().nextInt(100, 999));
+
+        // Record skill execution result
+        String agentId = "agent-" + ThreadLocalRandom.current().nextInt(100, 999);
+        if (success) {
+            SkillExecutionMetrics.recordSkillExecutionSuccess(metricsService, skillId, skillType, executionTime, 
+                    ThreadLocalRandom.current().nextLong(1024, 10240), agentId, context);
+        } else {
+            SkillExecutionMetrics.recordSkillExecutionFailure(metricsService, skillId, skillType, executionTime, 
+                    "execution-error", "Skill execution failed due to invalid input", agentId, 0);
+        }
+    }
+
+    /**
+     * Example: Audit event metrics using static pattern methods.
+     */
+    public void recordAuditEventWithStaticMethods() {
+        String eventType = "user-action";
+        String category = "authentication";
+        String severity = ThreadLocalRandom.current().nextBoolean() ? "info" : "warning";
+        String eventId = "event-" + ThreadLocalRandom.current().nextInt(1000, 9999);
+        boolean success = ThreadLocalRandom.current().nextBoolean();
+        String eventData = "User login attempt from IP: 192.168.1.100";
+
+        // Record audit event
+        Map<String, Object> eventDataMap = Map.of("eventData", eventData, "success", success);
+        int severityLevel = "warning".equals(severity) ? 2 : 1;
+        AuditEventMetrics.recordAuditEvent(metricsService, eventId, category, eventType, severityLevel, 
+                "admin", eventDataMap, Duration.ofMillis(ThreadLocalRandom.current().nextLong(1, 50)));
+
+        // Record security audit
+        AuditEventMetrics.recordSecurityAuditEvent(metricsService, eventId, "login-attempt", severityLevel, 
+                "192.168.1.100", "admin", success ? "login-success" : "login-failed", 
+                Duration.ofMillis(ThreadLocalRandom.current().nextLong(1, 20)));
+    }
+
+    /**
+     * Example: Configuration operation metrics using static pattern methods.
+     */
+    public void recordConfigurationOperationWithStaticMethods() {
+        String cacheType = "configuration-cache";
+        String operation = "get";
+        boolean success = ThreadLocalRandom.current().nextBoolean();
+        Duration responseTime = Duration.ofMillis(ThreadLocalRandom.current().nextLong(1, 100));
+        long cacheSize = ThreadLocalRandom.current().nextLong(1024 * 1024, 100 * 1024 * 1024); // 1MB to 100MB
+
+        // Record cache operation
+        String cacheKey = "config-" + ThreadLocalRandom.current().nextInt(100, 999);
+        ConfigurationOperationMetrics.recordCacheOperation(metricsService, cacheType, operation, cacheKey, 
+                cacheSize, responseTime);
+
+        // Record file operation
+        String configType = "application-config";
+        Duration fileOperationTime = Duration.ofMillis(ThreadLocalRandom.current().nextLong(10, 500));
+        long configSize = ThreadLocalRandom.current().nextLong(1024, 1024 * 1024); // 1KB to 1MB
+
+        ConfigurationOperationMetrics.recordFileOperation(metricsService, configType, "read", configSize, 
+                fileOperationTime, success);
+    }
+
+    /**
+     * Example: Card building metrics using static pattern methods.
+     */
+    public void recordCardBuildingWithStaticMethods() {
+        String cardType = "agent-card";
+        boolean success = ThreadLocalRandom.current().nextBoolean();
+        Duration generationTime = Duration.ofMillis(ThreadLocalRandom.current().nextLong(100, 2000));
+        int stepCount = ThreadLocalRandom.current().nextInt(3, 10);
+        int validationCount = ThreadLocalRandom.current().nextInt(1, 5);
+
+        // Record card generation
+        String cardId = "card-" + ThreadLocalRandom.current().nextInt(1000, 9999);
+        String agentId = "agent-" + ThreadLocalRandom.current().nextInt(100, 999);
+        long cardSize = ThreadLocalRandom.current().nextLong(1024, 10 * 1024); // 1KB to 10KB
+        
+        CardBuildingMetrics.recordCardGeneration(metricsService, cardId, cardType, agentId, generationTime, 
+                cardSize, success);
+
+        // Record card validation
+        Duration validationTime = Duration.ofMillis(ThreadLocalRandom.current().nextLong(10, 200));
+        int validationErrors = success ? 0 : ThreadLocalRandom.current().nextInt(1, 3);
+
+        CardBuildingMetrics.recordCardValidation(metricsService, cardId, validationErrors, validationTime, 
+                validationCount, stepCount, success);
     }
 }

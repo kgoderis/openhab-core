@@ -17,6 +17,7 @@ import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ValidationRuleMetrics;
 import org.openhab.core.automation.Condition;
 import org.openhab.core.automation.Rule;
 import org.openhab.core.automation.RuleRegistry;
@@ -175,6 +176,7 @@ public class ValidateRuleAction implements Action {
     public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
         long startTime = System.currentTimeMillis();
         String ruleUID = "";
+        MetricsService metrics = metricsService;
 
         try {
             ruleUID = (String) parameters.get("ruleUID");
@@ -195,9 +197,9 @@ public class ValidateRuleAction implements Action {
                 result.put("error", "Rule not found: " + ruleUID);
 
                 // Record validation rule metrics for not found case
-                recordValidationRuleMetrics("rule_not_found", false,
-                        Duration.ofMillis(System.currentTimeMillis() - startTime),
-                        Map.of("ruleUID", ruleUID, "error", "Rule not found"));
+                if (metrics != null) {
+                    ValidationRuleMetrics.recordValidationRuleError(metrics, ruleUID, "rule_not_found", 3);
+                }
 
                 return ActionResult.success(result, System.currentTimeMillis() - startTime);
             }
@@ -214,11 +216,11 @@ public class ValidateRuleAction implements Action {
             result.put("message", "Rule validation completed successfully");
 
             // Record validation rule metrics for successful validation
-            recordValidationRuleMetrics("rule_validation", true,
-                    Duration.ofMillis(System.currentTimeMillis() - startTime),
-                    Map.of("ruleUID", ruleUID, "valid", validationResult.get("valid"), "overallScore",
-                            validationResult.get("overallScore"), "issueCount", validationResult.get("issueCount"),
-                            "warningCount", validationResult.get("warningCount")));
+            if (metrics != null) {
+                boolean isValid = (Boolean) validationResult.getOrDefault("valid", false);
+                ValidationRuleMetrics.recordValidationRuleExecution(metrics, ruleUID, "rule_validation", 
+                        Duration.ofMillis(System.currentTimeMillis() - startTime), isValid, 0L, null);
+            }
 
             return ActionResult.success(result, System.currentTimeMillis() - startTime);
 
@@ -226,9 +228,9 @@ public class ValidateRuleAction implements Action {
             logger.error("Error validating rule: {}", e.getMessage(), e);
 
             // Record validation rule metrics for error case
-            recordValidationRuleMetrics("rule_validation_error", false,
-                    Duration.ofMillis(System.currentTimeMillis() - startTime),
-                    Map.of("ruleUID", ruleUID, "error", e.getMessage()));
+            if (metrics != null) {
+                ValidationRuleMetrics.recordValidationRuleError(metrics, ruleUID, "rule_validation_error", 4);
+            }
 
             throw new ActionException(getActionId(), "Failed to validate rule: " + e.getMessage(), e);
         }
@@ -486,29 +488,4 @@ public class ValidateRuleAction implements Action {
         return result;
     }
 
-    /**
-     * Record validation rule metrics using the generic metrics service.
-     * 
-     * @param validationType the type of validation (e.g., "rule_validation", "rule_not_found", "rule_validation_error")
-     * @param success whether the validation was successful
-     * @param duration the validation duration
-     * @param context additional context data
-     */
-    private void recordValidationRuleMetrics(String validationType, boolean success, Duration duration,
-            Map<String, Object> context) {
-        try {
-            MetricsService metrics = metricsService;
-            if (metrics != null) {
-                // Record the validation rule execution using the generic metrics service
-                metrics.recordOperationWithData("validation", validationType, success, duration, context);
-
-                logger.debug("Recorded validation rule metrics: {} (success={}, duration={})", validationType, success,
-                        duration);
-            } else {
-                logger.debug("MetricsService not available for validation rule recording: {}", validationType);
-            }
-        } catch (Exception e) {
-            logger.warn("Failed to record validation rule metrics: {}", validationType, e);
-        }
-    }
 }

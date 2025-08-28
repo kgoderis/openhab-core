@@ -29,6 +29,7 @@ import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentS
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.TaskLifecycleMetrics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -261,6 +262,7 @@ public class AgentTaskManager {
         logger.debug("Cancelling task: {}", taskId);
         long cancelTime = System.currentTimeMillis();
         boolean success = false;
+        MetricsService metrics = metricsService;
 
         if (taskId == null || taskId.trim().isEmpty()) {
             throw new JSONRPCError(-32602, "Task ID cannot be null or empty", null);
@@ -277,9 +279,9 @@ public class AgentTaskManager {
             state.setEndTime(cancelTime);
 
             // Record cancellation in metrics
-            TaskMetrics metrics = taskMetrics.get(taskId);
-            if (metrics != null) {
-                metrics.recordCancellation();
+            TaskMetrics taskMetricsInstance = taskMetrics.get(taskId);
+            if (taskMetricsInstance != null) {
+                taskMetricsInstance.recordCancellation();
             }
 
             success = true;
@@ -306,7 +308,9 @@ public class AgentTaskManager {
             // Record task cancellation metrics
             Duration duration = Duration.ofMillis(System.currentTimeMillis() - cancelTime);
             Map<String, Object> context = Map.of("taskId", taskId, "cancelTime", cancelTime, "success", success);
-            recordTaskLifecycleMetrics(taskId, "cancelled", success, duration, context);
+            if (metrics != null) {
+                TaskLifecycleMetrics.recordTaskCancellation(metrics, taskId, "task-execution", "User requested cancellation");
+            }
         }
 
         throw new JSONRPCError(-32601, "Task not found in store: " + taskId, null);
@@ -670,6 +674,7 @@ public class AgentTaskManager {
     public void startTask(String taskId) {
         long startTime = System.currentTimeMillis();
         boolean success = false;
+        MetricsService metrics = metricsService;
 
         try {
             TaskOrchestrationState state = taskStates.get(taskId);
@@ -691,7 +696,9 @@ public class AgentTaskManager {
             // Record task activation metrics
             Duration duration = Duration.ofMillis(System.currentTimeMillis() - startTime);
             Map<String, Object> context = Map.of("taskId", taskId, "startTime", startTime, "success", success);
-            recordTaskLifecycleMetrics(taskId, "activated", success, duration, context);
+            if (metrics != null) {
+                TaskLifecycleMetrics.recordTaskActivation(metrics, taskId, "task-execution", duration);
+            }
         }
     }
 
@@ -877,6 +884,7 @@ public class AgentTaskManager {
     private Task createTaskFromMessage(MessageSendParams params) {
         String taskId = "task-" + System.currentTimeMillis();
         String content = extractTextContent(params.message());
+        MetricsService metrics = metricsService;
 
         // Create task using SDK patterns
         TaskStatus initialStatus = new TaskStatus(TaskState.SUBMITTED);
@@ -888,7 +896,9 @@ public class AgentTaskManager {
                 metadata, "task");
 
         // Record task creation metrics
-        recordTaskLifecycleMetrics(taskId, "created", true, Duration.ZERO, metadata);
+        if (metrics != null) {
+            TaskLifecycleMetrics.recordTaskCreation(metrics, taskId, "task-execution");
+        }
 
         return task;
     }
@@ -1801,6 +1811,7 @@ public class AgentTaskManager {
      */
     private EventKind handleExecutionMessage(Task task) {
         logger.debug("Handling execution message for task: {}", task.getId());
+        MetricsService metrics = metricsService;
 
         try {
             // Save the task if we have a task store
@@ -1855,15 +1866,17 @@ public class AgentTaskManager {
                         updateTaskWithResult(task.getId(), result);
 
                         // Update metrics
-                        TaskMetrics metrics = taskMetrics.get(task.getId());
-                        if (metrics != null) {
-                            metrics.recordSuccess();
+                        TaskMetrics taskMetricsInstance = taskMetrics.get(task.getId());
+                        if (taskMetricsInstance != null) {
+                            taskMetricsInstance.recordSuccess();
                         }
 
                         // Record task completion metrics
                         Map<String, Object> context = Map.of("taskId", task.getId(), "actionId", actionId, "result",
                                 result.getMessage() != null ? result.getMessage() : "Success", "success", true);
-                        recordTaskLifecycleMetrics(task.getId(), "completed", true, Duration.ZERO, context);
+                        if (metrics != null) {
+                            TaskLifecycleMetrics.recordTaskCompletion(metrics, task.getId(), "task-execution", Duration.ZERO, true);
+                        }
                     } else {
                         // Publish failure status
                         String errorMessage = result.getMessage() != null ? result.getMessage()
@@ -1873,12 +1886,14 @@ public class AgentTaskManager {
                         // Record task failure metrics
                         Map<String, Object> context = Map.of("taskId", task.getId(), "actionId", actionId, "error",
                                 errorMessage, "success", false);
-                        recordTaskLifecycleMetrics(task.getId(), "failed", false, Duration.ZERO, context);
+                        if (metrics != null) {
+                            TaskLifecycleMetrics.recordTaskFailure(metrics, task.getId(), "task-execution", "execution-error");
+                        }
 
                         // Update metrics
-                        TaskMetrics metrics = taskMetrics.get(task.getId());
-                        if (metrics != null) {
-                            metrics.recordError(new Exception(errorMessage));
+                        TaskMetrics taskMetricsInstance = taskMetrics.get(task.getId());
+                        if (taskMetricsInstance != null) {
+                            taskMetricsInstance.recordError(new Exception(errorMessage));
                         }
                     }
 
@@ -2106,35 +2121,4 @@ public class AgentTaskManager {
     // Enhanced Metrics Recording Helper Methods
     // ============================================================================
 
-    /**
-     * Record task lifecycle metrics using the generic metrics service.
-     * 
-     * @param taskId the task identifier
-     * @param lifecycleEvent the lifecycle event (e.g., "created", "activated", "completed", "cancelled")
-     * @param success whether the lifecycle event was successful
-     * @param duration the event duration
-     * @param context additional context data
-     */
-    private void recordTaskLifecycleMetrics(String taskId, String lifecycleEvent, boolean success, Duration duration,
-            Map<String, Object> context) {
-        try {
-            MetricsService metrics = metricsService;
-            if (metrics != null) {
-                // Add taskId to context for better tracking
-                Map<String, Object> enhancedContext = new HashMap<>(context);
-                enhancedContext.put("taskId", taskId);
-
-                // Record the task lifecycle event using the generic metrics service
-                metrics.recordOperationWithData("agent", "task_" + lifecycleEvent, success, duration, enhancedContext);
-
-                logger.debug("Recorded task lifecycle metrics: {}:{} (success={}, duration={})", taskId, lifecycleEvent,
-                        success, duration);
-            } else {
-                logger.debug("MetricsService not available for task lifecycle recording: {}:{}", taskId,
-                        lifecycleEvent);
-            }
-        } catch (Exception e) {
-            logger.warn("Failed to record task lifecycle metrics: {}:{}", taskId, lifecycleEvent, e);
-        }
-    }
 }

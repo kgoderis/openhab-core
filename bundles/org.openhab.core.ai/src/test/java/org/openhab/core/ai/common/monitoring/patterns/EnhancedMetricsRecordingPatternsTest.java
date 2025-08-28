@@ -12,6 +12,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.TaskLifecycleMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.ValidationRuleMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.SkillExecutionMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.AuditEventMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.ConfigurationOperationMetrics;
+import org.openhab.core.ai.common.monitoring.patterns.CardBuildingMetrics;
 
 /**
  * Comprehensive test class for all enhanced metrics recording patterns.
@@ -25,29 +31,12 @@ class EnhancedMetricsRecordingPatternsTest {
     @Mock
     private MetricsService metricsService;
 
-    private TaskLifecycleMetrics taskMetrics;
-    private ValidationRuleMetrics validationMetrics;
-    private SkillExecutionMetrics skillMetrics;
-    private AuditEventMetrics auditMetrics;
-    private ConfigurationOperationMetrics configMetrics;
-    private CardBuildingMetrics cardMetrics;
-
-    @BeforeEach
-    void setUp() {
-        taskMetrics = new TaskLifecycleMetrics(metricsService);
-        validationMetrics = new ValidationRuleMetrics(metricsService);
-        skillMetrics = new SkillExecutionMetrics(metricsService);
-        auditMetrics = new AuditEventMetrics(metricsService);
-        configMetrics = new ConfigurationOperationMetrics(metricsService);
-        cardMetrics = new CardBuildingMetrics(metricsService);
-    }
-
     // ===== TASK LIFECYCLE METRICS TESTS =====
 
     @Test
     void testTaskCreationMetrics() {
-        taskMetrics.recordTaskCreation("task-123", "data-processing", "high", Duration.ofMinutes(5),
-                Duration.ofMillis(50));
+        TaskLifecycleMetrics.recordTaskCreation(metricsService, "task-123", "data-processing", "high", 
+                Duration.ofMinutes(5), Duration.ofMillis(50));
 
         verify(metricsService).recordOperationWithData(eq("task"), eq("creation"), eq(true), eq(Duration.ofMillis(50)),
                 argThat(data -> data.containsKey("taskId") && data.get("taskId").equals("task-123")));
@@ -55,7 +44,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testTaskActivationMetrics() {
-        taskMetrics.recordTaskActivation("task-123", "data-processing", Duration.ofMillis(200), Duration.ofSeconds(5),
+        TaskLifecycleMetrics.recordTaskActivation(metricsService, "task-123", "data-processing", Duration.ofMillis(200), Duration.ofSeconds(5),
                 250_000_000L);
 
         verify(metricsService).recordOperationWithData(eq("task"), eq("activation"), eq(true),
@@ -65,7 +54,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testTaskCompletionMetrics() {
-        taskMetrics.recordTaskCompletion("task-123", "data-processing", Duration.ofMinutes(3), 5_000_000L, true, null);
+        TaskLifecycleMetrics.recordTaskCompletion(metricsService, "task-123", "data-processing", Duration.ofMinutes(3), 5_000_000L, true, null);
 
         verify(metricsService).recordOperationWithData(eq("task"), eq("completion"), eq(true),
                 eq(Duration.ofMinutes(3)),
@@ -74,8 +63,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testTaskCancellationMetrics() {
-        taskMetrics.recordTaskCancellation("task-123", "data-processing", Duration.ofMillis(100), 75.5,
-                "user-requested");
+        TaskLifecycleMetrics.recordTaskCancellation(metricsService, "task-123", "data-processing", Duration.ofMillis(100), 75.5, "user-requested");
 
         verify(metricsService).recordOperationWithData(eq("task"), eq("cancellation"), eq(true),
                 eq(Duration.ofMillis(100)),
@@ -84,8 +72,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testTaskFailureMetrics() {
-        taskMetrics.recordTaskFailure("task-123", "data-processing", Duration.ofMinutes(2), "resource-exhaustion", 3,
-                true);
+        TaskLifecycleMetrics.recordTaskFailure(metricsService, "task-123", "data-processing", Duration.ofMinutes(2), "resource-exhaustion", 3, true);
 
         verify(metricsService).recordOperationWithData(eq("task"), eq("failure"), eq(false), eq(Duration.ofMinutes(2)),
                 argThat(data -> data.containsKey("taskId") && data.get("taskId").equals("task-123")));
@@ -95,8 +82,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testValidationRuleExecutionMetrics() {
-        validationMetrics.recordValidationRuleExecution("rule-456", "data-validation", Duration.ofMillis(25), true,
-                5000L, null);
+        ValidationRuleMetrics.recordValidationRuleExecution(metricsService, "rule-456", "data-validation", Duration.ofMillis(25), true, 5000L, null);
 
         verify(metricsService).recordOperationWithData(eq("validation"), eq("rule-execution"), eq(true),
                 eq(Duration.ofMillis(25)),
@@ -105,7 +91,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testValidationRuleBatchMetrics() {
-        validationMetrics.recordValidationRuleBatch("batch-789", 10, Duration.ofMillis(500), 8, 2, 100_000L);
+        ValidationRuleMetrics.recordValidationRuleBatch(metricsService, "batch-789", 10, Duration.ofMillis(500), 8, 2, 100_000L);
 
         verify(metricsService).recordOperationWithData(eq("validation"), eq("rule-batch"), eq(false),
                 eq(Duration.ofMillis(500)),
@@ -114,7 +100,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testValidationRulePerformanceMetrics() {
-        validationMetrics.recordValidationRulePerformance("rule-456", Duration.ofMillis(30), 500, 95.5, 8);
+        ValidationRuleMetrics.recordValidationRulePerformance(metricsService, "rule-456", Duration.ofMillis(30), 500, 95.5, 8);
 
         verify(metricsService).recordOperationWithData(eq("validation"), eq("rule-performance"), eq(true),
                 eq(Duration.ofMillis(30)),
@@ -126,8 +112,7 @@ class EnhancedMetricsRecordingPatternsTest {
     @Test
     void testSkillInvocationMetrics() {
         Map<String, Object> inputParams = Map.of("param1", "value1", "param2", 42);
-        skillMetrics.recordSkillInvocation("skill-101", "data-analysis", Duration.ofMillis(100), inputParams,
-                "agent-001");
+        SkillExecutionMetrics.recordSkillInvocation(metricsService, "skill-101", "data-analysis", Duration.ofMillis(100), inputParams, "agent-001");
 
         verify(metricsService).recordOperationWithData(eq("skill"), eq("invocation"), eq(true),
                 eq(Duration.ofMillis(100)),
@@ -136,8 +121,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testSkillExecutionSuccessMetrics() {
-        skillMetrics.recordSkillExecutionSuccess("skill-101", "data-analysis", Duration.ofSeconds(5), 1_000_000L,
-                "agent-001", "batch-processing");
+        SkillExecutionMetrics.recordSkillExecutionSuccess(metricsService, "skill-101", "data-analysis", Duration.ofSeconds(5), 1_000_000L, "agent-001", "batch-processing");
 
         verify(metricsService).recordOperationWithData(eq("skill"), eq("execution-success"), eq(true),
                 eq(Duration.ofSeconds(5)),
@@ -146,8 +130,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testSkillExecutionFailureMetrics() {
-        skillMetrics.recordSkillExecutionFailure("skill-101", "data-analysis", Duration.ofSeconds(2), "timeout",
-                "Operation timed out", "agent-001", 2);
+        SkillExecutionMetrics.recordSkillExecutionFailure(metricsService, "skill-101", "data-analysis", Duration.ofSeconds(2), "timeout", "Operation timed out", "agent-001", 2);
 
         verify(metricsService).recordOperationWithData(eq("skill"), eq("execution-failure"), eq(false),
                 eq(Duration.ofSeconds(2)),
@@ -159,7 +142,7 @@ class EnhancedMetricsRecordingPatternsTest {
     @Test
     void testAuditEventMetrics() {
         Map<String, Object> eventData = Map.of("action", "login", "resource", "admin-panel");
-        auditMetrics.recordAuditEvent("event-202", "authentication", "login", 2, "user-123", eventData,
+        AuditEventMetrics.recordAuditEvent("event-202", "authentication", "login", 2, "user-123", eventData,
                 Duration.ofMillis(10));
 
         verify(metricsService).recordOperationWithData(eq("audit"), eq("event"), eq(true), eq(Duration.ofMillis(10)),
@@ -168,7 +151,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testSecurityAuditEventMetrics() {
-        auditMetrics.recordSecurityAuditEvent("security-303", "unauthorized-access", 4, "192.168.1.100", "admin-panel",
+        AuditEventMetrics.recordSecurityAuditEvent("security-303", "unauthorized-access", 4, "192.168.1.100", "admin-panel",
                 "blocked", Duration.ofMillis(5));
 
         verify(metricsService).recordOperationWithData(eq("audit"), eq("security-event"), eq(true),
@@ -178,7 +161,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testUserBehaviorAuditMetrics() {
-        auditMetrics.recordUserBehaviorAudit("user-123", "suspicious-activity", "session-456", 25, 65.5,
+        AuditEventMetrics.recordUserBehaviorAudit("user-123", "suspicious-activity", "session-456", 25, 65.5,
                 Duration.ofMillis(200));
 
         verify(metricsService).recordOperationWithData(eq("audit"), eq("user-behavior"), eq(true),
@@ -190,7 +173,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testCacheOperationMetrics() {
-        configMetrics.recordCacheOperation("config-cache", "hit", "system.timeout", 5000L, Duration.ofNanos(5000));
+        ConfigurationOperationMetrics.recordCacheOperation("config-cache", "hit", "system.timeout", 5000L, Duration.ofNanos(5000));
 
         verify(metricsService).recordOperationWithData(eq("configuration"), eq("cache-hit"), eq(true),
                 eq(Duration.ofNanos(5000)),
@@ -199,8 +182,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testConfigurationReloadMetrics() {
-        configMetrics.recordConfigurationReload("system", "/conf/system.properties", 50_000L, Duration.ofMillis(300),
-                0);
+        ConfigurationOperationMetrics.recordConfigurationReload(metricsService, "system", "/conf/system.properties", 50_000L, Duration.ofMillis(300), 0);
 
         verify(metricsService).recordOperationWithData(eq("configuration"), eq("reload"), eq(true),
                 eq(Duration.ofMillis(300)),
@@ -209,7 +191,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testFileOperationMetrics() {
-        configMetrics.recordFileOperation("read", "/conf/system.properties", 50_000L, Duration.ofMillis(50), true);
+        ConfigurationOperationMetrics.recordFileOperation(metricsService, "read", "/conf/system.properties", 50_000L, Duration.ofMillis(50), true);
 
         verify(metricsService).recordOperationWithData(eq("configuration"), eq("file-read"), eq(true),
                 eq(Duration.ofMillis(50)),
@@ -218,7 +200,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testConfigurationChangeMetrics() {
-        configMetrics.recordConfigurationChange("system.timeout", "5000", "10000", Duration.ofMillis(25), 2, false);
+        ConfigurationOperationMetrics.recordConfigurationChange(metricsService, "system.timeout", "5000", "10000", Duration.ofMillis(25), 2, false);
 
         verify(metricsService).recordOperationWithData(eq("configuration"), eq("change"), eq(true),
                 eq(Duration.ofMillis(25)),
@@ -229,8 +211,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testCardGenerationMetrics() {
-        cardMetrics.recordCardGeneration("card-404", "agent-dashboard", "agent-001", Duration.ofMillis(1000), 250_000L,
-                true);
+        CardBuildingMetrics.recordCardGeneration(metricsService, "card-404", "agent-dashboard", "agent-001", Duration.ofMillis(1000), 250_000L, true);
 
         verify(metricsService).recordOperationWithData(eq("card"), eq("generation"), eq(true),
                 eq(Duration.ofMillis(1000)),
@@ -239,7 +220,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testCardValidationMetrics() {
-        cardMetrics.recordCardValidation("card-404", 5, Duration.ofMillis(100), 0, 1, true);
+        CardBuildingMetrics.recordCardValidation(metricsService, "card-404", 5, Duration.ofMillis(100), 0, 1, true);
 
         verify(metricsService).recordOperationWithData(eq("card"), eq("validation"), eq(true),
                 eq(Duration.ofMillis(100)),
@@ -248,8 +229,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testCardRenderingMetrics() {
-        cardMetrics.recordCardRendering("card-404", "html", Duration.ofMillis(200), 500_000L, true,
-                "dashboard-template");
+        CardBuildingMetrics.recordCardRendering(metricsService, "card-404", "html", Duration.ofMillis(200), 500_000L, true, "dashboard-template");
 
         verify(metricsService).recordOperationWithData(eq("card"), eq("rendering"), eq(true),
                 eq(Duration.ofMillis(200)),
@@ -258,7 +238,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testCardCachingMetrics() {
-        cardMetrics.recordCardCaching("card-404", "store", Duration.ofNanos(5000), 250_000L, true);
+        CardBuildingMetrics.recordCardCaching(metricsService, "card-404", "store", Duration.ofNanos(5000), 250_000L, true);
 
         verify(metricsService).recordOperationWithData(eq("card"), eq("cache-store"), eq(true),
                 eq(Duration.ofNanos(5000)),
@@ -267,7 +247,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testCardUpdateMetrics() {
-        cardMetrics.recordCardUpdate("card-404", "content", Duration.ofMillis(150), 3, true, false);
+        CardBuildingMetrics.recordCardUpdate(metricsService, "card-404", "content", Duration.ofMillis(150), 3, true, false);
 
         verify(metricsService).recordOperationWithData(eq("card"), eq("update"), eq(true), eq(Duration.ofMillis(150)),
                 argThat(data -> data.containsKey("cardId") && data.get("cardId").equals("card-404")));
@@ -275,7 +255,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testCardPerformanceMetrics() {
-        cardMetrics.recordCardPerformance("card-404", "render-time", 250.5, Duration.ofMillis(50), 8);
+        CardBuildingMetrics.recordCardPerformance(metricsService, "card-404", "render-time", 250.5, Duration.ofMillis(50), 8);
 
         verify(metricsService).recordOperationWithData(eq("card"), eq("performance"), eq(true),
                 eq(Duration.ofMillis(50)),
@@ -284,7 +264,7 @@ class EnhancedMetricsRecordingPatternsTest {
 
     @Test
     void testCardLifecycleMetrics() {
-        cardMetrics.recordCardLifecycle("card-404", "activated", Duration.ofMillis(25), 5000L, 10);
+        CardBuildingMetrics.recordCardLifecycle(metricsService, "card-404", "activated", Duration.ofMillis(25), 5000L, 10);
 
         verify(metricsService).recordOperationWithData(eq("card"), eq("lifecycle-activated"), eq(true),
                 eq(Duration.ofMillis(25)),
@@ -296,16 +276,14 @@ class EnhancedMetricsRecordingPatternsTest {
     @Test
     void testAllMetricsPatternsIntegration() {
         // Test that all metrics patterns work together without conflicts
-        taskMetrics.recordTaskCreation("task-999", "integration-test", "medium", Duration.ofMinutes(1),
+        TaskLifecycleMetrics.recordTaskCreation("task-999", "integration-test", "medium", Duration.ofMinutes(1),
                 Duration.ofMillis(10));
-        validationMetrics.recordValidationRuleExecution("rule-999", "integration-test", Duration.ofMillis(5), true,
-                1000L, null);
-        skillMetrics.recordSkillInvocation("skill-999", "integration-test", Duration.ofMillis(20), Map.of(),
-                "agent-999");
-        auditMetrics.recordAuditEvent("event-999", "integration", "test", 1, "user-999", Map.of(),
+        ValidationRuleMetrics.recordValidationRuleExecution(metricsService, "rule-999", "integration-test", Duration.ofMillis(5), true, 1000L, null);
+        SkillExecutionMetrics.recordSkillInvocation(metricsService, "skill-999", "integration-test", Duration.ofMillis(20), Map.of(), "agent-999");
+        AuditEventMetrics.recordAuditEvent("event-999", "integration", "test", 1, "user-999", Map.of(),
                 Duration.ofMillis(5));
-        configMetrics.recordCacheOperation("test-cache", "hit", "test-key", 1000L, Duration.ofNanos(1000));
-        cardMetrics.recordCardGeneration("card-999", "test-card", "agent-999", Duration.ofMillis(100), 10000L, true);
+        ConfigurationOperationMetrics.recordCacheOperation("test-cache", "hit", "test-key", 1000L, Duration.ofNanos(1000));
+        CardBuildingMetrics.recordCardGeneration(metricsService, "card-999", "test-card", "agent-999", Duration.ofMillis(100), 10000L, true);
 
         // Verify all operations were recorded
         verify(metricsService, times(6)).recordOperationWithData(anyString(), anyString(), anyBoolean(),

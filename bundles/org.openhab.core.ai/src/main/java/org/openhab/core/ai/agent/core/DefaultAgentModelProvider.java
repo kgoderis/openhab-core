@@ -18,6 +18,7 @@ import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.common.monitoring.api.HealthStatus;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemHealthMetrics;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelTrackingService;
@@ -308,10 +309,9 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
         }
 
         // Record health check operation
-        metricsService.recordOperation("agent", "health-check").withSuccess(healthStatus == HealthStatus.HEALTHY)
-                .withDuration(50).withData(Map.of("agentId", agentId, "errorRate", errorRate, "avgResponseTime",
-                        avgResponseTime, "fallbackActive", fallbackActive))
-                .record();
+        SystemHealthMetrics.recordSystemHealthCheck(metricsService, "agent-health-check", 
+            healthStatus == HealthStatus.HEALTHY, Duration.ofNanos(50), 0.95, 
+            Map.of("agentId", agentId, "errorRate", errorRate, "avgResponseTime", avgResponseTime, "fallbackActive", fallbackActive));
 
         // Return health metrics from service
         return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider("agent-" + agentId));

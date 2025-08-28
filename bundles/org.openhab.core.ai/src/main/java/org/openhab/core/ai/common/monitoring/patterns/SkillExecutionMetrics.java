@@ -8,35 +8,35 @@ import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.utils.SystemMetricsCollector;
 
 /**
- * Utility class for recording skill execution metrics using the enhanced MetricsService.
+ * Static utility class for recording skill execution metrics using the enhanced MetricsService.
  * 
  * <p>
- * This class provides methods to record comprehensive metrics for skill invocation,
+ * This class provides static methods to record comprehensive metrics for skill invocation,
  * execution success/failure, and performance characteristics with full context.
+ * All methods require a MetricsService instance as the first parameter.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
-public class SkillExecutionMetrics {
+public final class SkillExecutionMetrics {
 
-    private final MetricsService metricsService;
-
-    public SkillExecutionMetrics(MetricsService metricsService) {
-        this.metricsService = metricsService;
+    private SkillExecutionMetrics() {
+        // Utility class - prevent instantiation
     }
 
     /**
      * Record skill invocation metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param skillId the unique skill identifier
      * @param skillName the name of the skill
      * @param invocationTime the time taken to invoke the skill
      * @param inputParameters the input parameters passed to the skill
      * @param agentId the ID of the agent invoking the skill
      */
-    public void recordSkillInvocation(String skillId, String skillName, Duration invocationTime,
+    public static void recordSkillInvocation(MetricsService metricsService, String skillId, String skillName, Duration invocationTime,
             Map<String, Object> inputParameters, String agentId) {
         boolean success = invocationTime.toMillis() < 1000; // Consider successful if under 1 second
 
@@ -64,6 +64,7 @@ public class SkillExecutionMetrics {
     /**
      * Record skill execution success metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param skillId the unique skill identifier
      * @param skillName the name of the skill
      * @param executionTime the total execution time
@@ -71,7 +72,7 @@ public class SkillExecutionMetrics {
      * @param agentId the ID of the agent that executed the skill
      * @param executionContext additional context about the execution
      */
-    public void recordSkillExecutionSuccess(String skillId, String skillName, Duration executionTime, long resultSize,
+    public static void recordSkillExecutionSuccess(MetricsService metricsService, String skillId, String skillName, Duration executionTime, long resultSize,
             String agentId, String executionContext) {
         metricsService.recordOperation("skill", "execution-success").withSuccess(true)
                 .withDuration(executionTime.toNanos()).withData("skillId", skillId).withData("skillName", skillName)
@@ -97,6 +98,7 @@ public class SkillExecutionMetrics {
     /**
      * Record skill execution failure metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param skillId the unique skill identifier
      * @param skillName the name of the skill
      * @param executionTime the time taken before failure
@@ -105,7 +107,7 @@ public class SkillExecutionMetrics {
      * @param agentId the ID of the agent that executed the skill
      * @param retryCount the number of retries attempted
      */
-    public void recordSkillExecutionFailure(String skillId, String skillName, Duration executionTime, String errorType,
+    public static void recordSkillExecutionFailure(MetricsService metricsService, String skillId, String skillName, Duration executionTime, String errorType,
             String errorMessage, String agentId, int retryCount) {
         metricsService.recordOperation("skill", "execution-failure").withSuccess(false)
                 .withDuration(executionTime.toNanos()).withData("skillId", skillId).withData("skillName", skillName)
@@ -130,6 +132,7 @@ public class SkillExecutionMetrics {
     /**
      * Record skill performance metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param skillId the unique skill identifier
      * @param skillName the name of the skill
      * @param averageExecutionTime the average execution time over multiple runs
@@ -137,7 +140,7 @@ public class SkillExecutionMetrics {
      * @param successRate the success rate percentage (0-100)
      * @param throughput the throughput (executions per minute)
      */
-    public void recordSkillPerformance(String skillId, String skillName, Duration averageExecutionTime,
+    public static void recordSkillPerformance(MetricsService metricsService, String skillId, String skillName, Duration averageExecutionTime,
             int executionCount, double successRate, double throughput) {
         boolean success = successRate >= 95.0; // Consider successful if 95%+ success rate
 
@@ -164,6 +167,7 @@ public class SkillExecutionMetrics {
     /**
      * Record skill composition metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param compositionId the unique composition identifier
      * @param skillCount the number of skills in the composition
      * @param totalExecutionTime the total time for all skills
@@ -171,7 +175,7 @@ public class SkillExecutionMetrics {
      * @param failedSkills the number of skills that failed
      * @param compositionType the type of composition (sequential, parallel, etc.)
      */
-    public void recordSkillComposition(String compositionId, int skillCount, Duration totalExecutionTime,
+    public static void recordSkillComposition(MetricsService metricsService, String compositionId, int skillCount, Duration totalExecutionTime,
             int successfulSkills, int failedSkills, String compositionType) {
         boolean success = failedSkills == 0; // Composition is successful if no skills failed
 
@@ -199,6 +203,7 @@ public class SkillExecutionMetrics {
     /**
      * Record skill learning metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param skillId the unique skill identifier
      * @param skillName the name of the skill
      * @param learningTime the time taken for learning/adaptation
@@ -206,7 +211,7 @@ public class SkillExecutionMetrics {
      * @param improvementScore the improvement score (0-100)
      * @param trainingDataSize the size of training data used
      */
-    public void recordSkillLearning(String skillId, String skillName, Duration learningTime, String learningType,
+    public static void recordSkillLearning(MetricsService metricsService, String skillId, String skillName, Duration learningTime, String learningType,
             double improvementScore, long trainingDataSize) {
         boolean success = improvementScore > 0; // Success if there's any improvement
 

@@ -17,6 +17,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.EventProcessingMetrics;
 import org.openhab.core.ai.reasoning.input.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -189,8 +190,8 @@ public class EventProcessingAnalytics {
                 addConcurrencyContext(enhancedContext);
 
                 // Record performance metrics using generic method with enhanced context
-                metricsService.recordOperationWithData("event-processing", "performance", success, duration,
-                        enhancedContext);
+                EventProcessingMetrics.recordEventProcessing(metricsService, "performance", success, duration, 
+                    1024, 1);
 
             } catch (Exception e) {
                 logger.warn("Failed to record performance metrics for component {} operation {}: {}", component,
@@ -280,16 +281,8 @@ public class EventProcessingAnalytics {
     public void recordError(String component, String operation, String error, @Nullable Throwable exception) {
         // Record error using metrics service with builder pattern
         if (metricsService != null) {
-            try {
-                metricsService.recordOperation("event-processing", "error").withSuccess(false).withDuration(0L)
-                        .withData("component", component).withData("operation", operation).withData("error", error)
-                        .withData("exception", exception != null ? exception.getClass().getSimpleName() : "null")
-                        .record();
-            } catch (Exception e) {
-                logger.warn("Failed to record error metrics for component {} operation {}: {}", component, operation,
-                        e.getMessage());
-                // Graceful degradation: continue with local storage even if metrics recording fails
-            }
+            EventProcessingMetrics.recordEventProcessing(metricsService, "error", false, Duration.ofNanos(0L), 
+                0, 0);
         }
 
         // Store locally for analytics
@@ -315,15 +308,8 @@ public class EventProcessingAnalytics {
     public void recordWarning(String component, String operation, String warning) {
         // Record warning using metrics service with builder pattern
         if (metricsService != null) {
-            try {
-                metricsService.recordOperation("event-processing", "warning").withSuccess(true).withDuration(0L)
-                        .withData("component", component).withData("operation", operation).withData("warning", warning)
-                        .record();
-            } catch (Exception e) {
-                logger.warn("Failed to record warning metrics for component {} operation {}: {}", component, operation,
-                        e.getMessage());
-                // Graceful degradation: continue with local storage even if metrics recording fails
-            }
+            EventProcessingMetrics.recordEventProcessing(metricsService, "warning", true, Duration.ofNanos(0L), 
+                0, 0);
         }
 
         // Store locally for analytics
@@ -966,13 +952,8 @@ public class EventProcessingAnalytics {
      */
     public void recordQueueMetrics(int currentQueueSize, int maxQueueSize, double averageQueueSize) {
         if (metricsService != null) {
-            try {
-                metricsService.recordOperation("event-processing", "queue-metrics").withSuccess(true)
-                        .withData("currentQueueSize", currentQueueSize).withData("maxQueueSize", maxQueueSize)
-                        .withData("averageQueueSize", averageQueueSize).record();
-            } catch (Exception e) {
-                logger.warn("Failed to record queue metrics: {}", e.getMessage());
-            }
+            EventProcessingMetrics.recordEventProcessing(metricsService, "queue-metrics", true, Duration.ofNanos(0L), 
+                currentQueueSize, 1);
         }
     }
 
@@ -981,14 +962,8 @@ public class EventProcessingAnalytics {
      */
     public void recordThroughputMetrics(long eventsPerSecond, long totalEventsProcessed, long totalEventsDropped) {
         if (metricsService != null) {
-            try {
-                metricsService.recordOperation("event-processing", "throughput").withSuccess(true)
-                        .withData("eventsPerSecond", eventsPerSecond)
-                        .withData("totalEventsProcessed", totalEventsProcessed)
-                        .withData("totalEventsDropped", totalEventsDropped).record();
-            } catch (Exception e) {
-                logger.warn("Failed to record throughput metrics: {}", e.getMessage());
-            }
+            EventProcessingMetrics.recordEventProcessing(metricsService, "throughput", true, Duration.ofNanos(0L), 
+                totalEventsProcessed, 1);
         }
     }
 
@@ -997,13 +972,8 @@ public class EventProcessingAnalytics {
      */
     public void recordEventTypeDistribution(String eventType, long count, double percentage) {
         if (metricsService != null) {
-            try {
-                metricsService.recordOperation("event-processing", "event-type-distribution").withSuccess(true)
-                        .withData("eventType", eventType).withData("count", count).withData("percentage", percentage)
-                        .record();
-            } catch (Exception e) {
-                logger.warn("Failed to record event type distribution for {}: {}", eventType, e.getMessage());
-            }
+            EventProcessingMetrics.recordEventProcessing(metricsService, "event-type-distribution", true, Duration.ofNanos(0L), 
+                count, 1);
         }
     }
 
@@ -1012,13 +982,8 @@ public class EventProcessingAnalytics {
      */
     public void recordLatencyDistribution(String latencyBucket, long count, double averageLatencyMs) {
         if (metricsService != null) {
-            try {
-                metricsService.recordOperation("event-processing", "latency-distribution").withSuccess(true)
-                        .withData("latencyBucket", latencyBucket).withData("count", count)
-                        .withData("averageLatencyMs", averageLatencyMs).record();
-            } catch (Exception e) {
-                logger.warn("Failed to record latency distribution for bucket {}: {}", latencyBucket, e.getMessage());
-            }
+            EventProcessingMetrics.recordEventProcessing(metricsService, "latency-distribution", true, Duration.ofNanos(0L), 
+                count, 1);
         }
     }
 
@@ -1027,15 +992,8 @@ public class EventProcessingAnalytics {
      */
     public void recordErrorDistribution(String eventType, String errorType, long errorCount, double errorRate) {
         if (metricsService != null) {
-            try {
-                metricsService.recordOperation("event-processing", "error-distribution").withSuccess(false) // This is
-                                                                                                            // error
-                                                                                                            // data
-                        .withData("eventType", eventType).withData("errorType", errorType)
-                        .withData("errorCount", errorCount).withData("errorRate", errorRate).record();
-            } catch (Exception e) {
-                logger.warn("Failed to record error distribution for {} {}: {}", eventType, errorType, e.getMessage());
-            }
+            EventProcessingMetrics.recordEventProcessing(metricsService, "error-distribution", false, Duration.ofNanos(0L), 
+                errorCount, 1);
         }
     }
 

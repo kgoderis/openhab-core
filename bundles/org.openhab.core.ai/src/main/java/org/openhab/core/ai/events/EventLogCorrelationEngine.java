@@ -19,6 +19,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.EventProcessingMetrics;
 import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.osgi.service.component.annotations.Activate;
@@ -102,19 +103,15 @@ public class EventLogCorrelationEngine {
      * @param dataEntries additional key-value pairs for context
      */
     private void recordCorrelationMetrics(String operationType, boolean success, long duration, String... dataEntries) {
-        try {
-            var recorder = metricsService.recordOperation("event-log-correlation", operationType).withSuccess(success)
-                    .withDuration(duration);
-
-            // Add data entries in pairs
+        if (metricsService != null) {
+            // Build context map from data entries
+            Map<String, Object> context = new HashMap<>();
             for (int i = 0; i < dataEntries.length - 1; i += 2) {
-                recorder.withData(dataEntries[i], dataEntries[i + 1]);
+                context.put(dataEntries[i], dataEntries[i + 1]);
             }
-
-            recorder.record();
-        } catch (Exception e) {
-            logger.warn("Failed to record correlation metrics for operation {}: {}", operationType, e.getMessage());
-            // Graceful degradation - continue without metrics if recording fails
+            
+            EventProcessingMetrics.recordEventCorrelation(metricsService, "correlation-" + operationType, 
+                success, Duration.ofNanos(duration), 1, 0.95);
         }
     }
 

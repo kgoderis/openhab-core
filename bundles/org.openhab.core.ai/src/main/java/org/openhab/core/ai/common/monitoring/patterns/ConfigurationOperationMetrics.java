@@ -7,35 +7,35 @@ import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.utils.SystemMetricsCollector;
 
 /**
- * Utility class for recording configuration operation metrics using the enhanced MetricsService.
+ * Static utility class for recording configuration operation metrics using the enhanced MetricsService.
  * 
  * <p>
- * This class provides methods to record comprehensive metrics for configuration operations
- * including cache hits/misses, reloads, file operations, and configuration changes.
+ * This class provides static methods to record comprehensive metrics for configuration operations
+ * including cache hits/misses, reloads, file operations, and configuration changes with full context.
+ * All methods require a MetricsService instance as the first parameter.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
-public class ConfigurationOperationMetrics {
+public final class ConfigurationOperationMetrics {
 
-    private final MetricsService metricsService;
-
-    public ConfigurationOperationMetrics(MetricsService metricsService) {
-        this.metricsService = metricsService;
+    private ConfigurationOperationMetrics() {
+        // Utility class - prevent instantiation
     }
 
     /**
      * Record cache operation metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param cacheName the name of the cache
      * @param operationType the type of cache operation (hit, miss, put, evict)
      * @param key the cache key
      * @param valueSize the size of the cached value
      * @param operationTime the time taken for the cache operation
      */
-    public void recordCacheOperation(String cacheName, String operationType, String key, long valueSize,
+    public static void recordCacheOperation(MetricsService metricsService, String cacheName, String operationType, String key, long valueSize,
             Duration operationTime) {
         boolean success = operationTime.toNanos() < 1_000_000; // Consider successful if under 1ms
 
@@ -61,13 +61,14 @@ public class ConfigurationOperationMetrics {
     /**
      * Record configuration reload metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param configType the type of configuration being reloaded
      * @param configPath the path to the configuration file
      * @param fileSize the size of the configuration file
      * @param reloadTime the time taken to reload the configuration
      * @param validationErrors the number of validation errors found
      */
-    public void recordConfigurationReload(String configType, String configPath, long fileSize, Duration reloadTime,
+    public static void recordConfigurationReload(MetricsService metricsService, String configType, String configPath, long fileSize, Duration reloadTime,
             int validationErrors) {
         boolean success = validationErrors == 0; // Success if no validation errors
 
@@ -94,13 +95,14 @@ public class ConfigurationOperationMetrics {
     /**
      * Record file operation metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param operationType the type of file operation (read, write, delete, move)
      * @param filePath the path to the file
      * @param fileSize the size of the file
      * @param operationTime the time taken for the file operation
      * @param success whether the operation was successful
      */
-    public void recordFileOperation(String operationType, String filePath, long fileSize, Duration operationTime,
+    public static void recordFileOperation(MetricsService metricsService, String operationType, String filePath, long fileSize, Duration operationTime,
             boolean success) {
         metricsService.recordOperation("configuration", "file-" + operationType).withSuccess(success)
                 .withDuration(operationTime.toNanos()).withData("operationType", operationType)
@@ -124,6 +126,7 @@ public class ConfigurationOperationMetrics {
     /**
      * Record configuration change metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param configKey the configuration key that changed
      * @param oldValue the old value
      * @param newValue the new value
@@ -131,7 +134,7 @@ public class ConfigurationOperationMetrics {
      * @param impactLevel the impact level of the change (1-5)
      * @param rollbackRequired whether rollback is required
      */
-    public void recordConfigurationChange(String configKey, String oldValue, String newValue, Duration changeTime,
+    public static void recordConfigurationChange(MetricsService metricsService, String configKey, String oldValue, String newValue, Duration changeTime,
             int impactLevel, boolean rollbackRequired) {
         boolean success = changeTime.toMillis() < 1000; // Configuration changes should be reasonably fast
 
@@ -160,13 +163,14 @@ public class ConfigurationOperationMetrics {
     /**
      * Record configuration validation metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param configType the type of configuration being validated
      * @param validationRules the number of validation rules applied
      * @param validationTime the time taken for validation
      * @param errorCount the number of validation errors
      * @param warningCount the number of validation warnings
      */
-    public void recordConfigurationValidation(String configType, int validationRules, Duration validationTime,
+    public static void recordConfigurationValidation(MetricsService metricsService, String configType, int validationRules, Duration validationTime,
             int errorCount, int warningCount) {
         boolean success = errorCount == 0; // Success if no errors
 
@@ -193,13 +197,14 @@ public class ConfigurationOperationMetrics {
     /**
      * Record configuration backup metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param backupType the type of backup operation
      * @param backupSize the size of the backup
      * @param backupTime the time taken for the backup
      * @param compressionRatio the compression ratio achieved
      * @param success whether the backup was successful
      */
-    public void recordConfigurationBackup(String backupType, long backupSize, Duration backupTime,
+    public static void recordConfigurationBackup(MetricsService metricsService, String backupType, long backupSize, Duration backupTime,
             double compressionRatio, boolean success) {
         metricsService.recordOperation("configuration", "backup").withSuccess(success)
                 .withDuration(backupTime.toNanos()).withData("backupType", backupType)
@@ -223,6 +228,7 @@ public class ConfigurationOperationMetrics {
     /**
      * Record configuration migration metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param migrationType the type of migration
      * @param sourceVersion the source version
      * @param targetVersion the target version
@@ -230,7 +236,7 @@ public class ConfigurationOperationMetrics {
      * @param migratedItems the number of items migrated
      * @param failedItems the number of items that failed to migrate
      */
-    public void recordConfigurationMigration(String migrationType, String sourceVersion, String targetVersion,
+    public static void recordConfigurationMigration(MetricsService metricsService, String migrationType, String sourceVersion, String targetVersion,
             Duration migrationTime, int migratedItems, int failedItems) {
         boolean success = failedItems == 0; // Success if no items failed to migrate
 

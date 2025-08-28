@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ConfigurationOperationMetrics;
 import org.openhab.core.ai.tool.resources.api.ResourceContext;
 import org.openhab.core.ai.tool.resources.api.ResourceRegistry;
 import org.openhab.core.ai.tool.resources.api.ResourceResult;
@@ -70,6 +71,7 @@ public class ResourceReadingService {
     public ResourceResult readResource(String resourceId, Map<String, Object> parameters, ResourceContext context) {
         long startTime = System.currentTimeMillis();
         totalReads.incrementAndGet();
+        MetricsService metrics = metricsService;
 
         try {
             logger.debug("Reading resource: {} with parameters: {}", resourceId, parameters);
@@ -89,8 +91,12 @@ public class ResourceReadingService {
                 logger.debug("Cache hit for resource: {}", resourceId);
 
                 // Record cache hit metrics
-                recordConfigurationOperationMetrics("cache_hit", true, System.currentTimeMillis() - startTime,
-                        Map.of("resourceId", resourceId, "cacheKey", cacheKey, "operation", "read_resource"));
+                if (metrics != null) {
+                    // Estimate content size based on content type
+                    long estimatedSize = estimateContentSize(cachedContent.getContent());
+                    ConfigurationOperationMetrics.recordCacheOperation(metrics, "resource-cache", "hit", cacheKey,
+                            estimatedSize, java.time.Duration.ofMillis(System.currentTimeMillis() - startTime));
+                }
 
                 return ResourceResult.success(cachedContent.getContent(), System.currentTimeMillis() - startTime);
             }
@@ -98,8 +104,10 @@ public class ResourceReadingService {
             cacheMisses.incrementAndGet();
 
             // Record cache miss metrics
-            recordConfigurationOperationMetrics("cache_miss", true, System.currentTimeMillis() - startTime,
-                    Map.of("resourceId", resourceId, "cacheKey", cacheKey, "operation", "read_resource"));
+            if (metrics != null) {
+                ConfigurationOperationMetrics.recordCacheOperation(metrics, "resource-cache", "miss", cacheKey,
+                        0L, java.time.Duration.ofMillis(System.currentTimeMillis() - startTime));
+            }
 
             // Get resource specification
             ResourceRegistry registry = resourceRegistry;
@@ -142,8 +150,12 @@ public class ResourceReadingService {
             totalReadTime.addAndGet(executionTime);
 
             // Record successful resource read metrics
-            recordConfigurationOperationMetrics("resource_read", result.isSuccess(), executionTime,
-                    Map.of("resourceId", resourceId, "operation", "read_resource", "success", result.isSuccess()));
+            if (metrics != null) {
+                // Estimate content size based on content type
+                long estimatedSize = estimateContentSize(result.getContent());
+                ConfigurationOperationMetrics.recordFileOperation(metrics, "read", resourceId,
+                        estimatedSize, java.time.Duration.ofMillis(executionTime), result.isSuccess());
+            }
 
             logger.debug("Resource read completed in {}ms", executionTime);
             return result;
@@ -152,9 +164,10 @@ public class ResourceReadingService {
             logger.error("Error reading resource: {}", resourceId, e);
 
             // Record failed resource read metrics
-            recordConfigurationOperationMetrics("resource_read", false, System.currentTimeMillis() - startTime,
-                    Map.of("resourceId", resourceId, "operation", "read_resource", "error", e.getMessage(), "exception",
-                            e.getClass().getSimpleName()));
+            if (metrics != null) {
+                ConfigurationOperationMetrics.recordFileOperation(metrics, "read", resourceId,
+                        0L, java.time.Duration.ofMillis(System.currentTimeMillis() - startTime), false);
+            }
 
             return ResourceResult.failure("Read error: " + e.getMessage(), System.currentTimeMillis() - startTime);
         }
@@ -286,35 +299,25 @@ public class ResourceReadingService {
      */
     // CachedResourceContent extracted to org.openhab.core.ai.tool.resources.CachedResourceContent
 
-    // ============================================================================
-    // Enhanced Configuration Operation Metrics Recording Helper Methods
-    // ============================================================================
-
     /**
-     * Record configuration operation metrics using the generic metrics service.
+     * Estimate content size based on content type.
      * 
-     * @param operationType the type of configuration operation (e.g., "cache_hit", "cache_miss", "resource_read",
-     *            "file_operation")
-     * @param success whether the operation was successful
-     * @param durationMs the operation duration in milliseconds
-     * @param context additional context data
+     * @param content the content to estimate size for
+     * @return estimated size in bytes
      */
-    private void recordConfigurationOperationMetrics(String operationType, boolean success, long durationMs,
-            Map<String, Object> context) {
-        try {
-            MetricsService metrics = metricsService;
-            if (metrics != null) {
-                // Record the configuration operation using the generic metrics service
-                metrics.recordOperationWithData("configuration", operationType, success,
-                        java.time.Duration.ofMillis(durationMs), context);
-
-                logger.debug("Recorded configuration operation metrics: {} (success={}, duration={}ms)", operationType,
-                        success, durationMs);
-            }
-        } catch (Exception e) {
-            logger.warn("Failed to record configuration operation metrics for operation {}: {}", operationType,
-                    e.getMessage());
-            // Graceful degradation: continue with operation even if metrics recording fails
+    private long estimateContentSize(Object content) {
+        if (content == null) {
+            return 0L;
+        }
+        
+        if (content instanceof String) {
+            return ((String) content).length() * 2L; // UTF-16 encoding
+        } else if (content instanceof byte[]) {
+            return ((byte[]) content).length;
+        } else {
+            // For other types, estimate based on toString() length
+            return content.toString().length() * 2L;
         }
     }
+
 }

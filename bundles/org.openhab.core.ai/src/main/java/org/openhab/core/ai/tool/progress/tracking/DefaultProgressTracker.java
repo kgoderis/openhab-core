@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ToolProgressMetrics;
 import org.openhab.core.ai.tool.progress.api.tracking.ProgressInfo;
 import org.openhab.core.ai.tool.progress.api.tracking.ProgressOperation;
 import org.openhab.core.ai.tool.progress.api.tracking.ProgressStatus;
@@ -46,15 +47,8 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
         ProgressOperation operation = createProgressOperation(operationId, totalSteps);
         operations.put(operationId, operation);
         if (metricsService != null) {
-            try {
-                Map<String, Object> context = Map.of(
-                    "operationId", operationId,
-                    "totalSteps", totalSteps
-                );
-                metricsService.recordOperationWithData("progress_tracking", "start", true, Duration.ofNanos(0L), context);
-            } catch (Exception e) {
-                logger.debug("Failed to record progress tracking start metrics: {}", e.getMessage());
-            }
+            ToolProgressMetrics.recordOperationStart(metricsService, operationId, "progress-tracking", 
+                System.currentTimeMillis(), totalSteps, Map.of("operationId", operationId, "totalSteps", totalSteps));
         }
         persistOperationStart(operationId, totalSteps);
         sendProgressNotification(operationId, "STARTED", 0, "Operation started");
@@ -86,18 +80,9 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
             operation.setCompletionTime(System.currentTimeMillis());
             operation.setCurrentStep(operation.getTotalSteps());
             if (metricsService != null) {
-                try {
-                    long processingTime = operation.getCompletionTime() - operation.getStartTime();
-                    Map<String, Object> context = Map.of(
-                        "operationId", operationId,
-                        "totalSteps", operation.getTotalSteps(),
-                        "processingTimeMs", processingTime
-                    );
-                    metricsService.recordOperationWithData("progress_tracking", "complete", true,
-                            Duration.ofMillis(processingTime), context);
-                } catch (Exception e) {
-                    logger.debug("Failed to record progress tracking completion metrics: {}", e.getMessage());
-                }
+                long processingTime = operation.getCompletionTime() - operation.getStartTime();
+                ToolProgressMetrics.recordOperationComplete(metricsService, operationId, "progress-tracking", 
+                    operation.getCompletionTime(), true, operation.getTotalSteps());
             }
             persistOperationCompletion(operationId, message);
             sendProgressNotification(operationId, "COMPLETED", operation.getTotalSteps(), message);

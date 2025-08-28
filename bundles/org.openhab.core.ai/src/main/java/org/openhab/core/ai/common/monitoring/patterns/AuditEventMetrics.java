@@ -8,28 +8,28 @@ import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.utils.SystemMetricsCollector;
 
 /**
- * Utility class for recording audit event metrics using the enhanced MetricsService.
+ * Static utility class for recording audit event metrics using the enhanced MetricsService.
  * 
  * <p>
- * This class provides methods to record comprehensive metrics for audit events
- * with categories, severity levels, and user behavior patterns.
+ * This class provides static methods to record comprehensive metrics for audit events
+ * with categories, severity levels, and user behavior patterns with full context.
+ * All methods require a MetricsService instance as the first parameter.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
-public class AuditEventMetrics {
+public final class AuditEventMetrics {
 
-    private final MetricsService metricsService;
-
-    public AuditEventMetrics(MetricsService metricsService) {
-        this.metricsService = metricsService;
+    private AuditEventMetrics() {
+        // Utility class - prevent instantiation
     }
 
     /**
      * Record audit event metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param eventId the unique event identifier
      * @param eventCategory the category of the audit event
      * @param eventType the type of event
@@ -38,7 +38,7 @@ public class AuditEventMetrics {
      * @param eventData additional event data
      * @param processingTime the time taken to process the event
      */
-    public void recordAuditEvent(String eventId, String eventCategory, String eventType, int severityLevel,
+    public static void recordAuditEvent(MetricsService metricsService, String eventId, String eventCategory, String eventType, int severityLevel,
             String userId, Map<String, Object> eventData, Duration processingTime) {
         boolean success = processingTime.toMillis() < 100; // Consider successful if under 100ms
 
@@ -66,6 +66,7 @@ public class AuditEventMetrics {
     /**
      * Record security audit event metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param eventId the unique event identifier
      * @param securityEventType the type of security event
      * @param threatLevel the threat level (1-5)
@@ -74,7 +75,7 @@ public class AuditEventMetrics {
      * @param actionTaken the action taken in response
      * @param processingTime the time taken to process the security event
      */
-    public void recordSecurityAuditEvent(String eventId, String securityEventType, int threatLevel, String sourceIp,
+    public static void recordSecurityAuditEvent(MetricsService metricsService, String eventId, String securityEventType, int threatLevel, String sourceIp,
             String targetResource, String actionTaken, Duration processingTime) {
         boolean success = processingTime.toMillis() < 50; // Security events should be processed quickly
 
@@ -102,6 +103,7 @@ public class AuditEventMetrics {
     /**
      * Record user behavior audit metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param userId the unique user identifier
      * @param behaviorType the type of behavior being audited
      * @param sessionId the session identifier
@@ -109,7 +111,7 @@ public class AuditEventMetrics {
      * @param riskScore the calculated risk score (0-100)
      * @param analysisTime the time taken to analyze the behavior
      */
-    public void recordUserBehaviorAudit(String userId, String behaviorType, String sessionId, int actionCount,
+    public static void recordUserBehaviorAudit(MetricsService metricsService, String userId, String behaviorType, String sessionId, int actionCount,
             double riskScore, Duration analysisTime) {
         boolean success = analysisTime.toMillis() < 500; // Behavior analysis should be reasonably fast
 
@@ -135,6 +137,7 @@ public class AuditEventMetrics {
     /**
      * Record audit event sequence metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param sequenceId the unique sequence identifier
      * @param eventCount the number of events in the sequence
      * @param sequenceDuration the total duration of the sequence
@@ -142,7 +145,7 @@ public class AuditEventMetrics {
      * @param confidenceScore the confidence score for the pattern (0-100)
      * @param processingTime the time taken to process the sequence
      */
-    public void recordAuditEventSequence(String sequenceId, int eventCount, Duration sequenceDuration,
+    public static void recordAuditEventSequence(MetricsService metricsService, String sequenceId, int eventCount, Duration sequenceDuration,
             String patternType, double confidenceScore, Duration processingTime) {
         boolean success = processingTime.toMillis() < 1000; // Sequence processing can take longer
 
@@ -169,6 +172,7 @@ public class AuditEventMetrics {
     /**
      * Record audit compliance metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param complianceId the unique compliance identifier
      * @param complianceType the type of compliance check
      * @param checkResult whether the compliance check passed
@@ -176,7 +180,7 @@ public class AuditEventMetrics {
      * @param remediationActions the number of remediation actions taken
      * @param checkTime the time taken to perform the compliance check
      */
-    public void recordAuditCompliance(String complianceId, String complianceType, boolean checkResult,
+    public static void recordAuditCompliance(MetricsService metricsService, String complianceId, String complianceType, boolean checkResult,
             int violationCount, int remediationActions, Duration checkTime) {
         boolean success = checkTime.toMillis() < 2000; // Compliance checks can take time
 
@@ -203,13 +207,14 @@ public class AuditEventMetrics {
     /**
      * Record audit retention metrics.
      * 
+     * @param metricsService the metrics service instance
      * @param retentionId the unique retention identifier
      * @param retentionType the type of retention operation
      * @param recordCount the number of records processed
      * @param retentionPeriod the retention period in days
      * @param operationTime the time taken for the retention operation
      */
-    public void recordAuditRetention(String retentionId, String retentionType, int recordCount, int retentionPeriod,
+    public static void recordAuditRetention(MetricsService metricsService, String retentionId, String retentionType, int recordCount, int retentionPeriod,
             Duration operationTime) {
         boolean success = operationTime.toMillis() < 5000; // Retention operations can take time
 
