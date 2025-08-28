@@ -75,18 +75,21 @@ class MetricsServiceTest {
         double cost = 0.01;
 
         // When
-        doNothing().when(metricsService).recordModelCompletion(modelId, success, duration, inputTokens, outputTokens, cost);
+        doNothing().when(metricsService).recordModelCompletion(modelId, success, duration, inputTokens, outputTokens,
+                cost);
         metricsService.recordModelCompletion(modelId, success, duration, inputTokens, outputTokens, cost);
 
         // Then
-        verify(metricsService, times(1)).recordModelCompletion(modelId, success, duration, inputTokens, outputTokens, cost);
+        verify(metricsService, times(1)).recordModelCompletion(modelId, success, duration, inputTokens, outputTokens,
+                cost);
     }
 
     @Test
     void testGetModelCompletionSnapshot() {
         // Given
         String modelId = "test-model";
-        ModelCompletionSnapshot expectedSnapshot = new ModelCompletionSnapshot(null, null, System.currentTimeMillis(), 0L, 0.0);
+        ModelCompletionSnapshot expectedSnapshot = new ModelCompletionSnapshot(null, null, System.currentTimeMillis(),
+                0L, 0.0);
 
         // When
         when(metricsService.getModelCompletionSnapshot(modelId)).thenReturn(expectedSnapshot);
@@ -219,8 +222,8 @@ class MetricsServiceTest {
         // Test that the interface methods are properly defined
         assertNotNull(MetricsService.class.getMethod("recordOperation", String.class, String.class, boolean.class,
                 Duration.class));
-        assertNotNull(MetricsService.class.getMethod("recordOperationWithData", String.class, String.class, boolean.class,
-                Duration.class, Map.class));
+        assertNotNull(MetricsService.class.getMethod("recordOperationWithData", String.class, String.class,
+                boolean.class, Duration.class, Map.class));
         assertNotNull(MetricsService.class.getMethod("recordModelCompletion", String.class, boolean.class,
                 Duration.class, int.class, int.class, double.class));
         assertNotNull(MetricsService.class.getMethod("getModelCompletionSnapshot", String.class));

@@ -78,12 +78,38 @@ public class AgentConversationService {
 
     @Activate
     public void activate() {
-        logger.info("Agent Conversation Service activated");
+        try {
+            logger.info("Agent Conversation Service activated");
 
-        // Start background processors
-        timeoutProcessor.scheduleAtFixedRate(this::processTimeouts, 0, 1000, TimeUnit.MILLISECONDS);
-        cleanupProcessor.scheduleAtFixedRate(this::cleanupExpiredConversations, 0, 300, TimeUnit.SECONDS);
-        analyticsProcessor.scheduleAtFixedRate(this::updateAnalytics, 0, 60000, TimeUnit.MILLISECONDS);
+            // Start background processors with error handling
+            try {
+                timeoutProcessor.scheduleAtFixedRate(this::processTimeouts, 0, 1000, TimeUnit.MILLISECONDS);
+                logger.debug("Timeout processor started");
+            } catch (Exception e) {
+                logger.error("Error starting timeout processor: {}", e.getMessage(), e);
+            }
+
+            try {
+                cleanupProcessor.scheduleAtFixedRate(this::cleanupExpiredConversations, 0, 300, TimeUnit.SECONDS);
+                logger.debug("Cleanup processor started");
+            } catch (Exception e) {
+                logger.error("Error starting cleanup processor: {}", e.getMessage(), e);
+            }
+
+            try {
+                analyticsProcessor.scheduleAtFixedRate(this::updateAnalytics, 0, 60000, TimeUnit.MILLISECONDS);
+                logger.debug("Analytics processor started");
+            } catch (Exception e) {
+                logger.error("Error starting analytics processor: {}", e.getMessage(), e);
+            }
+
+            recordMetrics("agent-conversation", "service-activated", true, Duration.ZERO);
+
+        } catch (Exception e) {
+            logger.error("Error during Agent Conversation Service activation: {}", e.getMessage(), e);
+            recordMetrics("agent-conversation", "service-activated", false, Duration.ZERO);
+            // Continue activation even if processors fail to start
+        }
     }
 
     @Deactivate
@@ -107,6 +133,29 @@ public class AgentConversationService {
      */
     public CompletableFuture<Conversation> startConversation(String conversationId, List<String> participantIds,
             @Nullable String templateId, Map<String, Object> context) {
+
+        // Input validation
+        if (conversationId == null || conversationId.trim().isEmpty()) {
+            logger.warn("Cannot start conversation: conversation ID is null or empty");
+            recordMetrics("agent-conversation", "conversation-validation-failed", false, Duration.ZERO);
+            return CompletableFuture
+                    .failedFuture(new IllegalArgumentException("Conversation ID cannot be null or empty"));
+        }
+
+        if (participantIds == null || participantIds.isEmpty()) {
+            logger.warn("Cannot start conversation: participant list is null or empty for conversation: {}",
+                    conversationId);
+            recordMetrics("agent-conversation", "conversation-validation-failed", false, Duration.ZERO);
+            return CompletableFuture
+                    .failedFuture(new IllegalArgumentException("Participant list cannot be null or empty"));
+        }
+
+        if (context == null) {
+            logger.warn("Cannot start conversation: context is null for conversation: {}", conversationId);
+            recordMetrics("agent-conversation", "conversation-validation-failed", false, Duration.ZERO);
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Context cannot be null"));
+        }
+
         logger.debug("Starting conversation: {} with participants: {}", conversationId, participantIds);
 
         // Validate participants exist
@@ -631,12 +680,36 @@ public class AgentConversationService {
     }
 
     private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            metrics.recordOperation(domain, operation, success, duration);
-        } else {
-            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
-                    operation);
+        try {
+            if (domain == null || domain.trim().isEmpty()) {
+                logger.warn("Cannot record metrics: domain is null or empty for operation: {}", operation);
+                return;
+            }
+
+            if (operation == null || operation.trim().isEmpty()) {
+                logger.warn("Cannot record metrics: operation is null or empty for domain: {}", domain);
+                return;
+            }
+
+            if (duration == null) {
+                logger.warn("Cannot record metrics: duration is null for {}.{}", domain, operation);
+                return;
+            }
+
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                try {
+                    metrics.recordOperation(domain, operation, success, duration);
+                } catch (Exception e) {
+                    logger.error("Failed to record metrics for {}.{}: {}", domain, operation, e.getMessage(), e);
+                }
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                        operation);
+            }
+        } catch (Exception e) {
+            // Prevent recursive error recording
+            logger.error("Error in metrics recording helper for {}.{}: {}", domain, operation, e.getMessage());
         }
     }
 

@@ -8,11 +8,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.transport.api.AgentTransport;
 import org.openhab.core.ai.agent.transport.api.TransportNegotiationResult;
 import org.openhab.core.ai.agent.transport.api.TransportSelectionStrategy;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.transport.TransportType;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,12 +41,48 @@ public class AgentTransportFactory {
     @Reference
     private AgentTransportPortManager portManager;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Transport providers registry
     private final Map<String, AgentTransportProvider> transportProviders = new ConcurrentHashMap<>();
     private final Map<String, AgentTransport> activeTransports = new ConcurrentHashMap<>();
     private final AtomicInteger transportIdCounter = new AtomicInteger(0);
 
     // TransportSelectionStrategy extracted to top-level enum in this package
+
+    @Activate
+    public void activate() {
+        try {
+            recordMetrics("transport-factory", "service-activated", true, java.time.Duration.ZERO);
+            logger.info("Agent Transport Factory activated");
+        } catch (Exception e) {
+            logger.error("Error during Agent Transport Factory activation: {}", e.getMessage(), e);
+            recordMetrics("transport-factory", "service-activated", false, java.time.Duration.ZERO);
+        }
+    }
+
+    @Deactivate
+    public void deactivate() {
+        try {
+            // Stop and clean up all active transports
+            for (Map.Entry<String, AgentTransport> entry : activeTransports.entrySet()) {
+                try {
+                    entry.getValue().stop();
+                } catch (Exception e) {
+                    logger.warn("Error stopping transport {} during deactivation: {}", entry.getKey(), e.getMessage());
+                }
+            }
+            activeTransports.clear();
+            transportProviders.clear();
+
+            recordMetrics("transport-factory", "service-deactivated", true, java.time.Duration.ZERO);
+            logger.info("Agent Transport Factory deactivated");
+        } catch (Exception e) {
+            logger.error("Error during Agent Transport Factory deactivation: {}", e.getMessage(), e);
+            recordMetrics("transport-factory", "service-deactivated", false, java.time.Duration.ZERO);
+        }
+    }
 
     /**
      * Transport negotiation result.
@@ -55,9 +95,28 @@ public class AgentTransportFactory {
      * @param provider the transport provider to register
      */
     public void registerTransportProvider(AgentTransportProvider provider) {
-        String providerId = provider.getProviderId();
-        transportProviders.put(providerId, provider);
-        logger.info("Registered transport provider: {}", providerId);
+        if (provider == null) {
+            logger.warn("Cannot register transport provider: provider is null");
+            recordMetrics("transport-provider", "registration", false, java.time.Duration.ZERO);
+            return;
+        }
+
+        try {
+            String providerId = provider.getProviderId();
+            if (providerId == null || providerId.trim().isEmpty()) {
+                logger.warn("Cannot register transport provider: provider ID is null or empty");
+                recordMetrics("transport-provider", "registration", false, java.time.Duration.ZERO);
+                return;
+            }
+
+            transportProviders.put(providerId, provider);
+            recordMetrics("transport-provider", "registration", true, java.time.Duration.ZERO);
+            logger.info("Registered transport provider: {}", providerId);
+
+        } catch (Exception e) {
+            logger.error("Error registering transport provider: {}", e.getMessage(), e);
+            recordMetrics("transport-provider", "registration", false, java.time.Duration.ZERO);
+        }
     }
 
     /**
@@ -801,5 +860,26 @@ public class AgentTransportFactory {
         transportIdCounter.set(0);
 
         logger.info("Reset transport factory");
+    }
+
+    /**
+     * Record metrics for an operation.
+     */
+    private void recordMetrics(String domain, String operation, boolean success, java.time.Duration duration) {
+        try {
+            if (domain == null || domain.trim().isEmpty() || operation == null || operation.trim().isEmpty()) {
+                logger.warn("Cannot record metrics: invalid domain '{}' or operation '{}'", domain, operation);
+                return;
+            }
+
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation(domain, operation, success, duration);
+            } else {
+                logger.debug("MetricsService not available for {}.{}", domain, operation);
+            }
+        } catch (Exception e) {
+            logger.error("Error recording metrics for {}.{}: {}", domain, operation, e.getMessage());
+        }
     }
 }

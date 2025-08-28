@@ -1,8 +1,9 @@
 package org.openhab.core.ai.agent.execution;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -10,18 +11,13 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.execution.api.AgentSkillException;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import java.util.Map;
-import java.util.Set;
-import org.openhab.core.ai.common.monitoring.api.MetricKey;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.service.statistics.ExecutionStatistics;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.a2a.spec.Message;
-import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
 
 /**
  * Skill Execution and Metrics Management.
@@ -103,6 +99,11 @@ public class AgentSkillExecutor {
     private final AtomicReference<@Nullable AgentSkillRegistry> skillRegistry = new AtomicReference<>();
     private @Nullable MetricsService metricsService;
 
+    // Business logic capture: Skill usage patterns
+    private final Map<String, AtomicLong> skillUsagePatterns = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> skillSuccessCorrelations = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> skillCombinationUsage = new ConcurrentHashMap<>();
+
     /**
      * Set the skill registry reference.
      * 
@@ -164,7 +165,9 @@ public class AgentSkillExecutor {
             if (registry == null) {
                 String errorMsg = "Skill registry not available";
                 logger.error(errorMsg);
-                recordMetrics("agent-skill", "execution", false, System.nanoTime() - startTimeNanos);
+                Map<String, Object> context = Map.of("skillId", skillId, "error", errorMsg, "errorType",
+                        "REGISTRY_UNAVAILABLE");
+                recordMetrics("agent-skill", "execution", false, System.nanoTime() - startTimeNanos, context);
                 return AgentSkillResult.failure(errorMsg, "REGISTRY_UNAVAILABLE",
                         System.currentTimeMillis() - startTime);
             }
@@ -174,7 +177,9 @@ public class AgentSkillExecutor {
             if (adapter == null) {
                 String errorMsg = "Skill not found: " + skillId;
                 logger.warn(errorMsg);
-                recordMetrics("agent-skill", "execution", false, System.nanoTime() - startTimeNanos);
+                Map<String, Object> context = Map.of("skillId", skillId, "error", errorMsg, "errorType",
+                        "SKILL_NOT_FOUND");
+                recordMetrics("agent-skill", "execution", false, System.nanoTime() - startTimeNanos, context);
                 return AgentSkillResult.failure(errorMsg, "SKILL_NOT_FOUND", System.currentTimeMillis() - startTime);
             }
 
@@ -183,8 +188,9 @@ public class AgentSkillExecutor {
             long executionTime = System.currentTimeMillis() - startTime;
             long durationNanos = System.nanoTime() - startTimeNanos;
 
-            // Track successful execution
-            recordMetrics("agent-skill", "execution", true, durationNanos);
+            // Track successful execution with context
+            Map<String, Object> context = Map.of("skillId", skillId, "executionTime", executionTime, "success", true);
+            recordMetrics("agent-skill", "execution", true, durationNanos, context);
 
             logger.debug("Skill execution completed successfully: {} in {}ms", skillId, executionTime);
 
@@ -203,7 +209,9 @@ public class AgentSkillExecutor {
             long executionTime = System.currentTimeMillis() - startTime;
             long durationNanos = System.nanoTime() - startTimeNanos;
 
-            recordMetrics("agent-skill", "execution", false, durationNanos);
+            Map<String, Object> context = Map.of("skillId", skillId, "error", e.getMessage(), "errorType",
+                    "EXECUTION_ERROR", "exception", e.getClass().getSimpleName());
+            recordMetrics("agent-skill", "execution", false, durationNanos, context);
 
             logger.error("Skill execution failed: {}", skillId, e);
             return AgentSkillResult.failure("Skill execution failed: " + e.getMessage(), "EXECUTION_ERROR",
@@ -222,6 +230,7 @@ public class AgentSkillExecutor {
      */
     public AgentSkillResult executeSkillWithRetry(String skillId, Message message, int maxRetries)
             throws AgentSkillException {
+        long retryStartTimeNanos = System.nanoTime();
 
         AgentSkillResult lastResult = null;
         Exception lastException = null;
@@ -232,11 +241,21 @@ public class AgentSkillExecutor {
 
                 // If successful, return immediately
                 if (lastResult.isSuccess()) {
+                    // Record successful retry execution
+                    Map<String, Object> context = Map.of("skillId", skillId, "attempts", attempt + 1, "maxRetries",
+                            maxRetries, "success", true);
+                    recordMetrics("agent-skill", "execution_with_retry", true, System.nanoTime() - retryStartTimeNanos,
+                            context);
                     return lastResult;
                 }
 
                 // If not successful but not an exception, return the result
                 if (attempt == maxRetries) {
+                    // Record failed retry execution
+                    Map<String, Object> context = Map.of("skillId", skillId, "attempts", attempt + 1, "maxRetries",
+                            maxRetries, "success", false, "error", "All retries exhausted");
+                    recordMetrics("agent-skill", "execution_with_retry", false, System.nanoTime() - retryStartTimeNanos,
+                            context);
                     return lastResult;
                 }
 
@@ -245,9 +264,20 @@ public class AgentSkillExecutor {
                 logger.warn("Skill execution attempt {} failed for skill {}: {}", attempt + 1, skillId, e.getMessage());
 
                 if (attempt == maxRetries) {
+                    // Record failed retry execution with exception
+                    Map<String, Object> context = Map.of("skillId", skillId, "attempts", attempt + 1, "maxRetries",
+                            maxRetries, "success", false, "error", e.getMessage(), "exception",
+                            e.getClass().getSimpleName());
+                    recordMetrics("agent-skill", "execution_with_retry", false, System.nanoTime() - retryStartTimeNanos,
+                            context);
                     throw new AgentSkillException("Skill execution failed after " + maxRetries + " retries",
                             lastException);
                 }
+
+                // Record retry attempt
+                Map<String, Object> context = Map.of("skillId", skillId, "attempt", attempt + 1, "maxRetries",
+                        maxRetries, "error", e.getMessage(), "exception", e.getClass().getSimpleName());
+                recordMetrics("agent-skill", "retry_attempt", false, System.nanoTime() - retryStartTimeNanos, context);
 
                 // Wait before retry (exponential backoff)
                 try {
@@ -269,54 +299,58 @@ public class AgentSkillExecutor {
     }
 
     /**
-     * Get execution statistics.
+     * Record skill usage patterns for business logic analysis.
      * 
-     * @return the execution statistics
+     * @param skillId the skill being used
+     * @param success whether the skill execution was successful
+     * @param executionTime the execution time in milliseconds
+     * @param previousSkillId the previously executed skill (for combination analysis)
      */
-    public ExecutionStatistics getExecutionStatistics() {
+    private void recordSkillUsagePatterns(String skillId, boolean success, long executionTime, String previousSkillId) {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                MetricKey agentSkillKey = MetricKeys.custom("agent-skill", Map.of(), Set.of("counts", "latency"));
-        var snapshot = metrics.getSnapshot(agentSkillKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                if (snapshot != null) {
-                    long totalOperations = snapshot.getLong("total");
-                    long failedOperations = snapshot.getLong("failure");
-                    long successfulOperations = totalOperations - failedOperations;
-                    long totalDurationNanos = snapshot.getLong("totalDurationNanos");
-                    
-                    return ExecutionStatistics.fromExecutionData(totalOperations,
-                            successfulOperations, failedOperations,
-                            totalDurationNanos, Duration.ofDays(1) // Default time range
-                    );
-                }
-                return ExecutionStatistics.empty(Duration.ofDays(1));
-            } catch (Exception e) {
-                logger.warn("Error retrieving metrics for agent-skill: {}", e.getMessage());
-            }
-        } else {
-            logger.warn("MetricsService not available, returning empty statistics");
-        }
+                Map<String, Object> context = Map.of("skillId", skillId, "success", success, "executionTime",
+                        executionTime, "previousSkillId", previousSkillId != null ? previousSkillId : "none",
+                        "timestamp", System.currentTimeMillis());
+                metrics.recordOperationWithData("skill-usage", "pattern", success,
+                        java.time.Duration.ofMillis(executionTime), context);
 
-        // Return empty statistics if MetricsService is not available
-        return ExecutionStatistics.fromExecutionData(0L, 0L, 0L, 0L, Duration.ofDays(1));
+                // Update local tracking
+                skillUsagePatterns.computeIfAbsent(skillId, k -> new AtomicLong(0)).incrementAndGet();
+                skillSuccessCorrelations.computeIfAbsent(skillId + ":" + success, k -> new AtomicLong(0))
+                        .incrementAndGet();
+
+                if (previousSkillId != null && !previousSkillId.isEmpty()) {
+                    String combination = previousSkillId + "->" + skillId;
+                    skillCombinationUsage.computeIfAbsent(combination, k -> new AtomicLong(0)).incrementAndGet();
+                }
+
+            } catch (Exception e) {
+                logger.warn("Failed to record skill usage pattern metrics: {}", e.getMessage());
+            }
+        }
     }
 
     /**
-     * Record metrics for an operation.
+     * Record metrics for an operation with additional context.
      * 
      * @param domain the operation domain
      * @param operation the operation name
      * @param success whether the operation was successful
      * @param durationNanos the operation duration in nanoseconds
+     * @param context additional context data
      */
-    private void recordMetrics(String domain, String operation, boolean success, long durationNanos) {
+    private void recordMetrics(String domain, String operation, boolean success, long durationNanos,
+            Map<String, Object> context) {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+                metrics.recordOperationWithData(domain, operation, success, java.time.Duration.ofNanos(durationNanos),
+                        context);
             } catch (Exception e) {
-                logger.warn("Failed to record agent skill execution metrics for operation {} - {}: {}", domain, operation, e.getMessage());
+                logger.warn("Failed to record agent skill execution metrics for operation {} - {}: {}", domain,
+                        operation, e.getMessage());
                 // Graceful degradation: continue with skill execution even if metrics recording fails
             }
         } else {

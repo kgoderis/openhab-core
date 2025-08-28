@@ -1,8 +1,5 @@
 package org.openhab.core.ai.agent.api;
 
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -92,8 +89,6 @@ public record AgentModelActionPlanPerformanceMetrics(Counts counts, Timing timin
     public double averageMs() {
         return LatencyMetrics.super.averageMs(total());
     }
-
-
 
     // ===== Action Plan Specific Metrics =====
 

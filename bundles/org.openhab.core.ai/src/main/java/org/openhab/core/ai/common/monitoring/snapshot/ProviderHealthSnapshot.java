@@ -1,7 +1,5 @@
 package org.openhab.core.ai.common.monitoring.snapshot;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -29,8 +27,6 @@ public record ProviderHealthSnapshot(HealthStatus status, String statusMessage, 
         Objects.requireNonNull(statusMessage, "statusMessage");
         Objects.requireNonNull(lastError, "lastError");
     }
-
-
 
     @Override
     public long total() {

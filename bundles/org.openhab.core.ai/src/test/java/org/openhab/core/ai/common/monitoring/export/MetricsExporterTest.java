@@ -538,7 +538,8 @@ class MetricsExporterTest {
     void testCalculateSystemStatusWithMixedData() {
         // Given
         when(mockHealth.getStatus()).thenReturn(Health.HealthStatus.HEALTHY);
-        when(monitoringRegistry.getHealthSnapshots()).thenReturn(List.of(mockHealth, mockHealth, mockHealth, mockHealth, mockHealth));
+        when(monitoringRegistry.getHealthSnapshots())
+                .thenReturn(List.of(mockHealth, mockHealth, mockHealth, mockHealth, mockHealth));
 
         // When
         Map<String, Object> result = exporter.getMetricsSummary();

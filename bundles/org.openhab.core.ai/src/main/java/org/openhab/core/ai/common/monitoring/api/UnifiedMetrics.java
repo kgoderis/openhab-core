@@ -20,13 +20,8 @@ import org.eclipse.jdt.annotation.Nullable;
  * @since 1.0.0
  */
 @NonNullByDefault
-public interface UnifiedMetrics extends 
-    MetricsSnapshot,
-    CountsMetrics,
-    LatencyMetrics,
-    HealthMetrics,
-    PerformanceMetrics,
-    StatisticsMetrics {
+public interface UnifiedMetrics
+        extends MetricsSnapshot, CountsMetrics, LatencyMetrics, HealthMetrics, PerformanceMetrics, StatisticsMetrics {
 
     /**
      * Get the unique identifier for this metrics data.
@@ -123,9 +118,8 @@ public interface UnifiedMetrics extends
      * @return true if the data is valid, false otherwise
      */
     default boolean isValid() {
-        return getId() != null && !getId().isBlank() && 
-               getDomain() != null && !getDomain().isBlank() &&
-               getOperation() != null && !getOperation().isBlank();
+        return getId() != null && !getId().isBlank() && getDomain() != null && !getDomain().isBlank()
+                && getOperation() != null && !getOperation().isBlank();
     }
 
     /**
@@ -171,10 +165,7 @@ public interface UnifiedMetrics extends
      * @return summary string
      */
     default String getSummary() {
-        return String.format("%s: %d total, %.1f%% success, %.2fms avg", 
-            getDescription(), 
-            total(), 
-            successRate(), 
-            averageMs(total()));
+        return String.format("%s: %d total, %.1f%% success, %.2fms avg", getDescription(), total(), successRate(),
+                averageMs(total()));
     }
 }

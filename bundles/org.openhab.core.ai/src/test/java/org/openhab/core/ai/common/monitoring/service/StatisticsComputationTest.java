@@ -3,10 +3,8 @@ package org.openhab.core.ai.common.monitoring.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,7 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.ModelCompletionSnapshot;
-import org.openhab.core.ai.common.monitoring.service.statistics.ClientPerformanceStatistics;
 
 /**
  * Integration tests for statistics computation from metrics.
@@ -39,11 +36,9 @@ class StatisticsComputationTest {
     @Test
     void testComputeBasicStatistics() {
         // Given
-        List<ModelCompletionSnapshot> snapshots = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
+        List<ModelCompletionSnapshot> snapshots = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
                 createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02),
-                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03)
-        );
+                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03));
 
         // When
         BasicStatisticsResult result = computationService.computeBasicStatistics(snapshots);
@@ -62,12 +57,10 @@ class StatisticsComputationTest {
     @Test
     void testComputeTrendStatistics() {
         // Given
-        List<ModelCompletionSnapshot> snapshots = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
+        List<ModelCompletionSnapshot> snapshots = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
                 createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02),
                 createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03),
-                createSnapshot(400, 360, 40, 4000000000L, 4000L, 0.04)
-        );
+                createSnapshot(400, 360, 40, 4000000000L, 4000L, 0.04));
 
         // When
         TrendStatisticsResult result = computationService.computeTrendStatistics(snapshots);
@@ -85,13 +78,11 @@ class StatisticsComputationTest {
     @Test
     void testComputePercentileStatistics() {
         // Given
-        List<ModelCompletionSnapshot> snapshots = List.of(
-                createSnapshot(100, 90, 10, 500000000L, 500L, 0.005),
+        List<ModelCompletionSnapshot> snapshots = List.of(createSnapshot(100, 90, 10, 500000000L, 500L, 0.005),
                 createSnapshot(200, 180, 20, 1000000000L, 1000L, 0.01),
                 createSnapshot(300, 270, 30, 1500000000L, 1500L, 0.015),
                 createSnapshot(400, 360, 40, 2000000000L, 2000L, 0.02),
-                createSnapshot(500, 450, 50, 2500000000L, 2500L, 0.025)
-        );
+                createSnapshot(500, 450, 50, 2500000000L, 2500L, 0.025));
 
         // When
         PercentileStatisticsResult result = computationService.computePercentileStatistics(snapshots);
@@ -113,11 +104,9 @@ class StatisticsComputationTest {
     @Test
     void testComputePerformanceStatistics() {
         // Given
-        List<ModelCompletionSnapshot> snapshots = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
+        List<ModelCompletionSnapshot> snapshots = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
                 createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02),
-                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03)
-        );
+                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03));
 
         // When
         PerformanceStatisticsResult result = computationService.computePerformanceStatistics(snapshots);
@@ -136,12 +125,10 @@ class StatisticsComputationTest {
     @Test
     void testComputeErrorStatistics() {
         // Given
-        List<ModelCompletionSnapshot> snapshots = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
+        List<ModelCompletionSnapshot> snapshots = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
                 createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02),
                 createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03),
-                createSnapshot(400, 360, 40, 4000000000L, 4000L, 0.04)
-        );
+                createSnapshot(400, 360, 40, 4000000000L, 4000L, 0.04));
 
         // When
         ErrorStatisticsResult result = computationService.computeErrorStatistics(snapshots);
@@ -159,12 +146,10 @@ class StatisticsComputationTest {
     @Test
     void testComputeCostStatistics() {
         // Given
-        List<ModelCompletionSnapshot> snapshots = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
+        List<ModelCompletionSnapshot> snapshots = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
                 createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02),
                 createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03),
-                createSnapshot(400, 360, 40, 4000000000L, 4000L, 0.04)
-        );
+                createSnapshot(400, 360, 40, 4000000000L, 4000L, 0.04));
 
         // When
         CostStatisticsResult result = computationService.computeCostStatistics(snapshots);
@@ -185,11 +170,9 @@ class StatisticsComputationTest {
         // Given
         Instant startTime = Instant.now().minusSeconds(3600); // 1 hour ago
         Instant endTime = Instant.now();
-        List<ModelCompletionSnapshot> snapshots = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
+        List<ModelCompletionSnapshot> snapshots = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
                 createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02),
-                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03)
-        );
+                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03));
 
         // When
         TimeRangeStatisticsResult result = computationService.computeTimeRangeStatistics(snapshots, startTime, endTime);
@@ -208,17 +191,15 @@ class StatisticsComputationTest {
     @Test
     void testComputeComparativeStatistics() {
         // Given
-        List<ModelCompletionSnapshot> baselineSnapshots = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
-                createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02)
-        );
+        List<ModelCompletionSnapshot> baselineSnapshots = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
+                createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02));
         List<ModelCompletionSnapshot> currentSnapshots = List.of(
                 createSnapshot(150, 135, 15, 1500000000L, 1500L, 0.015),
-                createSnapshot(250, 225, 25, 2500000000L, 2500L, 0.025)
-        );
+                createSnapshot(250, 225, 25, 2500000000L, 2500L, 0.025));
 
         // When
-        ComparativeStatisticsResult result = computationService.computeComparativeStatistics(baselineSnapshots, currentSnapshots);
+        ComparativeStatisticsResult result = computationService.computeComparativeStatistics(baselineSnapshots,
+                currentSnapshots);
 
         // Then
         assertNotNull(result);
@@ -234,11 +215,9 @@ class StatisticsComputationTest {
     @Test
     void testComputeAggregatedStatistics() {
         // Given
-        List<ModelCompletionSnapshot> snapshots = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
+        List<ModelCompletionSnapshot> snapshots = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
                 createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02),
-                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03)
-        );
+                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03));
 
         // When
         AggregatedStatisticsResult result = computationService.computeAggregatedStatistics(snapshots);
@@ -287,9 +266,7 @@ class StatisticsComputationTest {
     @Test
     void testComputeStatisticsWithSingleSnapshot() {
         // Given
-        List<ModelCompletionSnapshot> singleSnapshot = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01)
-        );
+        List<ModelCompletionSnapshot> singleSnapshot = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01));
 
         // When
         BasicStatisticsResult result = computationService.computeBasicStatistics(singleSnapshot);
@@ -323,7 +300,7 @@ class StatisticsComputationTest {
         assertEquals(1000000, result.getTotalOperations());
         assertEquals(900000, result.getSuccessfulOperations());
         assertEquals(100000, result.getFailedOperations());
-        
+
         long duration = endTime - startTime;
         assertTrue(duration < 1000, "Statistics computation should complete within 1 second for 10,000 snapshots");
     }
@@ -331,11 +308,9 @@ class StatisticsComputationTest {
     @Test
     void testComputeStatisticsConcurrency() {
         // Given
-        List<ModelCompletionSnapshot> snapshots = List.of(
-                createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
+        List<ModelCompletionSnapshot> snapshots = List.of(createSnapshot(100, 90, 10, 1000000000L, 1000L, 0.01),
                 createSnapshot(200, 180, 20, 2000000000L, 2000L, 0.02),
-                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03)
-        );
+                createSnapshot(300, 270, 30, 3000000000L, 3000L, 0.03));
 
         // When & Then - Concurrent computation should work correctly
         assertDoesNotThrow(() -> {
@@ -363,15 +338,12 @@ class StatisticsComputationTest {
     }
 
     // Helper methods
-    private ModelCompletionSnapshot createSnapshot(long total, long success, long failure, 
-            long processingTime, long tokens, double cost) {
+    private ModelCompletionSnapshot createSnapshot(long total, long success, long failure, long processingTime,
+            long tokens, double cost) {
         return new ModelCompletionSnapshot(
                 new org.openhab.core.ai.common.monitoring.api.Counts(total, success, failure),
-                new org.openhab.core.ai.common.monitoring.api.Timing(processingTime),
-                Instant.now().toEpochMilli(),
-                tokens,
-                cost
-        );
+                new org.openhab.core.ai.common.monitoring.api.Timing(processingTime), Instant.now().toEpochMilli(),
+                tokens, cost);
     }
 
     // Mock classes for testing
@@ -405,8 +377,8 @@ class StatisticsComputationTest {
             double averageTokens = snapshots.size() > 0 ? (double) totalTokens / snapshots.size() : 0.0;
             double averageCost = snapshots.size() > 0 ? totalCost / snapshots.size() : 0.0;
 
-            return new BasicStatisticsResult(totalOperations, successfulOperations, failedOperations, 
-                    successRate, averageProcessingTime, averageTokens, averageCost);
+            return new BasicStatisticsResult(totalOperations, successfulOperations, failedOperations, successRate,
+                    averageProcessingTime, averageTokens, averageCost);
         }
 
         public TrendStatisticsResult computeTrendStatistics(List<ModelCompletionSnapshot> snapshots) {
@@ -422,8 +394,8 @@ class StatisticsComputationTest {
             boolean isGrowing = true;
             String trendType = "STEADY_GROWTH";
 
-            return new TrendStatisticsResult(operationsGrowthRate, processingTimeGrowthRate, 
-                    tokensGrowthRate, costGrowthRate, isGrowing, trendType);
+            return new TrendStatisticsResult(operationsGrowthRate, processingTimeGrowthRate, tokensGrowthRate,
+                    costGrowthRate, isGrowing, trendType);
         }
 
         public PercentileStatisticsResult computePercentileStatistics(List<ModelCompletionSnapshot> snapshots) {
@@ -443,7 +415,7 @@ class StatisticsComputationTest {
             double p95Tokens = 2375.0;
             double p99Tokens = 2475.0;
 
-            return new PercentileStatisticsResult(p50ProcessingTime, p75ProcessingTime, p90ProcessingTime, 
+            return new PercentileStatisticsResult(p50ProcessingTime, p75ProcessingTime, p90ProcessingTime,
                     p95ProcessingTime, p99ProcessingTime, p50Tokens, p75Tokens, p90Tokens, p95Tokens, p99Tokens);
         }
 
@@ -461,8 +433,8 @@ class StatisticsComputationTest {
             double maxLatency = 3000000000.0;
             double minLatency = 1000000000.0;
 
-            return new PerformanceStatisticsResult(operationsPerSecond, tokensPerSecond, costPerSecond,
-                    averageLatency, medianLatency, maxLatency, minLatency);
+            return new PerformanceStatisticsResult(operationsPerSecond, tokensPerSecond, costPerSecond, averageLatency,
+                    medianLatency, maxLatency, minLatency);
         }
 
         public ErrorStatisticsResult computeErrorStatistics(List<ModelCompletionSnapshot> snapshots) {
@@ -481,8 +453,8 @@ class StatisticsComputationTest {
             long minErrorsInSnapshot = snapshots.stream().mapToLong(s -> s.counts().failure()).min().orElse(0);
             double medianErrorsPerSnapshot = averageErrorsPerSnapshot; // Simplified
 
-            return new ErrorStatisticsResult(totalErrors, errorRate, averageErrorsPerSnapshot,
-                    maxErrorsInSnapshot, minErrorsInSnapshot, medianErrorsPerSnapshot);
+            return new ErrorStatisticsResult(totalErrors, errorRate, averageErrorsPerSnapshot, maxErrorsInSnapshot,
+                    minErrorsInSnapshot, medianErrorsPerSnapshot);
         }
 
         public CostStatisticsResult computeCostStatistics(List<ModelCompletionSnapshot> snapshots) {
@@ -492,8 +464,10 @@ class StatisticsComputationTest {
 
             double totalCost = snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).sum();
             double averageCostPerSnapshot = totalCost / snapshots.size();
-            double maxCostPerSnapshot = snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).max().orElse(0.0);
-            double minCostPerSnapshot = snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).min().orElse(0.0);
+            double maxCostPerSnapshot = snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).max()
+                    .orElse(0.0);
+            double minCostPerSnapshot = snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).min()
+                    .orElse(0.0);
             double medianCostPerSnapshot = averageCostPerSnapshot; // Simplified
 
             long totalOperations = snapshots.stream().mapToLong(s -> s.counts().total()).sum();
@@ -502,11 +476,11 @@ class StatisticsComputationTest {
             double costPerOperation = totalOperations > 0 ? totalCost / totalOperations : 0.0;
             double costPerToken = totalTokens > 0 ? totalCost / totalTokens : 0.0;
 
-            return new CostStatisticsResult(totalCost, averageCostPerSnapshot, maxCostPerSnapshot,
-                    minCostPerSnapshot, medianCostPerSnapshot, costPerOperation, costPerToken);
+            return new CostStatisticsResult(totalCost, averageCostPerSnapshot, maxCostPerSnapshot, minCostPerSnapshot,
+                    medianCostPerSnapshot, costPerOperation, costPerToken);
         }
 
-        public TimeRangeStatisticsResult computeTimeRangeStatistics(List<ModelCompletionSnapshot> snapshots, 
+        public TimeRangeStatisticsResult computeTimeRangeStatistics(List<ModelCompletionSnapshot> snapshots,
                 Instant startTime, Instant endTime) {
             if (snapshots.isEmpty()) {
                 return new TimeRangeStatisticsResult();
@@ -518,10 +492,13 @@ class StatisticsComputationTest {
             long timeRangeSeconds = endTime.getEpochSecond() - startTime.getEpochSecond();
 
             double operationsPerSecond = timeRangeSeconds > 0 ? (double) totalOperations / timeRangeSeconds : 0.0;
-            double tokensPerSecond = timeRangeSeconds > 0 ? 
-                    (double) snapshots.stream().mapToLong(ModelCompletionSnapshot::totalTokens).sum() / timeRangeSeconds : 0.0;
-            double costPerSecond = timeRangeSeconds > 0 ? 
-                    snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).sum() / timeRangeSeconds : 0.0;
+            double tokensPerSecond = timeRangeSeconds > 0
+                    ? (double) snapshots.stream().mapToLong(ModelCompletionSnapshot::totalTokens).sum()
+                            / timeRangeSeconds
+                    : 0.0;
+            double costPerSecond = timeRangeSeconds > 0
+                    ? snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).sum() / timeRangeSeconds
+                    : 0.0;
 
             return new TimeRangeStatisticsResult(totalOperations, successfulOperations, failedOperations,
                     timeRangeSeconds, operationsPerSecond, tokensPerSecond, costPerSecond);
@@ -543,7 +520,8 @@ class StatisticsComputationTest {
             String performanceTrend = "IMPROVED";
 
             return new ComparativeStatisticsResult(operationsChangePercent, successRateChangePercent,
-                    processingTimeChangePercent, tokensChangePercent, costChangePercent, isPerformanceImproved, performanceTrend);
+                    processingTimeChangePercent, tokensChangePercent, costChangePercent, isPerformanceImproved,
+                    performanceTrend);
         }
 
         public AggregatedStatisticsResult computeAggregatedStatistics(List<ModelCompletionSnapshot> snapshots) {
@@ -555,15 +533,18 @@ class StatisticsComputationTest {
             long successfulOperations = snapshots.stream().mapToLong(s -> s.counts().success()).sum();
             long failedOperations = snapshots.stream().mapToLong(s -> s.counts().failure()).sum();
             double successRate = totalOperations > 0 ? (double) successfulOperations / totalOperations * 100.0 : 0.0;
-            double averageProcessingTime = snapshots.stream().mapToLong(s -> s.timing().totalDurationNanos()).average().orElse(0.0);
-            double averageTokens = snapshots.stream().mapToLong(ModelCompletionSnapshot::totalTokens).average().orElse(0.0);
-            double averageCost = snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).average().orElse(0.0);
+            double averageProcessingTime = snapshots.stream().mapToLong(s -> s.timing().totalDurationNanos()).average()
+                    .orElse(0.0);
+            double averageTokens = snapshots.stream().mapToLong(ModelCompletionSnapshot::totalTokens).average()
+                    .orElse(0.0);
+            double averageCost = snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).average()
+                    .orElse(0.0);
             long totalTokens = snapshots.stream().mapToLong(ModelCompletionSnapshot::totalTokens).sum();
             double totalCost = snapshots.stream().mapToDouble(ModelCompletionSnapshot::totalCost).sum();
             long totalProcessingTime = snapshots.stream().mapToLong(s -> s.timing().totalDurationNanos()).sum();
 
-            return new AggregatedStatisticsResult(totalOperations, successfulOperations, failedOperations,
-                    successRate, averageProcessingTime, averageTokens, averageCost, totalTokens, totalCost, totalProcessingTime);
+            return new AggregatedStatisticsResult(totalOperations, successfulOperations, failedOperations, successRate,
+                    averageProcessingTime, averageTokens, averageCost, totalTokens, totalCost, totalProcessingTime);
         }
     }
 
@@ -592,13 +573,33 @@ class StatisticsComputationTest {
             this.averageCost = averageCost;
         }
 
-        public long getTotalOperations() { return totalOperations; }
-        public long getSuccessfulOperations() { return successfulOperations; }
-        public long getFailedOperations() { return failedOperations; }
-        public double getSuccessRate() { return successRate; }
-        public double getAverageProcessingTime() { return averageProcessingTime; }
-        public double getAverageTokens() { return averageTokens; }
-        public double getAverageCost() { return averageCost; }
+        public long getTotalOperations() {
+            return totalOperations;
+        }
+
+        public long getSuccessfulOperations() {
+            return successfulOperations;
+        }
+
+        public long getFailedOperations() {
+            return failedOperations;
+        }
+
+        public double getSuccessRate() {
+            return successRate;
+        }
+
+        public double getAverageProcessingTime() {
+            return averageProcessingTime;
+        }
+
+        public double getAverageTokens() {
+            return averageTokens;
+        }
+
+        public double getAverageCost() {
+            return averageCost;
+        }
     }
 
     private static class TrendStatisticsResult {
@@ -623,12 +624,29 @@ class StatisticsComputationTest {
             this.trendType = trendType;
         }
 
-        public double getOperationsGrowthRate() { return operationsGrowthRate; }
-        public double getProcessingTimeGrowthRate() { return processingTimeGrowthRate; }
-        public double getTokensGrowthRate() { return tokensGrowthRate; }
-        public double getCostGrowthRate() { return costGrowthRate; }
-        public boolean isGrowing() { return isGrowing; }
-        public String getTrendType() { return trendType; }
+        public double getOperationsGrowthRate() {
+            return operationsGrowthRate;
+        }
+
+        public double getProcessingTimeGrowthRate() {
+            return processingTimeGrowthRate;
+        }
+
+        public double getTokensGrowthRate() {
+            return tokensGrowthRate;
+        }
+
+        public double getCostGrowthRate() {
+            return costGrowthRate;
+        }
+
+        public boolean isGrowing() {
+            return isGrowing;
+        }
+
+        public String getTrendType() {
+            return trendType;
+        }
     }
 
     private static class PercentileStatisticsResult {
@@ -662,16 +680,45 @@ class StatisticsComputationTest {
             this.p99Tokens = p99Tokens;
         }
 
-        public double getP50ProcessingTime() { return p50ProcessingTime; }
-        public double getP75ProcessingTime() { return p75ProcessingTime; }
-        public double getP90ProcessingTime() { return p90ProcessingTime; }
-        public double getP95ProcessingTime() { return p95ProcessingTime; }
-        public double getP99ProcessingTime() { return p99ProcessingTime; }
-        public double getP50Tokens() { return p50Tokens; }
-        public double getP75Tokens() { return p75Tokens; }
-        public double getP90Tokens() { return p90Tokens; }
-        public double getP95Tokens() { return p95Tokens; }
-        public double getP99Tokens() { return p99Tokens; }
+        public double getP50ProcessingTime() {
+            return p50ProcessingTime;
+        }
+
+        public double getP75ProcessingTime() {
+            return p75ProcessingTime;
+        }
+
+        public double getP90ProcessingTime() {
+            return p90ProcessingTime;
+        }
+
+        public double getP95ProcessingTime() {
+            return p95ProcessingTime;
+        }
+
+        public double getP99ProcessingTime() {
+            return p99ProcessingTime;
+        }
+
+        public double getP50Tokens() {
+            return p50Tokens;
+        }
+
+        public double getP75Tokens() {
+            return p75Tokens;
+        }
+
+        public double getP90Tokens() {
+            return p90Tokens;
+        }
+
+        public double getP95Tokens() {
+            return p95Tokens;
+        }
+
+        public double getP99Tokens() {
+            return p99Tokens;
+        }
     }
 
     private static class PerformanceStatisticsResult {
@@ -698,13 +745,33 @@ class StatisticsComputationTest {
             this.minLatency = minLatency;
         }
 
-        public double getOperationsPerSecond() { return operationsPerSecond; }
-        public double getTokensPerSecond() { return tokensPerSecond; }
-        public double getCostPerSecond() { return costPerSecond; }
-        public double getAverageLatency() { return averageLatency; }
-        public double getMedianLatency() { return medianLatency; }
-        public double getMaxLatency() { return maxLatency; }
-        public double getMinLatency() { return minLatency; }
+        public double getOperationsPerSecond() {
+            return operationsPerSecond;
+        }
+
+        public double getTokensPerSecond() {
+            return tokensPerSecond;
+        }
+
+        public double getCostPerSecond() {
+            return costPerSecond;
+        }
+
+        public double getAverageLatency() {
+            return averageLatency;
+        }
+
+        public double getMedianLatency() {
+            return medianLatency;
+        }
+
+        public double getMaxLatency() {
+            return maxLatency;
+        }
+
+        public double getMinLatency() {
+            return minLatency;
+        }
     }
 
     private static class ErrorStatisticsResult {
@@ -729,12 +796,29 @@ class StatisticsComputationTest {
             this.medianErrorsPerSnapshot = medianErrorsPerSnapshot;
         }
 
-        public long getTotalErrors() { return totalErrors; }
-        public double getErrorRate() { return errorRate; }
-        public double getAverageErrorsPerSnapshot() { return averageErrorsPerSnapshot; }
-        public long getMaxErrorsInSnapshot() { return maxErrorsInSnapshot; }
-        public long getMinErrorsInSnapshot() { return minErrorsInSnapshot; }
-        public double getMedianErrorsPerSnapshot() { return medianErrorsPerSnapshot; }
+        public long getTotalErrors() {
+            return totalErrors;
+        }
+
+        public double getErrorRate() {
+            return errorRate;
+        }
+
+        public double getAverageErrorsPerSnapshot() {
+            return averageErrorsPerSnapshot;
+        }
+
+        public long getMaxErrorsInSnapshot() {
+            return maxErrorsInSnapshot;
+        }
+
+        public long getMinErrorsInSnapshot() {
+            return minErrorsInSnapshot;
+        }
+
+        public double getMedianErrorsPerSnapshot() {
+            return medianErrorsPerSnapshot;
+        }
     }
 
     private static class CostStatisticsResult {
@@ -761,13 +845,33 @@ class StatisticsComputationTest {
             this.costPerToken = costPerToken;
         }
 
-        public double getTotalCost() { return totalCost; }
-        public double getAverageCostPerSnapshot() { return averageCostPerSnapshot; }
-        public double getMaxCostPerSnapshot() { return maxCostPerSnapshot; }
-        public double getMinCostPerSnapshot() { return minCostPerSnapshot; }
-        public double getMedianCostPerSnapshot() { return medianCostPerSnapshot; }
-        public double getCostPerOperation() { return costPerOperation; }
-        public double getCostPerToken() { return costPerToken; }
+        public double getTotalCost() {
+            return totalCost;
+        }
+
+        public double getAverageCostPerSnapshot() {
+            return averageCostPerSnapshot;
+        }
+
+        public double getMaxCostPerSnapshot() {
+            return maxCostPerSnapshot;
+        }
+
+        public double getMinCostPerSnapshot() {
+            return minCostPerSnapshot;
+        }
+
+        public double getMedianCostPerSnapshot() {
+            return medianCostPerSnapshot;
+        }
+
+        public double getCostPerOperation() {
+            return costPerOperation;
+        }
+
+        public double getCostPerToken() {
+            return costPerToken;
+        }
     }
 
     private static class TimeRangeStatisticsResult {
@@ -794,13 +898,33 @@ class StatisticsComputationTest {
             this.costPerSecond = costPerSecond;
         }
 
-        public long getTotalOperations() { return totalOperations; }
-        public long getSuccessfulOperations() { return successfulOperations; }
-        public long getFailedOperations() { return failedOperations; }
-        public long getTimeRangeSeconds() { return timeRangeSeconds; }
-        public double getOperationsPerSecond() { return operationsPerSecond; }
-        public double getTokensPerSecond() { return tokensPerSecond; }
-        public double getCostPerSecond() { return costPerSecond; }
+        public long getTotalOperations() {
+            return totalOperations;
+        }
+
+        public long getSuccessfulOperations() {
+            return successfulOperations;
+        }
+
+        public long getFailedOperations() {
+            return failedOperations;
+        }
+
+        public long getTimeRangeSeconds() {
+            return timeRangeSeconds;
+        }
+
+        public double getOperationsPerSecond() {
+            return operationsPerSecond;
+        }
+
+        public double getTokensPerSecond() {
+            return tokensPerSecond;
+        }
+
+        public double getCostPerSecond() {
+            return costPerSecond;
+        }
     }
 
     private static class ComparativeStatisticsResult {
@@ -828,13 +952,33 @@ class StatisticsComputationTest {
             this.performanceTrend = performanceTrend;
         }
 
-        public double getOperationsChangePercent() { return operationsChangePercent; }
-        public double getSuccessRateChangePercent() { return successRateChangePercent; }
-        public double getProcessingTimeChangePercent() { return processingTimeChangePercent; }
-        public double getTokensChangePercent() { return tokensChangePercent; }
-        public double getCostChangePercent() { return costChangePercent; }
-        public boolean isPerformanceImproved() { return isPerformanceImproved; }
-        public String getPerformanceTrend() { return performanceTrend; }
+        public double getOperationsChangePercent() {
+            return operationsChangePercent;
+        }
+
+        public double getSuccessRateChangePercent() {
+            return successRateChangePercent;
+        }
+
+        public double getProcessingTimeChangePercent() {
+            return processingTimeChangePercent;
+        }
+
+        public double getTokensChangePercent() {
+            return tokensChangePercent;
+        }
+
+        public double getCostChangePercent() {
+            return costChangePercent;
+        }
+
+        public boolean isPerformanceImproved() {
+            return isPerformanceImproved;
+        }
+
+        public String getPerformanceTrend() {
+            return performanceTrend;
+        }
     }
 
     private static class AggregatedStatisticsResult {
@@ -868,15 +1012,44 @@ class StatisticsComputationTest {
             this.totalProcessingTime = totalProcessingTime;
         }
 
-        public long getTotalOperations() { return totalOperations; }
-        public long getSuccessfulOperations() { return successfulOperations; }
-        public long getFailedOperations() { return failedOperations; }
-        public double getSuccessRate() { return successRate; }
-        public double getAverageProcessingTime() { return averageProcessingTime; }
-        public double getAverageTokens() { return averageTokens; }
-        public double getAverageCost() { return averageCost; }
-        public long getTotalTokens() { return totalTokens; }
-        public double getTotalCost() { return totalCost; }
-        public long getTotalProcessingTime() { return totalProcessingTime; }
+        public long getTotalOperations() {
+            return totalOperations;
+        }
+
+        public long getSuccessfulOperations() {
+            return successfulOperations;
+        }
+
+        public long getFailedOperations() {
+            return failedOperations;
+        }
+
+        public double getSuccessRate() {
+            return successRate;
+        }
+
+        public double getAverageProcessingTime() {
+            return averageProcessingTime;
+        }
+
+        public double getAverageTokens() {
+            return averageTokens;
+        }
+
+        public double getAverageCost() {
+            return averageCost;
+        }
+
+        public long getTotalTokens() {
+            return totalTokens;
+        }
+
+        public double getTotalCost() {
+            return totalCost;
+        }
+
+        public long getTotalProcessingTime() {
+            return totalProcessingTime;
+        }
     }
 }

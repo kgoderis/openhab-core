@@ -1,7 +1,5 @@
 package org.openhab.core.ai.common.monitoring.snapshot;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -144,8 +142,6 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing, long timest
         return successRatePercent() >= 95.0 && averageLatencyMs() < 5000.0 && healthStatus == HealthStatus.HEALTHY;
     }
 
-
-
     // ===== Health-Specific Methods =====
 
     /**
@@ -220,8 +216,6 @@ public record ExecutionMetricsSnapshot(Counts counts, Timing timing, long timest
     public long getConsecutiveFailures() {
         return consecutiveFailures;
     }
-
-
 
     /**
      * Builder for ExecutionMetricsSnapshot.

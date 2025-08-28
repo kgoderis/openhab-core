@@ -2,7 +2,6 @@ package org.openhab.core.ai.tool.security.api;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.security.SecurityManager;
-import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.security.filters.SecurityResult;
 
 /**
@@ -36,10 +35,7 @@ public interface ToolSecurityManager extends SecurityManager {
      */
     SecurityResult checkAccess(String toolId, String userId);
 
-    /**
-     * Get tool security statistics.
-     * 
-     * @return Tool security statistics
-     */
-    ToolSecurityStatistics getToolStatistics();
+    // Eliminated getToolStatistics() method - consumers should access statistics directly via MetricsService
+    // Use: metricsService.getSnapshot(MetricKeys.custom("tool-security", Map.of("operation", "security-check")),
+    // ToolSecurityStatistics.class, Duration.ofHours(24))
 }

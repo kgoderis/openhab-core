@@ -1,5 +1,6 @@
 package org.openhab.core.ai.agent.execution;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +28,7 @@ import org.openhab.core.ai.agent.infrastructure.persistence.AgentPersistenceMana
 import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentSynchronizationManager;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -137,6 +139,9 @@ public class AgentTaskManager {
 
     @Reference
     private @Nullable AgentRegistry agentRegistry;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Task storage and execution
     private @Nullable TaskStore taskStore;
@@ -254,6 +259,8 @@ public class AgentTaskManager {
 
     public Task cancelTask(String taskId) throws JSONRPCError {
         logger.debug("Cancelling task: {}", taskId);
+        long cancelTime = System.currentTimeMillis();
+        boolean success = false;
 
         if (taskId == null || taskId.trim().isEmpty()) {
             throw new JSONRPCError(-32602, "Task ID cannot be null or empty", null);
@@ -264,33 +271,42 @@ public class AgentTaskManager {
             throw new JSONRPCError(-32601, "Task not found: " + taskId, null);
         }
 
-        // Update task state
-        state.setState(TaskOrchestrationStateState.CANCELLED);
-        state.setEndTime(System.currentTimeMillis());
+        try {
+            // Update task state
+            state.setState(TaskOrchestrationStateState.CANCELLED);
+            state.setEndTime(cancelTime);
 
-        // Record cancellation in metrics
-        TaskMetrics metrics = taskMetrics.get(taskId);
-        if (metrics != null) {
-            metrics.recordCancellation();
-        }
-
-        // Get the task from store
-        TaskStore store = taskStore;
-        if (store != null) {
-            Task task = store.get(taskId);
-            if (task != null) {
-                // Update task status to cancelled (use available constructor)
-                TaskStatus cancelledStatus = new TaskStatus(TaskState.CANCELED);
-                // Preserve existing fields we have access to; use empty lists for attachments/messages
-                Task cancelledTask = new Task(task.getId(), task.getContextId(), cancelledStatus, new ArrayList<>(),
-                        new ArrayList<>(), task.getMetadata(), "task");
-
-                // Save updated task
-                store.save(cancelledTask);
-
-                logger.info("Task cancelled successfully: {}", taskId);
-                return cancelledTask;
+            // Record cancellation in metrics
+            TaskMetrics metrics = taskMetrics.get(taskId);
+            if (metrics != null) {
+                metrics.recordCancellation();
             }
+
+            success = true;
+
+            // Get the task from store
+            TaskStore store = taskStore;
+            if (store != null) {
+                Task task = store.get(taskId);
+                if (task != null) {
+                    // Update task status to cancelled (use available constructor)
+                    TaskStatus cancelledStatus = new TaskStatus(TaskState.CANCELED);
+                    // Preserve existing fields we have access to; use empty lists for attachments/messages
+                    Task cancelledTask = new Task(task.getId(), task.getContextId(), cancelledStatus, new ArrayList<>(),
+                            new ArrayList<>(), task.getMetadata(), "task");
+
+                    // Save updated task
+                    store.save(cancelledTask);
+
+                    logger.info("Task cancelled successfully: {}", taskId);
+                    return cancelledTask;
+                }
+            }
+        } finally {
+            // Record task cancellation metrics
+            Duration duration = Duration.ofMillis(System.currentTimeMillis() - cancelTime);
+            Map<String, Object> context = Map.of("taskId", taskId, "cancelTime", cancelTime, "success", success);
+            recordTaskLifecycleMetrics(taskId, "cancelled", success, duration, context);
         }
 
         throw new JSONRPCError(-32601, "Task not found in store: " + taskId, null);
@@ -652,21 +668,30 @@ public class AgentTaskManager {
      * @param taskId the ID of the task to start
      */
     public void startTask(String taskId) {
+        long startTime = System.currentTimeMillis();
+        boolean success = false;
+
         try {
             TaskOrchestrationState state = taskStates.get(taskId);
             if (state != null) {
                 state.setState(TaskOrchestrationStateState.RUNNING);
-                state.setStartTime(System.currentTimeMillis());
+                state.setStartTime(startTime);
 
                 // Initialize metrics
                 taskMetrics.put(taskId, new TaskMetrics(taskId));
 
+                success = true;
                 logger.debug("Started task: {}", taskId);
             } else {
                 logger.warn("Task not found for start: {}", taskId);
             }
         } catch (Exception e) {
             logger.error("Error starting task: {}", taskId, e);
+        } finally {
+            // Record task activation metrics
+            Duration duration = Duration.ofMillis(System.currentTimeMillis() - startTime);
+            Map<String, Object> context = Map.of("taskId", taskId, "startTime", startTime, "success", success);
+            recordTaskLifecycleMetrics(taskId, "activated", success, duration, context);
         }
     }
 
@@ -859,8 +884,13 @@ public class AgentTaskManager {
         metadata.put("content", content);
         metadata.put("created", System.currentTimeMillis());
 
-        return new Task(taskId, "OpenHAB A2A Task", initialStatus, new ArrayList<>(), List.of(params.message()),
+        Task task = new Task(taskId, "OpenHAB A2A Task", initialStatus, new ArrayList<>(), List.of(params.message()),
                 metadata, "task");
+
+        // Record task creation metrics
+        recordTaskLifecycleMetrics(taskId, "created", true, Duration.ZERO, metadata);
+
+        return task;
     }
 
     private void publishTaskStatusUpdate(String taskId, TaskState state, String message) {
@@ -1829,11 +1859,21 @@ public class AgentTaskManager {
                         if (metrics != null) {
                             metrics.recordSuccess();
                         }
+
+                        // Record task completion metrics
+                        Map<String, Object> context = Map.of("taskId", task.getId(), "actionId", actionId, "result",
+                                result.getMessage() != null ? result.getMessage() : "Success", "success", true);
+                        recordTaskLifecycleMetrics(task.getId(), "completed", true, Duration.ZERO, context);
                     } else {
                         // Publish failure status
                         String errorMessage = result.getMessage() != null ? result.getMessage()
                                 : "Task execution failed";
                         publishTaskStatusUpdate(task.getId(), TaskState.FAILED, errorMessage);
+
+                        // Record task failure metrics
+                        Map<String, Object> context = Map.of("taskId", task.getId(), "actionId", actionId, "error",
+                                errorMessage, "success", false);
+                        recordTaskLifecycleMetrics(task.getId(), "failed", false, Duration.ZERO, context);
 
                         // Update metrics
                         TaskMetrics metrics = taskMetrics.get(task.getId());
@@ -2059,6 +2099,42 @@ public class AgentTaskManager {
         } catch (Exception e) {
             logger.error("Error processing message send request", e);
             throw new JSONRPCError(-32603, "Internal error: " + e.getMessage(), null);
+        }
+    }
+
+    // ============================================================================
+    // Enhanced Metrics Recording Helper Methods
+    // ============================================================================
+
+    /**
+     * Record task lifecycle metrics using the generic metrics service.
+     * 
+     * @param taskId the task identifier
+     * @param lifecycleEvent the lifecycle event (e.g., "created", "activated", "completed", "cancelled")
+     * @param success whether the lifecycle event was successful
+     * @param duration the event duration
+     * @param context additional context data
+     */
+    private void recordTaskLifecycleMetrics(String taskId, String lifecycleEvent, boolean success, Duration duration,
+            Map<String, Object> context) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Add taskId to context for better tracking
+                Map<String, Object> enhancedContext = new HashMap<>(context);
+                enhancedContext.put("taskId", taskId);
+
+                // Record the task lifecycle event using the generic metrics service
+                metrics.recordOperationWithData("agent", "task_" + lifecycleEvent, success, duration, enhancedContext);
+
+                logger.debug("Recorded task lifecycle metrics: {}:{} (success={}, duration={})", taskId, lifecycleEvent,
+                        success, duration);
+            } else {
+                logger.debug("MetricsService not available for task lifecycle recording: {}:{}", taskId,
+                        lifecycleEvent);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record task lifecycle metrics: {}:{}", taskId, lifecycleEvent, e);
         }
     }
 }

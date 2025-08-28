@@ -7,8 +7,8 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.AgentModelSnapshot;
 import org.openhab.core.ai.model.api.ModelProviderType;
 
@@ -89,7 +89,9 @@ public final class AgentModel {
     }
 
     public @Nullable AgentModelSnapshot getPerformanceMetrics() {
-        return metricsService != null ? metricsService.getSnapshot(MetricKeys.agentModel(modelId), AgentModelSnapshot.class) : null;
+        return metricsService != null
+                ? metricsService.getSnapshot(MetricKeys.agentModel(modelId), AgentModelSnapshot.class)
+                : null;
     }
 
     public Instant getRegistrationTime() {

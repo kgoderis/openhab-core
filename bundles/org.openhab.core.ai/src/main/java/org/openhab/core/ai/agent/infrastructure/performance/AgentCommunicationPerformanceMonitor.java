@@ -14,9 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
-import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -52,9 +50,8 @@ public class AgentCommunicationPerformanceMonitor {
     private final ScheduledExecutorService alertingProcessor = Executors.newScheduledThreadPool(1);
     private final ScheduledExecutorService optimizationProcessor = Executors.newScheduledThreadPool(1);
 
-    // NEW: Monitoring registry for centralized metrics collection
     @Reference
-    private @Nullable MetricsRegistry monitoringRegistry;
+    private @Nullable MetricsService metricsService;
 
     @Activate
     public AgentCommunicationPerformanceMonitor() {
@@ -69,15 +66,20 @@ public class AgentCommunicationPerformanceMonitor {
     }
 
     /**
-     * Record message latency using the new monitoring framework
+     * Record message latency using the centralized monitoring framework
      */
     public void recordMessageLatency(String agentId, long latencyMs) {
         try {
-            // Use centralized monitoring registry
-            if (monitoringRegistry != null) {
-                MetricsCollector collector = monitoringRegistry.getCollector(MetricKeys.agent(agentId));
-                // Record as successful execution with latency
-                collector.recordExecution(true, latencyMs * 1_000_000L); // Convert to nanoseconds
+            // Use centralized MetricsService
+            if (metricsService != null) {
+                // Record as agent communication operation with duration
+                metricsService.recordOperation("agent", "communication", true, Duration.ofMillis(latencyMs));
+
+                // Record agent-specific operation
+                metricsService.recordOperation("agent", "task").withSuccess(true)
+                        .withDuration(Duration.ofMillis(latencyMs).toNanos()).withData("agentId", agentId)
+                        .withData("taskType", "communication").withData("decisionAccuracy", 1.0)
+                        .withData("learningRate", 0.0).record();
             }
 
             // Legacy local metrics for backward compatibility
@@ -97,15 +99,15 @@ public class AgentCommunicationPerformanceMonitor {
     }
 
     /**
-     * Record throughput using the new monitoring framework
+     * Record throughput using the centralized monitoring framework
      */
     public void recordThroughput(String agentId, long messagesPerSecond) {
         try {
-            // Use centralized monitoring registry
-            if (monitoringRegistry != null) {
-                MetricsCollector collector = monitoringRegistry.getCollector(MetricKeys.agent(agentId));
-                // Record throughput as successful execution
-                collector.recordExecution(true, 0L);
+            // Use centralized MetricsService
+            if (metricsService != null) {
+                // Record as agent operation with throughput data
+                Map<String, Object> throughputData = Map.of("messagesPerSecond", messagesPerSecond, "agentId", agentId);
+                metricsService.recordOperationWithData("agent", "throughput", true, Duration.ZERO, throughputData);
             }
 
             // Legacy local metrics for backward compatibility
@@ -124,15 +126,15 @@ public class AgentCommunicationPerformanceMonitor {
     }
 
     /**
-     * Record bandwidth usage using the new monitoring framework
+     * Record bandwidth usage using the centralized monitoring framework
      */
     public void recordBandwidthUsage(String agentId, long bytesPerSecond) {
         try {
-            // Use centralized monitoring registry
-            if (monitoringRegistry != null) {
-                MetricsCollector collector = monitoringRegistry.getCollector(MetricKeys.agent(agentId));
-                // Record bandwidth as successful execution
-                collector.recordExecution(true, 0L);
+            // Use centralized MetricsService
+            if (metricsService != null) {
+                // Record as agent operation with bandwidth data
+                Map<String, Object> bandwidthData = Map.of("bytesPerSecond", bytesPerSecond, "agentId", agentId);
+                metricsService.recordOperationWithData("agent", "bandwidth", true, Duration.ZERO, bandwidthData);
             }
 
             // Legacy local metrics for backward compatibility
@@ -150,29 +152,9 @@ public class AgentCommunicationPerformanceMonitor {
         }
     }
 
-    /**
-     * Get performance statistics using the new monitoring framework
-     */
-    public PerformanceStatistics getStatistics() {
-        // Get statistics from monitoring registry
-        long totalMessagesProcessed = 0;
-        long totalLatencyViolations = 0;
-        long totalThroughputViolations = 0;
-        long totalBandwidthViolations = 0;
-
-        if (monitoringRegistry != null) {
-            // Aggregate statistics from all agent collectors
-            for (String agentId : latencyMetrics.keySet()) {
-                MetricsCollector collector = monitoringRegistry.getCollector(MetricKeys.agent(agentId));
-                var snapshot = collector.executionSnapshot();
-                totalMessagesProcessed += snapshot.total();
-                // Violations would need separate tracking in a real implementation
-            }
-        }
-
-        return new PerformanceStatistics(totalMessagesProcessed, totalLatencyViolations, totalThroughputViolations,
-                totalBandwidthViolations, latencyMetrics.size(), throughputMetrics.size(), bandwidthMetrics.size());
-    }
+    // Eliminated getStatistics() proxy method - migrated to use MetricsService pattern
+    // Consumers should call MetricsService directly:
+    // metricsService.getStatisticsByDomain("agent", AgentBehaviorStatistics.class, Duration.ofHours(24))
 
     /**
      * Get latency metrics for an agent

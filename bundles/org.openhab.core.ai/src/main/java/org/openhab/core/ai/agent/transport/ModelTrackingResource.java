@@ -17,7 +17,6 @@ import javax.ws.rs.core.Response;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.core.AgentClientSession;
-import org.openhab.core.ai.model.ClientPerformanceMetrics;
 import org.openhab.core.ai.model.ClientUsageInfo;
 import org.openhab.core.ai.model.ModelTrackingService;
 import org.openhab.core.ai.model.ProviderUsageStats;
@@ -149,16 +148,17 @@ public class ModelTrackingResource implements RESTResource {
             client.put("last_used", usage.getLastUsed().toString());
             client.put("agent_ids", new ArrayList<>(usage.getActiveAgents().keySet()));
 
-            // Add performance metrics if available
-            ClientPerformanceMetrics performance = service.getClientPerformance(providerType, modelName);
-            if (performance != null) {
+            // Add performance metrics from centralized MetricsService
+            Map<String, Object> performanceData = service.getClientPerformanceData(providerType, modelName);
+            if (!performanceData.isEmpty()) {
                 Map<String, Object> metrics = new HashMap<>();
-                metrics.put("average_response_time", performance.getAverageResponseTime());
-                metrics.put("min_response_time", performance.getMinResponseTime());
-                metrics.put("max_response_time", performance.getMaxResponseTime());
-                metrics.put("error_rate", performance.getErrorRate());
-                metrics.put("total_errors", performance.getTotalErrors());
-                metrics.put("total_requests", performance.getTotalRequests());
+                metrics.put("average_response_time", performanceData.get("averageResponseTime"));
+                metrics.put("min_response_time", performanceData.get("minResponseTime"));
+                metrics.put("max_response_time", performanceData.get("maxResponseTime"));
+                metrics.put("error_rate", performanceData.get("errorRate"));
+                metrics.put("total_errors", performanceData.get("totalErrors"));
+                metrics.put("total_requests", performanceData.get("totalRequests"));
+                metrics.put("successful_requests", performanceData.get("successfulRequests"));
                 client.put("performance_metrics", metrics);
             }
 

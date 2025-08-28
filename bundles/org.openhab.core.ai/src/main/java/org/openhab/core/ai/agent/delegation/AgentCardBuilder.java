@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.execution.AgentSkillRegistry;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -44,6 +45,9 @@ public class AgentCardBuilder {
     @Reference
     private @Nullable AgentSkillRegistry skillRegistry;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     @Activate
     public void activate() {
         logger.debug("A2A Agent Card Builder activated");
@@ -61,32 +65,41 @@ public class AgentCardBuilder {
     public AgentCard buildAgentCard() {
         logger.debug("Building OpenHAB agent card with multi-transport support");
 
-        // Build agent card using SDK patterns
-        AgentCapabilities capabilities = buildCapabilities();
-        List<AgentSkill> skills = buildSkills();
-        Map<String, SecurityScheme> securitySchemes = buildSecuritySchemes();
-        List<Map<String, List<String>>> security = buildSecurityConfig();
-        String instructions = buildInstructions();
+        long startTime = System.nanoTime();
+        boolean success = false;
+        try {
+            // Build agent card using SDK patterns
+            AgentCapabilities capabilities = buildCapabilities();
+            List<AgentSkill> skills = buildSkills();
+            Map<String, SecurityScheme> securitySchemes = buildSecuritySchemes();
+            List<Map<String, List<String>>> security = buildSecurityConfig();
+            String instructions = buildInstructions();
 
-        // Create agent card using actual SDK classes with multi-transport support
-        return new AgentCard("OpenHAB AI Agent", // name
-                "OpenHAB AI agent that can control and monitor home automation systems", // description
-                "http://localhost:8080/a2a", // url
-                new AgentProvider("openHAB", "openHAB AI Team"), // provider
-                "1.0.0", // version
-                "http://docs.openhab.org", // documentationUrl
-                capabilities, // capabilities
-                List.of("text"), // defaultInputModes
-                List.of("text"), // defaultOutputModes
-                skills, // skills
-                false, // supportsAuthenticatedExtendedCard
-                securitySchemes, // securitySchemes
-                security, // security
-                "", // iconUrl
-                buildAdditionalInterfaces(), // additionalInterfaces
-                "http", // preferredTransport
-                "1.0" // protocolVersion
-        );
+            // Create agent card using actual SDK classes with multi-transport support
+            AgentCard card = new AgentCard("OpenHAB AI Agent", // name
+                    "OpenHAB AI agent that can control and monitor home automation systems", // description
+                    "http://localhost:8080/a2a", // url
+                    new AgentProvider("openHAB", "openHAB AI Team"), // provider
+                    "1.0.0", // version
+                    "http://docs.openhab.org", // documentationUrl
+                    capabilities, // capabilities
+                    List.of("text"), // defaultInputModes
+                    List.of("text"), // defaultOutputModes
+                    skills, // skills
+                    false, // supportsAuthenticatedExtendedCard
+                    securitySchemes, // securitySchemes
+                    security, // security
+                    "", // iconUrl
+                    buildAdditionalInterfaces(), // additionalInterfaces
+                    "http", // preferredTransport
+                    "1.0" // protocolVersion
+            );
+
+            success = true;
+            return card;
+        } finally {
+            recordCardBuildingMetrics("build-agent-card", success, System.nanoTime() - startTime);
+        }
     }
 
     /**
@@ -280,58 +293,39 @@ public class AgentCardBuilder {
     public AgentCard buildCustomAgentCard(String name, String description, String version) {
         logger.debug("Building custom agent card: {} (v{})", name, version);
 
-        AgentCapabilities capabilities = buildCapabilities();
-        List<AgentSkill> skills = buildSkills();
-        Map<String, SecurityScheme> securitySchemes = buildSecuritySchemes();
-        List<Map<String, List<String>>> security = buildSecurityConfig();
-        String instructions = buildInstructions();
-
-        return new AgentCard(name, // name
-                description, // description
-                "http://localhost:8080/a2a", // url
-                new AgentProvider("openHAB", "openHAB AI Team"), // provider
-                version, // version
-                "http://docs.openhab.org", // documentationUrl
-                capabilities, // capabilities
-                List.of("text"), // defaultInputModes
-                List.of("text"), // defaultOutputModes
-                skills, // skills
-                false, // supportsAuthenticatedExtendedCard
-                securitySchemes, // securitySchemes
-                security, // security
-                "", // iconUrl
-                new ArrayList<AgentInterface>(), // additionalInterfaces
-                "http", // preferredTransport
-                "1.0" // protocolVersion
-        );
-    }
-
-    /**
-     * Get agent card statistics.
-     * 
-     * @return agent card statistics map
-     */
-    public Map<String, Object> getAgentCardStatistics() {
-        Map<String, Object> stats = new HashMap<>();
-
+        long startTime = System.nanoTime();
+        boolean success = false;
         try {
+            AgentCapabilities capabilities = buildCapabilities();
             List<AgentSkill> skills = buildSkills();
             Map<String, SecurityScheme> securitySchemes = buildSecuritySchemes();
+            List<Map<String, List<String>>> security = buildSecurityConfig();
+            String instructions = buildInstructions();
 
-            stats.put("totalSkills", skills.size());
-            stats.put("totalSecuritySchemes", securitySchemes.size());
-            stats.put("supportsStreaming", true);
-            stats.put("supportsPushNotifications", false);
-            stats.put("supportsStateTransitionHistory", false);
-            stats.put("lastUpdated", System.currentTimeMillis());
+            AgentCard card = new AgentCard(name, // name
+                    description, // description
+                    "http://localhost:8080/a2a", // url
+                    new AgentProvider("openHAB", "openHAB AI Team"), // provider
+                    version, // version
+                    "http://docs.openhab.org", // documentationUrl
+                    capabilities, // capabilities
+                    List.of("text"), // defaultInputModes
+                    List.of("text"), // defaultOutputModes
+                    skills, // skills
+                    false, // supportsAuthenticatedExtendedCard
+                    securitySchemes, // securitySchemes
+                    security, // security
+                    "", // iconUrl
+                    new ArrayList<AgentInterface>(), // additionalInterfaces
+                    "http", // preferredTransport
+                    "1.0" // protocolVersion
+            );
 
-        } catch (Exception e) {
-            logger.error("Error getting agent card statistics", e);
-            stats.put("error", e.getMessage());
-            stats.put("lastUpdated", System.currentTimeMillis());
+            success = true;
+            return card;
+        } finally {
+            recordCardBuildingMetrics("build-custom-card", success, System.nanoTime() - startTime);
         }
-
-        return stats;
     }
 
     /**
@@ -341,21 +335,85 @@ public class AgentCardBuilder {
      * @return true if valid, false otherwise
      */
     public boolean validateAgentCard(AgentCard card) {
-        if (card == null) {
-            logger.warn("Agent card is null");
-            return false;
-        }
+        long startTime = System.nanoTime();
+        boolean success = false;
 
-        // Note: AgentCard is a record, so we access fields directly
-        // The actual field names depend on the SDK implementation
-        // For now, we'll do basic null checks
         try {
-            // Basic validation - the card object should not be null
-            logger.debug("Agent card validation passed");
-            return true;
-        } catch (Exception e) {
-            logger.warn("Agent card validation failed: {}", e.getMessage());
-            return false;
+            if (card == null) {
+                logger.warn("Agent card is null");
+                return false;
+            }
+
+            // Note: AgentCard is a record, so we access fields directly
+            // The actual field names depend on the SDK implementation
+            // For now, we'll do basic null checks
+            try {
+                // Basic validation - the card object should not be null
+                logger.debug("Agent card validation passed");
+                success = true;
+                return true;
+            } catch (Exception e) {
+                logger.warn("Agent card validation failed: {}", e.getMessage());
+                return false;
+            }
+        } finally {
+            // Record validation metrics with context
+            Map<String, Object> context = new HashMap<>();
+            context.put("cardNull", card == null);
+            if (card != null) {
+                context.put("validationType", "basic_validation");
+            }
+
+            recordCardBuildingMetrics("validate-card", success, System.nanoTime() - startTime, context);
+        }
+    }
+
+    /**
+     * Record card building metrics using MetricsService with enhanced context.
+     */
+    private void recordCardBuildingMetrics(String operation, boolean success, long durationNanos) {
+        recordCardBuildingMetrics(operation, success, durationNanos, new HashMap<>());
+    }
+
+    /**
+     * Record card building metrics using MetricsService with enhanced context.
+     * 
+     * @param operation the card building operation (e.g., "build-custom-card", "validate-card", "build-capabilities")
+     * @param success whether the operation was successful
+     * @param durationNanos the operation duration in nanoseconds
+     * @param context additional context data
+     */
+    private void recordCardBuildingMetrics(String operation, boolean success, long durationNanos,
+            Map<String, Object> context) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                // Create enhanced context with card building details
+                Map<String, Object> enhancedContext = new HashMap<>(context);
+                enhancedContext.put("operation", operation);
+                enhancedContext.put("success", success);
+                enhancedContext.put("durationNanos", durationNanos);
+                enhancedContext.put("timestamp", System.currentTimeMillis());
+
+                // Add skill registry information if available
+                AgentSkillRegistry registry = skillRegistry;
+                if (registry != null) {
+                    enhancedContext.put("skillRegistryAvailable", true);
+                    // Note: We don't expose internal registry details for security
+                } else {
+                    enhancedContext.put("skillRegistryAvailable", false);
+                }
+
+                // Record card building metrics using generic method with enhanced context
+                metrics.recordOperationWithData("card-building", operation, success,
+                        java.time.Duration.ofNanos(durationNanos), enhancedContext);
+
+                logger.debug("Recorded card building metrics: {} (success={}, duration={}ns)", operation, success,
+                        durationNanos);
+            } catch (Exception e) {
+                logger.warn("Failed to record card building metrics for operation {}: {}", operation, e.getMessage());
+                // Graceful degradation: continue with card building even if metrics recording fails
+            }
         }
     }
 }

@@ -209,10 +209,7 @@ public interface AuditLogger {
      */
     void rotateLogs();
 
-    /**
-     * Get audit log statistics.
-     * 
-     * @return audit log statistics
-     */
-    Map<String, Object> getAuditStatistics();
+    // Eliminated getAuditStatistics() method - consumers should access statistics directly via MetricsService
+    // Use: metricsService.getSnapshot(MetricKeys.custom("audit", Map.of("operation", "log-events")),
+    // AuditStatistics.class, Duration.ofHours(24))
 }

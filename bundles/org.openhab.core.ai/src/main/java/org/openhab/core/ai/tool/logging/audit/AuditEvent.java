@@ -6,6 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -30,6 +32,34 @@ public class AuditEvent implements Serializable, Comparable<AuditEvent> {
     private final String timestamp;
     private final Map<String, Object> details;
     private final String encryptedHash;
+
+    // Business logic capture: Audit event patterns
+    private static final Map<String, AtomicLong> auditEventSequences = new ConcurrentHashMap<>();
+    private static final Map<String, AtomicLong> userBehaviorPatterns = new ConcurrentHashMap<>();
+    private static final Map<String, AtomicLong> auditEventFrequencies = new ConcurrentHashMap<>();
+
+    /**
+     * Record audit event patterns for business logic analysis.
+     * 
+     * @param event the audit event
+     * @param previousEvent the previous audit event (for sequence analysis)
+     */
+    public static void recordAuditEventPatterns(AuditEvent event, AuditEvent previousEvent) {
+        try {
+            String eventKey = event.getAction() + ":" + event.getLevel();
+            auditEventFrequencies.computeIfAbsent(eventKey, k -> new AtomicLong(0)).incrementAndGet();
+
+            if (previousEvent != null) {
+                String sequence = previousEvent.getAction() + "->" + event.getAction();
+                auditEventSequences.computeIfAbsent(sequence, k -> new AtomicLong(0)).incrementAndGet();
+
+                String userPattern = event.getUserId() + ":" + sequence;
+                userBehaviorPatterns.computeIfAbsent(userPattern, k -> new AtomicLong(0)).incrementAndGet();
+            }
+        } catch (Exception e) {
+            // Graceful degradation - don't fail audit event creation
+        }
+    }
 
     /**
      * Create a new audit event.

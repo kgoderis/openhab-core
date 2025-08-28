@@ -7,10 +7,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.validation.api.RuleLifecycleState;
 import org.openhab.core.ai.tool.validation.api.ValidationRule;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
@@ -99,12 +99,8 @@ public abstract class AbstractValidationRule implements ValidationRule {
     @Override
     public ToolValidationResult validate(Map<String, Object> data) {
         long startTime = System.currentTimeMillis();
-        metricsService.recordOperation("validation_rule", "execution")
-            .withSuccess(true)
-            .withDuration(0L)
-            .withData("ruleId", ruleId)
-            .withData("ruleType", this.getClass().getSimpleName())
-            .record();
+        metricsService.recordOperation("validation_rule", "execution").withSuccess(true).withDuration(0L)
+                .withData("ruleId", ruleId).withData("ruleType", this.getClass().getSimpleName()).record();
 
         try {
             // Check lifecycle state
@@ -122,35 +118,25 @@ public abstract class AbstractValidationRule implements ValidationRule {
             long executionTime = System.currentTimeMillis() - startTime;
 
             if (result.isValid()) {
-                metricsService.recordOperation("validation_rule", "success")
-                    .withSuccess(true)
-                    .withDuration(Duration.ofMillis(executionTime).toNanos())
-                    .withData("ruleId", ruleId)
-                    .withData("executionTimeMs", executionTime)
-                    .withData("validationErrors", result.getErrors().size())
-                    .record();
+                metricsService.recordOperation("validation_rule", "success").withSuccess(true)
+                        .withDuration(Duration.ofMillis(executionTime).toNanos()).withData("ruleId", ruleId)
+                        .withData("executionTimeMs", executionTime)
+                        .withData("validationErrors", result.getErrors().size()).record();
             } else {
-                metricsService.recordOperation("validation_rule", "failure")
-                    .withSuccess(false)
-                    .withDuration(Duration.ofMillis(executionTime).toNanos())
-                    .withData("ruleId", ruleId)
-                    .withData("executionTimeMs", executionTime)
-                    .withData("validationErrors", result.getErrors().size())
-                    .withData("errorDetails", result.getErrors().toString())
-                    .record();
+                metricsService.recordOperation("validation_rule", "failure").withSuccess(false)
+                        .withDuration(Duration.ofMillis(executionTime).toNanos()).withData("ruleId", ruleId)
+                        .withData("executionTimeMs", executionTime)
+                        .withData("validationErrors", result.getErrors().size())
+                        .withData("errorDetails", result.getErrors().toString()).record();
             }
 
             return result;
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
-            metricsService.recordOperation("validation_rule", "error")
-                .withSuccess(false)
-                .withDuration(Duration.ofMillis(executionTime).toNanos())
-                .withData("ruleId", ruleId)
-                .withData("executionTimeMs", executionTime)
-                .withData("exceptionType", e.getClass().getSimpleName())
-                .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
-                .record();
+            metricsService.recordOperation("validation_rule", "error").withSuccess(false)
+                    .withDuration(Duration.ofMillis(executionTime).toNanos()).withData("ruleId", ruleId)
+                    .withData("executionTimeMs", executionTime).withData("exceptionType", e.getClass().getSimpleName())
+                    .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error").record();
             return ToolValidationResult.invalid(List.of("Rule execution failed: " + e.getMessage()));
         }
     }
@@ -183,11 +169,11 @@ public abstract class AbstractValidationRule implements ValidationRule {
         metrics.put("lifecycleState", lifecycleState.name());
 
         // if (totalExecutions > 0) { // Removed AtomicLong
-        //     metrics.put("averageExecutionTimeMs", totalExecutionTimeMs.get() / totalExecutions); // Removed AtomicLong
-        //     metrics.put("successRate", (double) successCount.get() / totalExecutions); // Removed AtomicLong
+        // metrics.put("averageExecutionTimeMs", totalExecutionTimeMs.get() / totalExecutions); // Removed AtomicLong
+        // metrics.put("successRate", (double) successCount.get() / totalExecutions); // Removed AtomicLong
         // } else { // Removed AtomicLong
-        //     metrics.put("averageExecutionTimeMs", 0L); // Removed AtomicLong
-        //     metrics.put("successRate", 0.0); // Removed AtomicLong
+        // metrics.put("averageExecutionTimeMs", 0L); // Removed AtomicLong
+        // metrics.put("successRate", 0.0); // Removed AtomicLong
         // }
 
         return metrics;

@@ -1,5 +1,6 @@
 package org.openhab.core.ai.model;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,15 +8,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.core.AgentClientSession;
-import org.openhab.core.ai.model.api.ModelProviderType;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
+import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -55,8 +58,8 @@ public class ModelTrackingService {
     // private final AtomicLong totalCost = new AtomicLong(0);
     private final AtomicReference<Instant> lastRequestTime = new AtomicReference<>(Instant.now());
 
-    // Provider-specific statistics
-    private final Map<String, ProviderStats> providerStats = new ConcurrentHashMap<>();
+    // Provider-specific statistics - temporarily using Map until ProviderStats is implemented
+    private final Map<String, Map<String, Object>> providerStats = new ConcurrentHashMap<>();
     private final Map<String, List<Long>> responseTimes = new ConcurrentHashMap<>();
     // private final Map<String, AtomicLong> errorCounts = new ConcurrentHashMap<>();
 
@@ -107,9 +110,9 @@ public class ModelTrackingService {
                     k -> new AgentClientSession(agentId, providerType, modelName, sessionId));
             session.updateLastUsed(now);
 
-            // Update provider statistics
-            ProviderStats stats = providerStats.computeIfAbsent(clientKey, ProviderStats::new);
-            stats.recordUsage(agentId, modelName);
+            // Update provider statistics - temporarily using Map until ProviderStats is implemented
+            providerStats.computeIfAbsent(clientKey, k -> new ConcurrentHashMap<>());
+            // TODO: Implement proper statistics recording with ProviderStats class
 
             logger.debug("Recorded client usage: agent={}, provider={}, model={}", agentId, providerType, modelName);
 
@@ -136,10 +139,11 @@ public class ModelTrackingService {
             String clientKey = generateClientKey(providerType, modelName);
             Instant now = Instant.now();
 
-            // Update global statistics
-            metricsService.recordOperation(clientKey, "request_count", 1);
-            metricsService.recordOperation(clientKey, "token_count", tokensUsed);
-            metricsService.recordOperation(clientKey, "cost_count", (long) (cost * 1000)); // Store as millicents
+            // Update global statistics using proper MetricsService calls
+            Duration responseTime = Duration.ofMillis(responseTimeMs);
+            metricsService.recordOperation("model", "completion").withSuccess(success)
+                    .withDuration(responseTime.toNanos()).withData("modelId", clientKey).withData("inputTokens", 0)
+                    .withData("outputTokens", tokensUsed).withData("cost", cost).record();
             lastRequestTime.set(now);
 
             // Update client usage info
@@ -148,11 +152,8 @@ public class ModelTrackingService {
                 usageInfo.recordRequest(tokensUsed, cost, responseTimeMs, success);
             }
 
-            // Update provider statistics
-            ProviderStats stats = providerStats.get(clientKey);
-            if (stats != null) {
-                stats.recordRequest(tokensUsed, cost, responseTimeMs, success);
-            }
+            // Update provider statistics - temporarily disabled until ProviderStats is implemented
+            // TODO: Implement proper provider statistics recording with ProviderStats class
 
             // Track response times for performance analysis
             responseTimes.computeIfAbsent(clientKey, k -> new ArrayList<>()).add(responseTimeMs);
@@ -247,8 +248,13 @@ public class ModelTrackingService {
      * 
      * @return Map of provider statistics
      */
-    public Map<ModelProviderType, ProviderUsageStats> getProviderStats() {
-        return new HashMap<>(providerStats);
+    public Map<ModelProviderType, Map<String, Object>> getProviderStats() {
+        // TODO: Implement proper ProviderUsageStats conversion
+        Map<ModelProviderType, Map<String, Object>> result = new HashMap<>();
+        for (ModelProviderType type : ModelProviderType.values()) {
+            result.put(type, providerStats.getOrDefault(type.name() + ":default", new HashMap<>()));
+        }
+        return result;
     }
 
     /**
@@ -257,9 +263,11 @@ public class ModelTrackingService {
      * @return System usage statistics
      */
     public SystemUsageStats getSystemStats() {
-        return new SystemUsageStats(metricsService.getOperationCount("total_requests"), metricsService.getOperationCount("total_tokens"), metricsService.getOperationCount("total_cost") / 1000.0, // Convert
-                                                                                                          // from
-                                                                                                          // millicents
+        // TODO: Implement proper statistics retrieval from MetricsService
+        // For now, return default/placeholder values
+        return new SystemUsageStats(0L, // totalRequests - TODO: aggregate from MetricsService
+                0L, // totalTokens - TODO: aggregate from MetricsService
+                0.0, // totalCost - TODO: aggregate from MetricsService
                 lastRequestTime.get(), calculateAverageResponseTime(), calculateErrorRate());
     }
 
@@ -317,28 +325,60 @@ public class ModelTrackingService {
     }
 
     /**
-     * Gets performance metrics for a specific client
+     * Gets performance metrics data for a specific client from centralized MetricsService
      * 
      * @param providerType The provider type
      * @param modelName The model name
-     * @return Performance metrics, or null if not found
+     * @return Performance metrics map, or empty map if not found
      */
-    public @Nullable ClientPerformanceMetrics getClientPerformance(ModelProviderType providerType, String modelName) {
+    public Map<String, Object> getClientPerformanceData(ModelProviderType providerType, String modelName) {
+        if (metricsService != null) {
+            try {
+                String clientKey = generateClientKey(providerType, modelName);
+                // Use MetricsService to get current snapshot
+                MetricKey key = MetricKeys.modelCompletion(clientKey);
+                ExecutionMetricsSnapshot snapshot = metricsService.getSnapshot(key, ExecutionMetricsSnapshot.class);
+
+                if (snapshot != null) {
+                    Map<String, Object> metrics = new HashMap<>();
+                    metrics.put("averageResponseTime", snapshot.averageMs());
+                    metrics.put("minResponseTime", 0L); // TODO: Add min/max to ExecutionMetricsSnapshot
+                    metrics.put("maxResponseTime", 0L); // TODO: Add min/max to ExecutionMetricsSnapshot
+                    metrics.put("errorRate", (1.0 - snapshot.successRate() / 100.0));
+                    metrics.put("totalErrors", snapshot.failure());
+                    metrics.put("totalRequests", snapshot.total());
+                    metrics.put("successfulRequests", snapshot.success());
+                    return metrics;
+                }
+                return new HashMap<>();
+            } catch (Exception e) {
+                logger.warn("Failed to get client performance data from MetricsService", e);
+            }
+        }
+
+        // Fallback: Use legacy local data if MetricsService unavailable
         String clientKey = generateClientKey(providerType, modelName);
         List<Long> times = responseTimes.get(clientKey);
-        // AtomicLong errorCount = errorCounts.get(clientKey);
 
         if (times == null || times.isEmpty()) {
-            return null;
+            return Map.of();
         }
 
         long minTime = times.stream().mapToLong(Long::longValue).min().orElse(0);
         long maxTime = times.stream().mapToLong(Long::longValue).max().orElse(0);
         double avgTime = times.stream().mapToLong(Long::longValue).average().orElse(0.0);
-        long errors = 0; // errorCount != null ? errorCount.get() : 0;
+        long errors = 0;
         double errorRate = (double) errors / times.size();
 
-        return new ClientPerformanceMetrics(avgTime, minTime, maxTime, errorRate, errors, times.size());
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("averageResponseTime", avgTime);
+        metrics.put("minResponseTime", minTime);
+        metrics.put("maxResponseTime", maxTime);
+        metrics.put("errorRate", errorRate);
+        metrics.put("totalErrors", errors);
+        metrics.put("totalRequests", (long) times.size());
+        metrics.put("successfulRequests", (long) times.size() - errors);
+        return metrics;
     }
 
     // Helper methods
@@ -348,7 +388,8 @@ public class ModelTrackingService {
 
     private void initializeProviderStats() {
         for (ModelProviderType type : ModelProviderType.values()) {
-            providerStats.put(type.name() + ":" + type.getDefaultModel(), new ProviderStats(type));
+            // TODO: Implement proper ProviderStats initialization
+            providerStats.put(type.name() + ":default", new ConcurrentHashMap<>());
         }
     }
 
@@ -367,5 +408,5 @@ public class ModelTrackingService {
     // - org.openhab.core.ai.model.AgentClientSession
     // - org.openhab.core.ai.model.ProviderUsageStats
     // - org.openhab.core.ai.model.SystemUsageStats
-    // - org.openhab.core.ai.model.ClientPerformanceMetrics
+    // - org.openhab.core.ai.model.ClientPerformanceMetrics (removed - replaced with MetricsService integration)
 }

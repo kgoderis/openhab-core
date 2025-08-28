@@ -18,8 +18,8 @@ import org.openhab.core.ai.common.monitoring.api.ServerMetrics;
  */
 @NonNullByDefault
 public record ServerSnapshot(long total, long success, long failure, long totalDurationNanos, long timestampMs,
-        long totalRequests, long totalResponses, long totalConnections, long totalSessions, long totalEndpoints)
-        implements CountsMetrics, LatencyMetrics, ServerMetrics {
+        long totalRequests, long totalResponses, long totalConnections, long totalSessions,
+        long totalEndpoints) implements CountsMetrics, LatencyMetrics, ServerMetrics {
 
     @Override
     public double successRate() {

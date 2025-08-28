@@ -15,16 +15,19 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +52,9 @@ public class LogIngestionPipeline {
 
     static final Logger logger = LoggerFactory.getLogger(LogIngestionPipeline.class);
 
+    @Reference
+    private MetricsService metricsService;
+
     // Configuration
     private static final String DEFAULT_LOG_DIR = "logs";
     private static final String DEFAULT_LOG_FILE = "openhab.log";
@@ -70,11 +76,7 @@ public class LogIngestionPipeline {
     private final Map<String, LogAnomaly> detectedAnomalies = new ConcurrentHashMap<>();
     private final List<LogCorrelation> logCorrelations = new ArrayList<>();
 
-    // Performance monitoring
-    private final AtomicLong totalLogLinesProcessed = new AtomicLong(0);
-    private final AtomicLong totalAnomaliesDetected = new AtomicLong(0);
-    private final AtomicLong totalCorrelationsFound = new AtomicLong(0);
-    private final AtomicLong totalProcessingTime = new AtomicLong(0);
+    // Performance monitoring now handled by centralized MetricsService
 
     // Threading
     private final ExecutorService processingExecutor = Executors.newFixedThreadPool(4);
@@ -88,6 +90,31 @@ public class LogIngestionPipeline {
     private boolean enableAnomalyDetection = true;
     private boolean enableCorrelation = true;
     private boolean enablePerformanceMonitoring = true;
+
+    /**
+     * Record log processing metrics using MetricsService with proper error handling.
+     * 
+     * @param operationType the type of log processing operation
+     * @param success whether the operation was successful
+     * @param duration the operation duration in nanoseconds
+     * @param dataEntries additional key-value pairs for context
+     */
+    private void recordLogMetrics(String operationType, boolean success, long duration, String... dataEntries) {
+        try {
+            var recorder = metricsService.recordOperation("log-processing", operationType).withSuccess(success)
+                    .withDuration(duration);
+
+            // Add data entries in pairs
+            for (int i = 0; i < dataEntries.length - 1; i += 2) {
+                recorder.withData(dataEntries[i], dataEntries[i + 1]);
+            }
+
+            recorder.record();
+        } catch (Exception e) {
+            logger.warn("Failed to record log processing metrics for operation {}: {}", operationType, e.getMessage());
+            // Graceful degradation - continue without metrics if recording fails
+        }
+    }
 
     @Activate
     public void activate() {
@@ -200,7 +227,9 @@ public class LogIngestionPipeline {
                         if (enableAnomalyDetection && isAnomaly(entry)) {
                             LogAnomaly anomaly = createAnomaly(entry);
                             detectedAnomalies.put(anomaly.getId(), anomaly);
-                            totalAnomaliesDetected.incrementAndGet();
+                            // Record anomaly detection using MetricsService
+                            recordLogMetrics("anomaly-detection", true, 0, "entryId", entry.getId(), "severity",
+                                    anomaly.getSeverity().toString());
                         }
 
                         // Correlate with system events
@@ -210,11 +239,13 @@ public class LogIngestionPipeline {
                     }
                 }
 
-                totalLogLinesProcessed.addAndGet(logLines.size());
-                totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+                // Record log processing metrics using MetricsService
+                long processingTimeMs = Duration.between(startTime, Instant.now()).toMillis();
+                recordLogMetrics("log-lines-processing", true, processingTimeMs * 1_000_000, // Convert to nanoseconds
+                        "linesProcessed", String.valueOf(logLines.size()), "processingTimeMs",
+                        String.valueOf(processingTimeMs));
 
-                logger.debug("Processed {} log lines in {}ms", logLines.size(),
-                        Duration.between(startTime, Instant.now()).toMillis());
+                logger.debug("Processed {} log lines in {}ms", logLines.size(), processingTimeMs);
 
             } catch (Exception e) {
                 logger.error("Error processing log lines", e);
@@ -344,7 +375,9 @@ public class LogIngestionPipeline {
                 "log_system_correlation", calculateCorrelationConfidence(entry), Instant.now());
 
         logCorrelations.add(correlation);
-        totalCorrelationsFound.incrementAndGet();
+        // Record correlation tracking using MetricsService
+        recordLogMetrics("log-correlation", true, 0, "entryId", entry.getId(), "confidence",
+                String.valueOf(correlation.getConfidence()));
     }
 
     /**
@@ -392,12 +425,57 @@ public class LogIngestionPipeline {
     }
 
     /**
-     * Get performance metrics
+     * Get performance metrics from MetricsService
      */
     public LogPerformanceMetrics getPerformanceMetrics() {
-        return new LogPerformanceMetrics(totalLogLinesProcessed.get(), totalAnomaliesDetected.get(),
-                totalCorrelationsFound.get(), totalProcessingTime.get(), recentLogs.size(), detectedAnomalies.size(),
-                logCorrelations.size(), logMonitors.size());
+        long totalLogLinesProcessed = getLogProcessingCount("log-lines-processing");
+        long totalAnomaliesDetected = getLogProcessingCount("anomaly-detection");
+        long totalCorrelationsFound = getLogProcessingCount("log-correlation");
+        long totalProcessingTime = getLogProcessingDuration("log-lines-processing");
+
+        return new LogPerformanceMetrics(totalLogLinesProcessed, totalAnomaliesDetected, totalCorrelationsFound,
+                totalProcessingTime, recentLogs.size(), detectedAnomalies.size(), logCorrelations.size(),
+                logMonitors.size());
+    }
+
+    /**
+     * Get count from MetricsService for specific log processing operation.
+     * 
+     * @param operationType the operation type to get count for
+     * @return the count or 0 if unavailable
+     */
+    private long getLogProcessingCount(String operationType) {
+        try {
+            var metricKey = MetricKeys.custom("log-processing", Map.of("operation", operationType),
+                    java.util.Set.of("counts"));
+            var snapshot = metricsService.getSnapshot(metricKey, UnifiedMetricsSnapshot.class);
+            if (snapshot != null) {
+                return snapshot.total();
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to get log processing count for operation {}: {}", operationType, e.getMessage());
+        }
+        return 0L;
+    }
+
+    /**
+     * Get total duration from MetricsService for specific log processing operation.
+     * 
+     * @param operationType the operation type to get duration for
+     * @return the total duration in milliseconds or 0 if unavailable
+     */
+    private long getLogProcessingDuration(String operationType) {
+        try {
+            var metricKey = MetricKeys.custom("log-processing", Map.of("operation", operationType),
+                    java.util.Set.of("latency"));
+            var snapshot = metricsService.getSnapshot(metricKey, UnifiedMetricsSnapshot.class);
+            if (snapshot != null) {
+                return snapshot.totalDurationNanos() / 1_000_000; // Convert to milliseconds
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to get log processing duration for operation {}: {}", operationType, e.getMessage());
+        }
+        return 0L;
     }
 
     /**

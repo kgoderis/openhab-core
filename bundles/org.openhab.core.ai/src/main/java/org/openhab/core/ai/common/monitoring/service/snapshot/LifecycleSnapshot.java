@@ -18,8 +18,8 @@ import org.openhab.core.ai.common.monitoring.api.LifecycleMetrics;
  */
 @NonNullByDefault
 public record LifecycleSnapshot(long total, long success, long failure, long totalDurationNanos, long timestampMs,
-        long totalInitializations, long totalActivations, long totalDeactivations, long totalDestructions)
-        implements CountsMetrics, LatencyMetrics, LifecycleMetrics {
+        long totalInitializations, long totalActivations, long totalDeactivations,
+        long totalDestructions) implements CountsMetrics, LatencyMetrics, LifecycleMetrics {
 
     @Override
     public double successRate() {

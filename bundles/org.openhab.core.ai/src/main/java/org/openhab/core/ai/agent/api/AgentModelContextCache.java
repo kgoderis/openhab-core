@@ -15,6 +15,7 @@ package org.openhab.core.ai.agent.api;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -23,8 +24,6 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.context.AgentModelContext;
-import java.util.Map;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
@@ -205,8 +204,10 @@ public class AgentModelContextCache {
         if (metrics != null) {
             try {
                 try {
-                    MetricKey agentModelContextCacheKey = MetricKeys.custom("agent-model-context-cache", Map.of(), Set.of("counts", "latency"));
-                    var snapshot = metrics.getSnapshot(agentModelContextCacheKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                    MetricKey agentModelContextCacheKey = MetricKeys.custom("agent-model-context-cache", Map.of(),
+                            Set.of("counts", "latency"));
+                    var snapshot = metrics.getSnapshot(agentModelContextCacheKey,
+                            org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
                     if (snapshot != null) {
                         long totalOperations = snapshot.getLong("total");
                         long failedOperations = snapshot.getLong("failure");
@@ -214,12 +215,13 @@ public class AgentModelContextCache {
                         long misses = failedOperations; // Approximate misses
                         long evictions = 0L; // Placeholder - would need domain-specific data
                         return new AgentModelContextCacheStatistics(cache.size(), hits, misses, evictions, maxCacheSize,
-                            defaultExpiration);
+                                defaultExpiration);
                     }
                 } catch (Exception e) {
                     logger.warn("Error retrieving metrics for agent-model-context-cache: {}", e.getMessage());
                     // Fallback to default values
-                    return new AgentModelContextCacheStatistics(cache.size(), 0L, 0L, 0L, maxCacheSize, defaultExpiration);
+                    return new AgentModelContextCacheStatistics(cache.size(), 0L, 0L, 0L, maxCacheSize,
+                            defaultExpiration);
                 }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for agent-model-context-cache: {}", e.getMessage());
@@ -230,7 +232,7 @@ public class AgentModelContextCache {
             // Fallback to default values if MetricsService is not available
             return new AgentModelContextCacheStatistics(cache.size(), 0L, 0L, 0L, maxCacheSize, defaultExpiration);
         }
-        
+
         // Fallback to default values if no snapshot was found
         return new AgentModelContextCacheStatistics(cache.size(), 0L, 0L, 0L, maxCacheSize, defaultExpiration);
     }
@@ -307,7 +309,8 @@ public class AgentModelContextCache {
             try {
                 metrics.recordOperation(domain, operation, success, duration);
             } catch (Exception e) {
-                logger.warn("Failed to record agent model context cache metrics for operation {} - {}: {}", domain, operation, e.getMessage());
+                logger.warn("Failed to record agent model context cache metrics for operation {} - {}: {}", domain,
+                        operation, e.getMessage());
                 // Graceful degradation: continue with cache operations even if metrics recording fails
             }
         } else {

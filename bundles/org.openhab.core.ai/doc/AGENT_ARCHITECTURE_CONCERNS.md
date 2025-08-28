@@ -242,7 +242,7 @@ This document exhaustively documents the concerns and responsibilities of each c
 
 **Concerns**:
 - **Skill Execution**: Executes skills through their adapters
-- **Execution Tracking**: Tracks execution metrics and statistics
+- **Execution Tracking**: Records execution metrics via MetricsService
 - **Error Handling**: Handles execution errors and exceptions
 - **Result Processing**: Processes and formats execution results
 - **Retry Logic**: Implements retry mechanisms for failed executions
@@ -251,8 +251,7 @@ This document exhaustively documents the concerns and responsibilities of each c
 **Methods**:
 - `executeSkill(String skillId, Message message)`: Main skill execution method
 - `executeSkillWithRetry(String skillId, Message message, int maxRetries)`: Retry-enabled execution
-- `getExecutionStatistics()`: Returns execution statistics
-- `resetExecutionStatistics()`: Resets execution metrics
+- `resetExecutionStatistics()`: Resets execution metrics through MetricsService
 
 **Dependencies**:
 - `AgentSkillRegistry`: For skill adapter lookup

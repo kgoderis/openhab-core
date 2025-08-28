@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.tool.resources.api.ResourceContext;
 import org.openhab.core.ai.tool.resources.api.ResourceRegistry;
 import org.openhab.core.ai.tool.resources.api.ResourceResult;
@@ -43,6 +44,9 @@ public class ResourceReadingService {
 
     @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     private volatile @Nullable ResourceRegistry resourceRegistry;
+
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    private volatile @Nullable MetricsService metricsService;
 
     @Activate
     protected void activate() {
@@ -83,10 +87,19 @@ public class ResourceReadingService {
             if (cachedContent != null && !cachedContent.isExpired()) {
                 cacheHits.incrementAndGet();
                 logger.debug("Cache hit for resource: {}", resourceId);
+
+                // Record cache hit metrics
+                recordConfigurationOperationMetrics("cache_hit", true, System.currentTimeMillis() - startTime,
+                        Map.of("resourceId", resourceId, "cacheKey", cacheKey, "operation", "read_resource"));
+
                 return ResourceResult.success(cachedContent.getContent(), System.currentTimeMillis() - startTime);
             }
 
             cacheMisses.incrementAndGet();
+
+            // Record cache miss metrics
+            recordConfigurationOperationMetrics("cache_miss", true, System.currentTimeMillis() - startTime,
+                    Map.of("resourceId", resourceId, "cacheKey", cacheKey, "operation", "read_resource"));
 
             // Get resource specification
             ResourceRegistry registry = resourceRegistry;
@@ -128,11 +141,21 @@ public class ResourceReadingService {
             long executionTime = System.currentTimeMillis() - startTime;
             totalReadTime.addAndGet(executionTime);
 
+            // Record successful resource read metrics
+            recordConfigurationOperationMetrics("resource_read", result.isSuccess(), executionTime,
+                    Map.of("resourceId", resourceId, "operation", "read_resource", "success", result.isSuccess()));
+
             logger.debug("Resource read completed in {}ms", executionTime);
             return result;
 
         } catch (Exception e) {
             logger.error("Error reading resource: {}", resourceId, e);
+
+            // Record failed resource read metrics
+            recordConfigurationOperationMetrics("resource_read", false, System.currentTimeMillis() - startTime,
+                    Map.of("resourceId", resourceId, "operation", "read_resource", "error", e.getMessage(), "exception",
+                            e.getClass().getSimpleName()));
+
             return ResourceResult.failure("Read error: " + e.getMessage(), System.currentTimeMillis() - startTime);
         }
     }
@@ -262,4 +285,36 @@ public class ResourceReadingService {
      * Cached resource content with expiration
      */
     // CachedResourceContent extracted to org.openhab.core.ai.tool.resources.CachedResourceContent
+
+    // ============================================================================
+    // Enhanced Configuration Operation Metrics Recording Helper Methods
+    // ============================================================================
+
+    /**
+     * Record configuration operation metrics using the generic metrics service.
+     * 
+     * @param operationType the type of configuration operation (e.g., "cache_hit", "cache_miss", "resource_read",
+     *            "file_operation")
+     * @param success whether the operation was successful
+     * @param durationMs the operation duration in milliseconds
+     * @param context additional context data
+     */
+    private void recordConfigurationOperationMetrics(String operationType, boolean success, long durationMs,
+            Map<String, Object> context) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Record the configuration operation using the generic metrics service
+                metrics.recordOperationWithData("configuration", operationType, success,
+                        java.time.Duration.ofMillis(durationMs), context);
+
+                logger.debug("Recorded configuration operation metrics: {} (success={}, duration={}ms)", operationType,
+                        success, durationMs);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record configuration operation metrics for operation {}: {}", operationType,
+                    e.getMessage());
+            // Graceful degradation: continue with operation even if metrics recording fails
+        }
+    }
 }

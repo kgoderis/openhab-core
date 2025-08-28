@@ -18,8 +18,8 @@ import org.openhab.core.ai.common.monitoring.api.LatencyMetrics;
  */
 @NonNullByDefault
 public record FilterSnapshot(long total, long success, long failure, long totalDurationNanos, long timestampMs,
-        long totalFiltered, long totalAllowed, long totalBlocked, long totalQuarantined, long totalRules)
-        implements CountsMetrics, LatencyMetrics, FilterMetrics {
+        long totalFiltered, long totalAllowed, long totalBlocked, long totalQuarantined,
+        long totalRules) implements CountsMetrics, LatencyMetrics, FilterMetrics {
 
     @Override
     public double successRate() {

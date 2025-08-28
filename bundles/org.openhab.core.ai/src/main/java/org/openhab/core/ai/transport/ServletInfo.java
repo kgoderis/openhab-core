@@ -1,6 +1,5 @@
 package org.openhab.core.ai.transport;
 
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -106,16 +105,13 @@ public class ServletInfo {
     public void incrementRequestCount() {
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("servlet", "request")
-                    .withSuccess(true)
-                    .withDuration(0L)
-                    .withData("servletId", servletId)
-                    .withData("servletName", servletName)
-                    .withData("protocol", protocol)
-                    .record();
+                metricsService.recordOperation("servlet", "request").withSuccess(true).withDuration(0L)
+                        .withData("servletId", servletId).withData("servletName", servletName)
+                        .withData("protocol", protocol).record();
             } catch (Exception e) {
                 // Fallback to local logging if MetricsService fails
-                System.err.println("Failed to record servlet request metrics for servlet " + servletId + ": " + e.getMessage());
+                System.err.println(
+                        "Failed to record servlet request metrics for servlet " + servletId + ": " + e.getMessage());
                 // Graceful degradation: continue with request processing even if metrics recording fails
             }
         }
@@ -125,13 +121,9 @@ public class ServletInfo {
     public void incrementErrorCount() {
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("servlet", "error")
-                    .withSuccess(false)
-                    .withDuration(0L)
-                    .withData("servletId", servletId)
-                    .withData("servletName", servletName)
-                    .withData("protocol", protocol)
-                    .record();
+                metricsService.recordOperation("servlet", "error").withSuccess(false).withDuration(0L)
+                        .withData("servletId", servletId).withData("servletName", servletName)
+                        .withData("protocol", protocol).record();
             } catch (Exception e) {
                 // Fallback to local logging if MetricsService fails
                 System.err.println("Failed to record servlet error metrics: " + e.getMessage());

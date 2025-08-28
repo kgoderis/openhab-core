@@ -1,5 +1,6 @@
 package org.openhab.core.ai.agent.execution;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,10 +14,12 @@ import org.openhab.core.ai.agent.execution.api.SkillExample;
 import org.openhab.core.ai.agent.execution.api.SkillPerformanceMetrics;
 import org.openhab.core.ai.agent.execution.api.SkillTestResult;
 import org.openhab.core.ai.agent.execution.api.SkillValidationResult;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,48 +109,114 @@ public class DefaultAgentSkillManager implements AgentSkillManager {
     @Reference
     private @Nullable AgentSkillRegistry skillRegistry;
 
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL)
+    private @Nullable MetricsService metricsService;
+
     private final AgentSkillExecutor skillExecutor = new AgentSkillExecutor();
 
     @Activate
     public void activate() {
-        logger.debug("AgentSkillManagerImpl activated");
-        // Set the skill registry reference in the executor
-        skillExecutor.setSkillRegistry(skillRegistry);
+        try {
+            logger.debug("AgentSkillManagerImpl activated");
+
+            // Set the skill registry reference in the executor
+            if (skillRegistry != null) {
+                try {
+                    skillExecutor.setSkillRegistry(skillRegistry);
+                    logger.debug("Skill registry reference set in executor");
+                } catch (Exception e) {
+                    logger.error("Error setting skill registry in executor: {}", e.getMessage(), e);
+                }
+            } else {
+                logger.warn("Skill registry not available during activation");
+            }
+
+            recordMetrics("skill-manager", "service-activated", true, Duration.ZERO);
+
+        } catch (Exception e) {
+            logger.error("Error during Agent Skill Manager activation: {}", e.getMessage(), e);
+            recordMetrics("skill-manager", "service-activated", false, Duration.ZERO);
+            // Continue activation to ensure basic functionality
+        }
     }
 
     @Deactivate
     public void deactivate() {
-        logger.debug("Agent Skill Manager implementation deactivated");
+        try {
+            recordMetrics("skill-manager", "service-deactivated", true, Duration.ZERO);
+            logger.debug("Agent Skill Manager implementation deactivated");
+        } catch (Exception e) {
+            logger.error("Error during Agent Skill Manager deactivation: {}", e.getMessage(), e);
+            recordMetrics("skill-manager", "service-deactivated", false, Duration.ZERO);
+        }
     }
 
     // Helper methods for internal use
     private boolean hasSkill(String skillId) {
-        AgentSkillRegistry registry = skillRegistry;
-        if (registry == null) {
-            logger.warn("AgentSkillRegistry not available");
+        try {
+            if (skillId == null || skillId.trim().isEmpty()) {
+                logger.warn("Cannot check skill: skill ID is null or empty");
+                recordMetrics("skill-manager", "skill-check", false, Duration.ZERO);
+                return false;
+            }
+
+            AgentSkillRegistry registry = skillRegistry;
+            if (registry == null) {
+                logger.warn("AgentSkillRegistry not available for skill check: {}", skillId);
+                recordMetrics("skill-manager", "skill-check", false, Duration.ZERO);
+                return false;
+            }
+
+            boolean hasSkill = registry.hasSkill(skillId);
+            recordMetrics("skill-manager", "skill-check", true, Duration.ZERO);
+            return hasSkill;
+        } catch (Exception e) {
+            logger.error("Error checking skill '{}': {}", skillId, e.getMessage(), e);
+            recordMetrics("skill-manager", "skill-check", false, Duration.ZERO);
             return false;
         }
-        return registry.hasSkill(skillId);
     }
 
     private AgentSkillResult executeSkillInternal(String skillId, Map<String, Object> parameters) {
         long startTime = System.currentTimeMillis();
         try {
+            if (skillId == null || skillId.trim().isEmpty()) {
+                logger.warn("Cannot execute skill: skill ID is null or empty");
+                recordMetrics("skill-manager", "skill-execution", false,
+                        Duration.ofMillis(System.currentTimeMillis() - startTime));
+                return AgentSkillResult.failure("Skill ID cannot be null or empty", "INVALID_SKILL_ID",
+                        System.currentTimeMillis() - startTime);
+            }
+
+            if (parameters == null) {
+                logger.warn("Cannot execute skill '{}': parameters map is null", skillId);
+                recordMetrics("skill-manager", "skill-execution", false,
+                        Duration.ofMillis(System.currentTimeMillis() - startTime));
+                return AgentSkillResult.failure("Parameters cannot be null", "INVALID_PARAMETERS",
+                        System.currentTimeMillis() - startTime);
+            }
+
             // Create a proper message from parameters
             Message message = createMessageFromParameters(parameters);
 
             if (message == null) {
                 logger.error("Failed to create message from parameters for skill: {}", skillId);
+                recordMetrics("skill-manager", "skill-execution", false,
+                        Duration.ofMillis(System.currentTimeMillis() - startTime));
                 return AgentSkillResult.failure("Failed to create message from parameters", "MESSAGE_CREATION_FAILED",
                         System.currentTimeMillis() - startTime);
             }
 
             // Execute the skill using the dedicated executor
-            return skillExecutor.executeSkill(skillId, message);
+            AgentSkillResult result = skillExecutor.executeSkill(skillId, message);
+            recordMetrics("skill-manager", "skill-execution", result.isSuccess(),
+                    Duration.ofMillis(System.currentTimeMillis() - startTime));
+            return result;
 
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
-            logger.error("Error executing skill: {}", skillId, e);
+            logger.error("Error executing skill '{}': {}", skillId, e.getMessage(), e);
+            recordMetrics("skill-manager", "skill-execution", false, Duration.ofMillis(executionTime));
             return AgentSkillResult.failure("Error executing skill: " + e.getMessage(), "EXECUTION_ERROR",
                     executionTime);
         }
@@ -236,16 +305,54 @@ public class DefaultAgentSkillManager implements AgentSkillManager {
 
     @Override
     public boolean registerSkill(String agentId, String skill) {
-        logger.debug("Registering skill {} for agent {}", skill, agentId);
-        // This would typically delegate to AgentRegistry
-        return true;
+        try {
+            if (agentId == null || agentId.trim().isEmpty()) {
+                logger.warn("Cannot register skill: agent ID is null or empty");
+                recordMetrics("skill-manager", "skill-registration", false, Duration.ZERO);
+                return false;
+            }
+
+            if (skill == null || skill.trim().isEmpty()) {
+                logger.warn("Cannot register skill for agent '{}': skill is null or empty", agentId);
+                recordMetrics("skill-manager", "skill-registration", false, Duration.ZERO);
+                return false;
+            }
+
+            logger.debug("Registering skill {} for agent {}", skill, agentId);
+            // This would typically delegate to AgentRegistry
+            recordMetrics("skill-manager", "skill-registration", true, Duration.ZERO);
+            return true;
+        } catch (Exception e) {
+            logger.error("Error registering skill '{}' for agent '{}': {}", skill, agentId, e.getMessage(), e);
+            recordMetrics("skill-manager", "skill-registration", false, Duration.ZERO);
+            return false;
+        }
     }
 
     @Override
     public boolean unregisterSkill(String agentId, String skill) {
-        logger.debug("Unregistering skill {} for agent {}", skill, agentId);
-        // This would typically delegate to AgentRegistry
-        return true;
+        try {
+            if (agentId == null || agentId.trim().isEmpty()) {
+                logger.warn("Cannot unregister skill: agent ID is null or empty");
+                recordMetrics("skill-manager", "skill-unregistration", false, Duration.ZERO);
+                return false;
+            }
+
+            if (skill == null || skill.trim().isEmpty()) {
+                logger.warn("Cannot unregister skill for agent '{}': skill is null or empty", agentId);
+                recordMetrics("skill-manager", "skill-unregistration", false, Duration.ZERO);
+                return false;
+            }
+
+            logger.debug("Unregistering skill {} for agent {}", skill, agentId);
+            // This would typically delegate to AgentRegistry
+            recordMetrics("skill-manager", "skill-unregistration", true, Duration.ZERO);
+            return true;
+        } catch (Exception e) {
+            logger.error("Error unregistering skill '{}' for agent '{}': {}", skill, agentId, e.getMessage(), e);
+            recordMetrics("skill-manager", "skill-unregistration", false, Duration.ZERO);
+            return false;
+        }
     }
 
     @Override
@@ -393,6 +500,7 @@ public class DefaultAgentSkillManager implements AgentSkillManager {
             }
 
             @Override
+            @SuppressWarnings("unchecked")
             public List<String> getParameters() {
                 return metadata != null && metadata.containsKey("parameters")
                         ? (List<String>) metadata.get("parameters")
@@ -400,6 +508,7 @@ public class DefaultAgentSkillManager implements AgentSkillManager {
             }
 
             @Override
+            @SuppressWarnings("unchecked")
             public List<String> getExamples() {
                 return metadata != null && metadata.containsKey("examples") ? (List<String>) metadata.get("examples")
                         : List.of();
@@ -508,6 +617,43 @@ public class DefaultAgentSkillManager implements AgentSkillManager {
             return Map.of("result", result.toString());
         } else {
             return Map.of();
+        }
+    }
+
+    /**
+     * Record metrics for skill management operations.
+     * 
+     * @param domain the operation domain
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param duration the operation duration
+     */
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        try {
+            if (domain == null || domain.trim().isEmpty()) {
+                logger.warn("Cannot record metrics: domain is null or empty for operation: {}", operation);
+                return;
+            }
+
+            if (operation == null || operation.trim().isEmpty()) {
+                logger.warn("Cannot record metrics: operation is null or empty for domain: {}", domain);
+                return;
+            }
+
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                try {
+                    metrics.recordOperation(domain, operation, success, duration);
+                } catch (Exception e) {
+                    logger.error("Failed to record metrics for {}.{}: {}", domain, operation, e.getMessage(), e);
+                }
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                        operation);
+            }
+        } catch (Exception e) {
+            // Prevent recursive error recording
+            logger.error("Error in metrics recording helper for {}.{}: {}", domain, operation, e.getMessage());
         }
     }
 }

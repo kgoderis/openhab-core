@@ -1,15 +1,11 @@
 package org.openhab.core.ai.tool.manager;
 
-import java.time.Instant;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
-import org.openhab.core.ai.common.security.BaseSecurityStatistics;
 import org.openhab.core.ai.common.security.SecurityManager;
-import org.openhab.core.ai.common.security.SecurityStatistics;
-import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.security.config.SecurityConfiguration;
 import org.openhab.core.ai.tool.security.api.ToolSecurityManager;
 import org.openhab.core.ai.tool.security.filters.SecurityResult;
@@ -86,12 +82,10 @@ public class DefaultToolSecurityManager implements ToolSecurityManager {
         LOGGER.warn("Security violation in component {}: {} with context: {}", componentId, violation, context);
     }
 
-    @Override
-    public SecurityStatistics getStatistics() {
-        return new BaseSecurityStatistics(0, 0, 0, 0, Instant.now()) {
-            // Anonymous implementation using unified BaseSecurityStatistics
-        };
-    }
+    // Eliminated getStatistics() method after removing from SecurityManager interface
+    // Consumers should call MetricsService directly:
+    // metricsService.getSnapshot(MetricKeys.custom("security-monitoring", Map.of("name", "tool-security")),
+    // SecurityStatistics.class, Duration.ofHours(24))
 
     @Override
     public SecurityManager.SecurityManagerType getType() {
@@ -118,20 +112,15 @@ public class DefaultToolSecurityManager implements ToolSecurityManager {
         return SecurityResult.success("Tool access granted");
     }
 
-    @Override
-    public ToolSecurityStatistics getToolStatistics() {
-        return new ToolSecurityStatistics(0, 0, 0, 0, Instant.now());
-    }
+    // Eliminated getToolStatistics() method after removing from ToolSecurityManager interface
+    // Consumers should call MetricsService directly:
+    // metricsService.getSnapshot(MetricKeys.custom("tool-security", Map.of("operation", "security-check")),
+    // ToolSecurityStatistics.class, Duration.ofHours(24))
 
-    /**
-     * Get tool-specific security statistics.
-     * 
-     * @return security statistics
-     */
-    public ToolSecurityStatistics getToolSecurityStatistics() {
-        // Basic implementation - can be extended with actual statistics
-        return new ToolSecurityStatistics(0, 0, 0, 0, null);
-    }
+    // Eliminated getToolSecurityStatistics() enhanced method - provides duplicate functionality
+    // Consumers should call MetricsService directly:
+    // metricsService.getSnapshot(MetricKeys.custom("tool-security", Map.of("component", "tool-security")),
+    // ToolSecurityStatistics.class, Duration.ofHours(24))
 
     /**
      * Clear security statistics.

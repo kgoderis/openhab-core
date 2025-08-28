@@ -86,15 +86,13 @@ public class BackendServer {
     void recordRequest(long responseTime) {
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("backend_server", "request")
-                    .withSuccess(true)
-                    .withDuration(Duration.ofMillis(responseTime).toNanos())
-                    .withData("url", url)
-                    .withData("responseTimeMs", responseTime)
-                    .record();
+                metricsService.recordOperation("backend_server", "request").withSuccess(true)
+                        .withDuration(Duration.ofMillis(responseTime).toNanos()).withData("url", url)
+                        .withData("responseTimeMs", responseTime).record();
             } catch (Exception e) {
                 // Fallback to local logging if MetricsService fails
-                System.err.println("Failed to record backend server request metrics for URL " + url + ": " + e.getMessage());
+                System.err.println(
+                        "Failed to record backend server request metrics for URL " + url + ": " + e.getMessage());
                 // Graceful degradation: continue with request processing even if metrics recording fails
             }
         }
@@ -103,11 +101,8 @@ public class BackendServer {
     void recordError() {
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("backend_server", "error")
-                    .withSuccess(false)
-                    .withDuration(0L)
-                    .withData("url", url)
-                    .record();
+                metricsService.recordOperation("backend_server", "error").withSuccess(false).withDuration(0L)
+                        .withData("url", url).record();
             } catch (Exception e) {
                 // Fallback to local logging if MetricsService fails
                 System.err.println("Failed to record backend server error metrics: " + e.getMessage());
@@ -120,10 +115,10 @@ public class BackendServer {
             try {
                 GenericMetricsSnapshot errorSnapshot = metricsService.getSnapshot("backend_server", "error");
                 GenericMetricsSnapshot requestSnapshot = metricsService.getSnapshot("backend_server", "request");
-                
+
                 long errorCount = errorSnapshot.getMetricAsLong("total_count");
                 long requestCount = requestSnapshot.getMetricAsLong("total_count");
-                
+
                 if (requestCount > 0) {
                     return (double) errorCount / requestCount * 100.0;
                 }

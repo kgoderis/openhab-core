@@ -27,10 +27,10 @@ import org.openhab.core.ai.common.monitoring.api.HealthStatus;
  * <p>
  * <strong>Data Storage Strategy:</strong>
  * <ul>
- *   <li><strong>Specific Fields:</strong> Use for standard metrics (counts, timing, health status, etc.)
- *     These are optimized for performance and provide type-safe access.</li>
- *   <li><strong>Extended Data:</strong> Use for additional metrics not covered by specific fields,
- *     such as custom business metrics, configuration data, or domain-specific information.</li>
+ * <li><strong>Specific Fields:</strong> Use for standard metrics (counts, timing, health status, etc.)
+ * These are optimized for performance and provide type-safe access.</li>
+ * <li><strong>Extended Data:</strong> Use for additional metrics not covered by specific fields,
+ * such as custom business metrics, configuration data, or domain-specific information.</li>
  * </ul>
  * </p>
  * 
@@ -58,19 +58,19 @@ public final class MetricsCollector {
      * <p>
      * <strong>When to use Extended Data:</strong>
      * <ul>
-     *   <li>Custom business metrics (e.g., "user_sessions", "cache_hits")</li>
-     *   <li>Configuration data (e.g., "timeout_ms", "retry_count")</li>
-     *   <li>Domain-specific information (e.g., "model_version", "api_endpoint")</li>
-     *   <li>Temporary or experimental metrics</li>
-     *   <li>Complex data structures that don't fit specific fields</li>
+     * <li>Custom business metrics (e.g., "user_sessions", "cache_hits")</li>
+     * <li>Configuration data (e.g., "timeout_ms", "retry_count")</li>
+     * <li>Domain-specific information (e.g., "model_version", "api_endpoint")</li>
+     * <li>Temporary or experimental metrics</li>
+     * <li>Complex data structures that don't fit specific fields</li>
      * </ul>
      * 
      * <p>
      * <strong>When NOT to use Extended Data:</strong>
      * <ul>
-     *   <li>Standard execution metrics (use specific fields instead)</li>
-     *   <li>Health status information (use specific fields instead)</li>
-     *   <li>Performance-critical counters (use LongAdder fields instead)</li>
+     * <li>Standard execution metrics (use specific fields instead)</li>
+     * <li>Health status information (use specific fields instead)</li>
+     * <li>Performance-critical counters (use LongAdder fields instead)</li>
      * </ul>
      * </p>
      */
@@ -148,10 +148,10 @@ public final class MetricsCollector {
      * Examples:
      * </p>
      * <ul>
-     *   <li>Custom business metrics: {@code recordExtendedData("user_sessions", 150)}</li>
-     *   <li>Configuration data: {@code recordExtendedData("timeout_ms", 5000)}</li>
-     *   <li>Domain-specific info: {@code recordExtendedData("model_version", "v2.1")}</li>
-     *   <li>Complex data: {@code recordExtendedData("api_endpoints", List.of("GET", "POST"))}</li>
+     * <li>Custom business metrics: {@code recordExtendedData("user_sessions", 150)}</li>
+     * <li>Configuration data: {@code recordExtendedData("timeout_ms", 5000)}</li>
+     * <li>Domain-specific info: {@code recordExtendedData("model_version", "v2.1")}</li>
+     * <li>Complex data: {@code recordExtendedData("api_endpoints", List.of("GET", "POST"))}</li>
      * </ul>
      * 
      * <p>
@@ -394,6 +394,7 @@ public final class MetricsCollector {
      * <p>
      * Example usage:
      * </p>
+     * 
      * <pre>{@code
      * Integer timeout = collector.getExtendedData("timeout_ms", Integer.class);
      * String version = collector.getExtendedData("model_version", String.class);

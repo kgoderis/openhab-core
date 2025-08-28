@@ -1,17 +1,22 @@
 package org.openhab.core.ai.action.library.rules;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionException;
 import org.openhab.core.ai.action.api.ActionMetadata;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.action.api.ActionValidationResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.automation.Condition;
 import org.openhab.core.automation.Rule;
 import org.openhab.core.automation.RuleRegistry;
@@ -34,6 +39,48 @@ public class ValidateRuleAction implements Action {
 
     @Reference
     private RuleRegistry ruleRegistry;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
+
+    // Business logic capture: Validation rule effectiveness
+    private final Map<String, AtomicLong> validationRuleTriggers = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> validationRuleFailures = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> validationRuleSuccesses = new ConcurrentHashMap<>();
+
+    /**
+     * Record validation rule effectiveness for business logic analysis.
+     * 
+     * @param ruleUID the rule being validated
+     * @param validationType the type of validation performed
+     * @param success whether validation passed
+     * @param issues the validation issues found
+     */
+    private void recordValidationRuleEffectiveness(String ruleUID, String validationType, boolean success,
+            List<String> issues) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                Map<String, Object> context = Map.of("ruleUID", ruleUID, "validationType", validationType, "success",
+                        success, "issueCount", issues != null ? issues.size() : 0, "timestamp",
+                        System.currentTimeMillis());
+                metrics.recordOperationWithData("validation-rule", "effectiveness", success,
+                        java.time.Duration.ofNanos(0), context);
+
+                // Update local tracking
+                String key = ruleUID + ":" + validationType;
+                validationRuleTriggers.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
+                if (success) {
+                    validationRuleSuccesses.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
+                } else {
+                    validationRuleFailures.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
+                }
+
+            } catch (Exception e) {
+                logger.warn("Failed to record validation rule effectiveness metrics: {}", e.getMessage());
+            }
+        }
+    }
 
     @Override
     public String getActionId() {
@@ -126,8 +173,11 @@ public class ValidateRuleAction implements Action {
 
     @Override
     public ActionResult execute(Map<String, Object> parameters, ExecutionContext context) throws ActionException {
+        long startTime = System.currentTimeMillis();
+        String ruleUID = "";
+
         try {
-            String ruleUID = (String) parameters.get("ruleUID");
+            ruleUID = (String) parameters.get("ruleUID");
             boolean validateTriggers = (Boolean) parameters.getOrDefault("validateTriggers", true);
             boolean validateConditions = (Boolean) parameters.getOrDefault("validateConditions", true);
             boolean validateActions = (Boolean) parameters.getOrDefault("validateActions", true);
@@ -143,7 +193,13 @@ public class ValidateRuleAction implements Action {
                 result.put("success", false);
                 result.put("notFound", true);
                 result.put("error", "Rule not found: " + ruleUID);
-                return ActionResult.success(result, System.currentTimeMillis());
+
+                // Record validation rule metrics for not found case
+                recordValidationRuleMetrics("rule_not_found", false,
+                        Duration.ofMillis(System.currentTimeMillis() - startTime),
+                        Map.of("ruleUID", ruleUID, "error", "Rule not found"));
+
+                return ActionResult.success(result, System.currentTimeMillis() - startTime);
             }
 
             // Follow the same flow as openHAB Core REST implementation
@@ -157,10 +213,23 @@ public class ValidateRuleAction implements Action {
             result.putAll(validationResult);
             result.put("message", "Rule validation completed successfully");
 
-            return ActionResult.success(result, System.currentTimeMillis());
+            // Record validation rule metrics for successful validation
+            recordValidationRuleMetrics("rule_validation", true,
+                    Duration.ofMillis(System.currentTimeMillis() - startTime),
+                    Map.of("ruleUID", ruleUID, "valid", validationResult.get("valid"), "overallScore",
+                            validationResult.get("overallScore"), "issueCount", validationResult.get("issueCount"),
+                            "warningCount", validationResult.get("warningCount")));
+
+            return ActionResult.success(result, System.currentTimeMillis() - startTime);
 
         } catch (Exception e) {
             logger.error("Error validating rule: {}", e.getMessage(), e);
+
+            // Record validation rule metrics for error case
+            recordValidationRuleMetrics("rule_validation_error", false,
+                    Duration.ofMillis(System.currentTimeMillis() - startTime),
+                    Map.of("ruleUID", ruleUID, "error", e.getMessage()));
+
             throw new ActionException(getActionId(), "Failed to validate rule: " + e.getMessage(), e);
         }
     }
@@ -415,5 +484,31 @@ public class ValidateRuleAction implements Action {
         result.put("suggestionCount", suggestions.size());
 
         return result;
+    }
+
+    /**
+     * Record validation rule metrics using the generic metrics service.
+     * 
+     * @param validationType the type of validation (e.g., "rule_validation", "rule_not_found", "rule_validation_error")
+     * @param success whether the validation was successful
+     * @param duration the validation duration
+     * @param context additional context data
+     */
+    private void recordValidationRuleMetrics(String validationType, boolean success, Duration duration,
+            Map<String, Object> context) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Record the validation rule execution using the generic metrics service
+                metrics.recordOperationWithData("validation", validationType, success, duration, context);
+
+                logger.debug("Recorded validation rule metrics: {} (success={}, duration={})", validationType, success,
+                        duration);
+            } else {
+                logger.debug("MetricsService not available for validation rule recording: {}", validationType);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record validation rule metrics: {}", validationType, e);
+        }
     }
 }

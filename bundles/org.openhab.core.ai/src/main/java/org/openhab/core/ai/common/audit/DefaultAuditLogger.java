@@ -27,9 +27,11 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.SecurityIncident;
 import org.openhab.core.ai.auth.SecurityMetrics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +67,10 @@ public class DefaultAuditLogger implements AuditLogger {
 
     // Generic audit metrics (from tool version)
     private final AtomicLong totalEvents = new AtomicLong(0);
-    private final AtomicLong totalBytes = new AtomicLong(0);
+
+    // Metrics service for centralized metrics collection
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Security incident tracking
     private final Map<String, SecurityIncident> activeIncidents = new ConcurrentHashMap<>();
@@ -241,6 +246,7 @@ public class DefaultAuditLogger implements AuditLogger {
     @Override
     public void logSecurityViolation(String principalId, String violationType, String description, String protocol,
             Instant timestamp) {
+        long startTime = System.nanoTime();
         securityViolations.incrementAndGet();
 
         String eventMessage = String.format(
@@ -248,6 +254,9 @@ public class DefaultAuditLogger implements AuditLogger {
                 principalId, violationType, description, protocol, timestamp);
 
         logger.error("AUDIT: {}", eventMessage);
+
+        // Record metrics for security violation logging
+        recordAuditMetrics("security-violation", true, System.nanoTime() - startTime);
         writeAuditLogEntry("ERROR", eventMessage);
 
         // Create security incident
@@ -286,6 +295,8 @@ public class DefaultAuditLogger implements AuditLogger {
         if (!enabled || event == null) {
             return;
         }
+        long startTime = System.nanoTime();
+        boolean success = false;
         try {
             String formattedEvent = String.format(
                     "AUDIT_EVENT - ID: %s, Type: %s, Level: %s, Action: %s, User: %s, Timestamp: %s",
@@ -293,8 +304,12 @@ public class DefaultAuditLogger implements AuditLogger {
                     event.getTimestamp());
             writeAuditLogEntry(event.getLevel(), formattedEvent);
             totalEvents.incrementAndGet();
+            success = true;
         } catch (Exception e) {
             logger.error("Failed to log audit event: {}", event.getEventId(), e);
+        } finally {
+            // Record metrics for audit event logging
+            recordAuditMetrics("audit-event", success, System.nanoTime() - startTime);
         }
     }
 
@@ -323,32 +338,6 @@ public class DefaultAuditLogger implements AuditLogger {
         rotateLogFile();
     }
 
-    @Override
-    public Map<String, Object> getAuditStatistics() {
-        Map<String, Object> statistics = new HashMap<>();
-        statistics.put("totalEvents", totalEvents.get());
-        statistics.put("totalBytes", totalBytes.get());
-        statistics.put("currentFileSize", getCurrentFileSize());
-        statistics.put("enabled", enabled);
-        statistics.put("logDirectory", auditLogDir);
-        statistics.put("maxFileSize", maxLogFileSizeMB * 1024 * 1024);
-        statistics.put("retentionDays", retentionDays);
-
-        // Add security metrics
-        statistics.put("totalAuthenticationAttempts", totalAuthenticationAttempts.get());
-        statistics.put("successfulAuthentications", successfulAuthentications.get());
-        statistics.put("failedAuthentications", failedAuthentications.get());
-        statistics.put("totalPermissionChecks", totalPermissionChecks.get());
-        statistics.put("grantedPermissions", grantedPermissions.get());
-        statistics.put("deniedPermissions", deniedPermissions.get());
-        statistics.put("securityViolations", securityViolations.get());
-        statistics.put("sessionCreations", sessionCreations.get());
-        statistics.put("sessionTimeouts", sessionTimeouts.get());
-        statistics.put("activeIncidents", activeIncidents.size());
-
-        return statistics;
-    }
-
     // Additional methods for security monitoring
 
     /**
@@ -374,6 +363,20 @@ public class DefaultAuditLogger implements AuditLogger {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    /**
+     * Record audit metrics using MetricsService
+     */
+    private void recordAuditMetrics(String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                metrics.recordOperation("audit", operation, success, java.time.Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.debug("Failed to record audit metrics: {}", e.getMessage());
+            }
+        }
     }
 
     // Private helper methods

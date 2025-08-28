@@ -3,12 +3,11 @@ package org.openhab.core.ai.tool.roots;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.tool.roots.discovery.Root;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.tool.roots.discovery.Root;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -212,9 +211,15 @@ public class RootDiscoveryManager implements RootsService {
         metrics.put("activeRoots", activeRoots.size());
         metrics.put("totalResponseTimeMs", metricsService.getOperationDuration("listRoots.duration"));
         metrics.put("averageResponseTimeMs",
-                metricsService.getOperationCount("listRoots.duration") > 0 ? metricsService.getOperationDuration("listRoots.duration") / metricsService.getOperationCount("listRoots.duration") : 0);
+                metricsService.getOperationCount("listRoots.duration") > 0
+                        ? metricsService.getOperationDuration("listRoots.duration")
+                                / metricsService.getOperationCount("listRoots.duration")
+                        : 0);
         metrics.put("successRate",
-                metricsService.getOperationCount("listRoots.duration") > 0 ? (double) metricsService.getOperationCount("listRoots.success") / metricsService.getOperationCount("listRoots.duration") : 0.0);
+                metricsService.getOperationCount("listRoots.duration") > 0
+                        ? (double) metricsService.getOperationCount("listRoots.success")
+                                / metricsService.getOperationCount("listRoots.duration")
+                        : 0.0);
         return metrics;
     }
 

@@ -1,6 +1,5 @@
 package org.openhab.core.ai.common.error;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -173,19 +172,6 @@ public class ErrorRecoveryResult {
      */
     public static void clearCache() {
         resultCache.clear();
-    }
-
-    /**
-     * Get cache statistics.
-     * 
-     * @return cache statistics
-     */
-    public static Map<String, Object> getCacheStatistics() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("cacheSize", resultCache.size());
-        stats.put("cacheHits", cacheHits.get());
-        stats.put("cacheMisses", cacheMisses.get());
-        return stats;
     }
 
     @Override

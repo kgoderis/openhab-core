@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.model.api.ModelProviderType;
 
 /**
  * Aggregated usage stats per provider across models and agents.
@@ -46,14 +46,10 @@ public class ProviderUsageStats {
     public void recordRequest(int tokens, double cost, long responseTime, boolean success) {
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("provider_usage", "request")
-                    .withSuccess(success)
-                    .withDuration(Duration.ofMillis(responseTime).toNanos())
-                    .withData("providerType", providerType.name())
-                    .withData("tokens", tokens)
-                    .withData("cost", cost)
-                    .withData("responseTimeMs", responseTime)
-                    .record();
+                metricsService.recordOperation("provider_usage", "request").withSuccess(success)
+                        .withDuration(Duration.ofMillis(responseTime).toNanos())
+                        .withData("providerType", providerType.name()).withData("tokens", tokens).withData("cost", cost)
+                        .withData("responseTimeMs", responseTime).record();
             } catch (Exception e) {
                 // Fallback to local logging if MetricsService fails
                 System.err.println("Failed to record provider usage metrics: " + e.getMessage());

@@ -50,7 +50,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.9, 0.7);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot1, snapshot2);
         Duration timeRange = Duration.ofHours(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(150, statistics.total()); // 100 + 50
@@ -64,7 +65,8 @@ class AgentBehaviorStatisticsTest {
         // Given
         List<AgentTaskSnapshot> snapshots = List.of();
         Duration timeRange = Duration.ofHours(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(0, statistics.total());
@@ -82,7 +84,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.9, 0.7);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot1, snapshot2);
         Duration timeRange = Duration.ofHours(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(1500000000L, statistics.totalDurationNanos()); // 1000000000 + 500000000
@@ -97,7 +100,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.8, 0.6);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot);
         Duration timeRange = Duration.ZERO;
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(1000000000L, statistics.totalDurationNanos());
@@ -116,7 +120,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.9, 0.7);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot1, snapshot2);
         Duration timeRange = Duration.ofDays(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(12.5, statistics.trendPercentage(), 0.001); // ((90-80)/80) * 100
@@ -131,7 +136,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.8, 0.6);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot);
         Duration timeRange = Duration.ofDays(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(0.0, statistics.trendPercentage(), 0.001);
@@ -150,7 +156,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.8, 0.6);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot1, snapshot2);
         Duration timeRange = Duration.ofDays(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(-11.111, statistics.trendPercentage(), 0.001); // ((80-90)/90) * 100
@@ -170,7 +177,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.7, 0.5);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot1, snapshot2, snapshot3);
         Duration timeRange = Duration.ofHours(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertTrue(statistics.percentile50() > 0);
@@ -187,7 +195,8 @@ class AgentBehaviorStatisticsTest {
         // Given
         List<AgentTaskSnapshot> snapshots = List.of();
         Duration timeRange = Duration.ofHours(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(0.0, statistics.percentile50(), 0.001);
@@ -205,7 +214,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.9, 0.7);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot1, snapshot2);
         Duration timeRange = Duration.ofDays(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(0.85, statistics.decisionQuality(), 0.001); // (0.8 + 0.9) / 2
@@ -220,7 +230,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.8, 0.6);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot);
         Duration timeRange = Duration.ofDays(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(0.8, statistics.decisionQuality(), 0.001);
@@ -237,7 +248,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.9, 0.7);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot1, snapshot2);
         Duration timeRange = Duration.ofDays(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertEquals(0.85, statistics.decisionAccuracy(), 0.001); // Alias for decisionQuality
@@ -285,7 +297,8 @@ class AgentBehaviorStatisticsTest {
         // Given
         List<AgentTaskSnapshot> snapshots = List.of();
         Duration timeRange = Duration.ofHours(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then
         assertTrue(statistics instanceof CountsMetrics);
@@ -301,7 +314,8 @@ class AgentBehaviorStatisticsTest {
         // Given
         List<AgentTaskSnapshot> snapshots = List.of();
         Duration timeRange = Duration.ofHours(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then - Test edge cases
         assertEquals(0.0, statistics.successRate(), 0.001); // Zero total
@@ -496,7 +510,8 @@ class AgentBehaviorStatisticsTest {
                 System.currentTimeMillis(), 0.9, 0.8);
         List<AgentTaskSnapshot> snapshots = List.of(snapshot1, snapshot2, snapshot3);
         Duration timeRange = Duration.ofDays(1);
-        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange, System.currentTimeMillis());
+        AgentBehaviorStatistics statistics = new AgentBehaviorStatistics(snapshots, timeRange,
+                System.currentTimeMillis());
 
         // When & Then - Verify all metrics work together
         assertEquals(450, statistics.total()); // 100 + 150 + 200

@@ -18,8 +18,8 @@ import org.openhab.core.ai.common.monitoring.api.LatencyMetrics;
  */
 @NonNullByDefault
 public record EventBusSnapshot(long total, long success, long failure, long totalDurationNanos, long timestampMs,
-        long totalEvents, long totalSubscriptions, long totalSchemas, long totalPublishers, long totalSubscribers)
-        implements CountsMetrics, LatencyMetrics, EventBusMetrics {
+        long totalEvents, long totalSubscriptions, long totalSchemas, long totalPublishers,
+        long totalSubscribers) implements CountsMetrics, LatencyMetrics, EventBusMetrics {
 
     @Override
     public double successRate() {

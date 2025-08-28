@@ -142,14 +142,11 @@ public class AgentGrpcTransport implements AgentTransport {
 
         Map<String, Object> healthMetrics = Map.of("uptime", currentTime - startTime, "messageCount",
                 // Placeholder - would need MetricsService to implement getMetric
-                0L,
-                "errorCount",
+                0L, "errorCount",
                 // Placeholder - would need MetricsService to implement getMetric
-                0L,
-                "averageLatency",
+                0L, "averageLatency",
                 // Placeholder - would need MetricsService to implement getMetric
-                0L,
-                "lastHealthCheck", lastHealthCheck);
+                0L, "lastHealthCheck", lastHealthCheck);
 
         return new GrpcTransportHealth(healthy, "gRPC transport health check", currentTime, healthMetrics);
     }
@@ -181,12 +178,9 @@ public class AgentGrpcTransport implements AgentTransport {
                 long latency = System.currentTimeMillis() - startTime;
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("grpc_transport", "latency")
-                            .withSuccess(true)
-                            .withDuration(Duration.ofMillis(latency).toNanos())
-                            .withData("transportId", transportId)
-                            .withData("latencyMs", latency)
-                            .record();
+                        metricsService.recordOperation("grpc_transport", "latency").withSuccess(true)
+                                .withDuration(Duration.ofMillis(latency).toNanos()).withData("transportId", transportId)
+                                .withData("latencyMs", latency).record();
                     } catch (Exception e) {
                         logger.debug("Failed to record gRPC latency metrics: {}", e.getMessage());
                     }
@@ -201,13 +195,11 @@ public class AgentGrpcTransport implements AgentTransport {
             } catch (Exception e) {
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("grpc_transport", "error")
-                            .withSuccess(false)
-                            .withDuration(0L)
-                            .withData("transportId", transportId)
-                            .withData("exceptionType", e.getClass().getSimpleName())
-                            .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
-                            .record();
+                        metricsService.recordOperation("grpc_transport", "error").withSuccess(false).withDuration(0L)
+                                .withData("transportId", transportId)
+                                .withData("exceptionType", e.getClass().getSimpleName())
+                                .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
+                                .record();
                     } catch (Exception ex) {
                         logger.debug("Failed to record gRPC error metrics: {}", ex.getMessage());
                     }
@@ -248,13 +240,13 @@ public class AgentGrpcTransport implements AgentTransport {
         metrics.put("transportId", transportId);
         metrics.put("running", running);
         metrics.put("uptime", running ? System.currentTimeMillis() - startTime : 0);
-        
+
         if (metricsService != null) {
             try {
                 GenericMetricsSnapshot messageSnapshot = metricsService.getSnapshot("grpc_transport", "message");
                 GenericMetricsSnapshot errorSnapshot = metricsService.getSnapshot("grpc_transport", "error");
                 GenericMetricsSnapshot latencySnapshot = metricsService.getSnapshot("grpc_transport", "latency");
-                
+
                 metrics.put("messageCount", messageSnapshot.getMetricAsLong("total_count"));
                 metrics.put("errorCount", errorSnapshot.getMetricAsLong("total_count"));
                 metrics.put("requestCount", messageSnapshot.getMetricAsLong("total_count"));
@@ -274,7 +266,7 @@ public class AgentGrpcTransport implements AgentTransport {
             metrics.put("requestCount", 0L);
             metrics.put("averageLatency", 0L);
         }
-        
+
         metrics.put("lastHealthCheck", lastHealthCheck);
         metrics.put("transportType", "grpc");
         metrics.put("port", 8083);

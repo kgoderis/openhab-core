@@ -55,6 +55,11 @@ public class AgentCommunicationConfigurationManager {
     private final AtomicLong failedLoads = new AtomicLong(0);
     private final AtomicLong hotReloads = new AtomicLong(0);
 
+    // Business logic capture: Configuration changes
+    private final Map<String, AtomicLong> configurationChangePatterns = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> configurationImpactMetrics = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> configurationPerformanceImpact = new ConcurrentHashMap<>();
+
     // Background processors
     private final ScheduledExecutorService configMonitor = Executors.newScheduledThreadPool(1);
     private final ScheduledExecutorService backupProcessor = Executors.newScheduledThreadPool(1);
@@ -66,6 +71,32 @@ public class AgentCommunicationConfigurationManager {
     private static final String DEFAULT_CONFIG_PATH = "conf/agent-communication";
     private static final String BACKUP_CONFIG_PATH = "conf/agent-communication/backup";
     private static final String TEMPLATES_CONFIG_PATH = "conf/agent-communication/templates";
+
+    /**
+     * Record configuration changes for business logic analysis.
+     * 
+     * @param configId the configuration identifier
+     * @param changeType the type of configuration change
+     * @param oldValue the previous configuration value
+     * @param newValue the new configuration value
+     * @param performanceImpact the performance impact of the change
+     */
+    private void recordConfigurationChange(String configId, String changeType, Object oldValue, Object newValue,
+            double performanceImpact) {
+        try {
+            String changeKey = configId + ":" + changeType;
+            configurationChangePatterns.computeIfAbsent(changeKey, k -> new AtomicLong(0)).incrementAndGet();
+
+            String impactKey = configId + ":" + (performanceImpact > 0 ? "positive" : "negative");
+            configurationImpactMetrics.computeIfAbsent(impactKey, k -> new AtomicLong(0)).incrementAndGet();
+
+            String performanceKey = configId + ":" + Math.round(performanceImpact * 100) / 100.0;
+            configurationPerformanceImpact.computeIfAbsent(performanceKey, k -> new AtomicLong(0)).incrementAndGet();
+
+        } catch (Exception e) {
+            logger.warn("Failed to record configuration change metrics: {}", e.getMessage());
+        }
+    }
 
     @Activate
     public AgentCommunicationConfigurationManager() {

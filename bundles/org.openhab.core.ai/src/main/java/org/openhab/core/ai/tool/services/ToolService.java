@@ -67,12 +67,9 @@ public interface ToolService {
      */
     boolean validateTool(String toolId);
 
-    /**
-     * Get tool statistics.
-     * 
-     * @return map of tool statistics
-     */
-    Map<String, Object> getToolStatistics();
+    // Eliminated getToolStatistics() method - consumers should access statistics directly via MetricsService
+    // Use: metricsService.getSnapshot(MetricKeys.custom("tool-service", Map.of("operation", "tool-execution")),
+    // ToolStatistics.class, Duration.ofHours(24))
 
     /**
      * Get service health status.

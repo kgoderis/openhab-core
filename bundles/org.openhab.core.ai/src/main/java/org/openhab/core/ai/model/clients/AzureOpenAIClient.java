@@ -1,27 +1,22 @@
 package org.openhab.core.ai.model.clients;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.common.monitoring.api.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.osgi.service.component.annotations.Reference;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -29,7 +24,7 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.config.AzureOpenAIConfiguration;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,16 +102,15 @@ public class AzureOpenAIClient implements ModelClient {
 
                 // Record operation metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                metricsService.recordOperation("model", "completion")
-                    .withSuccess(true)
-                    .withDuration(responseTime)
-                    .withData(Map.of(
-                        "provider", "azure",
-                        "model", config.getModelName(),
-                        "promptLength", prompt.length(),
-                        "maxTokens", params.getMaxTokens()
-                    ))
-                    .record();
+                try {
+                    metricsService.recordOperation("model", "completion").withSuccess(true).withDuration(responseTime)
+                            .withData(Map.of("provider", "azure", "model", config.getModelName(), "promptLength",
+                                    prompt.length(), "maxTokens", params.getMaxTokens()))
+                            .record();
+                } catch (Exception metricError) {
+                    logger.warn("Failed to record Azure OpenAI completion metrics: {}", metricError.getMessage());
+                    // Graceful degradation: continue with response even if metrics recording fails
+                }
 
                 return ModelResponse.builder().withContent(responseContent).withModelName(config.getModelName())
                         .withProviderType(ModelProviderType.AZURE.name()).build();
@@ -124,15 +118,15 @@ public class AzureOpenAIClient implements ModelClient {
             } catch (Exception e) {
                 // Record error metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                metricsService.recordOperation("model", "completion")
-                    .withSuccess(false)
-                    .withDuration(responseTime)
-                    .withData(Map.of(
-                        "provider", "azure",
-                        "model", config.getModelName(),
-                        "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
-                    ))
-                    .record();
+                try {
+                    metricsService.recordOperation("model", "completion").withSuccess(false).withDuration(responseTime)
+                            .withData(Map.of("provider", "azure", "model", config.getModelName(), "error",
+                                    e.getMessage() != null ? e.getMessage() : "Unknown error"))
+                            .record();
+                } catch (Exception metricError) {
+                    logger.warn("Failed to record Azure OpenAI completion error metrics: {}", metricError.getMessage());
+                    // Graceful degradation: continue with error handling even if metrics recording fails
+                }
 
                 logger.error("Error completing Azure OpenAI request", e);
                 throw new RuntimeException("Azure OpenAI completion failed", e);
@@ -182,16 +176,17 @@ public class AzureOpenAIClient implements ModelClient {
 
                 // Record operation metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                metricsService.recordOperation("model", "streaming-completion")
-                    .withSuccess(true)
-                    .withDuration(responseTime)
-                    .withData(Map.of(
-                        "provider", "azure",
-                        "model", config.getModelName(),
-                        "promptLength", prompt.length(),
-                        "maxTokens", params.getMaxTokens()
-                    ))
-                    .record();
+                try {
+                    metricsService.recordOperation("model", "streaming-completion").withSuccess(true)
+                            .withDuration(responseTime)
+                            .withData(Map.of("provider", "azure", "model", config.getModelName(), "promptLength",
+                                    prompt.length(), "maxTokens", params.getMaxTokens()))
+                            .record();
+                } catch (Exception metricError) {
+                    logger.warn("Failed to record Azure OpenAI streaming completion metrics: {}",
+                            metricError.getMessage());
+                    // Graceful degradation: continue with response even if metrics recording fails
+                }
 
                 handler.onComplete(llmResponse);
                 return llmResponse;
@@ -199,15 +194,17 @@ public class AzureOpenAIClient implements ModelClient {
             } catch (Exception e) {
                 // Record error metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                metricsService.recordOperation("model", "streaming-completion")
-                    .withSuccess(false)
-                    .withDuration(responseTime)
-                    .withData(Map.of(
-                        "provider", "azure",
-                        "model", config.getModelName(),
-                        "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
-                    ))
-                    .record();
+                try {
+                    metricsService.recordOperation("model", "streaming-completion").withSuccess(false)
+                            .withDuration(responseTime)
+                            .withData(Map.of("provider", "azure", "model", config.getModelName(), "error",
+                                    e.getMessage() != null ? e.getMessage() : "Unknown error"))
+                            .record();
+                } catch (Exception metricError) {
+                    logger.warn("Failed to record Azure OpenAI streaming completion error metrics: {}",
+                            metricError.getMessage());
+                    // Graceful degradation: continue with error handling even if metrics recording fails
+                }
 
                 logger.error("Error completing Azure OpenAI streaming request", e);
                 handler.onError(e);
@@ -238,32 +235,50 @@ public class AzureOpenAIClient implements ModelClient {
             boolean available = isAvailable();
 
             // Record health check operation
-            metricsService.recordOperation("model", "health-check")
-                .withSuccess(available)
-                .withDuration(100)
-                .withData(Map.of(
-                    "provider", "azure",
-                    "model", config.getModelName()
-                ))
-                .record();
+            try {
+                metricsService.recordOperation("model", "health-check").withSuccess(available).withDuration(100)
+                        .withData(Map.of("provider", "azure", "model", config.getModelName())).record();
+            } catch (Exception metricError) {
+                logger.warn("Failed to record Azure OpenAI health check metrics: {}", metricError.getMessage());
+                // Graceful degradation: continue with health status even if metrics recording fails
+            }
 
             // Return health metrics from service
-            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
-            
+            try {
+                return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                        UnifiedMetricsSnapshot.class);
+            } catch (Exception metricError) {
+                logger.warn("Failed to retrieve Azure OpenAI health metrics snapshot: {}", metricError.getMessage());
+                // Return a default health metrics implementation for graceful degradation
+                return UnifiedMetricsSnapshot.builder("default", "model", "health-check")
+                        .withHealthStatus(org.openhab.core.ai.common.monitoring.api.HealthStatus.UNKNOWN)
+                        .withStatusMessage("Health metrics unavailable").build();
+            }
+
         } catch (Exception e) {
             // Record failed health check
-            metricsService.recordOperation("model", "health-check")
-                .withSuccess(false)
-                .withDuration(100)
-                .withData(Map.of(
-                    "provider", "azure",
-                    "model", config.getModelName(),
-                    "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
-                ))
-                .record();
+            try {
+                metricsService.recordOperation("model", "health-check").withSuccess(false).withDuration(100)
+                        .withData(Map.of("provider", "azure", "model", config.getModelName(), "error",
+                                e.getMessage() != null ? e.getMessage() : "Unknown error"))
+                        .record();
+            } catch (Exception metricError) {
+                logger.warn("Failed to record Azure OpenAI health check error metrics: {}", metricError.getMessage());
+                // Graceful degradation: continue with health status even if metrics recording fails
+            }
 
             // Return health metrics from service (will reflect the failure)
-            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
+            try {
+                return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                        UnifiedMetricsSnapshot.class);
+            } catch (Exception metricError) {
+                logger.warn("Failed to retrieve Azure OpenAI health metrics snapshot after error: {}",
+                        metricError.getMessage());
+                // Return a default health metrics implementation for graceful degradation
+                return UnifiedMetricsSnapshot.builder("default", "model", "health-check")
+                        .withHealthStatus(org.openhab.core.ai.common.monitoring.api.HealthStatus.DEGRADED)
+                        .withStatusMessage("Health check failed").build();
+            }
         }
     }
 
@@ -339,8 +354,6 @@ public class AzureOpenAIClient implements ModelClient {
         // In a real implementation, this would extract from response headers
         return null;
     }
-
-
 
     /**
      * Get available actions from the registry

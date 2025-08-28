@@ -4,17 +4,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import java.util.Map;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
 import org.openhab.core.service.ReadyService.ReadyTracker;
@@ -128,15 +127,31 @@ public class AgentSkillRegistry implements ReadyTracker {
 
     @Activate
     public void activate() {
-        logger.debug("Agent Skill Registry activated with SDK patterns");
+        try {
+            logger.debug("Agent Skill Registry activated with SDK patterns");
 
-        // Register as a tracker
-        if (readyService != null) {
-            readyService.registerTracker(this);
+            // Register as a tracker
+            if (readyService != null) {
+                try {
+                    readyService.registerTracker(this);
+                    logger.debug("Registered as ReadyTracker");
+                } catch (Exception e) {
+                    logger.error("Error registering as ReadyTracker: {}", e.getMessage(), e);
+                }
+            } else {
+                logger.warn("ReadyService not available during activation");
+            }
+
+            // Initialize skill registry
+            initializeSkillRegistry();
+
+            recordMetrics("agent-skill", "service-activated", true, 0L);
+
+        } catch (Exception e) {
+            logger.error("Error during Agent Skill Registry activation: {}", e.getMessage(), e);
+            recordMetrics("agent-skill", "service-activated", false, 0L);
+            // Continue activation to ensure basic functionality
         }
-
-        // Initialize skill registry
-        initializeSkillRegistry();
     }
 
     @Deactivate
@@ -295,13 +310,14 @@ public class AgentSkillRegistry implements ReadyTracker {
         if (metrics != null) {
             try {
                 MetricKey agentSkillKey = MetricKeys.custom("agent-skill", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metrics.getSnapshot(agentSkillKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                
+                var snapshot = metrics.getSnapshot(agentSkillKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+
                 if (snapshot != null) {
                     long totalOperations = snapshot.getLong("total");
                     long failedOperations = snapshot.getLong("failure");
                     long successfulOperations = totalOperations - failedOperations;
-                    
+
                     stats.put("totalExecutions", totalOperations);
                     stats.put("successfulExecutions", successfulOperations);
                     stats.put("failedExecutions", failedOperations);
@@ -383,12 +399,37 @@ public class AgentSkillRegistry implements ReadyTracker {
      * @param durationNanos the operation duration in nanoseconds
      */
     private void recordMetrics(String domain, String operation, boolean success, long durationNanos) {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
-        } else {
-            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
-                    operation);
+        try {
+            if (domain == null || domain.trim().isEmpty()) {
+                logger.warn("Cannot record metrics: domain is null or empty for operation: {}", operation);
+                return;
+            }
+
+            if (operation == null || operation.trim().isEmpty()) {
+                logger.warn("Cannot record metrics: operation is null or empty for domain: {}", domain);
+                return;
+            }
+
+            if (durationNanos < 0) {
+                logger.warn("Cannot record metrics: duration is negative ({}) for {}.{}", durationNanos, domain,
+                        operation);
+                return;
+            }
+
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                try {
+                    metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
+                } catch (Exception e) {
+                    logger.error("Failed to record metrics for {}.{}: {}", domain, operation, e.getMessage(), e);
+                }
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                        operation);
+            }
+        } catch (Exception e) {
+            // Prevent recursive error recording
+            logger.error("Error in metrics recording helper for {}.{}: {}", domain, operation, e.getMessage());
         }
     }
 
@@ -436,7 +477,8 @@ public class AgentSkillRegistry implements ReadyTracker {
         if (metrics != null) {
             try {
                 MetricKey agentSkillKey = MetricKeys.custom("agent-skill", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metrics.getSnapshot(agentSkillKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                var snapshot = metrics.getSnapshot(agentSkillKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
                 return snapshot != null ? snapshot.getLong("total") : 0L;
             } catch (Exception e) {
                 logger.warn("Error retrieving execution count for skill {}: {}", skillId, e.getMessage());

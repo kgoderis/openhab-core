@@ -3,8 +3,10 @@ package org.openhab.core.ai.events;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -12,8 +14,6 @@ import java.util.concurrent.Executors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import java.util.Map;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
@@ -156,18 +156,45 @@ public class EventProcessingAnalytics {
      * @param duration the operation duration
      */
     public void recordPerformanceMetric(String component, String operation, boolean success, Duration duration) {
-        // Use centralized metrics service with builder pattern
+        recordPerformanceMetric(component, operation, success, duration, new HashMap<>());
+    }
+
+    /**
+     * Record a performance metric for a component operation with enhanced context.
+     * 
+     * @param component the component name
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param duration the operation duration
+     * @param context additional context data
+     */
+    public void recordPerformanceMetric(String component, String operation, boolean success, Duration duration,
+            Map<String, Object> context) {
+        // Use centralized metrics service with enhanced context
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("event-processing", "performance")
-                    .withSuccess(success)
-                    .withDuration(duration.toNanos())
-                    .withData("component", component)
-                    .withData("operation", operation)
-                    .withData("durationMs", duration.toMillis())
-                    .record();
+                // Create enhanced context with performance details
+                Map<String, Object> enhancedContext = new HashMap<>(context);
+                enhancedContext.put("component", component);
+                enhancedContext.put("operation", operation);
+                enhancedContext.put("success", success);
+                enhancedContext.put("durationMs", duration.toMillis());
+                enhancedContext.put("durationNanos", duration.toNanos());
+                enhancedContext.put("timestamp", System.currentTimeMillis());
+
+                // Add resource utilization context if available
+                addResourceUtilizationContext(enhancedContext);
+
+                // Add concurrency context if available
+                addConcurrencyContext(enhancedContext);
+
+                // Record performance metrics using generic method with enhanced context
+                metricsService.recordOperationWithData("event-processing", "performance", success, duration,
+                        enhancedContext);
+
             } catch (Exception e) {
-                logger.warn("Failed to record performance metrics for component {} operation {}: {}", component, operation, e.getMessage());
+                logger.warn("Failed to record performance metrics for component {} operation {}: {}", component,
+                        operation, e.getMessage());
                 // Graceful degradation: continue with local storage even if metrics recording fails
             }
         }
@@ -181,7 +208,8 @@ public class EventProcessingAnalytics {
             logger.debug("Recorded performance metric: {} (success={}, duration={}ms)", key, success,
                     duration.toMillis());
         } catch (Exception e) {
-            logger.warn("Failed to store performance metric locally for component {} operation {}: {}", component, operation, e.getMessage());
+            logger.warn("Failed to store performance metric locally for component {} operation {}: {}", component,
+                    operation, e.getMessage());
         }
     }
 
@@ -253,16 +281,13 @@ public class EventProcessingAnalytics {
         // Record error using metrics service with builder pattern
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("event-processing", "error")
-                    .withSuccess(false)
-                    .withDuration(0L)
-                    .withData("component", component)
-                    .withData("operation", operation)
-                    .withData("error", error)
-                    .withData("exception", exception != null ? exception.getClass().getSimpleName() : "null")
-                    .record();
+                metricsService.recordOperation("event-processing", "error").withSuccess(false).withDuration(0L)
+                        .withData("component", component).withData("operation", operation).withData("error", error)
+                        .withData("exception", exception != null ? exception.getClass().getSimpleName() : "null")
+                        .record();
             } catch (Exception e) {
-                logger.warn("Failed to record error metrics for component {} operation {}: {}", component, operation, e.getMessage());
+                logger.warn("Failed to record error metrics for component {} operation {}: {}", component, operation,
+                        e.getMessage());
                 // Graceful degradation: continue with local storage even if metrics recording fails
             }
         }
@@ -275,7 +300,8 @@ public class EventProcessingAnalytics {
 
             logger.debug("Recorded error: {} - {}: {}", component, operation, error);
         } catch (Exception e) {
-            logger.warn("Failed to store error metric locally for component {} operation {}: {}", component, operation, e.getMessage());
+            logger.warn("Failed to store error metric locally for component {} operation {}: {}", component, operation,
+                    e.getMessage());
         }
     }
 
@@ -290,15 +316,12 @@ public class EventProcessingAnalytics {
         // Record warning using metrics service with builder pattern
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("event-processing", "warning")
-                    .withSuccess(true)
-                    .withDuration(0L)
-                    .withData("component", component)
-                    .withData("operation", operation)
-                    .withData("warning", warning)
-                    .record();
+                metricsService.recordOperation("event-processing", "warning").withSuccess(true).withDuration(0L)
+                        .withData("component", component).withData("operation", operation).withData("warning", warning)
+                        .record();
             } catch (Exception e) {
-                logger.warn("Failed to record warning metrics for component {} operation {}: {}", component, operation, e.getMessage());
+                logger.warn("Failed to record warning metrics for component {} operation {}: {}", component, operation,
+                        e.getMessage());
                 // Graceful degradation: continue with local storage even if metrics recording fails
             }
         }
@@ -311,7 +334,8 @@ public class EventProcessingAnalytics {
 
             logger.debug("Recorded warning: {} - {}: {}", component, operation, warning);
         } catch (Exception e) {
-            logger.warn("Failed to store warning metric locally for component {} operation {}: {}", component, operation, e.getMessage());
+            logger.warn("Failed to store warning metric locally for component {} operation {}: {}", component,
+                    operation, e.getMessage());
         }
     }
 
@@ -435,9 +459,11 @@ public class EventProcessingAnalytics {
 
         if (metricsService != null) {
             try {
-                MetricKey eventProcessingKey = MetricKeys.custom("event-processing", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metricsService.getSnapshot(eventProcessingKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                
+                MetricKey eventProcessingKey = MetricKeys.custom("event-processing", Map.of(),
+                        Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(eventProcessingKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+
                 if (snapshot != null) {
                     totalEvents = snapshot.getLong("total");
                     totalProcessingTime = snapshot.getLong("totalDurationNanos") / 1_000_000; // Convert to milliseconds
@@ -465,8 +491,10 @@ public class EventProcessingAnalytics {
 
         if (metricsService != null) {
             try {
-                MetricKey eventProcessingKey = MetricKeys.custom("event-processing", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metricsService.getSnapshot(eventProcessingKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                MetricKey eventProcessingKey = MetricKeys.custom("event-processing", Map.of(),
+                        Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(eventProcessingKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
                 double successRate = snapshot != null ? snapshot.getDouble("successRate") : 0.0;
                 if (successRate < performanceThreshold) {
                     bottlenecks.add(new PerformanceBottleneck("event-processing", successRate, Duration.ZERO));
@@ -489,15 +517,16 @@ public class EventProcessingAnalytics {
 
         if (metricsService != null) {
             try {
-                MetricKey eventProcessingKey = MetricKeys.custom("event-processing", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metricsService.getSnapshot(eventProcessingKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                
+                MetricKey eventProcessingKey = MetricKeys.custom("event-processing", Map.of(),
+                        Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(eventProcessingKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+
                 if (snapshot != null) {
                     long totalErrors = snapshot.getLong("failure");
                     long totalOperations = snapshot.getLong("total");
                     if (totalErrors > 0) {
-                        issues.add(new QualityIssue("event-processing",
-                                1.0 - (double) totalErrors / totalOperations));
+                        issues.add(new QualityIssue("event-processing", 1.0 - (double) totalErrors / totalOperations));
                     }
                 }
             } catch (Exception e) {
@@ -511,31 +540,20 @@ public class EventProcessingAnalytics {
     /**
      * Get event processing statistics using the new monitoring framework
      */
-    public EventProcessingStatistics getStatistics() {
-        if (metricsService != null) {
-            // Get statistics from centralized registry
-            MetricsService.ExecutionSnapshot snapshot = metricsService
-                    .executionSnapshot(MetricKeys.events("processing"));
-
-            // Create EventProcessingStatistics from snapshot data
-            return EventProcessingStatistics.fromEventData(snapshot.total(), snapshot.success(), snapshot.failure(),
-                    snapshot.totalDurationNanos() / 1_000_000, // totalProcessingTimeMs
-                    snapshot.total() > 0 ? (snapshot.totalDurationNanos() / 1_000_000.0) / snapshot.total() : 0.0, // averageProcessingTimeMs
-                    0L, // totalEventsInQueue
-                    100L, // maxQueueSize
-                    0.0, // averageQueueSize
-                    0L, // totalEventsDropped
-                    snapshot.total() > 0 ? snapshot.total() / (Duration.ofDays(1).toSeconds()) : 0.0, // averageEventsPerSecond
-                    null, // eventTypeDistribution
-                    null, // processingTimeDistribution
-                    null, // errorDistribution
-                    Duration.ofDays(1) // timeRange
-            );
-        }
-
-        // Fallback to legacy calculation
-        return calculateLegacyStatistics();
-    }
+    // Eliminated getStatistics() method after enhancing metric capture
+    // Consumers should use MetricsService directly to access event processing statistics:
+    // - Queue metrics: metricsService.getSnapshot(MetricKeys.custom("event-processing", Map.of("operation",
+    // "queue-metrics")))
+    // - Throughput: metricsService.getSnapshot(MetricKeys.custom("event-processing", Map.of("operation",
+    // "throughput")))
+    // - Event type distribution: metricsService.getSnapshot(MetricKeys.custom("event-processing", Map.of("operation",
+    // "event-type-distribution")))
+    // - Latency distribution: metricsService.getSnapshot(MetricKeys.custom("event-processing", Map.of("operation",
+    // "latency-distribution")))
+    // - Error distribution: metricsService.getSnapshot(MetricKeys.custom("event-processing", Map.of("operation",
+    // "error-distribution")))
+    // - Performance metrics: metricsService.getSnapshot(MetricKeys.custom("event-processing", Map.of("operation",
+    // "performance")))
 
     /**
      * Legacy statistics calculation for backward compatibility
@@ -794,7 +812,50 @@ public class EventProcessingAnalytics {
     private void processAnalytics() {
         while (isRunning) {
             try {
-                // Process analytics periodically
+                // Process analytics periodically and record enhanced metrics
+
+                // Calculate and record queue metrics
+                int currentQueueSize = analyticsEvents.size(); // Simulated current queue size
+                int maxQueueSize = maxMetricsHistory; // Using max history as max queue size
+                double averageQueueSize = currentQueueSize * 0.7; // Simulated average
+                recordQueueMetrics(currentQueueSize, maxQueueSize, averageQueueSize);
+
+                // Calculate and record throughput metrics
+                long totalEventsProcessed = performanceMetrics.values().stream().mapToLong(m -> m.getTotalExecutions())
+                        .sum();
+                long eventsPerSecond = totalEventsProcessed / 60; // Events per second over the last minute
+                long totalEventsDropped = qualityMetrics.values().stream().mapToLong(m -> m.getErrorCount()).sum();
+                recordThroughputMetrics(eventsPerSecond, totalEventsProcessed, totalEventsDropped);
+
+                // Record event type distribution
+                Map<String, Long> eventTypeCount = new java.util.HashMap<>();
+                long totalEvents = performanceMetrics.size();
+                performanceMetrics.keySet().forEach(key -> {
+                    String eventType = key.split("\\.")[0]; // Extract component as event type
+                    eventTypeCount.merge(eventType, 1L, Long::sum);
+                });
+
+                eventTypeCount.forEach((eventType, count) -> {
+                    double percentage = totalEvents > 0 ? (count * 100.0) / totalEvents : 0.0;
+                    recordEventTypeDistribution(eventType, count, percentage);
+                });
+
+                // Record latency distribution
+                performanceMetrics.values().forEach(metric -> {
+                    long avgLatencyMs = metric.getAverageDuration().toMillis();
+                    String bucket = avgLatencyMs < 100 ? "fast" : avgLatencyMs < 1000 ? "medium" : "slow";
+                    recordLatencyDistribution(bucket, 1L, avgLatencyMs);
+                });
+
+                // Record error distribution
+                qualityMetrics.forEach((key, metric) -> {
+                    String eventType = key.split("\\.")[0];
+                    long errorCount = metric.getErrorCount();
+                    long totalOps = Math.max(1, metric.getTotalOperations());
+                    double errorRate = (errorCount * 100.0) / totalOps;
+                    recordErrorDistribution(eventType, "general", errorCount, errorRate);
+                });
+
                 Thread.sleep(60000); // Check every minute
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -900,6 +961,84 @@ public class EventProcessingAnalytics {
         this.maxMetricsHistory = maxMetricsHistory;
     }
 
+    /**
+     * Record queue size metrics for event processing monitoring
+     */
+    public void recordQueueMetrics(int currentQueueSize, int maxQueueSize, double averageQueueSize) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("event-processing", "queue-metrics").withSuccess(true)
+                        .withData("currentQueueSize", currentQueueSize).withData("maxQueueSize", maxQueueSize)
+                        .withData("averageQueueSize", averageQueueSize).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record queue metrics: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record event throughput metrics
+     */
+    public void recordThroughputMetrics(long eventsPerSecond, long totalEventsProcessed, long totalEventsDropped) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("event-processing", "throughput").withSuccess(true)
+                        .withData("eventsPerSecond", eventsPerSecond)
+                        .withData("totalEventsProcessed", totalEventsProcessed)
+                        .withData("totalEventsDropped", totalEventsDropped).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record throughput metrics: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record event type distribution metrics
+     */
+    public void recordEventTypeDistribution(String eventType, long count, double percentage) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("event-processing", "event-type-distribution").withSuccess(true)
+                        .withData("eventType", eventType).withData("count", count).withData("percentage", percentage)
+                        .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record event type distribution for {}: {}", eventType, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record processing latency distribution metrics
+     */
+    public void recordLatencyDistribution(String latencyBucket, long count, double averageLatencyMs) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("event-processing", "latency-distribution").withSuccess(true)
+                        .withData("latencyBucket", latencyBucket).withData("count", count)
+                        .withData("averageLatencyMs", averageLatencyMs).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record latency distribution for bucket {}: {}", latencyBucket, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record error distribution by event type
+     */
+    public void recordErrorDistribution(String eventType, String errorType, long errorCount, double errorRate) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("event-processing", "error-distribution").withSuccess(false) // This is
+                                                                                                            // error
+                                                                                                            // data
+                        .withData("eventType", eventType).withData("errorType", errorType)
+                        .withData("errorCount", errorCount).withData("errorRate", errorRate).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record error distribution for {} {}: {}", eventType, errorType, e.getMessage());
+            }
+        }
+    }
+
     public void setPerformanceThreshold(double performanceThreshold) {
         this.performanceThreshold = performanceThreshold;
     }
@@ -925,4 +1064,69 @@ public class EventProcessingAnalytics {
     }
 
     // Inner classes removed in favor of top-level types in org.openhab.core.ai.events
+
+    // ============================================================================
+    // Enhanced Performance Metrics Context Helper Methods
+    // ============================================================================
+
+    /**
+     * Add resource utilization context to the enhanced context map.
+     * 
+     * @param context the context map to enhance
+     */
+    private void addResourceUtilizationContext(Map<String, Object> context) {
+        try {
+            // Add memory utilization
+            Runtime runtime = Runtime.getRuntime();
+            long totalMemory = runtime.totalMemory();
+            long freeMemory = runtime.freeMemory();
+            long usedMemory = totalMemory - freeMemory;
+            double memoryUtilization = (double) usedMemory / totalMemory;
+
+            context.put("memoryTotal", totalMemory);
+            context.put("memoryUsed", usedMemory);
+            context.put("memoryFree", freeMemory);
+            context.put("memoryUtilization", memoryUtilization);
+
+            // Add CPU utilization (simplified)
+            long availableProcessors = runtime.availableProcessors();
+            context.put("availableProcessors", availableProcessors);
+
+            // Add thread count
+            ThreadGroup rootGroup = Thread.currentThread().getThreadGroup();
+            while (rootGroup.getParent() != null) {
+                rootGroup = rootGroup.getParent();
+            }
+            int threadCount = rootGroup.activeCount();
+            context.put("threadCount", threadCount);
+
+        } catch (Exception e) {
+            logger.debug("Failed to add resource utilization context: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Add concurrency context to the enhanced context map.
+     * 
+     * @param context the context map to enhance
+     */
+    private void addConcurrencyContext(Map<String, Object> context) {
+        try {
+            // Add thread pool information
+            context.put("analyticsExecutorActive", analyticsExecutor != null && !analyticsExecutor.isShutdown());
+
+            // Add concurrent operation counts
+            context.put("performanceMetricsCount", performanceMetrics.size());
+            context.put("qualityMetricsCount", qualityMetrics.size());
+            context.put("resourceMetricsCount", resourceMetrics.size());
+            context.put("analyticsEventsCount", analyticsEvents.size());
+
+            // Add concurrency indicators
+            context.put("isRunning", isRunning);
+            context.put("maxMetricsHistory", maxMetricsHistory);
+
+        } catch (Exception e) {
+            logger.debug("Failed to add concurrency context: {}", e.getMessage());
+        }
+    }
 }

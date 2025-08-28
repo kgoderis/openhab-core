@@ -5,9 +5,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
@@ -88,51 +88,44 @@ public abstract class AbstractSecurityFilter implements SecurityFilter {
                 executionTime = System.currentTimeMillis() - startTime;
                 return SecurityResult.success("Filter disabled");
             }
-            
+
             String cacheKey = generateCacheKey(request);
             CachedAuthResult cached = authCache.get(cacheKey);
-            
+
             if (cached != null && !cached.isExpired()) {
                 // Cache hit
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("security-filter", "cache-hit")
-                            .withSuccess(true)
-                            .withDuration(0L)
-                            .withData("filterId", filterId)
-                            .withData("filterName", filterName)
-                            .record();
+                        metricsService.recordOperation("security-filter", "cache-hit").withSuccess(true)
+                                .withDuration(0L).withData("filterId", filterId).withData("filterName", filterName)
+                                .record();
                     } catch (Exception e) {
                         logger.warn("Failed to record cache hit metrics", e);
                     }
                 }
                 return cached.result;
             }
-            
+
             // Cache miss - perform authentication
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("security-filter", "cache-miss")
-                        .withSuccess(true)
-                        .withDuration(0L)
-                        .withData("filterId", filterId)
-                        .withData("filterName", filterName)
-                        .record();
+                    metricsService.recordOperation("security-filter", "cache-miss").withSuccess(true).withDuration(0L)
+                            .withData("filterId", filterId).withData("filterName", filterName).record();
                 } catch (Exception e) {
                     logger.warn("Failed to record cache miss metrics", e);
                 }
             }
-            
+
             SecurityResult result = performAuthentication(request);
             executionTime = System.currentTimeMillis() - startTime;
-            
+
             if (result.isSuccess()) {
                 success = true;
                 authCache.put(cacheKey, new CachedAuthResult(result, System.currentTimeMillis() + cacheExpirationMs));
             }
-            
+
             return result;
-            
+
         } catch (Exception e) {
             executionTime = System.currentTimeMillis() - startTime;
             logger.error("Authentication error in filter: {}", filterId, e);
@@ -141,14 +134,10 @@ public abstract class AbstractSecurityFilter implements SecurityFilter {
             // Record authentication metrics using centralized MetricsService
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("security-filter", "authentication")
-                        .withSuccess(success)
-                        .withDuration(executionTime * 1_000_000L) // Convert to nanoseconds
-                        .withData("filterId", filterId)
-                        .withData("filterName", filterName)
-                        .withData("enabled", enabled)
-                        .withData("cacheSize", authCache.size())
-                        .record();
+                    metricsService.recordOperation("security-filter", "authentication").withSuccess(success)
+                            .withDuration(executionTime * 1_000_000L) // Convert to nanoseconds
+                            .withData("filterId", filterId).withData("filterName", filterName)
+                            .withData("enabled", enabled).withData("cacheSize", authCache.size()).record();
                 } catch (Exception e) {
                     logger.warn("Failed to record authentication metrics", e);
                 }
@@ -164,56 +153,49 @@ public abstract class AbstractSecurityFilter implements SecurityFilter {
 
     public AuthMetrics getMetrics() {
         AuthMetrics metrics = new AuthMetrics(0L, 0L, 0L, 0L, 0L, authCache.size());
-        
+
         if (metricsService != null) {
             try {
                 // Get authentication metrics
                 MetricKey authKey = MetricKeys.execution("authentication");
-                ExecutionMetricsSnapshot authSnapshot = metricsService.getSnapshot(authKey, ExecutionMetricsSnapshot.class);
+                ExecutionMetricsSnapshot authSnapshot = metricsService.getSnapshot(authKey,
+                        ExecutionMetricsSnapshot.class);
                 if (authSnapshot != null) {
-                    metrics = new AuthMetrics(
-                        authSnapshot.total(),
-                        authSnapshot.success(),
-                        authSnapshot.failure(),
-                        0L, // cacheHits - would need separate tracking
-                        0L, // cacheMisses - would need separate tracking
-                        authCache.size()
-                    );
+                    metrics = new AuthMetrics(authSnapshot.total(), authSnapshot.success(), authSnapshot.failure(), 0L, // cacheHits
+                                                                                                                        // -
+                                                                                                                        // would
+                                                                                                                        // need
+                                                                                                                        // separate
+                                                                                                                        // tracking
+                            0L, // cacheMisses - would need separate tracking
+                            authCache.size());
                 }
-                
+
                 // Get cache hit metrics
                 MetricKey cacheHitKey = MetricKeys.execution("cache-hit");
-                ExecutionMetricsSnapshot cacheHitSnapshot = metricsService.getSnapshot(cacheHitKey, ExecutionMetricsSnapshot.class);
+                ExecutionMetricsSnapshot cacheHitSnapshot = metricsService.getSnapshot(cacheHitKey,
+                        ExecutionMetricsSnapshot.class);
                 if (cacheHitSnapshot != null) {
-                    metrics = new AuthMetrics(
-                        metrics.totalRequests,
-                        metrics.successfulAuthentications,
-                        metrics.failedAuthentications,
-                        cacheHitSnapshot.total(),
-                        metrics.cacheMisses,
-                        authCache.size()
-                    );
+                    metrics = new AuthMetrics(metrics.totalRequests, metrics.successfulAuthentications,
+                            metrics.failedAuthentications, cacheHitSnapshot.total(), metrics.cacheMisses,
+                            authCache.size());
                 }
-                
+
                 // Get cache miss metrics
                 MetricKey cacheMissKey = MetricKeys.execution("cache-miss");
-                ExecutionMetricsSnapshot cacheMissSnapshot = metricsService.getSnapshot(cacheMissKey, ExecutionMetricsSnapshot.class);
+                ExecutionMetricsSnapshot cacheMissSnapshot = metricsService.getSnapshot(cacheMissKey,
+                        ExecutionMetricsSnapshot.class);
                 if (cacheMissSnapshot != null) {
-                    metrics = new AuthMetrics(
-                        metrics.totalRequests,
-                        metrics.successfulAuthentications,
-                        metrics.failedAuthentications,
-                        metrics.cacheHits,
-                        cacheMissSnapshot.total(),
-                        authCache.size()
-                    );
+                    metrics = new AuthMetrics(metrics.totalRequests, metrics.successfulAuthentications,
+                            metrics.failedAuthentications, metrics.cacheHits, cacheMissSnapshot.total(),
+                            authCache.size());
                 }
-                
+
             } catch (Exception e) {
                 logger.warn("Failed to retrieve metrics from MetricsService", e);
             }
         }
-        
+
         return metrics;
     }
 

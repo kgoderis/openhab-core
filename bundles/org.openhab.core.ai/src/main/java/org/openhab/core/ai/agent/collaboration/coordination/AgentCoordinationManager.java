@@ -18,8 +18,8 @@ import org.openhab.core.ai.agent.collaboration.ContextAccessLevel;
 import org.openhab.core.ai.agent.collaboration.SharedContext;
 import org.openhab.core.ai.agent.collaboration.coordination.api.CoordinationProtocol;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -95,13 +95,16 @@ public class AgentCoordinationManager {
         // Record coordination session metrics with builder pattern
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            metrics.recordOperation("agent-coordination", "session-start")
-                .withSuccess(true)
-                .withDuration(Duration.between(session.getStartTime(), Instant.now()).toNanos())
-                .withData("sessionId", sessionId)
-                .withData("protocolType", protocol.getClass().getSimpleName())
-                .withData("sessionId", sessionId)
-                .record();
+            try {
+                metrics.recordOperation("agent-coordination", "session-start").withSuccess(true)
+                        .withDuration(Duration.between(session.getStartTime(), Instant.now()).toNanos())
+                        .withData("sessionId", sessionId).withData("protocolType", protocol.getClass().getSimpleName())
+                        .withData("sessionId", sessionId).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record coordination session start metrics for session {}: {}", sessionId,
+                        e.getMessage());
+                // Graceful degradation - continue without metrics if recording fails
+            }
         }
 
         // Execute coordination protocol
@@ -140,13 +143,16 @@ public class AgentCoordinationManager {
         // Record conflict resolution metrics with builder pattern
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            metrics.recordOperation("agent-coordination", "conflict-resolution")
-                .withSuccess(true)
-                .withDuration(Duration.between(session.getStartTime(), Instant.now()).toNanos())
-                .withData("conflictId", conflictId)
-                .withData("conflictType", conflictType.name())
-                .withData("agentCount", conflictingAgents.size())
-                .record();
+            try {
+                metrics.recordOperation("agent-coordination", "conflict-resolution").withSuccess(true)
+                        .withDuration(Duration.between(session.getStartTime(), Instant.now()).toNanos())
+                        .withData("conflictId", conflictId).withData("conflictType", conflictType.name())
+                        .withData("agentCount", conflictingAgents.size()).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record conflict resolution metrics for conflict {} with agents {}: {}",
+                        conflictId, conflictingAgents, e.getMessage());
+                // Graceful degradation - continue without metrics if recording fails
+            }
         }
 
         // Apply conflict resolution strategy
@@ -186,13 +192,15 @@ public class AgentCoordinationManager {
         // Record context sharing metrics with builder pattern
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            metrics.recordOperation("agent-coordination", "context-sharing")
-                .withSuccess(true)
-                .withDuration(0L)
-                .withData("contextId", contextId)
-                .withData("agentCount", agentIds.size())
-                .withData("accessLevel", accessLevel.name())
-                .record();
+            try {
+                metrics.recordOperation("agent-coordination", "context-sharing").withSuccess(true).withDuration(0L)
+                        .withData("contextId", contextId).withData("agentCount", agentIds.size())
+                        .withData("accessLevel", accessLevel.name()).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record context sharing metrics for context {} with agents {}: {}", contextId,
+                        agentIds, e.getMessage());
+                // Graceful degradation - continue without metrics if recording fails
+            }
         }
 
         return context;
@@ -272,21 +280,27 @@ public class AgentCoordinationManager {
     public CoordinationStatistics getStatistics() {
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            // Use MetricsService to get coordination statistics via generic snapshot
-            var snapshot = metrics.getSnapshot(MetricKeys.custom("service", Map.of("name", "agent-coordination"), Set.of("counts", "latency")), UnifiedMetricsSnapshot.class);
-            if (snapshot != null) {
-                UnifiedMetricsSnapshot unifiedSnapshot = (UnifiedMetricsSnapshot) snapshot;
-                Map<String, Object> rawData = unifiedSnapshot.getRawData();
-                return new CoordinationStatistics(
-                    unifiedSnapshot.total(), // totalSessions
-                    rawData != null ? (Long) rawData.getOrDefault("totalConflictResolutions", 0L) : 0L, // totalConflictResolutions
-                    rawData != null ? (Long) rawData.getOrDefault("totalContextSharing", 0L) : 0L, // totalContextSharing
-                    rawData != null ? (Long) rawData.getOrDefault("totalProtocolExecutions", 0L) : 0L, // totalProtocolExecutions
-                    activeSessions.size(), // activeSessions
-                    conflictSessions.size(), // activeConflictSessions
-                    sharedContexts.size(), // sharedContexts
-                    protocols.size() // registeredProtocols
-                );
+            try {
+                // Use MetricsService to get coordination statistics via generic snapshot
+                var snapshot = metrics.getSnapshot(
+                        MetricKeys.custom("service", Map.of("name", "agent-coordination"), Set.of("counts", "latency")),
+                        UnifiedMetricsSnapshot.class);
+                if (snapshot != null) {
+                    UnifiedMetricsSnapshot unifiedSnapshot = (UnifiedMetricsSnapshot) snapshot;
+                    Map<String, Object> rawData = unifiedSnapshot.getRawData();
+                    return new CoordinationStatistics(unifiedSnapshot.total(), // totalSessions
+                            rawData != null ? (Long) rawData.getOrDefault("totalConflictResolutions", 0L) : 0L, // totalConflictResolutions
+                            rawData != null ? (Long) rawData.getOrDefault("totalContextSharing", 0L) : 0L, // totalContextSharing
+                            rawData != null ? (Long) rawData.getOrDefault("totalProtocolExecutions", 0L) : 0L, // totalProtocolExecutions
+                            activeSessions.size(), // activeSessions
+                            conflictSessions.size(), // activeConflictSessions
+                            sharedContexts.size(), // sharedContexts
+                            protocols.size() // registeredProtocols
+                    );
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to retrieve coordination statistics from MetricsService: {}", e.getMessage());
+                // Fall through to fallback statistics
             }
         }
 

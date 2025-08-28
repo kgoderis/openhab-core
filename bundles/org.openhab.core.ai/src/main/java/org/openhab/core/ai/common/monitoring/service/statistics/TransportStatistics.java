@@ -4,33 +4,55 @@ import java.time.Duration;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
+import org.openhab.core.ai.common.monitoring.api.LatencyMetrics;
 import org.openhab.core.ai.common.monitoring.api.PercentileMetrics;
-import org.openhab.core.ai.common.monitoring.api.TransportMetrics;
 import org.openhab.core.ai.common.monitoring.api.TrendMetrics;
-import org.openhab.core.ai.common.monitoring.service.snapshot.TransportSnapshot;
-import org.osgi.service.component.annotations.Reference;
+import org.openhab.core.ai.common.monitoring.service.snapshot.HttpTransportSnapshot;
 
 /**
  * Statistics class for transport metrics.
  * 
  * <p>
  * This class provides comprehensive transport statistics including
- * trend analysis, percentile calculations, and transport metrics.
+ * request throughput, error rates, bandwidth utilization, and performance metrics.
  * It aggregates multiple TransportSnapshot instances to provide
- * historical and statistical analysis of transport patterns.
+ * historical and statistical analysis of transport behavior.
  * </p>
  * 
  * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
 @NonNullByDefault
-public record TransportStatistics(List<TransportSnapshot> snapshots, Duration timeRange,
-        long timestampMs) implements StatisticsSnapshot, TrendMetrics, PercentileMetrics, TransportMetrics {
+public record TransportStatistics(List<HttpTransportSnapshot> snapshots, Duration timeRange, long timestampMs)
+        implements
+            StatisticsSnapshot,
+            CountsMetrics,
+            LatencyMetrics,
+            TrendMetrics,
+            PercentileMetrics {
 
-    @Reference
-    private static @Nullable MetricsService metricsService;
+    // CountsMetrics implementation (aggregated across all snapshots)
+    @Override
+    public long total() {
+        return snapshots.stream().mapToLong(HttpTransportSnapshot::totalRequests).sum();
+    }
+
+    @Override
+    public long success() {
+        return total() - failure(); // Total requests minus errors
+    }
+
+    @Override
+    public long failure() {
+        return snapshots.stream().mapToLong(HttpTransportSnapshot::totalErrors).sum();
+    }
+
+    // LatencyMetrics implementation
+    @Override
+    public long totalDurationNanos() {
+        return snapshots.stream().mapToLong(HttpTransportSnapshot::totalDurationNanos).sum();
+    }
 
     // TrendMetrics implementation
     @Override
@@ -38,10 +60,10 @@ public record TransportStatistics(List<TransportSnapshot> snapshots, Duration ti
         if (snapshots.size() < 2) {
             return 0.0;
         }
-        // Calculate percentage change from first to last snapshot
-        double firstValue = snapshots.get(0).transportReliability();
-        double lastValue = snapshots.get(snapshots.size() - 1).transportReliability();
-        return firstValue > 0 ? ((lastValue - firstValue) / firstValue) * 100.0 : 0.0;
+        // Calculate throughput trend from first to last snapshot
+        double firstThroughput = snapshots.get(0).requestsPerSecond();
+        double lastThroughput = snapshots.get(snapshots.size() - 1).requestsPerSecond();
+        return firstThroughput > 0 ? ((lastThroughput - firstThroughput) / firstThroughput) * 100.0 : 0.0;
     }
 
     @Override
@@ -61,31 +83,31 @@ public record TransportStatistics(List<TransportSnapshot> snapshots, Duration ti
         if (snapshots.size() < 2) {
             return 0.0;
         }
-        // Calculate change rate per time unit
-        double totalChange = trendPercentage();
+        // Calculate change rate in requests per second
+        long totalRequests = total();
         long timeSpanMs = snapshots.get(snapshots.size() - 1).timestampMs() - snapshots.get(0).timestampMs();
-        return timeSpanMs > 0 ? totalChange / (timeSpanMs / 1000.0) : 0.0;
+        return timeSpanMs > 0 ? (double) totalRequests / (timeSpanMs / 1000.0) : 0.0;
     }
 
     // PercentileMetrics implementation
     @Override
     public double percentile50() {
-        return calculatePercentile(50.0);
+        return calculatePercentile(0.5);
     }
 
     @Override
     public double percentile90() {
-        return calculatePercentile(90.0);
+        return calculatePercentile(0.9);
     }
 
     @Override
     public double percentile95() {
-        return calculatePercentile(95.0);
+        return calculatePercentile(0.95);
     }
 
     @Override
     public double percentile99() {
-        return calculatePercentile(99.0);
+        return calculatePercentile(0.99);
     }
 
     private double calculatePercentile(double percentile) {
@@ -93,112 +115,105 @@ public record TransportStatistics(List<TransportSnapshot> snapshots, Duration ti
             return 0.0;
         }
 
-        List<Double> values = snapshots.stream().mapToDouble(s -> s.transportReliability()).sorted().boxed().toList();
+        List<Double> errorRates = snapshots.stream().mapToDouble(HttpTransportSnapshot::errorRate).sorted().boxed()
+                .toList();
 
-        int index = (int) Math.ceil((percentile / 100.0) * values.size()) - 1;
-        index = Math.max(0, Math.min(index, values.size() - 1));
-        return values.get(index);
-    }
-
-    // TransportMetrics implementation
-    @Override
-    public double transportReliability() {
-        if (snapshots.isEmpty()) {
+        if (errorRates.isEmpty()) {
             return 0.0;
         }
-        return snapshots.stream().mapToDouble(s -> s.transportReliability()).average().orElse(0.0);
-    }
 
-    @Override
-    public double transportThroughput() {
-        if (snapshots.isEmpty()) {
-            return 0.0;
-        }
-        return snapshots.stream().mapToDouble(s -> s.transportThroughput()).average().orElse(0.0);
-    }
-
-    @Override
-    public double transportLatency() {
-        if (snapshots.isEmpty()) {
-            return 0.0;
-        }
-        return snapshots.stream().mapToDouble(s -> s.transportLatency()).average().orElse(0.0);
-    }
-
-    @Override
-    public double transportEfficiency() {
-        if (snapshots.isEmpty()) {
-            return 0.0;
-        }
-        return snapshots.stream().mapToDouble(s -> s.transportEfficiency()).average().orElse(0.0);
-    }
-
-    @Override
-    public double transportErrorRate() {
-        if (snapshots.isEmpty()) {
-            return 0.0;
-        }
-        return snapshots.stream().mapToDouble(s -> s.transportErrorRate()).average().orElse(0.0);
-    }
-
-    @Override
-    public double connectionSuccessRate() {
-        if (snapshots.isEmpty()) {
-            return 0.0;
-        }
-        return snapshots.stream().mapToDouble(s -> s.connectionSuccessRate()).average().orElse(0.0);
-    }
-
-    @Override
-    public double packetLossRate() {
-        if (snapshots.isEmpty()) {
-            return 0.0;
-        }
-        return snapshots.stream().mapToDouble(s -> s.packetLossRate()).average().orElse(0.0);
-    }
-
-    @Override
-    public double transportBandwidthUtilization() {
-        if (snapshots.isEmpty()) {
-            return 0.0;
-        }
-        return snapshots.stream().mapToDouble(s -> s.transportBandwidthUtilization()).average().orElse(0.0);
-    }
-
-    @Override
-    public double transportRetryRate() {
-        if (snapshots.isEmpty()) {
-            return 0.0;
-        }
-        return snapshots.stream().mapToDouble(s -> s.transportRetryRate()).average().orElse(0.0);
-    }
-
-    @Override
-    public double transportTimeoutRate() {
-        if (snapshots.isEmpty()) {
-            return 0.0;
-        }
-        return snapshots.stream().mapToDouble(s -> s.transportTimeoutRate()).average().orElse(0.0);
+        int index = (int) Math.ceil(percentile * errorRates.size()) - 1;
+        index = Math.max(0, Math.min(index, errorRates.size() - 1));
+        return errorRates.get(index);
     }
 
     /**
-     * Create statistics from a list of snapshots.
+     * Get total bytes transferred across all snapshots.
      * 
-     * @param snapshots the list of snapshots to aggregate
-     * @param timeRange the time range for the statistics
-     * @return transport statistics
+     * @return total bytes transferred
      */
-    public static TransportStatistics fromSnapshots(List<TransportSnapshot> snapshots, Duration timeRange) {
-        return new TransportStatistics(snapshots, timeRange, System.currentTimeMillis());
+    public long totalBytesTransferred() {
+        return snapshots.stream().mapToLong(HttpTransportSnapshot::totalBytesTransferred).sum();
     }
 
     /**
-     * Record transport statistics using MetricsService.
+     * Get average requests per second across all snapshots.
+     * 
+     * @return average requests per second
      */
-    public static void recordTransportStatistics(boolean success, long durationMs) {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            metrics.recordOperation("transport", "statistics", success, java.time.Duration.ofMillis(durationMs));
-        }
+    public double averageRequestsPerSecond() {
+        return snapshots.stream().mapToDouble(HttpTransportSnapshot::requestsPerSecond).average().orElse(0.0);
+    }
+
+    /**
+     * Get maximum requests per second across all snapshots.
+     * 
+     * @return maximum requests per second
+     */
+    public double maxRequestsPerSecond() {
+        return snapshots.stream().mapToDouble(HttpTransportSnapshot::requestsPerSecond).max().orElse(0.0);
+    }
+
+    /**
+     * Get average error rate across all snapshots.
+     * 
+     * @return average error rate
+     */
+    public double averageErrorRate() {
+        return snapshots.stream().mapToDouble(HttpTransportSnapshot::errorRate).average().orElse(0.0);
+    }
+
+    /**
+     * Get average bandwidth utilization across all snapshots.
+     * 
+     * @return average bandwidth in bytes per second
+     */
+    public double averageBandwidth() {
+        return snapshots.stream().mapToDouble(HttpTransportSnapshot::bandwidthBytesPerSecond).average().orElse(0.0);
+    }
+
+    /**
+     * Get provider information from the most recent snapshot.
+     * 
+     * @return provider ID or "unknown" if no snapshots
+     */
+    public String providerId() {
+        return snapshots.isEmpty() ? "unknown" : snapshots.get(snapshots.size() - 1).providerId();
+    }
+
+    /**
+     * Get provider name from the most recent snapshot.
+     * 
+     * @return provider name or "unknown" if no snapshots
+     */
+    public String providerName() {
+        return snapshots.isEmpty() ? "unknown" : snapshots.get(snapshots.size() - 1).providerName();
+    }
+
+    /**
+     * Check if transport is currently running based on the most recent snapshot.
+     * 
+     * @return true if running, false otherwise
+     */
+    public boolean isRunning() {
+        return !snapshots.isEmpty() && snapshots.get(snapshots.size() - 1).running();
+    }
+
+    /**
+     * Get uptime from the most recent snapshot.
+     * 
+     * @return uptime in milliseconds
+     */
+    public long uptime() {
+        return snapshots.isEmpty() ? 0L : snapshots.get(snapshots.size() - 1).uptime();
+    }
+
+    /**
+     * Check if transport performance is considered healthy.
+     * 
+     * @return true if error rate is below 5% and requests per second is positive
+     */
+    public boolean isHealthy() {
+        return averageErrorRate() < 0.05 && averageRequestsPerSecond() > 0.0;
     }
 }

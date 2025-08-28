@@ -14,10 +14,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.common.monitoring.api.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelClientInfo;
@@ -27,7 +26,6 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.config.AnthropicConfiguration;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -228,32 +226,50 @@ public class AnthropicClient implements ModelClient {
             boolean available = isAvailable();
 
             // Record health check operation
-            metricsService.recordOperation("model", "health-check")
-                .withSuccess(available)
-                .withDuration(100)
-                .withData(Map.of(
-                    "provider", "anthropic",
-                    "model", config.getModelName()
-                ))
-                .record();
+            try {
+                metricsService.recordOperation("model", "health-check").withSuccess(available).withDuration(100)
+                        .withData(Map.of("provider", "anthropic", "model", config.getModelName())).record();
+            } catch (Exception metricError) {
+                logger.warn("Failed to record Anthropic health check metrics: {}", metricError.getMessage());
+                // Graceful degradation: continue with health status even if metrics recording fails
+            }
 
             // Return health metrics from service
-            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
-            
+            try {
+                return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                        UnifiedMetricsSnapshot.class);
+            } catch (Exception metricError) {
+                logger.warn("Failed to retrieve Anthropic health metrics snapshot: {}", metricError.getMessage());
+                // Return a default health metrics implementation for graceful degradation
+                return UnifiedMetricsSnapshot.builder("default", "model", "health-check")
+                        .withHealthStatus(org.openhab.core.ai.common.monitoring.api.HealthStatus.UNKNOWN)
+                        .withStatusMessage("Health metrics unavailable").build();
+            }
+
         } catch (Exception e) {
             // Record failed health check
-            metricsService.recordOperation("model", "health-check")
-                .withSuccess(false)
-                .withDuration(100)
-                .withData(Map.of(
-                    "provider", "anthropic",
-                    "model", config.getModelName(),
-                    "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
-                ))
-                .record();
+            try {
+                metricsService.recordOperation("model", "health-check").withSuccess(false).withDuration(100)
+                        .withData(Map.of("provider", "anthropic", "model", config.getModelName(), "error",
+                                e.getMessage() != null ? e.getMessage() : "Unknown error"))
+                        .record();
+            } catch (Exception metricError) {
+                logger.warn("Failed to record Anthropic health check error metrics: {}", metricError.getMessage());
+                // Graceful degradation: continue with health status even if metrics recording fails
+            }
 
             // Return health metrics from service (will reflect the failure)
-            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
+            try {
+                return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                        UnifiedMetricsSnapshot.class);
+            } catch (Exception metricError) {
+                logger.warn("Failed to retrieve Anthropic health metrics snapshot after error: {}",
+                        metricError.getMessage());
+                // Return a default health metrics implementation for graceful degradation
+                return UnifiedMetricsSnapshot.builder("default", "model", "health-check")
+                        .withHealthStatus(org.openhab.core.ai.common.monitoring.api.HealthStatus.DEGRADED)
+                        .withStatusMessage("Health check failed").build();
+            }
         }
     }
 
@@ -335,19 +351,16 @@ public class AnthropicClient implements ModelClient {
     private void trackMetrics(long responseTime, boolean success, @Nullable String errorMessage) {
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("anthropic_client", "request")
-                    .withSuccess(success)
-                    .withDuration(Duration.ofMillis(responseTime).toNanos())
-                    .withData("provider", "anthropic")
-                    .withData("model", config.getModelName())
-                    .withData("responseTimeMs", responseTime)
-                    .withData("errorMessage", errorMessage != null ? errorMessage : "null")
-                    .record();
+                metricsService.recordOperation("anthropic_client", "request").withSuccess(success)
+                        .withDuration(Duration.ofMillis(responseTime).toNanos()).withData("provider", "anthropic")
+                        .withData("model", config.getModelName()).withData("responseTimeMs", responseTime)
+                        .withData("errorMessage", errorMessage != null ? errorMessage : "null").record();
             } catch (Exception e) {
-                logger.debug("Failed to record Anthropic client metrics: {}", e.getMessage());
+                logger.warn("Failed to record Anthropic client metrics: {}", e.getMessage());
+                // Graceful degradation: continue with operation even if metrics recording fails
             }
         }
-        
+
         if (!success && errorMessage != null) {
             lastError.set(errorMessage);
             lastErrorTime.set(Instant.now());

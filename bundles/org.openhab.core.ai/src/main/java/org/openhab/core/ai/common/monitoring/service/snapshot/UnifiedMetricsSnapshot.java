@@ -7,10 +7,7 @@ import java.util.Map;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.Counts;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.common.monitoring.api.HealthStatus;
-import org.openhab.core.ai.common.monitoring.api.PerformanceMetrics;
-import org.openhab.core.ai.common.monitoring.api.StatisticsMetrics;
 import org.openhab.core.ai.common.monitoring.api.Timing;
 import org.openhab.core.ai.common.monitoring.api.UnifiedMetrics;
 
@@ -62,20 +59,11 @@ public final class UnifiedMetricsSnapshot implements UnifiedMetrics {
      * @param monitoringStartTime the monitoring start time (optional)
      * @param monitoringEndTime the monitoring end time (optional)
      */
-    public UnifiedMetricsSnapshot(
-            String id,
-            String domain,
-            String operation,
-            @Nullable String source,
-            Map<String, Object> rawData,
-            Counts counts,
-            Timing timing,
-            HealthStatus healthStatus,
-            @Nullable String statusMessage,
-            @Nullable Map<String, Object> healthIndicators,
-            @Nullable Instant monitoringStartTime,
-            @Nullable Instant monitoringEndTime) {
-        
+    public UnifiedMetricsSnapshot(String id, String domain, String operation, @Nullable String source,
+            Map<String, Object> rawData, Counts counts, Timing timing, HealthStatus healthStatus,
+            @Nullable String statusMessage, @Nullable Map<String, Object> healthIndicators,
+            @Nullable Instant monitoringStartTime, @Nullable Instant monitoringEndTime) {
+
         this.id = id;
         this.domain = domain;
         this.operation = operation;
@@ -311,10 +299,8 @@ public final class UnifiedMetricsSnapshot implements UnifiedMetrics {
         }
 
         public UnifiedMetricsSnapshot build() {
-            return new UnifiedMetricsSnapshot(
-                id, domain, operation, source, rawData, counts, timing,
-                healthStatus, statusMessage, healthIndicators,
-                monitoringStartTime, monitoringEndTime);
+            return new UnifiedMetricsSnapshot(id, domain, operation, source, rawData, counts, timing, healthStatus,
+                    statusMessage, healthIndicators, monitoringStartTime, monitoringEndTime);
         }
     }
 

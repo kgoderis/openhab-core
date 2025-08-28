@@ -6,14 +6,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
@@ -47,13 +46,12 @@ public class DefaultSystemCheck implements SystemCheck {
     private final Map<String, Object> configuration = new ConcurrentHashMap<>();
 
     // Performance monitoring - using centralized MetricsService instead of AtomicLong counters
-    private final AtomicReference<Long> lastCheckTime = new AtomicReference<>(0L);
-    private final AtomicReference<Long> minCheckTime = new AtomicReference<>(Long.MAX_VALUE);
-    private final AtomicReference<Long> maxCheckTime = new AtomicReference<>(0L);
+    private volatile long lastCheckTime = 0L;
+    private volatile long minCheckTime = Long.MAX_VALUE;
+    private volatile long maxCheckTime = 0L;
 
     // Health check dependencies
     private final List<SystemCheck> dependencies = new ArrayList<>();
-    private final AtomicInteger dependencyDepth = new AtomicInteger(0);
 
     // Versioning
     private final String version;
@@ -125,18 +123,28 @@ public class DefaultSystemCheck implements SystemCheck {
 
     @Override
     public SystemCheckResult performCheck() {
+        return performCheck(0);
+    }
+
+    /**
+     * Perform health check with dependency depth tracking.
+     * 
+     * @param currentDepth current dependency depth
+     * @return health check result
+     */
+    private SystemCheckResult performCheck(int currentDepth) {
         // Implement health check logic
         long startTime = System.currentTimeMillis();
 
         try {
-            logger.debug("Starting health check: {}", healthCheckName);
+            logger.debug("Starting health check: {} (depth: {})", healthCheckName, currentDepth);
 
             // Check dependencies first
             boolean enableDependencies = (Boolean) configuration.getOrDefault("enableDependencies", true);
             int maxDependencyDepth = (Integer) configuration.getOrDefault("maxDependencyDepth", 3);
 
-            if (enableDependencies && dependencyDepth.get() < maxDependencyDepth && !dependencies.isEmpty()) {
-                return performDependencyCheck();
+            if (enableDependencies && currentDepth < maxDependencyDepth && !dependencies.isEmpty()) {
+                return performDependencyCheck(currentDepth);
             }
 
             // Execute primary health check logic
@@ -144,25 +152,22 @@ public class DefaultSystemCheck implements SystemCheck {
 
             // Record performance metrics using centralized MetricsService
             long checkTime = System.currentTimeMillis() - startTime;
-            recordCheckMetrics(result, checkTime);
+            recordCheckMetrics(result, checkTime, currentDepth);
 
             return result;
 
         } catch (Exception e) {
             logger.error("Error during health check execution: {}", e.getMessage(), e);
-            
+
             // Record failure metrics using centralized MetricsService
             long checkTime = System.currentTimeMillis() - startTime;
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("system-check", "health-check")
-                        .withSuccess(false)
-                        .withDuration(Duration.ofMillis(checkTime).toNanos())
-                        .withData("healthCheckId", healthCheckId)
-                        .withData("healthCheckName", healthCheckName)
-                        .withData("category", category)
-                        .withData("error", e.getMessage())
-                        .record();
+                    metricsService.recordOperation("system-check", "health-check").withSuccess(false)
+                            .withDuration(Duration.ofMillis(checkTime).toNanos())
+                            .withData("healthCheckId", healthCheckId).withData("healthCheckName", healthCheckName)
+                            .withData("category", category).withData("error", e.getMessage())
+                            .withData("dependencyDepth", currentDepth).record();
                 } catch (Exception metricsError) {
                     logger.warn("Failed to record health check failure metrics", metricsError);
                 }
@@ -225,8 +230,9 @@ public class DefaultSystemCheck implements SystemCheck {
             try {
                 // Get health check metrics from centralized MetricsService
                 MetricKey healthCheckKey = MetricKeys.execution("health-check");
-                ExecutionMetricsSnapshot healthCheckSnapshot = metricsService.getSnapshot(healthCheckKey, ExecutionMetricsSnapshot.class);
-                
+                ExecutionMetricsSnapshot healthCheckSnapshot = metricsService.getSnapshot(healthCheckKey,
+                        ExecutionMetricsSnapshot.class);
+
                 if (healthCheckSnapshot != null) {
                     metrics.put("totalChecks", healthCheckSnapshot.total());
                     metrics.put("successfulChecks", healthCheckSnapshot.success());
@@ -241,14 +247,14 @@ public class DefaultSystemCheck implements SystemCheck {
                     metrics.put("successRate", 0.0);
                     metrics.put("averageCheckTimeMs", 0.0);
                 }
-                
+
                 // Add local timing metrics
-                metrics.put("minCheckTimeMs", minCheckTime.get() == Long.MAX_VALUE ? 0 : minCheckTime.get());
-                metrics.put("maxCheckTimeMs", maxCheckTime.get());
-                metrics.put("lastCheckTimeMs", lastCheckTime.get());
-                metrics.put("currentDependencyDepth", dependencyDepth.get());
+                metrics.put("minCheckTimeMs", minCheckTime == Long.MAX_VALUE ? 0 : minCheckTime);
+                metrics.put("maxCheckTimeMs", maxCheckTime);
+                metrics.put("lastCheckTimeMs", lastCheckTime);
+                metrics.put("currentDependencyDepth", 0); // No longer tracked as state
                 metrics.put("dependenciesCount", dependencies.size());
-                
+
             } catch (Exception e) {
                 logger.warn("Failed to retrieve performance metrics from MetricsService", e);
                 // Fallback to default values
@@ -260,7 +266,7 @@ public class DefaultSystemCheck implements SystemCheck {
                 metrics.put("minCheckTimeMs", 0L);
                 metrics.put("maxCheckTimeMs", 0L);
                 metrics.put("lastCheckTimeMs", 0L);
-                metrics.put("currentDependencyDepth", dependencyDepth.get());
+                metrics.put("currentDependencyDepth", 0); // No longer tracked as state
                 metrics.put("dependenciesCount", dependencies.size());
             }
         } else {
@@ -273,7 +279,7 @@ public class DefaultSystemCheck implements SystemCheck {
             metrics.put("minCheckTimeMs", 0L);
             metrics.put("maxCheckTimeMs", 0L);
             metrics.put("lastCheckTimeMs", 0L);
-            metrics.put("currentDependencyDepth", dependencyDepth.get());
+            metrics.put("currentDependencyDepth", 0); // No longer tracked as state
             metrics.put("dependenciesCount", dependencies.size());
         }
 
@@ -312,9 +318,7 @@ public class DefaultSystemCheck implements SystemCheck {
      * @return health check result
      */
     private SystemCheckResult executePrimaryCheck() {
-        int timeoutMs = (Integer) configuration.getOrDefault("timeoutMs", 5000);
         int retryAttempts = (Integer) configuration.getOrDefault("retryAttempts", 3);
-        long retryDelayMs = (Long) configuration.getOrDefault("retryDelayMs", 1000L);
 
         logger.debug("Executing primary health check: {}", healthCheckName);
 
@@ -349,33 +353,36 @@ public class DefaultSystemCheck implements SystemCheck {
     /**
      * Perform dependency check
      * 
+     * @param currentDepth current dependency depth
      * @return health check result
      */
-    private SystemCheckResult performDependencyCheck() {
-        dependencyDepth.incrementAndGet();
+    private SystemCheckResult performDependencyCheck(int currentDepth) {
+        int nextDepth = currentDepth + 1;
 
-        logger.debug("Performing dependency check, depth: {}", dependencyDepth.get());
+        logger.debug("Performing dependency check, depth: {}", nextDepth);
 
-        try {
-            // Check all dependencies first
-            for (SystemCheck dependency : dependencies) {
-                if (dependency.isEnabled()) {
-                    SystemCheckResult dependencyResult = dependency.performCheck();
-                    if (!dependencyResult.isHealthy()) {
-                        return new SystemCheckResult(false, "FAILED",
-                                "Dependency check failed: " + dependency.getHealthCheckName(),
-                                Map.of("failedDependency", dependency.getHealthCheckName(), "check", healthCheckName),
-                                System.currentTimeMillis());
-                    }
+        // Check all dependencies first
+        for (SystemCheck dependency : dependencies) {
+            if (dependency.isEnabled()) {
+                // If the dependency is also a DefaultSystemCheck, pass the depth
+                SystemCheckResult dependencyResult;
+                if (dependency instanceof DefaultSystemCheck defaultSystemCheck) {
+                    dependencyResult = defaultSystemCheck.performCheck(nextDepth);
+                } else {
+                    dependencyResult = dependency.performCheck();
+                }
+
+                if (!dependencyResult.isHealthy()) {
+                    return new SystemCheckResult(false, "FAILED",
+                            "Dependency check failed: " + dependency.getHealthCheckName(),
+                            Map.of("failedDependency", dependency.getHealthCheckName(), "check", healthCheckName),
+                            System.currentTimeMillis());
                 }
             }
-
-            // If all dependencies passed, perform primary check
-            return executePrimaryCheck();
-
-        } finally {
-            dependencyDepth.decrementAndGet();
         }
+
+        // If all dependencies passed, perform primary check
+        return executePrimaryCheck();
     }
 
     /**
@@ -482,33 +489,31 @@ public class DefaultSystemCheck implements SystemCheck {
      * 
      * @param result the check result
      * @param checkTime the check time in milliseconds
+     * @param currentDepth the current dependency depth
      */
-    private void recordCheckMetrics(SystemCheckResult result, long checkTime) {
+    private void recordCheckMetrics(SystemCheckResult result, long checkTime, int currentDepth) {
         // Update local timing metrics
-        lastCheckTime.set(checkTime);
-        minCheckTime.updateAndGet(current -> Math.min(current, checkTime));
-        maxCheckTime.updateAndGet(current -> Math.max(current, checkTime));
+        lastCheckTime = checkTime;
+        synchronized (this) {
+            minCheckTime = Math.min(minCheckTime, checkTime);
+            maxCheckTime = Math.max(maxCheckTime, checkTime);
+        }
 
         // Record metrics using centralized MetricsService
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("system-check", "health-check")
-                    .withSuccess(result.isHealthy())
-                    .withDuration(Duration.ofMillis(checkTime).toNanos())
-                    .withData("healthCheckId", healthCheckId)
-                    .withData("healthCheckName", healthCheckName)
-                    .withData("category", category)
-                    .withData("priority", priority)
-                    .withData("checkTimeMs", checkTime)
-                    .withData("dependenciesCount", dependencies.size())
-                    .withData("dependencyDepth", dependencyDepth.get())
-                    .record();
+                metricsService.recordOperation("system-check", "health-check").withSuccess(result.isHealthy())
+                        .withDuration(Duration.ofMillis(checkTime).toNanos()).withData("healthCheckId", healthCheckId)
+                        .withData("healthCheckName", healthCheckName).withData("category", category)
+                        .withData("priority", priority).withData("checkTimeMs", checkTime)
+                        .withData("dependenciesCount", dependencies.size()).withData("dependencyDepth", currentDepth)
+                        .record();
             } catch (Exception e) {
                 logger.warn("Failed to record health check metrics", e);
             }
         }
 
-        logger.debug("Recorded check metrics - Check: {}, Success: {}, Time: {}ms", healthCheckName, result.isHealthy(),
-                checkTime);
+        logger.debug("Recorded check metrics - Check: {}, Success: {}, Time: {}ms, Depth: {}", healthCheckName,
+                result.isHealthy(), checkTime, currentDepth);
     }
 }

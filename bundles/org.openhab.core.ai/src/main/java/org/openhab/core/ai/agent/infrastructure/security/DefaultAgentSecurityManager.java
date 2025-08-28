@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -28,15 +27,13 @@ import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManage
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.SecurityIncident;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
-import org.openhab.core.ai.common.monitoring.service.statistics.SecurityMonitoringStatistics;
 import org.openhab.core.ai.common.security.MessageSecurityStatistics;
 import org.openhab.core.ai.common.security.QuickSecurityResult;
 import org.openhab.core.ai.common.security.SecurityManager;
 import org.openhab.core.ai.common.security.SecuritySeverity;
-import org.openhab.core.ai.common.security.SecurityStatistics;
 import org.openhab.core.ai.security.config.SecurityConfiguration;
 import org.openhab.core.ai.tool.security.filters.SecurityResult;
 import org.osgi.service.component.annotations.Activate;
@@ -82,15 +79,89 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     private final Map<String, SecurityIncident> securityIncidents = new ConcurrentHashMap<>();
     private final Map<String, AuditLog> auditLogs = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalMessagesEncrypted = new AtomicLong(0);
-    private final AtomicLong totalMessagesDecrypted = new AtomicLong(0);
-    private final AtomicLong totalSignaturesVerified = new AtomicLong(0);
-    private final AtomicLong totalSecurityIncidents = new AtomicLong(0);
-    private final AtomicLong totalAuthenticationFailures = new AtomicLong(0);
-    private final AtomicLong totalChecks = new AtomicLong(0);
-    private final AtomicLong allowedOperations = new AtomicLong(0);
-    private final AtomicLong deniedOperations = new AtomicLong(0);
+    // Performance monitoring now handled by centralized MetricsService
+
+    /**
+     * Record security metrics using MetricsService with proper error handling.
+     * 
+     * @param operationType the type of security operation
+     * @param success whether the operation was successful
+     * @param duration the operation duration
+     * @param dataEntries additional key-value pairs for context
+     */
+    private void recordSecurityMetrics(String operationType, boolean success, Duration duration,
+            String... dataEntries) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var recorder = metrics.recordOperation("agent-security", operationType).withSuccess(success)
+                        .withDuration(duration.toNanos());
+
+                // Add data entries in pairs
+                for (int i = 0; i < dataEntries.length - 1; i += 2) {
+                    recorder.withData(dataEntries[i], dataEntries[i + 1]);
+                }
+
+                recorder.record();
+            } catch (Exception e) {
+                logger.warn("Failed to record security metrics for operation {}: {}", operationType, e.getMessage());
+                // Graceful degradation - continue without metrics if recording fails
+            }
+        } else {
+            logger.debug("MetricsService not available, cannot record security metrics for operation: {}",
+                    operationType);
+        }
+    }
+
+    /**
+     * Get total security incident count from MetricsService.
+     * 
+     * @return security incident count or 0 if unavailable
+     */
+    private long getSecurityIncidentCount() {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var metricKey = MetricKeys.custom("agent-security", Map.of(), Set.of("counts"));
+                var snapshot = metrics.getSnapshot(metricKey, UnifiedMetricsSnapshot.class);
+                if (snapshot != null) {
+                    Map<String, Object> rawData = snapshot.getRawData();
+                    if (rawData != null) {
+                        Object count = rawData.get("security-incident-count");
+                        return count instanceof Number ? ((Number) count).longValue() : 0L;
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to get security incident count: {}", e.getMessage());
+            }
+        }
+        return 0L;
+    }
+
+    /**
+     * Get total authentication failure count from MetricsService.
+     * 
+     * @return authentication failure count or 0 if unavailable
+     */
+    private long getAuthenticationFailureCount() {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var metricKey = MetricKeys.custom("agent-security", Map.of(), Set.of("counts"));
+                var snapshot = metrics.getSnapshot(metricKey, UnifiedMetricsSnapshot.class);
+                if (snapshot != null) {
+                    Map<String, Object> rawData = snapshot.getRawData();
+                    if (rawData != null) {
+                        Object count = rawData.get("authentication-failure-count");
+                        return count instanceof Number ? ((Number) count).longValue() : 0L;
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to get authentication failure count: {}", e.getMessage());
+            }
+        }
+        return 0L;
+    }
 
     // Configuration
     private final AtomicReference<SecurityConfiguration> configuration = new AtomicReference<>(
@@ -153,14 +224,18 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
             EncryptedMessage encryptedMessage = new EncryptedMessage(encryptedContent, signature, senderId, recipientId,
                     Instant.now());
 
-            totalMessagesEncrypted.incrementAndGet();
+            // Record encryption metrics using MetricsService
+            recordSecurityMetrics("message-encryption", true, Duration.ZERO, "senderId", senderId, "recipientId",
+                    recipientId);
             logAuditEvent("MESSAGE_ENCRYPTED", senderId, recipientId, "Message encrypted successfully");
 
             return CompletableFuture.completedFuture(encryptedMessage);
 
         } catch (Exception e) {
             logger.error("Error encrypting message: {}", e.getMessage(), e);
-            totalSecurityIncidents.incrementAndGet();
+            // Record security incident using MetricsService
+            recordSecurityMetrics("security-incident", false, Duration.ZERO, "type", "encryption-failure", "error",
+                    e.getMessage());
             return CompletableFuture.completedFuture(EncryptedMessage.failure("Encryption failed: " + e.getMessage()));
         }
     }
@@ -185,7 +260,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
         try {
             // Verify recipient matches
             if (!encryptedMessage.getRecipientId().equals(recipientId)) {
-                totalAuthenticationFailures.incrementAndGet();
+                // Record authentication failure using MetricsService
+                recordSecurityMetrics("authentication-failure", false, Duration.ZERO, "reason", "recipient-mismatch",
+                        "recipientId", recipientId);
                 return CompletableFuture
                         .completedFuture(DecryptedMessage.failure("Message not intended for this recipient"));
             }
@@ -205,15 +282,20 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
             boolean signatureValid = verifySignature(decryptedContent, encryptedMessage.getSignature(),
                     encryptedMessage.getSenderId());
             if (!signatureValid) {
-                totalAuthenticationFailures.incrementAndGet();
+                // Record authentication failure using MetricsService
+                recordSecurityMetrics("authentication-failure", false, Duration.ZERO, "reason", "invalid-signature",
+                        "senderId", encryptedMessage.getSenderId());
                 return CompletableFuture.completedFuture(DecryptedMessage.failure("Invalid message signature"));
             }
 
             DecryptedMessage decryptedMessage = new DecryptedMessage(decryptedContent, encryptedMessage.getSenderId(),
                     recipientId, Instant.now(), true);
 
-            totalMessagesDecrypted.incrementAndGet();
-            totalSignaturesVerified.incrementAndGet();
+            // Record successful decryption and signature verification using MetricsService
+            recordSecurityMetrics("message-decryption", true, Duration.ZERO, "senderId", encryptedMessage.getSenderId(),
+                    "recipientId", recipientId);
+            recordSecurityMetrics("signature-verification", true, Duration.ZERO, "senderId",
+                    encryptedMessage.getSenderId());
             logAuditEvent("MESSAGE_DECRYPTED", encryptedMessage.getSenderId(), recipientId,
                     "Message decrypted successfully");
 
@@ -221,7 +303,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
         } catch (Exception e) {
             logger.error("Error decrypting message: {}", e.getMessage(), e);
-            totalSecurityIncidents.incrementAndGet();
+            // Record security incident using MetricsService
+            recordSecurityMetrics("security-incident", false, Duration.ZERO, "type", "decryption-failure", "error",
+                    e.getMessage());
             return CompletableFuture.completedFuture(DecryptedMessage.failure("Decryption failed: " + e.getMessage()));
         }
     }
@@ -240,7 +324,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
         // Validate agent exists
         AgentRegistry registry = agentRegistry;
         if (registry == null || registry.getAgent(agentId, "system") == null) {
-            totalAuthenticationFailures.incrementAndGet();
+            // Record authentication failure using MetricsService
+            recordSecurityMetrics("authentication-failure", false, Duration.ZERO, "reason", "agent-not-found",
+                    "agentId", agentId);
             return CompletableFuture.completedFuture(AuthenticationResult.failure("Agent not found: " + agentId));
         }
 
@@ -248,7 +334,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
             // Verify credentials (placeholder implementation)
             boolean authenticated = verifyCredentials(agentId, credentials);
             if (!authenticated) {
-                totalAuthenticationFailures.incrementAndGet();
+                // Record authentication failure using MetricsService
+                recordSecurityMetrics("authentication-failure", false, Duration.ZERO, "reason", "invalid-credentials",
+                        "agentId", agentId);
                 logAuditEvent("AUTHENTICATION_FAILED", agentId, "system", "Invalid credentials");
                 return CompletableFuture.completedFuture(AuthenticationResult.failure("Invalid credentials"));
             }
@@ -263,7 +351,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
         } catch (Exception e) {
             logger.error("Error authenticating agent: {}", e.getMessage(), e);
-            totalSecurityIncidents.incrementAndGet();
+            // Record security incident using MetricsService
+            recordSecurityMetrics("security-incident", false, Duration.ZERO, "type", "authentication-error", "agentId",
+                    agentId, "error", e.getMessage());
             return CompletableFuture
                     .completedFuture(AuthenticationResult.failure("Authentication failed: " + e.getMessage()));
         }
@@ -305,7 +395,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
         } catch (Exception e) {
             logger.error("Error authorizing action: {}", e.getMessage(), e);
-            totalSecurityIncidents.incrementAndGet();
+            // Record security incident using MetricsService
+            recordSecurityMetrics("security-incident", false, Duration.ZERO, "type", "authorization-error", "agentId",
+                    agentId, "action", action, "resource", resource, "error", e.getMessage());
             return CompletableFuture
                     .completedFuture(AuthorizationResult.denied("Authorization failed: " + e.getMessage()));
         }
@@ -341,7 +433,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
         } catch (Exception e) {
             logger.error("Error generating key pair: {}", e.getMessage(), e);
-            totalSecurityIncidents.incrementAndGet();
+            // Record security incident using MetricsService
+            recordSecurityMetrics("security-incident", false, Duration.ZERO, "type", "key-generation-error", "agentId",
+                    agentId, "error", e.getMessage());
             return CompletableFuture.completedFuture(new KeyGenerationResult(false, agentId, null, null, null,
                     "Key generation failed: " + e.getMessage()));
         }
@@ -356,22 +450,22 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                var snapshot = metrics.getSnapshot(MetricKeys.custom("message-security", Map.of("name", "agent-security"), Set.of("counts", "latency")), UnifiedMetricsSnapshot.class);
+                var snapshot = metrics.getSnapshot(MetricKeys.custom("message-security",
+                        Map.of("name", "agent-security"), Set.of("counts", "latency")), UnifiedMetricsSnapshot.class);
                 if (snapshot != null) {
                     // Convert snapshot to MessageSecurityStatistics
-                    return new MessageSecurityStatistics(
-                        snapshot.total(), // totalOperations
-                        snapshot.success(), // successfulOperations
-                        snapshot.failure(), // failedOperations
-                        0L, // securityViolations - would need to be tracked separately
-                        Instant.ofEpochMilli(snapshot.getTimestampMs()), // lastOperationTime
-                        0L, // totalMessagesEncrypted
-                        0L, // totalMessagesDecrypted
-                        0L, // totalSignaturesVerified
-                        0L, // totalAuthenticationFailures
-                        securityPolicies.size(), // securityPolicies
-                        agentKeyPairs.size(), // agentKeyPairs
-                        auditLogs.size() // auditLogs
+                    return new MessageSecurityStatistics(snapshot.total(), // totalOperations
+                            snapshot.success(), // successfulOperations
+                            snapshot.failure(), // failedOperations
+                            0L, // securityViolations - would need to be tracked separately
+                            Instant.ofEpochMilli(snapshot.getTimestampMs()), // lastOperationTime
+                            0L, // totalMessagesEncrypted
+                            0L, // totalMessagesDecrypted
+                            0L, // totalSignaturesVerified
+                            0L, // totalAuthenticationFailures
+                            securityPolicies.size(), // securityPolicies
+                            agentKeyPairs.size(), // agentKeyPairs
+                            auditLogs.size() // auditLogs
                     );
                 }
             } catch (Exception e) {
@@ -451,15 +545,19 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
     @Override
     public boolean canAccess(String componentId, @Nullable String userId) {
-        totalChecks.incrementAndGet();
-
         // Basic implementation - can be extended with actual access validation
         boolean allowed = true; // Default to allow
 
+        // Record access check using MetricsService
+        recordSecurityMetrics("access-check", allowed, Duration.ZERO, "componentId", componentId, "userId",
+                userId != null ? userId : "anonymous");
+
         if (allowed) {
-            allowedOperations.incrementAndGet();
+            recordSecurityMetrics("access-allowed", true, Duration.ZERO, "componentId", componentId, "userId",
+                    userId != null ? userId : "anonymous");
         } else {
-            deniedOperations.incrementAndGet();
+            recordSecurityMetrics("access-denied", false, Duration.ZERO, "componentId", componentId, "userId",
+                    userId != null ? userId : "anonymous");
         }
 
         logger.debug("Access validation for component: {}, user: {}, allowed: {}", componentId, userId, allowed);
@@ -483,14 +581,10 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
         logger.warn("Security violation in component {}: {} with context: {}", componentId, violation, context);
     }
 
-    @Override
-    public SecurityStatistics getStatistics() {
-        if (metricsService != null) {
-            return metricsService.getStatistics(MetricKeys.custom("security-monitoring", Map.of("name", "agent-security"), Set.of("counts", "latency")), SecurityMonitoringStatistics.class, Duration.ofDays(30));
-        }
-        // Fallback to empty statistics if MetricsService is not available
-        return new SecurityMonitoringStatistics(List.of(), Duration.ofDays(30), System.currentTimeMillis());
-    }
+    // Eliminated getStatistics() method after removing from SecurityManager interface
+    // Consumers should call MetricsService directly:
+    // metricsService.getStatistics(MetricKeys.custom("security-monitoring", Map.of("name", "agent-security"),
+    // Set.of("counts", "latency")), SecurityMonitoringStatistics.class, Duration.ofDays(30))
 
     @Override
     public SecurityManager.SecurityManagerType getType() {
@@ -565,8 +659,25 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
     @Override
     public boolean isLockedOut(String agentId) {
-        // Simple implementation - check if agent has too many authentication failures
-        return totalAuthenticationFailures.get() > configuration.get().getMaxAuthenticationFailures();
+        // Check if agent has too many authentication failures using MetricsService
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var metricKey = MetricKeys.custom("agent-security", Map.of("agentId", agentId), Set.of("counts"));
+                var snapshot = metrics.getSnapshot(metricKey, UnifiedMetricsSnapshot.class);
+                if (snapshot != null) {
+                    Map<String, Object> rawData = snapshot.getRawData();
+                    if (rawData != null) {
+                        Object failureData = rawData.get("authentication-failure-count");
+                        long authFailures = failureData instanceof Number ? ((Number) failureData).longValue() : 0L;
+                        return authFailures > configuration.get().getMaxAuthenticationFailures();
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to check lockout status for agent {}: {}", agentId, e.getMessage());
+            }
+        }
+        return false; // Default to not locked out if metrics unavailable
     }
 
     @Override
@@ -598,7 +709,9 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
     public void restore(Map<String, Object> data) {
         if (data.containsKey("securityPolicies")) {
             securityPolicies.clear();
-            securityPolicies.putAll((Map<String, AgentSecurityPolicy>) data.get("securityPolicies"));
+            @SuppressWarnings("unchecked")
+            Map<String, AgentSecurityPolicy> policies = (Map<String, AgentSecurityPolicy>) data.get("securityPolicies");
+            securityPolicies.putAll(policies);
         }
         if (data.containsKey("configuration")) {
             configuration.set((SecurityConfiguration) data.get("configuration"));
@@ -607,10 +720,32 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
 
     @Override
     public String exportReport(String format) {
-        // Simple implementation - return basic statistics as JSON
-        return String.format(
-                "{\"totalMessagesEncrypted\":%d,\"totalMessagesDecrypted\":%d,\"totalSecurityIncidents\":%d}",
-                totalMessagesEncrypted.get(), totalMessagesDecrypted.get(), totalSecurityIncidents.get());
+        // Return basic statistics as JSON from MetricsService
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                var metricKey = MetricKeys.custom("agent-security", Map.of(), Set.of("counts"));
+                var snapshot = metrics.getSnapshot(metricKey, UnifiedMetricsSnapshot.class);
+                if (snapshot != null) {
+                    Map<String, Object> rawData = snapshot.getRawData();
+                    if (rawData != null) {
+                        Object encryptedData = rawData.get("message-encryption-count");
+                        Object decryptedData = rawData.get("message-decryption-count");
+                        Object incidentsData = rawData.get("security-incident-count");
+                        long encrypted = encryptedData instanceof Number ? ((Number) encryptedData).longValue() : 0L;
+                        long decrypted = decryptedData instanceof Number ? ((Number) decryptedData).longValue() : 0L;
+                        long incidents = incidentsData instanceof Number ? ((Number) incidentsData).longValue() : 0L;
+                        return String.format(
+                                "{\"totalMessagesEncrypted\":%d,\"totalMessagesDecrypted\":%d,\"totalSecurityIncidents\":%d}",
+                                encrypted, decrypted, incidents);
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to get security metrics as JSON: {}", e.getMessage());
+            }
+        }
+        // Fallback to empty metrics if MetricsService unavailable
+        return "{\"totalMessagesEncrypted\":0,\"totalMessagesDecrypted\":0,\"totalSecurityIncidents\":0}";
     }
 
     @Override
@@ -792,28 +927,29 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
             long currentTime = System.currentTimeMillis();
             long incidentThreshold = 10; // Alert if more than 10 incidents in monitoring window
 
-            if (totalSecurityIncidents.get() > incidentThreshold) {
+            // Check security incidents using MetricsService
+            long securityIncidentCount = getSecurityIncidentCount();
+            if (securityIncidentCount > incidentThreshold) {
                 String incidentId = "security_monitoring_" + currentTime;
                 SecurityIncident incident = new SecurityIncident(incidentId, "system", "SECURITY_MONITORING_ALERT",
-                        "High number of security incidents detected: " + totalSecurityIncidents.get(), Instant.now(),
+                        "High number of security incidents detected: " + securityIncidentCount, Instant.now(),
                         SecuritySeverity.HIGH);
-                securityIncidents.put(incidentId, incident);
+                this.securityIncidents.put(incidentId, incident);
 
-                logger.warn("SECURITY_ALERT: High number of security incidents detected: {}",
-                        totalSecurityIncidents.get());
+                logger.warn("SECURITY_ALERT: High number of security incidents detected: {}", securityIncidentCount);
             }
 
-            // Check for authentication failures
+            // Check for authentication failures using MetricsService
             long authFailureThreshold = 20; // Alert if more than 20 auth failures
-            if (totalAuthenticationFailures.get() > authFailureThreshold) {
+            long authFailures = getAuthenticationFailureCount();
+            if (authFailures > authFailureThreshold) {
                 String incidentId = "auth_failure_monitoring_" + currentTime;
                 SecurityIncident incident = new SecurityIncident(incidentId, "system", "AUTHENTICATION_FAILURE_ALERT",
-                        "High number of authentication failures detected: " + totalAuthenticationFailures.get(),
-                        Instant.now(), SecuritySeverity.MEDIUM);
+                        "High number of authentication failures detected: " + authFailures, Instant.now(),
+                        SecuritySeverity.MEDIUM);
                 securityIncidents.put(incidentId, incident);
 
-                logger.warn("AUTH_ALERT: High number of authentication failures detected: {}",
-                        totalAuthenticationFailures.get());
+                logger.warn("AUTH_ALERT: High number of authentication failures detected: {}", authFailures);
             }
 
             // Check key pair health
@@ -871,7 +1007,6 @@ public class DefaultAgentSecurityManager implements AgentSecurityManager {
             }
 
             // Update configuration with new rotation time
-            SecurityConfiguration config = configuration.get();
             SecurityConfiguration newConfig = SecurityConfiguration.builder()
                     .withKeyRotationInterval(Duration.ofDays(30)) // Reset to 30 days
                     .build();

@@ -6,9 +6,9 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.common.services.LoadBalancingStrategy;
 import org.openhab.core.ai.model.api.ModelProviderType;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 
 /**
  * Tool Execution Service Interface

@@ -373,22 +373,7 @@ public class ToolUtils {
         return true;
     }
 
-    /**
-     * Get tool performance metrics.
-     * 
-     * @param tool the tool
-     * @param executionTimeMs execution time in milliseconds
-     * @return performance metrics
-     */
-    public static ToolPerformanceMetrics getToolPerformanceMetrics(Tool tool, long executionTimeMs) {
-        return new ToolPerformanceMetrics(tool.getId(), executionTimeMs, System.currentTimeMillis(),
-                tool.getMetadata().getVersion());
-    }
-
-    /**
-     * Tool performance metrics.
-     */
-    /* Extracted to top-level: org.openhab.core.ai.tool.util.ToolPerformanceMetrics */
+    // getToolPerformanceMetrics method removed - replaced with MetricsService integration
 
     /**
      * Validate tool configuration.

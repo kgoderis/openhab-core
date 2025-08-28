@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -12,10 +13,9 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
 import org.openhab.core.ai.common.context.ToolContext;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.validation.ToolValidationResult;
 import org.openhab.core.ai.tool.api.Tool;
 import org.openhab.core.ai.tool.api.ToolException;
@@ -1821,8 +1821,9 @@ public class ToolServlet extends HttpServletSseServerTransportProvider {
         if (metrics != null) {
             try {
                 MetricKey mcpServletKey = MetricKeys.custom("mcp-servlet", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metrics.getSnapshot(mcpServletKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                
+                var snapshot = metrics.getSnapshot(mcpServletKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+
                 if (snapshot != null) {
                     totalRequests = snapshot.getLong("total");
                     failedRequests = snapshot.getLong("failure");

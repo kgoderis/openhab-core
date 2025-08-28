@@ -6,11 +6,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.tool.progress.api.tracking.ProgressInfo;
 import org.openhab.core.ai.tool.progress.api.tracking.ProgressOperation;
 import org.openhab.core.ai.tool.progress.api.tracking.ProgressStatus;
 import org.openhab.core.ai.tool.progress.api.tracking.ProgressTracker;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,12 +47,8 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
         operations.put(operationId, operation);
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("progress_tracking", "start")
-                    .withSuccess(true)
-                    .withDuration(0L)
-                    .withData("operationId", operationId)
-                    .withData("totalSteps", totalSteps)
-                    .record();
+                metricsService.recordOperation("progress_tracking", "start").withSuccess(true).withDuration(0L)
+                        .withData("operationId", operationId).withData("totalSteps", totalSteps).record();
             } catch (Exception e) {
                 logger.debug("Failed to record progress tracking start metrics: {}", e.getMessage());
             }
@@ -89,13 +85,10 @@ public abstract class DefaultProgressTracker implements ProgressTracker {
             if (metricsService != null) {
                 try {
                     long processingTime = operation.getCompletionTime() - operation.getStartTime();
-                    metricsService.recordOperation("progress_tracking", "complete")
-                        .withSuccess(true)
-                        .withDuration(Duration.ofMillis(processingTime).toNanos())
-                        .withData("operationId", operationId)
-                        .withData("totalSteps", operation.getTotalSteps())
-                        .withData("processingTimeMs", processingTime)
-                        .record();
+                    metricsService.recordOperation("progress_tracking", "complete").withSuccess(true)
+                            .withDuration(Duration.ofMillis(processingTime).toNanos())
+                            .withData("operationId", operationId).withData("totalSteps", operation.getTotalSteps())
+                            .withData("processingTimeMs", processingTime).record();
                 } catch (Exception e) {
                     logger.debug("Failed to record progress tracking completion metrics: {}", e.getMessage());
                 }

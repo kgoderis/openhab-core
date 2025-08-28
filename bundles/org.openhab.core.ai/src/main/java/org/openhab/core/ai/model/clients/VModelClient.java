@@ -16,12 +16,11 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-import org.openhab.core.ai.common.monitoring.api.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.osgi.service.component.annotations.Reference;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
@@ -29,7 +28,7 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.config.VLLMConfiguration;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -250,32 +249,23 @@ public class VModelClient implements ModelClient {
             boolean available = isAvailable();
 
             // Record health check operation
-            metricsService.recordOperation("model", "health-check")
-                .withSuccess(available)
-                .withDuration(100)
-                .withData(Map.of(
-                    "provider", "vllm",
-                    "model", config.getModelName()
-                ))
-                .record();
+            metricsService.recordOperation("model", "health-check").withSuccess(available).withDuration(100)
+                    .withData(Map.of("provider", "vllm", "model", config.getModelName())).record();
 
             // Return health metrics from service
-            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
-            
+            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                    UnifiedMetricsSnapshot.class);
+
         } catch (Exception e) {
             // Record failed health check
-            metricsService.recordOperation("model", "health-check")
-                .withSuccess(false)
-                .withDuration(100)
-                .withData(Map.of(
-                    "provider", "vllm",
-                    "model", config.getModelName(),
-                    "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
-                ))
-                .record();
+            metricsService.recordOperation("model", "health-check").withSuccess(false).withDuration(100)
+                    .withData(Map.of("provider", "vllm", "model", config.getModelName(), "error",
+                            e.getMessage() != null ? e.getMessage() : "Unknown error"))
+                    .record();
 
             // Return health metrics from service (will reflect the failure)
-            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
+            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                    UnifiedMetricsSnapshot.class);
         }
     }
 

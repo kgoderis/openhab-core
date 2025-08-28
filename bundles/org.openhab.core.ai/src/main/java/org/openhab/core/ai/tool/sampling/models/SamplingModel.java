@@ -9,7 +9,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,13 +42,10 @@ public class SamplingModel {
     private final Map<String, Object> cache = new ConcurrentHashMap<>();
     private final AtomicReference<String> version = new AtomicReference<>("1.0.0");
     private final Random random = new Random();
-    
+
     // Metrics service for performance monitoring
-    private MetricsService metricsService;
-    
-    public void setMetricsService(MetricsService metricsService) {
-        this.metricsService = metricsService;
-    }
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    private volatile @Nullable MetricsService metricsService;
 
     /**
      * Create a new sampling model.
@@ -64,6 +65,9 @@ public class SamplingModel {
         this.type = type;
         this.parameters = parameters;
         this.configuration = configuration;
+
+        // Record model configuration tracking metrics
+        recordModelConfiguration();
     }
 
     /**
@@ -137,14 +141,11 @@ public class SamplingModel {
             // Record cache hit metrics
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("sampling_model", "cache_hit")
-                        .withSuccess(true)
-                        .withDuration(0L)
-                        .withData("modelId", id)
-                        .withData("cacheKey", cacheKey)
-                        .record();
+                    metricsService.recordOperation("sampling_model", "cache_hit").withSuccess(true).withDuration(0L)
+                            .withData("modelId", id).withData("cacheKey", cacheKey).record();
                 } catch (Exception e) {
-                    logger.warn("Failed to record sampling model cache hit metrics for model {}: {}", id, e.getMessage());
+                    logger.warn("Failed to record sampling model cache hit metrics for model {}: {}", id,
+                            e.getMessage());
                     // Graceful degradation: continue with sampling even if metrics recording fails
                 }
             }
@@ -155,12 +156,8 @@ public class SamplingModel {
         // Record cache miss metrics
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("sampling_model", "cache_miss")
-                    .withSuccess(true)
-                    .withDuration(0L)
-                    .withData("modelId", id)
-                    .withData("cacheKey", cacheKey)
-                    .record();
+                metricsService.recordOperation("sampling_model", "cache_miss").withSuccess(true).withDuration(0L)
+                        .withData("modelId", id).withData("cacheKey", cacheKey).record();
             } catch (Exception e) {
                 logger.warn("Failed to record sampling model cache miss metrics for model {}: {}", id, e.getMessage());
                 // Graceful degradation: continue with sampling even if metrics recording fails
@@ -177,13 +174,9 @@ public class SamplingModel {
         long duration = System.currentTimeMillis() - startTime;
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("sampling_model", "sample_generation")
-                    .withSuccess(true)
-                    .withDuration(Duration.ofMillis(duration).toNanos())
-                    .withData("modelId", id)
-                    .withData("modelType", type)
-                    .withData("durationMs", duration)
-                    .record();
+                metricsService.recordOperation("sampling_model", "sample_generation").withSuccess(true)
+                        .withDuration(Duration.ofMillis(duration).toNanos()).withData("modelId", id)
+                        .withData("modelType", type).withData("durationMs", duration).record();
             } catch (Exception e) {
                 logger.warn("Failed to record sampling model generation metrics for model {}: {}", id, e.getMessage());
                 // Graceful degradation: continue with sampling even if metrics recording fails
@@ -463,17 +456,22 @@ public class SamplingModel {
      * 
      * @return model statistics
      */
-    public Map<String, Object> getStatistics() {
-        Map<String, Object> stats = new ConcurrentHashMap<>();
-        stats.put("totalSamplesGenerated", totalSamplesGenerated.get());
-        stats.put("totalExecutionTime", totalExecutionTime.get());
-        stats.put("averageExecutionTime", calculateAverageExecutionTime());
-        stats.put("cacheHits", cacheHits.get());
-        stats.put("cacheMisses", cacheMisses.get());
-        stats.put("cacheHitRate", calculateCacheHitRate());
-        stats.put("version", version.get());
-        return stats;
-    }
+    // Eliminated getStatistics() method after enhancing metric capture
+    // Consumers should use MetricsService directly to access sampling model statistics:
+    // - Sample generation: metricsService.getSnapshot(MetricKeys.custom("sampling-model", Map.of("operation",
+    // "sample_generation", "modelId", id)))
+    // - Cache hits: metricsService.getSnapshot(MetricKeys.custom("sampling-model", Map.of("operation", "cache_hit",
+    // "modelId", id)))
+    // - Cache misses: metricsService.getSnapshot(MetricKeys.custom("sampling-model", Map.of("operation", "cache_miss",
+    // "modelId", id)))
+    // - Configuration tracking: metricsService.getSnapshot(MetricKeys.custom("sampling-model", Map.of("operation",
+    // "configuration-tracking", "modelId", id)))
+    // - Version changes: metricsService.getSnapshot(MetricKeys.custom("sampling-model", Map.of("operation",
+    // "version-change", "modelId", id)))
+    // - Sample quality: metricsService.getSnapshot(MetricKeys.custom("sampling-model", Map.of("operation",
+    // "sample-quality", "modelId", id)))
+    // - Performance optimization: metricsService.getSnapshot(MetricKeys.custom("sampling-model", Map.of("operation",
+    // "performance-optimization", "modelId", id)))
 
     /**
      * Update the model version.
@@ -529,21 +527,79 @@ public class SamplingModel {
         return defaultValue;
     }
 
-    private double calculateAverageExecutionTime() {
-        int total = totalSamplesGenerated.get();
-        if (total == 0) {
-            return 0.0;
-        }
-        return (double) totalExecutionTime.get() / total;
-    }
-
-    private double calculateCacheHitRate() {
-        int hits = cacheHits.get();
-        int misses = cacheMisses.get();
-        int total = hits + misses;
+    private double calculateCacheHitRate(long hits, long misses) {
+        long total = hits + misses;
         if (total == 0) {
             return 0.0;
         }
         return (double) hits / total * 100.0;
+    }
+
+    /**
+     * Record model configuration tracking metrics
+     */
+    public void recordModelConfiguration() {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("sampling-model", "configuration-tracking").withSuccess(true)
+                        .withData("modelId", id).withData("modelType", type).withData("version", version.get())
+                        .withData("parameterCount", parameters.size())
+                        .withData("configurationCount", configuration.size()).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record model configuration metrics for {}: {}", id, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record model version change metrics
+     */
+    public void recordVersionChange(String oldVersion, String newVersion) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("sampling-model", "version-change").withSuccess(true)
+                        .withData("modelId", id).withData("oldVersion", oldVersion).withData("newVersion", newVersion)
+                        .withData("timestamp", System.currentTimeMillis()).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record version change metrics for {}: {}", id, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record sample quality metrics
+     */
+    public void recordSampleQuality(Object sample, double qualityScore, Map<String, Object> qualityMetrics) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("sampling-model", "sample-quality").withSuccess(qualityScore > 0.7) // Good
+                                                                                                                   // quality
+                                                                                                                   // threshold
+                        .withData("modelId", id).withData("qualityScore", qualityScore)
+                        .withData("sampleSize", sample != null ? sample.toString().length() : 0)
+                        .withData("qualityMetrics", qualityMetrics.toString()).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record sample quality metrics for {}: {}", id, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record model performance optimization metrics
+     */
+    public void recordPerformanceOptimization(String optimizationType, double improvementPercentage,
+            long executionTimeBefore, long executionTimeAfter) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("sampling-model", "performance-optimization")
+                        .withSuccess(improvementPercentage > 0).withData("modelId", id)
+                        .withData("optimizationType", optimizationType)
+                        .withData("improvementPercentage", improvementPercentage)
+                        .withData("executionTimeBefore", executionTimeBefore)
+                        .withData("executionTimeAfter", executionTimeAfter).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record performance optimization metrics for {}: {}", id, e.getMessage());
+            }
+        }
     }
 }

@@ -8,13 +8,18 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.model.api.ModelProviderType;
+import org.openhab.core.ai.tool.resources.monitoring.ResourceManagerSnapshot;
+import org.openhab.core.ai.tool.resources.monitoring.ResourceManagerStatistics;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,12 +59,12 @@ public class ResourceManager {
     private final AtomicReference<Integer> maxQueueSize = new AtomicReference<>(1000);
     private final AtomicReference<Duration> requestTimeout = new AtomicReference<>(Duration.ofSeconds(30));
 
-    // Resource monitoring
-    private final AtomicLong currentConcurrentRequests = new AtomicLong(0);
-    private final AtomicLong totalRequestsProcessed = new AtomicLong(0);
-    private final AtomicLong totalRequestsRejected = new AtomicLong(0);
-    private final AtomicLong totalRequestsTimedOut = new AtomicLong(0);
-    private final AtomicLong currentMemoryUsage = new AtomicLong(0);
+    // NEW: Centralized MetricsService for recording operations
+    @Reference
+    private @Nullable MetricsService metricsService;
+
+    // Simple counters for immediate access (not for metrics recording)
+    private volatile long currentConcurrentRequests = 0;
 
     // Request tracking
     private final ConcurrentHashMap<String, RequestInfo> activeRequests = new ConcurrentHashMap<>();
@@ -97,7 +102,8 @@ public class ResourceManager {
 
         // Check resource availability
         if (!canAcceptRequest(provider)) {
-            totalRequestsRejected.incrementAndGet();
+            // Record rejected request
+            recordResourceOperation("request-rejected", false, Duration.ZERO, provider.name());
             return CompletableFuture.failedFuture(
                     new ResourceLimitExceededException("Resource limit exceeded for provider: " + provider));
         }
@@ -107,7 +113,9 @@ public class ResourceManager {
         activeRequests.put(requestId, requestInfo);
 
         // Increment concurrent request counter
-        currentConcurrentRequests.incrementAndGet();
+        synchronized (this) {
+            currentConcurrentRequests++;
+        }
         updateProviderResourceUsage(provider, 1, 0);
 
         return CompletableFuture.supplyAsync(() -> {
@@ -130,7 +138,8 @@ public class ResourceManager {
         }, executorService).orTimeout(requestTimeout.get().toMillis(), TimeUnit.MILLISECONDS)
                 .whenComplete((result, throwable) -> {
                     if (throwable instanceof TimeoutException) {
-                        totalRequestsTimedOut.incrementAndGet();
+                        // Record timeout operation
+                        recordResourceOperation("request-timeout", false, requestTimeout.get(), provider.name());
                         logger.warn("Request {} timed out after {}ms", requestId, requestTimeout.get().toMillis());
                     }
                 });
@@ -144,8 +153,8 @@ public class ResourceManager {
      */
     public boolean canAcceptRequest(ModelProviderType provider) {
         // Check concurrent request limit
-        if (currentConcurrentRequests.get() >= maxConcurrentRequests.get()) {
-            logger.debug("Concurrent request limit exceeded: {} >= {}", currentConcurrentRequests.get(),
+        if (currentConcurrentRequests >= maxConcurrentRequests.get()) {
+            logger.debug("Concurrent request limit exceeded: {} >= {}", currentConcurrentRequests,
                     maxConcurrentRequests.get());
             return false;
         }
@@ -157,8 +166,10 @@ public class ResourceManager {
         }
 
         // Check memory usage
-        if (currentMemoryUsage.get() >= maxMemoryUsage.get()) {
-            logger.debug("Memory usage limit exceeded: {} >= {}", currentMemoryUsage.get(), maxMemoryUsage.get());
+        Runtime runtime = Runtime.getRuntime();
+        long currentMemory = runtime.totalMemory() - runtime.freeMemory();
+        if (currentMemory >= maxMemoryUsage.get()) {
+            logger.debug("Memory usage limit exceeded: {} >= {}", currentMemory, maxMemoryUsage.get());
             return false;
         }
 
@@ -184,9 +195,18 @@ public class ResourceManager {
         long freeMemory = runtime.freeMemory();
         long usedMemory = totalMemory - freeMemory;
 
-        return new ResourceUsageStatistics(currentConcurrentRequests.get(), totalRequestsProcessed.get(),
-                totalRequestsRejected.get(), totalRequestsTimedOut.get(), usedMemory, totalMemory, requestQueue.size(),
-                executorService.getActiveCount(), executorService.getPoolSize(),
+        // Get metrics from MetricsService if available
+        ResourceManagerSnapshot snapshot = getResourceManagerSnapshot();
+        if (snapshot != null) {
+            return new ResourceUsageStatistics(currentConcurrentRequests, snapshot.totalRequests(),
+                    snapshot.getRejectedRequests(), snapshot.getTimedOutRequests(), usedMemory, totalMemory,
+                    requestQueue.size(), executorService.getActiveCount(), executorService.getPoolSize(),
+                    new ConcurrentHashMap<>(providerResourceUsage));
+        }
+
+        // Fallback when MetricsService is not available
+        return new ResourceUsageStatistics(currentConcurrentRequests, 0L, 0L, 0L, usedMemory, totalMemory,
+                requestQueue.size(), executorService.getActiveCount(), executorService.getPoolSize(),
                 new ConcurrentHashMap<>(providerResourceUsage));
     }
 
@@ -217,7 +237,9 @@ public class ResourceManager {
         });
 
         // Suggest garbage collection if memory usage is high
-        if (currentMemoryUsage.get() > maxMemoryUsage.get() * 0.8) {
+        Runtime runtime = Runtime.getRuntime();
+        long currentMemory = runtime.totalMemory() - runtime.freeMemory();
+        if (currentMemory > maxMemoryUsage.get() * 0.8) {
             logger.info("High memory usage detected, suggesting garbage collection");
             System.gc();
         }
@@ -279,31 +301,39 @@ public class ResourceManager {
 
     // Helper methods
     private void recordRequestSuccess(String requestId, ModelProviderType provider) {
-        totalRequestsProcessed.incrementAndGet();
-
         RequestInfo requestInfo = activeRequests.get(requestId);
+        Duration duration = Duration.ZERO;
         if (requestInfo != null) {
             requestInfo.setEndTime(Instant.now());
             requestInfo.setSuccess(true);
+            duration = Duration.between(requestInfo.getStartTime(), requestInfo.getEndTime());
         }
 
+        // Record successful request operation
+        recordResourceOperation("request-processed", true, duration, provider.name());
         updateProviderResourceUsage(provider, -1, 1);
     }
 
     private void recordRequestFailure(String requestId, ModelProviderType provider, Exception error) {
         RequestInfo requestInfo = activeRequests.get(requestId);
+        Duration duration = Duration.ZERO;
         if (requestInfo != null) {
             requestInfo.setEndTime(Instant.now());
             requestInfo.setSuccess(false);
             requestInfo.setError(error);
+            duration = Duration.between(requestInfo.getStartTime(), requestInfo.getEndTime());
         }
 
+        // Record failed request operation
+        recordResourceOperation("request-failed", false, duration, provider.name());
         updateProviderResourceUsage(provider, -1, 0);
     }
 
     private void cleanupRequest(String requestId, ModelProviderType provider) {
         activeRequests.remove(requestId);
-        currentConcurrentRequests.decrementAndGet();
+        synchronized (this) {
+            currentConcurrentRequests--;
+        }
     }
 
     private void updateProviderResourceUsage(ModelProviderType provider, int concurrentDelta, int successDelta) {
@@ -328,6 +358,121 @@ public class ResourceManager {
                 return 5; // Lower limits for local providers
             default:
                 return 10;
+        }
+    }
+
+    /**
+     * Record a resource operation using MetricsService.
+     * 
+     * @param operation the operation type
+     * @param success whether the operation was successful
+     * @param duration the operation duration
+     * @param providerName the provider name
+     */
+    private void recordResourceOperation(String operation, boolean success, Duration duration, String providerName) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperationWithData("resource-manager", operation, success, duration,
+                        java.util.Map.of("provider", providerName, "component", "ResourceManager"));
+                logger.debug("Recorded resource operation: {} (success={}, duration={}ms, provider={})", operation,
+                        success, duration.toMillis(), providerName);
+            } catch (Exception e) {
+                logger.warn("Failed to record resource operation: {}", operation, e);
+            }
+        } else {
+            logger.debug("MetricsService not available for resource operation: {}", operation);
+        }
+    }
+
+    /**
+     * Get ResourceManager metrics snapshot.
+     * 
+     * @return ResourceManager snapshot or null if not available
+     */
+    public @Nullable ResourceManagerSnapshot getResourceManagerSnapshot() {
+        if (metricsService != null) {
+            try {
+                // Create a simple MetricKey for resource manager operations
+                MetricKey key = new MetricKey() {
+                    @Override
+                    public String kind() {
+                        return "resource-manager";
+                    }
+
+                    @Override
+                    public java.util.Map<String, String> labels() {
+                        return java.util.Map.of("operation", "request-processed", "component", "ResourceManager");
+                    }
+
+                    @Override
+                    public java.util.Set<String> capabilities() {
+                        return java.util.Set.of("counts", "latency", "resource");
+                    }
+                };
+                return metricsService.getSnapshot(key, ResourceManagerSnapshot.class);
+            } catch (Exception e) {
+                logger.warn("Failed to get ResourceManager snapshot from MetricsService", e);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get ResourceManager statistics for a time range.
+     * 
+     * @param timeRange the time range for statistics
+     * @return ResourceManager statistics or empty statistics if not available
+     */
+    public ResourceManagerStatistics getResourceManagerStatistics(Duration timeRange) {
+        if (metricsService != null) {
+            try {
+                // Create a simple MetricKey for resource manager statistics
+                MetricKey key = new MetricKey() {
+                    @Override
+                    public String kind() {
+                        return "resource-manager";
+                    }
+
+                    @Override
+                    public java.util.Map<String, String> labels() {
+                        return java.util.Map.of("operation", "request-processed", "component", "ResourceManager");
+                    }
+
+                    @Override
+                    public java.util.Set<String> capabilities() {
+                        return java.util.Set.of("trend", "percentile", "resource");
+                    }
+                };
+                return metricsService.getStatistics(key, ResourceManagerStatistics.class, timeRange);
+            } catch (Exception e) {
+                logger.warn("Failed to get ResourceManager statistics from MetricsService", e);
+            }
+        }
+
+        // Return empty statistics if MetricsService is not available
+        long now = System.currentTimeMillis();
+        return ResourceManagerStatistics.empty(now - timeRange.toMillis(), now);
+    }
+
+    /**
+     * Set the MetricsService reference.
+     * 
+     * @param metricsService the metrics service
+     */
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        logger.debug("MetricsService reference set for ResourceManager");
+    }
+
+    /**
+     * Unset the MetricsService reference.
+     * 
+     * @param metricsService the metrics service
+     */
+    protected void unsetMetricsService(MetricsService metricsService) {
+        if (this.metricsService == metricsService) {
+            this.metricsService = null;
+            logger.debug("MetricsService reference removed from ResourceManager");
         }
     }
 

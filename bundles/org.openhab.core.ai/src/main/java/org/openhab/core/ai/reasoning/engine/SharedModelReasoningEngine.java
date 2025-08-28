@@ -24,7 +24,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -40,6 +39,7 @@ import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
 import org.openhab.core.ai.common.monitoring.service.statistics.SystemAggregatedStatistics;
+import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.api.ModelClient;
@@ -105,10 +105,10 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     private final Map<String, Object> agentStatistics = new ConcurrentHashMap<>();
 
     // Performance monitoring - using centralized MetricsService instead of AtomicLong counters
-    private final AtomicReference<Instant> lastRequestTime = new AtomicReference<>(Instant.now());
-    private final AtomicReference<Instant> lastSuccessTime = new AtomicReference<>(Instant.now());
-    private final AtomicReference<Instant> lastFailureTime = new AtomicReference<>(Instant.now());
-    private final AtomicReference<String> lastError = new AtomicReference<>("");
+    private volatile Instant lastRequestTime = Instant.now();
+    private volatile Instant lastSuccessTime = Instant.now();
+    private volatile Instant lastFailureTime = Instant.now();
+    private volatile String lastError = "";
 
     // Model clients and sessions
     private final ConcurrentHashMap<String, ModelClient> modelClients = new ConcurrentHashMap<>();
@@ -119,8 +119,8 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
     private final ExecutorService reasoningExecutor;
     private final ExecutorService sessionExecutor;
     private final ExecutorService requestExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_CONCURRENT_REQUESTS);
-    private final AtomicReference<Long> requestCounter = new AtomicReference<>(0L);
-    private final AtomicReference<Long> sessionCounter = new AtomicReference<>(0L);
+    private volatile long requestCounter = 0L;
+    private volatile long sessionCounter = 0L;
 
     private volatile boolean shutdown = false;
     private volatile boolean isRunning = true;
@@ -184,7 +184,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
             return CompletableFuture.failedFuture(new IllegalStateException("Engine is shutdown"));
         }
 
-        String requestId = "req-" + requestCounter.updateAndGet(counter -> counter + 1);
+        String requestId = "req-" + (++requestCounter);
         ReasoningRequest request = new ReasoningRequest(requestId, agentId, context, prompt, parameters);
 
         logger.debug("Queuing reasoning request {} for agent {}", requestId, agentId);
@@ -212,7 +212,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
             return CompletableFuture.failedFuture(new IllegalStateException("Engine is shutdown"));
         }
 
-        String sessionId = "session-" + sessionCounter.updateAndGet(counter -> counter + 1);
+        String sessionId = "session-" + (++sessionCounter);
         ModelReasoningSession session = new ModelReasoningSession(sessionId, agentId, context);
         activeSessions.put(sessionId, session);
 
@@ -307,7 +307,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
             @Nullable ModelParameters parameters) {
         return CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
-            lastRequestTime.set(Instant.now());
+            lastRequestTime = Instant.now();
 
             try {
                 // Validate agent registration
@@ -326,18 +326,14 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
 
                 // Update statistics using centralized MetricsService
                 long duration = System.currentTimeMillis() - startTime;
-                lastSuccessTime.set(Instant.now());
-                
+                lastSuccessTime = Instant.now();
+
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("reasoning-engine", "agent-reasoning")
-                            .withSuccess(true)
-                            .withDuration(Duration.ofMillis(duration).toNanos())
-                            .withData("agentId", agentId)
-                            .withData("durationMs", duration)
-                            .withData("activeSessions", activeSessions.size())
-                            .withData("queueSize", requestQueue.size())
-                            .record();
+                        metricsService.recordOperation("reasoning-engine", "agent-reasoning").withSuccess(true)
+                                .withDuration(Duration.ofMillis(duration).toNanos()).withData("agentId", agentId)
+                                .withData("durationMs", duration).withData("activeSessions", activeSessions.size())
+                                .withData("queueSize", requestQueue.size()).record();
                     } catch (Exception e) {
                         logger.warn("Failed to record reasoning metrics for agent {}", agentId, e);
                     }
@@ -352,21 +348,17 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
 
             } catch (Exception e) {
                 long duration = System.currentTimeMillis() - startTime;
-                lastFailureTime.set(Instant.now());
-                lastError.set(e.getMessage());
+                lastFailureTime = Instant.now();
+                lastError = e.getMessage();
 
                 // Record failure metrics using centralized MetricsService
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("reasoning-engine", "agent-reasoning")
-                            .withSuccess(false)
-                            .withDuration(Duration.ofMillis(duration).toNanos())
-                            .withData("agentId", agentId)
-                            .withData("durationMs", duration)
-                            .withData("error", e.getMessage())
-                            .withData("activeSessions", activeSessions.size())
-                            .withData("queueSize", requestQueue.size())
-                            .record();
+                        metricsService.recordOperation("reasoning-engine", "agent-reasoning").withSuccess(false)
+                                .withDuration(Duration.ofMillis(duration).toNanos()).withData("agentId", agentId)
+                                .withData("durationMs", duration).withData("error", e.getMessage())
+                                .withData("activeSessions", activeSessions.size())
+                                .withData("queueSize", requestQueue.size()).record();
                     } catch (Exception metricsError) {
                         logger.warn("Failed to record reasoning failure metrics for agent {}", agentId, metricsError);
                     }
@@ -386,7 +378,7 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
             Map<String, Object> context, Map<String, Object> optimizationHints, @Nullable ModelParameters parameters) {
         return CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
-            lastRequestTime.set(Instant.now());
+            lastRequestTime = Instant.now();
 
             try {
                 // Validate agent registration
@@ -405,19 +397,16 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
 
                 // Update statistics using centralized MetricsService
                 long duration = System.currentTimeMillis() - startTime;
-                lastSuccessTime.set(Instant.now());
-                
+                lastSuccessTime = Instant.now();
+
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("reasoning-engine", "optimized-reasoning")
-                            .withSuccess(true)
-                            .withDuration(Duration.ofMillis(duration).toNanos())
-                            .withData("agentId", agentId)
-                            .withData("durationMs", duration)
-                            .withData("optimizationHints", optimizationHints.size())
-                            .withData("activeSessions", activeSessions.size())
-                            .withData("queueSize", requestQueue.size())
-                            .record();
+                        metricsService.recordOperation("reasoning-engine", "optimized-reasoning").withSuccess(true)
+                                .withDuration(Duration.ofMillis(duration).toNanos()).withData("agentId", agentId)
+                                .withData("durationMs", duration)
+                                .withData("optimizationHints", optimizationHints.size())
+                                .withData("activeSessions", activeSessions.size())
+                                .withData("queueSize", requestQueue.size()).record();
                     } catch (Exception e) {
                         logger.warn("Failed to record optimized reasoning metrics for agent {}", agentId, e);
                     }
@@ -432,24 +421,21 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
 
             } catch (Exception e) {
                 long duration = System.currentTimeMillis() - startTime;
-                lastFailureTime.set(Instant.now());
-                lastError.set(e.getMessage());
+                lastFailureTime = Instant.now();
+                lastError = e.getMessage();
 
                 // Record failure metrics using centralized MetricsService
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("reasoning-engine", "optimized-reasoning")
-                            .withSuccess(false)
-                            .withDuration(Duration.ofMillis(duration).toNanos())
-                            .withData("agentId", agentId)
-                            .withData("durationMs", duration)
-                            .withData("error", e.getMessage())
-                            .withData("optimizationHints", optimizationHints.size())
-                            .withData("activeSessions", activeSessions.size())
-                            .withData("queueSize", requestQueue.size())
-                            .record();
+                        metricsService.recordOperation("reasoning-engine", "optimized-reasoning").withSuccess(false)
+                                .withDuration(Duration.ofMillis(duration).toNanos()).withData("agentId", agentId)
+                                .withData("durationMs", duration).withData("error", e.getMessage())
+                                .withData("optimizationHints", optimizationHints.size())
+                                .withData("activeSessions", activeSessions.size())
+                                .withData("queueSize", requestQueue.size()).record();
                     } catch (Exception metricsError) {
-                        logger.warn("Failed to record optimized reasoning failure metrics for agent {}", agentId, metricsError);
+                        logger.warn("Failed to record optimized reasoning failure metrics for agent {}", agentId,
+                                metricsError);
                     }
                 }
 
@@ -516,18 +502,54 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
 
     @Override
     public AgentBehaviorStatistics getAgentStatistics(String agentId) {
-        // Create AgentBehaviorStatistics from agent data
+        // Create AgentBehaviorStatistics from MetricsService data for the specific agent
+        if (metricsService != null) {
+            try {
+                var snapshot = metricsService.getSnapshot(MetricKeys.execution("agent-reasoning-" + agentId),
+                        ExecutionMetricsSnapshot.class);
+                if (snapshot != null) {
+                    // TODO: Convert ExecutionMetricsSnapshot to AgentTaskSnapshot for proper integration
+                    logger.debug("Retrieved metrics for agent {} - total: {}, success: {}, failure: {}", agentId,
+                            snapshot.total(), snapshot.success(), snapshot.failure());
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to retrieve agent statistics for {} from MetricsService", agentId, e);
+            }
+        }
+
+        // For now, return empty statistics - will be enhanced when AgentTaskSnapshot integration is available
         return AgentBehaviorStatistics.fromSnapshots(List.of(), Duration.ofDays(1));
     }
 
     @Override
     public SystemAggregatedStatistics getOverallStatistics() {
-        // Create SystemAggregatedStatistics from overall data
+        // Create SystemAggregatedStatistics from MetricsService data
+        long totalRequests = 0L;
+        long successfulRequests = 0L;
+        long failedRequests = 0L;
+        long totalResponseTimeNanos = 0L;
+
+        if (metricsService != null) {
+            try {
+                var snapshot = metricsService.getSnapshot(MetricKeys.execution("agent-reasoning"),
+                        ExecutionMetricsSnapshot.class);
+                if (snapshot != null) {
+                    totalRequests = snapshot.total();
+                    successfulRequests = snapshot.success();
+                    failedRequests = snapshot.failure();
+                    totalResponseTimeNanos = snapshot.totalDurationNanos();
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to retrieve reasoning engine statistics from MetricsService", e);
+                // Fall back to basic data
+            }
+        }
+
         return SystemAggregatedStatistics.fromSystemData(List.of(), // agentStatistics list
-                requestCounter.get(), // totalRequests
-                requestCounter.get(), // successfulRequests
-                requestCounter.get(), // failedRequests
-                requestCounter.get() * 1_000_000L, // totalResponseTimeMs (nanoseconds)
+                totalRequests, // totalRequests
+                successfulRequests, // successfulRequests
+                failedRequests, // failedRequests
+                totalResponseTimeNanos, // totalResponseTimeMs (nanoseconds)
                 0L, // totalAgentTokens
                 0.0, // totalAgentCost
                 null, // trackingStats
@@ -716,15 +738,11 @@ public class SharedModelReasoningEngine implements AgentModelIntegrationService,
         // Update agent-specific statistics using centralized MetricsService
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("reasoning-engine", "agent-statistics")
-                    .withSuccess(success)
-                    .withDuration(Duration.ofMillis(responseTimeMs).toNanos())
-                    .withData("agentId", agentId)
-                    .withData("responseTimeMs", responseTimeMs)
-                    .withData("error", error != null ? error : "")
-                    .withData("registeredAgents", registeredAgents.size())
-                    .withData("activeSessions", activeSessions.size())
-                    .record();
+                metricsService.recordOperation("reasoning-engine", "agent-statistics").withSuccess(success)
+                        .withDuration(Duration.ofMillis(responseTimeMs).toNanos()).withData("agentId", agentId)
+                        .withData("responseTimeMs", responseTimeMs).withData("error", error != null ? error : "")
+                        .withData("registeredAgents", registeredAgents.size())
+                        .withData("activeSessions", activeSessions.size()).record();
             } catch (Exception e) {
                 logger.warn("Failed to record agent statistics for agent {}", agentId, e);
             }

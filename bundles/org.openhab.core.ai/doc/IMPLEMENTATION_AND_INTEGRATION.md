@@ -609,15 +609,12 @@ public class PerformanceTracker {
     }
     
     // Statistical analysis
-    public ExecutionStatistics getExecutionStatistics(String actionId) {
-        List<Long> times = executionMetrics.get(actionId);
-        return ExecutionStatistics.builder()
-            .averageTime(calculateAverage(times))
-            .medianTime(calculateMedian(times))
-            .percentile95(calculatePercentile(times, 0.95))
-            .totalExecutions(times.size())
-            .build();
-    }
+    // Statistics retrieval replaced with MetricsService pattern:
+    // ExecutionStatistics stats = metricsService.getStatistics(
+    //     MetricKeys.custom("action-execution", Map.of("actionId", actionId)),
+    //     ExecutionStatistics.class,
+    //     Duration.ofHours(24)
+    // );
 }
 ```
 

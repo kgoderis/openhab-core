@@ -109,10 +109,7 @@ public interface IntegrationMetrics {
      * @return average response time in milliseconds, or 0.0 if no data
      */
     default double averageIntegrationResponseTime() {
-        return integrationResponseTimes().values().stream()
-                .mapToDouble(Double::doubleValue)
-                .average()
-                .orElse(0.0);
+        return integrationResponseTimes().values().stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
     }
 
     /**
@@ -121,9 +118,7 @@ public interface IntegrationMetrics {
      * @return slowest service name, or null if no data
      */
     default String getSlowestIntegrationService() {
-        return integrationResponseTimes().entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
+        return integrationResponseTimes().entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
                 .orElse(null);
     }
 
@@ -133,9 +128,7 @@ public interface IntegrationMetrics {
      * @return fastest service name, or null if no data
      */
     default String getFastestIntegrationService() {
-        return integrationResponseTimes().entrySet().stream()
-                .min(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
+        return integrationResponseTimes().entrySet().stream().min(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
                 .orElse(null);
     }
 
@@ -145,9 +138,7 @@ public interface IntegrationMetrics {
      * @return service with highest error rate, or null if no data
      */
     default String getMostProblematicIntegrationService() {
-        return integrationErrorRates().entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
+        return integrationErrorRates().entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
                 .orElse(null);
     }
 

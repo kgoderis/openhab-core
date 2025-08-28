@@ -49,7 +49,7 @@ public class DefaultValidationService implements ValidationService {
     public ToolValidationResult validateConfiguration(Map<String, Object> configuration) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             if (configuration == null) {
                 return ToolValidationResult.invalid(List.of("Configuration cannot be null"));
@@ -81,7 +81,7 @@ public class DefaultValidationService implements ValidationService {
     public ToolValidationResult validateParameters(Map<String, Object> parameters) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             if (parameters == null) {
                 return ToolValidationResult.invalid(List.of("Parameters cannot be null"));
@@ -113,7 +113,7 @@ public class DefaultValidationService implements ValidationService {
     public ToolValidationResult validateSchema(Map<String, Object> schema) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             if (schema == null) {
                 return ToolValidationResult.invalid(List.of("Schema cannot be null"));
@@ -146,7 +146,7 @@ public class DefaultValidationService implements ValidationService {
         long startTime = System.nanoTime();
         boolean success = false;
         boolean isValid = false;
-        
+
         try {
             if (toolId == null || toolId.trim().isEmpty()) {
                 return false;
@@ -201,7 +201,7 @@ public class DefaultValidationService implements ValidationService {
     public Map<String, Object> getValidationRules(String toolType) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             Map<String, Object> rules = new HashMap<>();
 
@@ -230,7 +230,7 @@ public class DefaultValidationService implements ValidationService {
     public void addListener(ValidationListener listener) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             if (listener != null) {
                 listeners.add(listener);
@@ -250,7 +250,7 @@ public class DefaultValidationService implements ValidationService {
     public void removeListener(ValidationListener listener) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             listeners.remove(listener);
             success = true;
@@ -269,7 +269,7 @@ public class DefaultValidationService implements ValidationService {
     public void addValidationRules(String toolType, Map<String, Object> rules) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             validationRules.put(toolType, rules);
             success = true;
@@ -285,7 +285,7 @@ public class DefaultValidationService implements ValidationService {
     public void clearCache() {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             validationCache.clear();
             success = true;
@@ -301,7 +301,7 @@ public class DefaultValidationService implements ValidationService {
     private void initializeDefaultRules() {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             // Common validation rules
             Map<String, Object> commonRules = new HashMap<>();
@@ -319,7 +319,7 @@ public class DefaultValidationService implements ValidationService {
             toolRules.put("requiredFields", List.of("name", "description", "version"));
 
             validationRules.put("tool", toolRules);
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -337,7 +337,7 @@ public class DefaultValidationService implements ValidationService {
     private void validateRequiredFields(Map<String, Object> configuration, List<String> errors, List<String> warnings) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             List<String> requiredFields = List.of("name", "description", "version");
 
@@ -346,7 +346,7 @@ public class DefaultValidationService implements ValidationService {
                     errors.add("Required field '" + field + "' is missing");
                 }
             }
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -364,7 +364,7 @@ public class DefaultValidationService implements ValidationService {
     private void validateFieldTypes(Map<String, Object> configuration, List<String> errors, List<String> warnings) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             for (Map.Entry<String, Object> entry : configuration.entrySet()) {
                 String key = entry.getKey();
@@ -394,7 +394,7 @@ public class DefaultValidationService implements ValidationService {
                         break;
                 }
             }
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -413,7 +413,7 @@ public class DefaultValidationService implements ValidationService {
             List<String> warnings) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             // Validate string length constraints
             Object name = configuration.get("name");
@@ -434,7 +434,7 @@ public class DefaultValidationService implements ValidationService {
                     errors.add("Field 'timeout' must be between 0 and 3600 seconds");
                 }
             }
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -452,7 +452,7 @@ public class DefaultValidationService implements ValidationService {
     private void validateParameterTypes(Map<String, Object> parameters, List<String> errors, List<String> warnings) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             for (Map.Entry<String, Object> entry : parameters.entrySet()) {
                 String key = entry.getKey();
@@ -465,7 +465,7 @@ public class DefaultValidationService implements ValidationService {
                     }
                 }
             }
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -484,7 +484,7 @@ public class DefaultValidationService implements ValidationService {
             List<String> warnings) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             // Implement parameter constraint validation
             for (Map.Entry<String, Object> entry : parameters.entrySet()) {
@@ -509,11 +509,12 @@ public class DefaultValidationService implements ValidationService {
                 } else if (value instanceof Map) {
                     Map<?, ?> mapValue = (Map<?, ?>) value;
                     if (mapValue.size() > 50) {
-                        warnings.add("Parameter '" + key + "' has large object size (" + mapValue.size() + " properties)");
+                        warnings.add(
+                                "Parameter '" + key + "' has large object size (" + mapValue.size() + " properties)");
                     }
                 }
             }
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -532,7 +533,7 @@ public class DefaultValidationService implements ValidationService {
             List<String> warnings) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             // Implement parameter dependency validation
 
@@ -564,7 +565,7 @@ public class DefaultValidationService implements ValidationService {
                     }
                 }
             }
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -582,7 +583,7 @@ public class DefaultValidationService implements ValidationService {
     private void validateSchemaStructure(Map<String, Object> schema, List<String> errors, List<String> warnings) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             // Implement schema structure validation
 
@@ -614,7 +615,7 @@ public class DefaultValidationService implements ValidationService {
                     warnings.add("Schema version may not be compatible with JSON Schema standard");
                 }
             }
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -632,7 +633,7 @@ public class DefaultValidationService implements ValidationService {
     private void validateSchemaTypes(Map<String, Object> schema, List<String> errors, List<String> warnings) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             // Implement schema type validation
 
@@ -679,7 +680,7 @@ public class DefaultValidationService implements ValidationService {
                     errors.add("Schema has 'minimum' constraint but type is not numeric");
                 }
             }
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -697,7 +698,7 @@ public class DefaultValidationService implements ValidationService {
     private void validateSchemaConstraints(Map<String, Object> schema, List<String> errors, List<String> warnings) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             // Implement schema constraint validation
 
@@ -745,7 +746,7 @@ public class DefaultValidationService implements ValidationService {
             if (enumValues != null && constValue != null) {
                 warnings.add("Schema has both 'enum' and 'const' constraints - 'const' will override 'enum'");
             }
-            
+
             success = true;
         } finally {
             long duration = System.nanoTime() - startTime;
@@ -766,7 +767,7 @@ public class DefaultValidationService implements ValidationService {
     private Map<String, Object> loadToolConfiguration(String toolId) {
         long startTime = System.nanoTime();
         boolean success = false;
-        
+
         try {
             // In a real implementation, this would load from a configuration store
             // For now, return a basic configuration
@@ -803,14 +804,12 @@ public class DefaultValidationService implements ValidationService {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                metrics.recordOperation("validation", validationType)
-                    .withSuccess(success)
-                    .withDuration(durationNanos)
-                    .withData("validationType", validationType)
-                    .withData("durationMs", Duration.ofNanos(durationNanos).toMillis())
-                    .record();
+                metrics.recordOperation("validation", validationType).withSuccess(success).withDuration(durationNanos)
+                        .withData("validationType", validationType)
+                        .withData("durationMs", Duration.ofNanos(durationNanos).toMillis()).record();
             } catch (Exception e) {
-                System.err.println("Failed to record validation metrics for type " + validationType + ": " + e.getMessage());
+                System.err.println(
+                        "Failed to record validation metrics for type " + validationType + ": " + e.getMessage());
                 // Graceful degradation: continue with validation even if metrics recording fails
             }
         }
@@ -826,7 +825,7 @@ public class DefaultValidationService implements ValidationService {
         long startTime = System.nanoTime();
         boolean success = false;
         boolean isValid = false;
-        
+
         try {
             // Check for required permissions
             if (!permissions.containsKey("read")) {

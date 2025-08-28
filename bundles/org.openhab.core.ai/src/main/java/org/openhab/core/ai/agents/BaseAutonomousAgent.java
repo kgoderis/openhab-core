@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -21,11 +22,9 @@ import org.openhab.core.ai.agent.core.AgentState;
 import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.common.context.AgentContext;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import java.util.Map;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
 import org.openhab.core.ai.reasoning.input.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
@@ -574,24 +573,33 @@ public abstract class BaseAutonomousAgent {
         // Record metrics using MetricsService with builder pattern
         MetricsService metrics = metricsService;
         if (metrics != null) {
-            metrics.recordOperation("agent", "skill-execution")
-                .withSuccess(result.isSuccess())
-                .withDuration(duration.toNanos())
-                .withData("agentId", getAgentId())
-                .withData("skillName", skillName)
-                .withData("executionTimeMs", duration.toMillis())
-                .withData("errorMessage", result.getErrorMessage() != null ? result.getErrorMessage() : "null")
-                .record();
+            try {
+                metrics.recordOperation("agent", "skill-execution").withSuccess(result.isSuccess())
+                        .withDuration(duration.toNanos()).withData("agentId", getAgentId())
+                        .withData("skillName", skillName).withData("executionTimeMs", duration.toMillis())
+                        .withData("errorMessage", result.getErrorMessage() != null ? result.getErrorMessage() : "null")
+                        .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record skill execution metrics for agent {} skill {}: {}", getAgentId(),
+                        skillName, e.getMessage());
+                // Graceful degradation: continue with skill execution even if metrics recording fails
+            }
         }
 
         totalProcessingTime.addAndGet(duration.toMillis());
 
         // Record analytics if available
         if (analytics != null) {
-            analytics.recordPerformanceMetric(getAgentId(), skillName, duration, result.isSuccess());
-            if (!result.isSuccess()) {
-                analytics.recordError(getAgentId(), skillName, result.getErrorMessage(),
-                        new RuntimeException(result.getErrorMessage()));
+            try {
+                analytics.recordPerformanceMetric(getAgentId(), skillName, duration, result.isSuccess());
+                if (!result.isSuccess()) {
+                    analytics.recordError(getAgentId(), skillName, result.getErrorMessage(),
+                            new RuntimeException(result.getErrorMessage()));
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to record analytics for agent {} skill {}: {}", getAgentId(), skillName,
+                        e.getMessage());
+                // Graceful degradation: continue with skill execution even if analytics recording fails
             }
         }
     }
@@ -724,14 +732,19 @@ public abstract class BaseAutonomousAgent {
         if (metrics != null) {
             try {
                 MetricKey agentKey = MetricKeys.custom("agent", Map.of(), Set.of("counts", "latency"));
-        var snapshot = metrics.getSnapshot(agentKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                var snapshot = metrics.getSnapshot(agentKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
                 if (snapshot != null) {
                     totalSkillsExecuted = snapshot.getLong("total");
                     totalSkillsSucceeded = snapshot.getLong("total") - snapshot.getLong("failure");
                     totalSkillsFailed = snapshot.getLong("failure");
                 }
             } catch (Exception e) {
-                logger.warn("Error retrieving metrics for agent {}: {}", getAgentId(), e.getMessage());
+                logger.warn("Failed to retrieve agent metrics for agent {}: {}", getAgentId(), e.getMessage());
+                // Graceful degradation: return default values if metrics retrieval fails
+                totalSkillsExecuted = 0;
+                totalSkillsSucceeded = 0;
+                totalSkillsFailed = 0;
             }
         } else {
             logger.warn("MetricsService not available, returning empty metrics for agent {}", getAgentId());

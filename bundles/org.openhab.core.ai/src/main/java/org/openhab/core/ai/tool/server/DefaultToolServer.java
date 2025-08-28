@@ -709,7 +709,8 @@ public class DefaultToolServer implements ToolServer {
                 metrics.recordOperation("tool-server-transport", operation, success,
                         java.time.Duration.ofNanos(durationNanos));
             } catch (Exception e) {
-                logger.warn("Failed to record tool server transport metrics for operation {}: {}", operation, e.getMessage());
+                logger.warn("Failed to record tool server transport metrics for operation {}: {}", operation,
+                        e.getMessage());
                 // Graceful degradation: continue with transport operations even if metrics recording fails
             }
         } else {

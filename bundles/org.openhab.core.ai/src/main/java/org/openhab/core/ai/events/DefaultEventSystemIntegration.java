@@ -13,7 +13,6 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.context.ReasoningContext;
 import org.openhab.core.ai.common.events.EventFilter;
 import org.openhab.core.ai.common.events.EventRouter;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
@@ -543,16 +542,17 @@ public class DefaultEventSystemIntegration implements EventSubscriber {
         if (metrics != null) {
             try {
                 MetricKey eventsKey = MetricKeys.custom("events", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metrics.getSnapshot(eventsKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                
+                var snapshot = metrics.getSnapshot(eventsKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+
                 if (snapshot != null) {
                     long totalOperations = snapshot.getLong("total");
                     long successfulOperations = snapshot.getLong("success");
                     long failedOperations = snapshot.getLong("failure");
                     long totalDurationNanos = snapshot.getLong("totalDurationNanos");
-                    
-                    return new EventProcessingStatistics(totalOperations, successfulOperations,
-                            failedOperations, totalDurationNanos / 1_000_000, // Convert to milliseconds
+
+                    return new EventProcessingStatistics(totalOperations, successfulOperations, failedOperations,
+                            totalDurationNanos / 1_000_000, // Convert to milliseconds
                             0L, // reasoningTriggers - would need separate domain
                             0L, // reasoningExecutions - would need separate domain
                             enableEventProcessing.get(), enableEventPersistence.get(), enableReasoningIntegration.get(),

@@ -7,10 +7,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.tool.prompts.api.PromptRegistry;
 import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
 import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -75,29 +75,23 @@ public class PromptTemplateService {
             // Record template request metrics
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("prompt_template", "request")
-                        .withSuccess(true)
-                        .withDuration(0L)
-                        .withData("templateCount", templates.size())
-                        .record();
+                    metricsService.recordOperation("prompt_template", "request").withSuccess(true).withDuration(0L)
+                            .withData("templateCount", templates.size()).record();
                 } catch (Exception e) {
                     logger.warn("Failed to record prompt template request metrics: {}", e.getMessage());
                     // Graceful degradation: continue with template listing even if metrics recording fails
                 }
             }
-            
+
             return Map.copyOf(templates);
         } finally {
             long duration = System.currentTimeMillis() - start;
             // Record template completion metrics
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("prompt_template", "completion")
-                        .withSuccess(true)
-                        .withDuration(Duration.ofMillis(duration).toNanos())
-                        .withData("templateCount", templates.size())
-                        .withData("durationMs", duration)
-                        .record();
+                    metricsService.recordOperation("prompt_template", "completion").withSuccess(true)
+                            .withDuration(Duration.ofMillis(duration).toNanos())
+                            .withData("templateCount", templates.size()).withData("durationMs", duration).record();
                 } catch (Exception e) {
                     logger.warn("Failed to record prompt template completion metrics: {}", e.getMessage());
                     // Graceful degradation: continue with template listing even if metrics recording fails

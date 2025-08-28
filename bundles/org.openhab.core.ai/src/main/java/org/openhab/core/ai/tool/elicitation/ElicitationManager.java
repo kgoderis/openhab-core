@@ -4,14 +4,13 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.tool.elicitation.input.ElicitationRequest;
 import org.openhab.core.ai.tool.elicitation.input.ElicitationResult;
 import org.openhab.core.ai.tool.elicitation.input.ElicitationStatus;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -72,14 +71,11 @@ public class ElicitationManager implements ElicitationService {
     @Override
     public CompletableFuture<ElicitationResult> requestInput(ElicitationRequest request) {
         try {
-            metricsService.recordOperation("elicitation", "request")
-                .withSuccess(true)
-                .withDuration(0L)
-                .withData("requestId", request.getId())
-                .withData("requestType", request.getType().name())
-                .record();
+            metricsService.recordOperation("elicitation", "request").withSuccess(true).withDuration(0L)
+                    .withData("requestId", request.getId()).withData("requestType", request.getType().name()).record();
         } catch (Exception e) {
-            LOGGER.warn("Failed to record elicitation request metrics for request {}: {}", request.getId(), e.getMessage());
+            LOGGER.warn("Failed to record elicitation request metrics for request {}: {}", request.getId(),
+                    e.getMessage());
             // Graceful degradation: continue with request processing even if metrics recording fails
         }
         long startTime = System.currentTimeMillis();
@@ -109,13 +105,10 @@ public class ElicitationManager implements ElicitationService {
 
         } catch (Exception e) {
             LOGGER.error("Error creating elicitation request: {}", request.getId(), e);
-            metricsService.recordOperation("elicitation", "error")
-                .withSuccess(false)
-                .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
-                .withData("requestId", request.getId())
-                .withData("exceptionType", e.getClass().getSimpleName())
-                .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
-                .record();
+            metricsService.recordOperation("elicitation", "error").withSuccess(false)
+                    .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                    .withData("requestId", request.getId()).withData("exceptionType", e.getClass().getSimpleName())
+                    .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error").record();
             return CompletableFuture.failedFuture(e);
         }
     }
@@ -201,9 +194,9 @@ public class ElicitationManager implements ElicitationService {
         metrics.put("pendingRequests", pendingRequests.size());
         // metrics.put("totalResponseTimeMs", totalResponseTimeMs.get()); // Removed AtomicLong
         // metrics.put("averageResponseTimeMs", // Removed AtomicLong
-        //         totalRequests.get() > 0 ? totalResponseTimeMs.get() / totalRequests.get() : 0);
+        // totalRequests.get() > 0 ? totalResponseTimeMs.get() / totalRequests.get() : 0);
         // metrics.put("completionRate", // Removed AtomicLong
-        //         totalRequests.get() > 0 ? (double) completedRequests.get() / totalRequests.get() : 0.0);
+        // totalRequests.get() > 0 ? (double) completedRequests.get() / totalRequests.get() : 0.0);
         return metrics;
     }
 

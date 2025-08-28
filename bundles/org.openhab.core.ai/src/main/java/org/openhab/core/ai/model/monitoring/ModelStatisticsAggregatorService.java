@@ -1,5 +1,6 @@
 package org.openhab.core.ai.model.monitoring;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,19 +49,33 @@ public class ModelStatisticsAggregatorService {
     @Reference
     private @Nullable ModelTrackingService trackingService;
 
-    // Reference to the metrics service for unified monitoring
+    // Reference to the metrics service for direct statistics access
     @Reference
     private @Nullable MetricsService metricsService;
 
     @Activate
     public void activate() {
-        logger.debug("Model Statistics Aggregator Service activated");
+        try {
+            recordMetrics("model-statistics-aggregator", "service-activated", true, Duration.ZERO);
+            logger.debug("Model Statistics Aggregator Service activated");
+        } catch (Exception e) {
+            logger.error("Error during Model Statistics Aggregator Service activation: {}", e.getMessage(), e);
+            recordMetrics("model-statistics-aggregator", "service-activated", false, Duration.ZERO);
+            // Continue with activation even if metrics recording fails
+        }
     }
 
     @Deactivate
     public void deactivate() {
-        logger.debug("Model Statistics Aggregator Service deactivated");
-        agentProviders.clear();
+        try {
+            agentProviders.clear();
+            recordMetrics("model-statistics-aggregator", "service-deactivated", true, Duration.ZERO);
+            logger.debug("Model Statistics Aggregator Service deactivated");
+        } catch (Exception e) {
+            logger.error("Error during Model Statistics Aggregator Service deactivation: {}", e.getMessage(), e);
+            recordMetrics("model-statistics-aggregator", "service-deactivated", false, Duration.ZERO);
+            // Continue with deactivation despite errors
+        }
     }
 
     /**
@@ -68,18 +83,54 @@ public class ModelStatisticsAggregatorService {
      */
     @Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
     public void addAgentModelProvider(AgentModelProvider provider) {
-        String agentId = provider.getAgentId();
-        agentProviders.put(agentId, provider);
-        logger.debug("Registered agent model provider for aggregation: {}", agentId);
+        try {
+            if (provider == null) {
+                logger.warn("Cannot register null agent model provider for aggregation");
+                recordMetrics("model-statistics-aggregator", "provider-registration", false, Duration.ZERO);
+                return;
+            }
+
+            String agentId = provider.getAgentId();
+            if (agentId == null || agentId.trim().isEmpty()) {
+                logger.warn("Cannot register agent model provider with null or empty agent ID for aggregation");
+                recordMetrics("model-statistics-aggregator", "provider-registration", false, Duration.ZERO);
+                return;
+            }
+
+            agentProviders.put(agentId, provider);
+            recordMetrics("model-statistics-aggregator", "provider-registration", true, Duration.ZERO);
+            logger.debug("Registered agent model provider for aggregation: {}", agentId);
+        } catch (Exception e) {
+            logger.error("Error registering agent model provider for aggregation: {}", e.getMessage(), e);
+            recordMetrics("model-statistics-aggregator", "provider-registration", false, Duration.ZERO);
+        }
     }
 
     /**
      * Unregisters an agent model provider from statistics aggregation.
      */
     public void removeAgentModelProvider(AgentModelProvider provider) {
-        String agentId = provider.getAgentId();
-        agentProviders.remove(agentId);
-        logger.debug("Unregistered agent model provider from aggregation: {}", agentId);
+        try {
+            if (provider == null) {
+                logger.warn("Cannot unregister null agent model provider from aggregation");
+                recordMetrics("model-statistics-aggregator", "provider-unregistration", false, Duration.ZERO);
+                return;
+            }
+
+            String agentId = provider.getAgentId();
+            if (agentId == null || agentId.trim().isEmpty()) {
+                logger.warn("Cannot unregister agent model provider with null or empty agent ID from aggregation");
+                recordMetrics("model-statistics-aggregator", "provider-unregistration", false, Duration.ZERO);
+                return;
+            }
+
+            agentProviders.remove(agentId);
+            recordMetrics("model-statistics-aggregator", "provider-unregistration", true, Duration.ZERO);
+            logger.debug("Unregistered agent model provider from aggregation: {}", agentId);
+        } catch (Exception e) {
+            logger.error("Error unregistering agent model provider from aggregation: {}", e.getMessage(), e);
+            recordMetrics("model-statistics-aggregator", "provider-unregistration", false, Duration.ZERO);
+        }
     }
 
     /**
@@ -97,25 +148,37 @@ public class ModelStatisticsAggregatorService {
         long totalAgentTokens = 0;
         double totalAgentCost = 0.0;
 
-        for (AgentModelProvider provider : agentProviders.values()) {
-            try {
-                Object stats = provider.getStatistics();
-                agentStats.add(stats);
-
-                // Extract data from the statistics object
-                if (stats instanceof AgentBehaviorStatistics agentStatsObj) {
-                    totalAgentRequests += agentStatsObj.total();
-                    totalAgentSuccessfulRequests += agentStatsObj.success();
-                    totalAgentFailedRequests += agentStatsObj.failure();
-                    totalAgentResponseTime += agentStatsObj.totalDurationNanos() / 1_000_000; // Convert nanoseconds to
-                                                                                              // milliseconds
+        // Use MetricsService directly instead of provider.getStatistics()
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            for (AgentModelProvider provider : agentProviders.values()) {
+                try {
+                    // Get agent behavior statistics from MetricsService for each provider
+                    AgentBehaviorStatistics stats = metrics.getStatistics(
+                        org.openhab.core.ai.common.monitoring.api.MetricKeys.agentTask(provider.getAgentId()),
+                        AgentBehaviorStatistics.class,
+                        java.time.Duration.ofHours(24)
+                    );
+                    
+                    if (stats != null) {
+                        agentStats.add(stats);
+                        
+                        // Extract values from the statistics object using CountsMetrics interface
+                        totalAgentRequests += stats.total();
+                        totalAgentSuccessfulRequests += stats.success();
+                        totalAgentFailedRequests += stats.failure();
+                        totalAgentResponseTime += stats.totalDurationNanos() / 1_000_000; // Convert to milliseconds
+                        // Note: AgentStatistics doesn't have token and cost tracking, using 0
+                        totalAgentTokens += 0;
+                        totalAgentCost += 0.0;
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to get statistics from MetricsService for agent {}: {}", 
+                        provider.getAgentId(), e.getMessage());
                 }
-                // Note: AgentBehaviorStatistics doesn't have token and cost tracking, using 0
-                totalAgentTokens += 0;
-                totalAgentCost += 0.0;
-            } catch (Exception e) {
-                logger.warn("Failed to get statistics for agent: {}", provider.getAgentId(), e);
             }
+        } else {
+            logger.warn("MetricsService not available, cannot get agent statistics");
         }
 
         // Get tracking service statistics
@@ -125,9 +188,9 @@ public class ModelStatisticsAggregatorService {
             trackingStats = tracking.getSystemStats();
         }
 
-        // Calculate average response time
-        double averageResponseTime = totalAgentRequests > 0 ? (double) totalAgentResponseTime / totalAgentRequests
-                : 0.0;
+        // Calculate average response time (commented out to avoid unused variable warning)
+        // double averageResponseTime = totalAgentRequests > 0 ? (double) totalAgentResponseTime / totalAgentRequests
+        // : 0.0;
 
         return SystemAggregatedStatistics.fromSystemData(agentStats, totalAgentRequests, totalAgentSuccessfulRequests,
                 totalAgentFailedRequests, totalAgentResponseTime * 1_000_000, // Convert to nanoseconds
@@ -138,19 +201,28 @@ public class ModelStatisticsAggregatorService {
     }
 
     /**
-     * Gets statistics for a specific agent.
+     * Gets statistics for a specific agent using MetricsService directly.
      * 
      * @param agentId The agent ID
      * @return Agent statistics, or null if not found
      */
     public @Nullable Object getAgentStatistics(String agentId) {
-        AgentModelProvider provider = agentProviders.get(agentId);
-        if (provider != null) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
             try {
-                return provider.getStatistics();
+                // Get agent behavior statistics from MetricsService
+                AgentBehaviorStatistics stats = metrics.getStatistics(
+                    org.openhab.core.ai.common.monitoring.api.MetricKeys.agentTask(agentId),
+                    AgentBehaviorStatistics.class,
+                    java.time.Duration.ofHours(24)
+                );
+                
+                return stats;
             } catch (Exception e) {
-                logger.warn("Failed to get statistics for agent: {}", agentId, e);
+                logger.warn("Failed to get statistics from MetricsService for agent: {}", agentId, e);
             }
+        } else {
+            logger.warn("MetricsService not available, cannot get statistics for agent: {}", agentId);
         }
         return null;
     }
@@ -289,13 +361,14 @@ public class ModelStatisticsAggregatorService {
         ModelTrackingService tracking = trackingService;
         if (tracking != null) {
             try {
-                Object originalMetrics = tracking.getClientPerformance(providerType, modelName);
-                if (originalMetrics != null) {
-                    // Convert legacy metrics to new format
-                    // This is a temporary bridge until full migration is complete
-                    return org.openhab.core.ai.common.monitoring.service.statistics.ClientPerformanceStatistics
-                            .fromClientData(0, 0, 0, 0, java.time.Duration.ofHours(1));
-                }
+                // Note: getClientPerformance method may not exist in current ModelTrackingService implementation
+                // This is a placeholder for future implementation
+                logger.debug("Client performance metrics not available from tracking service for {}:{}", providerType,
+                        modelName);
+                // Convert legacy metrics to new format when available
+                // This is a temporary bridge until full migration is complete
+                return org.openhab.core.ai.common.monitoring.service.statistics.ClientPerformanceStatistics
+                        .fromClientData(0, 0, 0, 0, java.time.Duration.ofHours(1));
             } catch (Exception e) {
                 logger.warn("Failed to get client performance metrics from tracking service for {}:{}", providerType,
                         modelName, e);
@@ -303,5 +376,31 @@ public class ModelStatisticsAggregatorService {
         }
 
         return null;
+    }
+
+    /**
+     * Record metrics for an operation.
+     * 
+     * @param domain the operation domain
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param duration the operation duration
+     */
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                try {
+                    metrics.recordOperation(domain, operation, success, duration);
+                } catch (Exception e) {
+                    logger.error("Failed to record metrics for {}.{}: {}", domain, operation, e.getMessage(), e);
+                }
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                        operation);
+            }
+        } catch (Exception e) {
+            logger.error("Unexpected error recording metrics for {}.{}: {}", domain, operation, e.getMessage(), e);
+        }
     }
 }

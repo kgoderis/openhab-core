@@ -59,12 +59,9 @@ public interface SecurityManager {
      */
     void logViolation(String componentId, String violation, @Nullable Map<String, Object> context);
 
-    /**
-     * Get security statistics for this manager.
-     *
-     * @return security statistics
-     */
-    SecurityStatistics getStatistics();
+    // Eliminated getStatistics() method - consumers should access statistics directly via MetricsService
+    // Use: metricsService.getStatistics(MetricKeys.custom("security-monitoring", ...),
+    // SecurityMonitoringStatistics.class, duration)
 
     /**
      * Get the security manager type.

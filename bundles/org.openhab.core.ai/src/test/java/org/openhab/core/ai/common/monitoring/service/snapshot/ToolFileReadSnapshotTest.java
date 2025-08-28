@@ -41,7 +41,8 @@ class ToolFileReadSnapshotTest {
         // Given
         Counts counts = new Counts(100, 85, 15);
         Timing timing = new Timing(1000000000L);
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 2048000L, 20L);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 2048000L,
+                20L);
 
         // When & Then
         assertEquals(100, snapshot.total());
@@ -69,7 +70,8 @@ class ToolFileReadSnapshotTest {
         // Given
         Counts counts = new Counts(25, 25, 0);
         Timing timing = new Timing(500000000L);
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 512000L, 25L);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 512000L,
+                25L);
 
         // When & Then
         assertEquals(25, snapshot.total());
@@ -97,7 +99,8 @@ class ToolFileReadSnapshotTest {
         // Given
         Counts counts = new Counts(30, 28, 2);
         Timing timing = new Timing(1500000000L); // 1.5 seconds
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 1536000L, 30L);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 1536000L,
+                30L);
 
         // When & Then
         assertEquals(1500000000L, snapshot.totalDurationNanos());
@@ -110,7 +113,8 @@ class ToolFileReadSnapshotTest {
         // Given
         Counts counts = new Counts(5, 5, 0);
         Timing timing = new Timing(0L);
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 256000L, 5L);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 256000L,
+                5L);
 
         // When & Then
         assertEquals(0L, snapshot.totalDurationNanos());
@@ -137,7 +141,8 @@ class ToolFileReadSnapshotTest {
         Counts counts = new Counts(40, 38, 2);
         Timing timing = new Timing(2000000000L); // 2 seconds
         long totalBytesRead = 4096000L; // 4MB
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), totalBytesRead, 40L);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(),
+                totalBytesRead, 40L);
 
         // When & Then
         assertEquals(2048000.0, snapshot.throughputPerSecond(), 0.001); // 4MB / 2 seconds = 2MB/sec
@@ -163,7 +168,8 @@ class ToolFileReadSnapshotTest {
         // Given
         Counts counts = new Counts(0, 0, 0);
         Timing timing = new Timing(1000000000L);
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 1024000L, 0L);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 1024000L,
+                0L);
 
         // When & Then
         assertEquals(1024000.0, snapshot.throughputPerSecond(), 0.001); // 1MB / 1 second = 1MB/sec
@@ -176,7 +182,8 @@ class ToolFileReadSnapshotTest {
         // Given
         Counts counts = new Counts(5, 5, 0);
         Timing timing = new Timing(0L);
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 512000L, 5L);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 512000L,
+                5L);
 
         // When & Then
         assertEquals(0.0, snapshot.throughputPerSecond(), 0.001);
@@ -189,7 +196,8 @@ class ToolFileReadSnapshotTest {
         // Given
         Counts counts = new Counts(100, 95, 5);
         Timing timing = new Timing(5000000000L);
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 10240000L, 100L);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 10240000L,
+                100L);
 
         // When
         int maxConcurrent = snapshot.maxConcurrentExecutions();
@@ -203,7 +211,8 @@ class ToolFileReadSnapshotTest {
         // Given
         Counts counts = new Counts(3, 3, 0);
         Timing timing = new Timing(100000000L);
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 153600L, 3L);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), 153600L,
+                3L);
 
         // When
         int maxConcurrent = snapshot.maxConcurrentExecutions();
@@ -217,7 +226,8 @@ class ToolFileReadSnapshotTest {
         // Given
         Counts counts = new Counts(Long.MAX_VALUE, Long.MAX_VALUE - 1, 1);
         Timing timing = new Timing(Long.MAX_VALUE);
-        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(), Long.MAX_VALUE, Long.MAX_VALUE);
+        ToolFileReadSnapshot snapshot = new ToolFileReadSnapshot(counts, timing, System.currentTimeMillis(),
+                Long.MAX_VALUE, Long.MAX_VALUE);
 
         // When & Then
         assertEquals(Long.MAX_VALUE, snapshot.total());

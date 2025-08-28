@@ -337,19 +337,17 @@ public class AgentMessagingService {
      * 
      * @return Messaging statistics
      */
-    public MessagingStatistics getStatistics() {
-        MetricsService metrics = metricsService;
-        if (metrics == null) {
-            logger.warn("MetricsService not available, returning empty statistics");
-            return new MessagingStatistics(0, 0, 0, 0, 0, messageStore.size(), deliveryStatus.size(),
-                    acknowledgments.size(), topicSubscriptions.size());
-        }
-
-        // TODO: Implement proper metrics retrieval when domain-specific snapshots are available
-        // For now, return current state counts
-        return new MessagingStatistics(0, 0, 0, 0, 0, messageStore.size(), deliveryStatus.size(),
-                acknowledgments.size(), topicSubscriptions.size());
-    }
+    // Eliminated getStatistics() method after enhancing metric capture
+    // Consumers should use MetricsService directly to access messaging statistics:
+    // - State metrics: metricsService.getSnapshot(MetricKeys.custom("agent-messaging", Map.of("operation",
+    // "state-metrics")))
+    // - Throughput: metricsService.getSnapshot(MetricKeys.custom("agent-messaging", Map.of("operation", "throughput")))
+    // - Routing: metricsService.getSnapshot(MetricKeys.custom("agent-messaging", Map.of("operation", "routing")))
+    // - Security: metricsService.getSnapshot(MetricKeys.custom("agent-messaging", Map.of("operation", "security")))
+    // - Message delivery: metricsService.getSnapshot(MetricKeys.custom("agent-messaging", Map.of("operation",
+    // "message-delivery")))
+    // - Cleanup operations: metricsService.getSnapshot(MetricKeys.custom("agent-messaging", Map.of("operation",
+    // "cleanup")))
 
     /**
      * Register a message filter
@@ -493,6 +491,7 @@ public class AgentMessagingService {
 
     private void cleanupExpiredMessages() {
         Instant now = Instant.now();
+        int initialMessageCount = messageStore.size();
 
         // Remove expired messages
         messageStore.entrySet().removeIf(entry -> {
@@ -511,6 +510,15 @@ public class AgentMessagingService {
         deliveryStatus.entrySet().removeIf(entry -> !messageStore.containsKey(entry.getKey()));
         acknowledgments.entrySet().removeIf(entry -> !messageStore.containsKey(entry.getKey().split(":")[0]));
         retryInfo.entrySet().removeIf(entry -> !messageStore.containsKey(entry.getKey()));
+
+        // Record cleanup metrics and state metrics
+        int removedMessages = initialMessageCount - messageStore.size();
+        if (removedMessages > 0) {
+            recordMetrics("agent-messaging", "cleanup", true, Duration.ZERO);
+        }
+
+        // Record current messaging state metrics for monitoring
+        recordMessagingStateMetrics();
     }
 
     private void shutdownExecutor(ScheduledExecutorService executor) {
@@ -531,12 +539,82 @@ public class AgentMessagingService {
             try {
                 metrics.recordOperation(domain, operation, success, duration);
             } catch (Exception e) {
-                logger.warn("Failed to record agent messaging metrics for operation {} - {}: {}", domain, operation, e.getMessage());
+                logger.warn("Failed to record agent messaging metrics for operation {} - {}: {}", domain, operation,
+                        e.getMessage());
                 // Graceful degradation: continue with messaging operations even if metrics recording fails
             }
         } else {
             logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
                     operation);
+        }
+    }
+
+    /**
+     * Record messaging state metrics for comprehensive monitoring
+     */
+    public void recordMessagingStateMetrics() {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("agent-messaging", "state-metrics").withSuccess(true)
+                        .withData("messageStoreSize", messageStore.size())
+                        .withData("deliveryStatusCount", deliveryStatus.size())
+                        .withData("acknowledgmentCount", acknowledgments.size())
+                        .withData("topicSubscriptionCount", topicSubscriptions.size())
+                        .withData("pendingMessages",
+                                (int) deliveryStatus.values().stream().filter(s -> s == MessageDeliveryStatus.PENDING)
+                                        .count())
+                        .withData("deliveredMessages",
+                                (int) deliveryStatus.values().stream().filter(s -> s == MessageDeliveryStatus.DELIVERED)
+                                        .count())
+                        .withData("failedMessages", (int) deliveryStatus.values().stream()
+                                .filter(s -> s == MessageDeliveryStatus.FAILED).count())
+                        .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record messaging state metrics: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record message processing throughput metrics
+     */
+    public void recordThroughputMetrics(int messagesPerSecond, long totalMessagesProcessed) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("agent-messaging", "throughput").withSuccess(true)
+                        .withData("messagesPerSecond", messagesPerSecond)
+                        .withData("totalMessagesProcessed", totalMessagesProcessed).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record throughput metrics: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record message routing efficiency metrics
+     */
+    public void recordRoutingMetrics(String routingType, boolean success, long routingTimeMs) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("agent-messaging", "routing").withSuccess(success)
+                        .withData("routingType", routingType).withData("routingTimeMs", routingTimeMs).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record routing metrics for {}: {}", routingType, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record message security metrics
+     */
+    public void recordSecurityMetrics(String operation, boolean passed, String securityLevel) {
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("agent-messaging", "security").withSuccess(passed)
+                        .withData("securityOperation", operation).withData("securityLevel", securityLevel).record();
+            } catch (Exception e) {
+                logger.warn("Failed to record security metrics for {}: {}", operation, e.getMessage());
+            }
         }
     }
 

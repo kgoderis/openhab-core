@@ -6,13 +6,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
@@ -563,8 +563,9 @@ public class ProtocolSecurityFilter implements Filter {
         }
 
         MetricKey protocolSecurityKey = MetricKeys.custom("protocol-security", Map.of(), Set.of("counts", "latency"));
-        var snapshot = metrics.getSnapshot(protocolSecurityKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-        
+        var snapshot = metrics.getSnapshot(protocolSecurityKey,
+                org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+
         if (snapshot != null) {
             long totalOperations = snapshot.getLong("total");
             long failedOperations = snapshot.getLong("failure");

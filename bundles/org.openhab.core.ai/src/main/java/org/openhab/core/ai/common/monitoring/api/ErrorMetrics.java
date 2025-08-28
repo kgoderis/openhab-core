@@ -54,9 +54,7 @@ public interface ErrorMetrics {
      * @return most common error type, or null if no errors
      */
     default String mostCommonErrorType() {
-        return errorCountsByType().entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
+        return errorCountsByType().entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
                 .orElse(null);
     }
 

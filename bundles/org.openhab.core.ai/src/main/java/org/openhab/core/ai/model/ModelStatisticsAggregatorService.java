@@ -11,6 +11,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.api.AgentModelProvider;
 import org.openhab.core.ai.agent.core.AgentClientSession;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Activate;
@@ -44,6 +45,10 @@ public class ModelStatisticsAggregatorService {
     // Reference to the tracking service for system-wide data
     @Reference
     private @Nullable ModelTrackingService trackingService;
+
+    // Reference to the metrics service for direct statistics access
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     @Activate
     public void activate() {
@@ -90,26 +95,37 @@ public class ModelStatisticsAggregatorService {
         long totalAgentTokens = 0;
         double totalAgentCost = 0.0;
 
-        for (AgentModelProvider provider : agentProviders.values()) {
-            try {
-                Object stats = provider.getStatistics();
-                agentStats.add(stats);
-
-                // Extract values from the statistics object (assuming it's a Map)
-                if (stats instanceof Map) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> statsMap = (Map<String, Object>) stats;
-                    totalAgentRequests += (Long) statsMap.getOrDefault("totalRequests", 0L);
-                    totalAgentSuccessfulRequests += (Long) statsMap.getOrDefault("successfulRequests", 0L);
-                    totalAgentFailedRequests += (Long) statsMap.getOrDefault("failedRequests", 0L);
-                    totalAgentResponseTime += (Long) statsMap.getOrDefault("totalResponseTimeMs", 0L);
-                    // Note: AgentStatistics doesn't have token and cost tracking, using 0
-                    totalAgentTokens += 0;
-                    totalAgentCost += 0.0;
+        // Use MetricsService directly instead of provider.getStatistics()
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            for (AgentModelProvider provider : agentProviders.values()) {
+                try {
+                    // Get agent behavior statistics from MetricsService for each provider
+                    AgentBehaviorStatistics stats = metrics.getStatistics(
+                        org.openhab.core.ai.common.monitoring.api.MetricKeys.agentTask(provider.getAgentId()),
+                        AgentBehaviorStatistics.class,
+                        java.time.Duration.ofHours(24)
+                    );
+                    
+                    if (stats != null) {
+                        agentStats.add(stats);
+                        
+                        // Extract values from the statistics object using CountsMetrics interface
+                        totalAgentRequests += stats.total();
+                        totalAgentSuccessfulRequests += stats.success();
+                        totalAgentFailedRequests += stats.failure();
+                        totalAgentResponseTime += stats.totalDurationNanos() / 1_000_000; // Convert to milliseconds
+                        // Note: AgentStatistics doesn't have token and cost tracking, using 0
+                        totalAgentTokens += 0;
+                        totalAgentCost += 0.0;
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to get statistics from MetricsService for agent {}: {}", 
+                        provider.getAgentId(), e.getMessage());
                 }
-            } catch (Exception e) {
-                logger.warn("Failed to get statistics for agent: {}", provider.getAgentId(), e);
             }
+        } else {
+            logger.warn("MetricsService not available, cannot get agent statistics");
         }
 
         // Get tracking service statistics
@@ -136,19 +152,28 @@ public class ModelStatisticsAggregatorService {
     }
 
     /**
-     * Gets statistics for a specific agent.
+     * Gets statistics for a specific agent using MetricsService directly.
      * 
      * @param agentId The agent ID
      * @return Agent statistics, or null if not found
      */
     public @Nullable AgentBehaviorStatistics getAgentStatistics(String agentId) {
-        AgentModelProvider provider = agentProviders.get(agentId);
-        if (provider != null) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
             try {
-                return provider.getStatistics();
+                // Get agent behavior statistics from MetricsService
+                AgentBehaviorStatistics stats = metrics.getStatistics(
+                    org.openhab.core.ai.common.monitoring.api.MetricKeys.agentTask(agentId),
+                    AgentBehaviorStatistics.class,
+                    java.time.Duration.ofHours(24)
+                );
+                
+                return stats;
             } catch (Exception e) {
-                logger.warn("Failed to get statistics for agent: {}", agentId, e);
+                logger.warn("Failed to get statistics from MetricsService for agent: {}", agentId, e);
             }
+        } else {
+            logger.warn("MetricsService not available, cannot get statistics for agent: {}", agentId);
         }
         return null;
     }

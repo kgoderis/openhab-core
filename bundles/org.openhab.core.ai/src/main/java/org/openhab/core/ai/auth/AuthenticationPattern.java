@@ -1,7 +1,6 @@
 package org.openhab.core.ai.auth;
 
 import java.time.Duration;
-import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;

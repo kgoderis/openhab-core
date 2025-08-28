@@ -4,14 +4,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.persistence.PersistenceService;
 import org.openhab.core.persistence.PersistenceServiceRegistry;
@@ -103,33 +103,53 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
 
     @Activate
     public void activate() {
-        logger.debug("A2A OpenHAB Persistence Manager activated");
+        try {
+            logger.debug("A2A OpenHAB Persistence Manager activated");
 
-        // Register as a tracker
-        if (readyService != null) {
-            readyService.registerTracker(this);
+            // Register as a tracker
+            if (readyService != null) {
+                readyService.registerTracker(this);
+            } else {
+                logger.warn("ReadyService not available during activation");
+            }
+
+            // Initialize openHAB integration
+            initializeOpenHABIntegration();
+
+            recordMetrics("agent-persistence", "openhab-service-activated", true, 0L);
+        } catch (Exception e) {
+            logger.error("Error during A2A OpenHAB Persistence Manager activation: {}", e.getMessage(), e);
+            recordMetrics("agent-persistence", "openhab-service-activated", false, 0L);
+            // Continue with activation despite errors
         }
-
-        // Initialize openHAB integration
-        initializeOpenHABIntegration();
     }
 
     @Deactivate
     public void deactivate() {
-        logger.debug("A2A OpenHAB Persistence Manager deactivated");
+        try {
+            logger.debug("A2A OpenHAB Persistence Manager deactivated");
 
-        // Unregister tracker
-        if (readyService != null) {
-            readyService.unregisterTracker(this);
-        }
+            // Unregister tracker
+            if (readyService != null) {
+                readyService.unregisterTracker(this);
+            } else {
+                logger.warn("ReadyService not available during deactivation");
+            }
 
-        // Save all data before shutdown
-        saveAllData();
+            // Save all data before shutdown
+            saveAllData();
 
-        // Unmark ready markers
-        if (readyService != null) {
-            readyService.unmarkReady(AGENT_PERSISTENCE_OPENHAB_READY);
-            readyService.unmarkReady(AGENT_CONFIGURATION_OPENHAB_READY);
+            // Unmark ready markers
+            if (readyService != null) {
+                readyService.unmarkReady(AGENT_PERSISTENCE_OPENHAB_READY);
+                readyService.unmarkReady(AGENT_CONFIGURATION_OPENHAB_READY);
+            }
+
+            recordMetrics("agent-persistence", "openhab-service-deactivated", true, 0L);
+        } catch (Exception e) {
+            logger.error("Error during A2A OpenHAB Persistence Manager deactivation: {}", e.getMessage(), e);
+            recordMetrics("agent-persistence", "openhab-service-deactivated", false, 0L);
+            // Continue with deactivation despite errors
         }
     }
 
@@ -220,24 +240,48 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
     // Enhanced task persistence with openHAB StorageService
     public void saveTaskWithOpenHABStorage(Task task, TaskExecutionState executionState) {
         try {
-            tasks.put(task.getId(), task);
-            taskExecutionStates.put(task.getId(), executionState);
-            taskExecutionStartTimes.put(task.getId(), executionState.getStartTime());
-            taskExecutors.put(task.getId(), executionState.getExecutor());
+            if (task == null) {
+                logger.warn("Cannot save null task with OpenHAB StorageService");
+                recordMetrics("agent-persistence", "openhab-task-save", false, 0L);
+                return;
+            }
+
+            if (executionState == null) {
+                logger.warn("Cannot save task with null execution state using OpenHAB StorageService: {}",
+                        task.getId());
+                recordMetrics("agent-persistence", "openhab-task-save", false, 0L);
+                return;
+            }
+
+            String taskId = task.getId();
+            if (taskId == null || taskId.trim().isEmpty()) {
+                logger.warn("Cannot save task with null or empty ID using OpenHAB StorageService");
+                recordMetrics("agent-persistence", "openhab-task-save", false, 0L);
+                return;
+            }
+
+            tasks.put(taskId, task);
+            taskExecutionStates.put(taskId, executionState);
+            taskExecutionStartTimes.put(taskId, executionState.getStartTime());
+            taskExecutors.put(taskId, executionState.getExecutor());
 
             // Save to openHAB StorageService
             saveTaskToStorage(task);
             saveExecutionStateToStorage(executionState);
 
             // Record metrics for task creation
-            recordMetrics("agent-persistence", "openhab-integration", true, 0L);
+            recordMetrics("agent-persistence", "openhab-task-save", true, 0L);
 
             // Log task creation using SLF4J
-            logger.info("A2A Task created: id={}, action={}, executor={}", task.getId(),
-                    task.getMetadata().get("actionId"), executionState.getExecutor());
+            Map<String, Object> metadata = task.getMetadata();
+            Object actionId = metadata != null ? metadata.get("actionId") : null;
+            logger.info("A2A Task created: id={}, action={}, executor={}", taskId, actionId,
+                    executionState.getExecutor());
 
         } catch (Exception e) {
-            logger.error("Error saving task with OpenHAB StorageService: {}", task.getId(), e);
+            String taskId = task != null ? task.getId() : "null";
+            logger.error("Error saving task '{}' with OpenHAB StorageService: {}", taskId, e.getMessage(), e);
+            recordMetrics("agent-persistence", "openhab-task-save", false, 0L);
         }
     }
 
@@ -335,71 +379,6 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
         }
 
         return new HashMap<>();
-    }
-
-    // Enhanced statistics with openHAB StorageService
-    public Map<String, Object> getOpenHABStatistics() {
-        Map<String, Object> stats = new HashMap<>();
-
-        // Get metrics from MetricsService
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                MetricKey agentPersistenceKey = MetricKeys.custom("agent-persistence", Map.of(), Set.of("counts", "latency"));
-        var snapshot = metrics.getSnapshot(agentPersistenceKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                if (snapshot != null) {
-                    long totalOperations = snapshot.getLong("total");
-                    long failedOperations = snapshot.getLong("failure");
-                    long successfulOperations = totalOperations - failedOperations;
-                    
-                    stats.put("totalTasks", totalOperations);
-                    stats.put("completedTasks", successfulOperations);
-                    stats.put("failedTasks", failedOperations);
-                    stats.put("cancelledTasks", 0L); // Not tracked separately in current metrics
-                    stats.put("activeTasks", tasks.size());
-                    stats.put("totalExecutions", totalOperations);
-
-                    // Calculate success rate
-                    if (totalOperations > 0) {
-                        double successRate = (double) successfulOperations / totalOperations;
-                        stats.put("successRate", successRate);
-                    } else {
-                        stats.put("successRate", 0.0);
-                    }
-                }
-            } catch (Exception e) {
-                logger.warn("Error retrieving metrics for agent-persistence: {}", e.getMessage());
-                // Fallback to basic statistics
-                stats.put("totalTasks", 0L);
-                stats.put("completedTasks", 0L);
-                stats.put("failedTasks", 0L);
-                stats.put("cancelledTasks", 0L);
-                stats.put("activeTasks", tasks.size());
-                stats.put("totalExecutions", 0L);
-                stats.put("successRate", 0.0);
-            }
-        } else {
-            logger.warn("MetricsService not available, returning empty statistics");
-            // Fallback to basic statistics
-            stats.put("totalTasks", 0L);
-            stats.put("completedTasks", 0L);
-            stats.put("failedTasks", 0L);
-            stats.put("cancelledTasks", 0L);
-            stats.put("activeTasks", tasks.size());
-            stats.put("totalExecutions", 0L);
-            stats.put("successRate", 0.0);
-        }
-
-        // OpenHAB integration statistics
-        stats.put("openHABIntegration", true);
-        stats.put("persistenceService", primaryPersistenceService != null ? primaryPersistenceService.getId() : "none");
-        stats.put("queryablePersistence", queryablePersistenceService != null);
-        stats.put("storageService", "openHAB StorageService");
-
-        // Save statistics to StorageService
-        saveStatisticsToStorage(stats);
-
-        return stats;
     }
 
     /**
@@ -534,8 +513,44 @@ public class AgentOpenHABPersistenceManager implements ReadyTracker {
                 logger.warn("TaskStorage is not available, cannot save all tasks.");
             }
 
-            // Save statistics
-            getOpenHABStatistics();
+            // Save statistics with proper MetricsService recording
+            Map<String, Object> stats = new HashMap<>();
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                try {
+                    MetricKey agentPersistenceKey = MetricKeys.custom("agent-persistence", Map.of(),
+                            Set.of("counts", "latency"));
+                    var snapshot = metrics.getSnapshot(agentPersistenceKey,
+                            org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                    if (snapshot != null) {
+                        long totalOperations = snapshot.getLong("total");
+                        long failedOperations = snapshot.getLong("failure");
+                        long successfulOperations = totalOperations - failedOperations;
+
+                        stats.put("totalTasks", totalOperations);
+                        stats.put("completedTasks", successfulOperations);
+                        stats.put("failedTasks", failedOperations);
+                        stats.put("activeTasks", tasks.size());
+
+                        if (totalOperations > 0) {
+                            stats.put("successRate", (double) successfulOperations / totalOperations);
+                        } else {
+                            stats.put("successRate", 0.0);
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warn("Error retrieving metrics for openHAB statistics: {}", e.getMessage());
+                }
+            }
+
+            // OpenHAB integration statistics
+            stats.put("openHABIntegration", true);
+            stats.put("persistenceService",
+                    primaryPersistenceService != null ? primaryPersistenceService.getId() : "none");
+            stats.put("queryablePersistence", queryablePersistenceService != null);
+            stats.put("storageService", "openHAB StorageService");
+
+            saveStatisticsToStorage(stats);
 
             logger.info("Saved all A2A data to StorageService");
 

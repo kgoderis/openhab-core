@@ -5,19 +5,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MCP Compliance Validator implementation
@@ -276,17 +275,13 @@ public class ComplianceValidator {
     private ComplianceTestResult runTest(String testId, String category, String description,
             ComplianceTestFunction testFunction) {
         try {
-            metricsService.recordOperation("compliance_test", "total")
-                .withSuccess(true)
-                .withDuration(0L)
-                .withData("testId", testId)
-                .withData("category", category)
-                .record();
+            metricsService.recordOperation("compliance_test", "total").withSuccess(true).withDuration(0L)
+                    .withData("testId", testId).withData("category", category).record();
         } catch (Exception e) {
             LOGGER.warn("Failed to record compliance test total metrics for test {}: {}", testId, e.getMessage());
             // Graceful degradation: continue with test execution even if metrics recording fails
         }
-        
+
         long startTime = System.currentTimeMillis();
 
         try {
@@ -294,28 +289,24 @@ public class ComplianceValidator {
 
             if (passed) {
                 try {
-                    metricsService.recordOperation("compliance_test", "passed")
-                        .withSuccess(true)
-                        .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
-                        .withData("testId", testId)
-                        .withData("category", category)
-                        .withData("description", description)
-                        .record();
+                    metricsService.recordOperation("compliance_test", "passed").withSuccess(true)
+                            .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                            .withData("testId", testId).withData("category", category)
+                            .withData("description", description).record();
                 } catch (Exception e) {
-                    LOGGER.warn("Failed to record compliance test passed metrics for test {}: {}", testId, e.getMessage());
+                    LOGGER.warn("Failed to record compliance test passed metrics for test {}: {}", testId,
+                            e.getMessage());
                 }
                 LOGGER.debug("Compliance test passed: {} - {}", category, description);
             } else {
                 try {
-                    metricsService.recordOperation("compliance_test", "failed")
-                        .withSuccess(false)
-                        .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
-                        .withData("testId", testId)
-                        .withData("category", category)
-                        .withData("description", description)
-                        .record();
+                    metricsService.recordOperation("compliance_test", "failed").withSuccess(false)
+                            .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                            .withData("testId", testId).withData("category", category)
+                            .withData("description", description).record();
                 } catch (Exception e) {
-                    LOGGER.warn("Failed to record compliance test failed metrics for test {}: {}", testId, e.getMessage());
+                    LOGGER.warn("Failed to record compliance test failed metrics for test {}: {}", testId,
+                            e.getMessage());
                 }
                 LOGGER.warn("Compliance test failed: {} - {}", category, description);
             }
@@ -326,15 +317,11 @@ public class ComplianceValidator {
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
             try {
-                metricsService.recordOperation("compliance_test", "error")
-                    .withSuccess(false)
-                    .withDuration(Duration.ofMillis(duration).toNanos())
-                    .withData("testId", testId)
-                    .withData("category", category)
-                    .withData("description", description)
-                    .withData("exceptionType", e.getClass().getSimpleName())
-                    .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
-                    .record();
+                metricsService.recordOperation("compliance_test", "error").withSuccess(false)
+                        .withDuration(Duration.ofMillis(duration).toNanos()).withData("testId", testId)
+                        .withData("category", category).withData("description", description)
+                        .withData("exceptionType", e.getClass().getSimpleName())
+                        .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error").record();
             } catch (Exception ex) {
                 LOGGER.warn("Failed to record compliance test error metrics for test {}: {}", testId, ex.getMessage());
             }

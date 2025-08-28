@@ -4,9 +4,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.infrastructure.persistence.AgentOpenHABPersistenceManager;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -41,6 +44,52 @@ public class AgentPushNotificationManager {
     @Reference
     private @Nullable AgentOpenHABPersistenceManager persistenceManager;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
+    // Business logic capture: Notification effectiveness
+    private final Map<String, AtomicLong> notificationDeliverySuccess = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> notificationUserResponseRates = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> notificationEffectivenessMetrics = new ConcurrentHashMap<>();
+
+    /**
+     * Record notification effectiveness for business logic analysis.
+     * 
+     * @param notificationId the notification identifier
+     * @param notificationType the type of notification
+     * @param deliverySuccess whether the notification was delivered successfully
+     * @param userResponse whether the user responded to the notification
+     * @param responseTime the time taken for user response in milliseconds
+     */
+    private void recordNotificationEffectiveness(String notificationId, String notificationType,
+            boolean deliverySuccess, boolean userResponse, long responseTime) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                Map<String, Object> context = Map.of("notificationId", notificationId, "notificationType",
+                        notificationType, "deliverySuccess", deliverySuccess, "userResponse", userResponse,
+                        "responseTime", responseTime, "timestamp", System.currentTimeMillis());
+                metrics.recordOperationWithData("notification", "effectiveness", deliverySuccess,
+                        java.time.Duration.ofMillis(responseTime), context);
+
+                // Update local tracking
+                String key = notificationType + ":" + deliverySuccess;
+                notificationDeliverySuccess.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
+
+                String responseKey = notificationType + ":" + userResponse;
+                notificationUserResponseRates.computeIfAbsent(responseKey, k -> new AtomicLong(0)).incrementAndGet();
+
+                String effectivenessKey = notificationType + ":"
+                        + (deliverySuccess && userResponse ? "effective" : "ineffective");
+                notificationEffectivenessMetrics.computeIfAbsent(effectivenessKey, k -> new AtomicLong(0))
+                        .incrementAndGet();
+
+            } catch (Exception e) {
+                logger.warn("Failed to record notification effectiveness metrics: {}", e.getMessage());
+            }
+        }
+    }
+
     @Activate
     public void activate() {
         logger.debug("A2A Push Notification Manager activated");
@@ -59,6 +108,8 @@ public class AgentPushNotificationManager {
             throws JSONRPCError {
         logger.debug("Setting task push notification config: {}", config);
 
+        long startTime = System.nanoTime();
+        boolean success = false;
         try {
             // Convert TaskPushNotificationConfig to Map for storage
             Map<String, Object> pushConfig = new HashMap<>();
@@ -72,18 +123,22 @@ public class AgentPushNotificationManager {
             }
 
             logger.info("A2A Push notification config saved: taskId={}", config.taskId());
-
+            success = true;
             return config;
 
         } catch (Exception e) {
             logger.error("Error saving push notification config: {}", config.taskId(), e);
             throw new JSONRPCError(-32001, "Failed to save push notification config", null);
+        } finally {
+            recordNotificationMetrics("set-config", success, System.nanoTime() - startTime);
         }
     }
 
     public TaskPushNotificationConfig getTaskPushNotificationConfig(String taskId) throws JSONRPCError {
         logger.debug("Getting task push notification config for task: {}", taskId);
 
+        long startTime = System.nanoTime();
+        boolean success = false;
         try {
             // Load from persistent storage
             if (persistenceManager != null) {
@@ -99,6 +154,7 @@ public class AgentPushNotificationManager {
                         // For now, return a default configuration since we can't reconstruct the SDK objects
                         // In a real implementation, you would need to know the exact SDK API
                         logger.debug("Found stored push notification config for taskId={}, returning default", taskId);
+                        success = true;
                         return createDefaultTaskPushNotificationConfig(taskId);
                     }
                 }
@@ -106,11 +162,14 @@ public class AgentPushNotificationManager {
 
             // Return default configuration if not found in storage
             logger.debug("No stored push notification config found, returning default for taskId={}", taskId);
+            success = true;
             return createDefaultTaskPushNotificationConfig(taskId);
 
         } catch (Exception e) {
             logger.error("Error loading push notification config: {}", taskId, e);
             throw new JSONRPCError(-32001, "Failed to load push notification config", null);
+        } finally {
+            recordNotificationMetrics("get-config", success, System.nanoTime() - startTime);
         }
     }
 
@@ -153,6 +212,8 @@ public class AgentPushNotificationManager {
     public void deleteTaskPushNotificationConfig(String taskId) throws JSONRPCError {
         logger.debug("Deleting task push notification config: {} for task: {}", taskId, taskId);
 
+        long startTime = System.nanoTime();
+        boolean success = false;
         try {
             // Delete from persistent storage
             if (persistenceManager != null) {
@@ -160,10 +221,13 @@ public class AgentPushNotificationManager {
             }
 
             logger.info("A2A Push notification config deleted: taskId={}", taskId);
+            success = true;
 
         } catch (Exception e) {
             logger.error("Error deleting push notification config: {}", taskId, e);
             throw new JSONRPCError(-32001, "Failed to delete push notification config", null);
+        } finally {
+            recordNotificationMetrics("delete-config", success, System.nanoTime() - startTime);
         }
     }
 
@@ -239,30 +303,16 @@ public class AgentPushNotificationManager {
     }
 
     /**
-     * Get configuration statistics.
-     * 
-     * @return configuration statistics map
+     * Record notification metrics using MetricsService
      */
-    public Map<String, Object> getConfigurationStatistics() {
-        Map<String, Object> stats = new HashMap<>();
-
-        try {
-            if (persistenceManager != null) {
-                List<Map<String, Object>> storedConfigs = persistenceManager.loadAllPushNotificationConfigs();
-                stats.put("totalConfigurations", storedConfigs.size());
-                stats.put("lastUpdated", System.currentTimeMillis());
-            } else {
-                stats.put("totalConfigurations", 0);
-                stats.put("lastUpdated", System.currentTimeMillis());
-                stats.put("error", "PersistenceManager not available");
+    private void recordNotificationMetrics(String operation, boolean success, long durationNanos) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                metrics.recordOperation("notification", operation, success, java.time.Duration.ofNanos(durationNanos));
+            } catch (Exception e) {
+                logger.debug("Failed to record notification metrics: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            logger.error("Error getting configuration statistics", e);
-            stats.put("totalConfigurations", 0);
-            stats.put("lastUpdated", System.currentTimeMillis());
-            stats.put("error", e.getMessage());
         }
-
-        return stats;
     }
 }

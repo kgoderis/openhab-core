@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -21,11 +22,9 @@ import org.openhab.core.ai.action.api.ActionSecurityValidator;
 import org.openhab.core.ai.action.config.ActionExecutionConfiguration;
 import org.openhab.core.ai.agent.delegation.api.AgentActionDelegationService;
 import org.openhab.core.ai.common.context.ExecutionContext;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import java.util.Map;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -95,17 +94,38 @@ public class DefaultActionExecutionService implements ActionExecutionService {
 
     @Activate
     public DefaultActionExecutionService() {
-        logger.debug("DefaultActionExecutionService activated");
+        try {
+            recordMetrics("service-activated", true, 0L);
+            logger.debug("DefaultActionExecutionService activated");
+        } catch (Exception e) {
+            logger.error("Error during DefaultActionExecutionService activation: {}", e.getMessage(), e);
+            recordMetrics("service-activated", false, 0L);
+            // Continue with activation despite errors
+        }
     }
 
     @Modified
     public void modified() {
-        logger.debug("DefaultActionExecutionService configuration modified");
+        try {
+            recordMetrics("service-modified", true, 0L);
+            logger.debug("DefaultActionExecutionService configuration modified");
+        } catch (Exception e) {
+            logger.error("Error during DefaultActionExecutionService modification: {}", e.getMessage(), e);
+            recordMetrics("service-modified", false, 0L);
+        }
     }
 
     @Deactivate
     public void deactivate() {
-        logger.debug("DefaultActionExecutionService deactivated");
+        try {
+            actionResultCache.clear();
+            recordMetrics("service-deactivated", true, 0L);
+            logger.debug("DefaultActionExecutionService deactivated");
+        } catch (Exception e) {
+            logger.error("Error during DefaultActionExecutionService deactivation: {}", e.getMessage(), e);
+            recordMetrics("service-deactivated", false, 0L);
+            // Continue with deactivation despite errors
+        }
     }
 
     /**
@@ -114,7 +134,16 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      * @param metricsService the metrics service to use
      */
     public void setMetricsService(@Nullable MetricsService metricsService) {
-        this.metricsService = metricsService;
+        try {
+            this.metricsService = metricsService;
+            if (metricsService != null) {
+                recordMetrics("metrics-service-set", true, 0L);
+                logger.debug("MetricsService set for DefaultActionExecutionService");
+            }
+        } catch (Exception e) {
+            logger.error("Error setting MetricsService for DefaultActionExecutionService: {}", e.getMessage(), e);
+            recordMetrics("metrics-service-set", false, 0L);
+        }
     }
 
     /**
@@ -123,7 +152,15 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      * @param metricsService the metrics service to unset
      */
     public void unsetMetricsService(@Nullable MetricsService metricsService) {
-        this.metricsService = null;
+        try {
+            recordMetrics("metrics-service-unset", true, 0L);
+            this.metricsService = null;
+            logger.debug("MetricsService unset for DefaultActionExecutionService");
+        } catch (Exception e) {
+            logger.error("Error unsetting MetricsService for DefaultActionExecutionService: {}", e.getMessage(), e);
+            // Still unset the service even if metrics recording fails
+            this.metricsService = null;
+        }
     }
 
     /**
@@ -134,15 +171,32 @@ public class DefaultActionExecutionService implements ActionExecutionService {
      * @param durationNanos the operation duration in nanoseconds
      */
     private void recordMetrics(String operation, boolean success, long durationNanos) {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                metrics.recordOperation("action-execution", operation, success, Duration.ofNanos(durationNanos));
-            } catch (Exception e) {
-                logger.debug("Failed to record metrics for {}.{}: {}", "action-execution", operation, e.getMessage());
+        try {
+            if (operation == null || operation.trim().isEmpty()) {
+                logger.warn("Cannot record action execution metrics: operation name is null or empty");
+                return;
             }
-        } else {
-            logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+
+            if (durationNanos < 0) {
+                logger.warn("Cannot record action execution metrics: duration is negative for operation: {}",
+                        operation);
+                return;
+            }
+
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                try {
+                    metrics.recordOperation("action-execution", operation, success, Duration.ofNanos(durationNanos));
+                } catch (Exception e) {
+                    logger.error("Failed to record action execution metrics for {}.{}: {}", "action-execution",
+                            operation, e.getMessage(), e);
+                }
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+            }
+        } catch (Exception e) {
+            logger.error("Unexpected error recording action execution metrics for operation '{}': {}", operation,
+                    e.getMessage(), e);
         }
     }
 
@@ -413,15 +467,18 @@ public class DefaultActionExecutionService implements ActionExecutionService {
         if (metricsService != null) {
             try {
                 MetricKey actionExecKey = MetricKeys.custom("action-execution", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metricsService.getSnapshot(actionExecKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                
+                var snapshot = metricsService.getSnapshot(actionExecKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+
                 if (snapshot != null) {
                     metrics.put("totalExecutions", snapshot.getLong("total"));
                     metrics.put("successfulExecutions", snapshot.getLong("success"));
                     metrics.put("failedExecutions", snapshot.getLong("failure"));
-                    metrics.put("totalExecutionTime", snapshot.getLong("totalDurationNanos") / 1_000_000); // Convert to milliseconds
+                    metrics.put("totalExecutionTime", snapshot.getLong("totalDurationNanos") / 1_000_000); // Convert to
+                                                                                                           // milliseconds
                     metrics.put("successRate", snapshot.getDouble("successRate"));
-                    metrics.put("averageExecutionTime", snapshot.getDouble("averageDurationMs")); // Already in milliseconds
+                    metrics.put("averageExecutionTime", snapshot.getDouble("averageDurationMs")); // Already in
+                                                                                                  // milliseconds
                 }
             } catch (Exception e) {
                 logger.warn("Error retrieving metrics for action-execution: {}", e.getMessage());
@@ -486,7 +543,7 @@ public class DefaultActionExecutionService implements ActionExecutionService {
     /**
      * Performance metrics data class
      */
-    // extracted to top-level: ActionExecutionPerformanceMetrics
+    // ActionExecutionPerformanceMetrics class removed - using MetricsService integration instead
 
     @Override
     public CompletableFuture<ActionResult> executeActionWithRetry(ExecutionContext actionContext,
@@ -532,45 +589,6 @@ public class DefaultActionExecutionService implements ActionExecutionService {
             }));
         }
         return result;
-    }
-
-    @Override
-    public Map<String, Object> getExecutionStatistics() {
-        Map<String, Object> stats = new HashMap<>();
-
-        MetricsService metricsService = this.metricsService;
-        if (metricsService != null) {
-            try {
-                MetricKey actionExecKey = MetricKeys.custom("action-execution", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metricsService.getSnapshot(actionExecKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                
-                if (snapshot != null) {
-                    stats.put("totalExecutions", snapshot.getLong("total"));
-                    stats.put("successfulExecutions", snapshot.getLong("success"));
-                    stats.put("failedExecutions", snapshot.getLong("failure"));
-                    stats.put("totalExecutionTime", snapshot.getLong("totalDurationNanos") / 1_000_000); // Convert to milliseconds
-                }
-            } catch (Exception e) {
-                logger.warn("Error retrieving metrics for action-execution: {}", e.getMessage());
-                // Fallback to placeholder values
-                stats.put("totalExecutions", 0);
-                stats.put("successfulExecutions", 0);
-                stats.put("failedExecutions", 0);
-                stats.put("totalExecutionTime", 0);
-            }
-        } else {
-            // Fallback to placeholder values when MetricsService is not available
-            stats.put("totalExecutions", 0);
-            stats.put("successfulExecutions", 0);
-            stats.put("failedExecutions", 0);
-            stats.put("totalExecutionTime", 0);
-        }
-
-        // Cache-related statistics that don't come from MetricsService
-        stats.put("cacheSize", actionResultCache.size());
-        stats.put("totalRetryAttempts", 0); // This would need a separate domain or metric type
-
-        return stats;
     }
 
     @Override

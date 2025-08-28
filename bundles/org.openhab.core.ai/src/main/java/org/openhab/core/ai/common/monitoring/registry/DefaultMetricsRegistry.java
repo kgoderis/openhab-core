@@ -49,15 +49,12 @@ public final class DefaultMetricsRegistry implements MetricsRegistry {
 
     @Override
     public Collection<MetricKey> getKeysByDomain(String domain) {
-        return metricsCollectors.entrySet().stream()
-                .filter(entry -> {
-                    MetricsCollector collector = entry.getValue();
-                    // Extract domain from collector data if available
-                    // For now, return all keys since we don't store domain separately
-                    return true;
-                })
-                .map(entry -> createMetricKeyFromId(entry.getKey()))
-                .collect(Collectors.toList());
+        return metricsCollectors.entrySet().stream().filter(entry -> {
+            MetricsCollector collector = entry.getValue();
+            // Extract domain from collector data if available
+            // For now, return all keys since we don't store domain separately
+            return true;
+        }).map(entry -> createMetricKeyFromId(entry.getKey())).collect(Collectors.toList());
     }
 
     @Override

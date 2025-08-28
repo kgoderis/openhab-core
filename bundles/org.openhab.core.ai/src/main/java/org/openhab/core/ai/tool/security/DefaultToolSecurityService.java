@@ -283,38 +283,92 @@ public class DefaultToolSecurityService implements ToolSecurityService {
      * @return true if access is allowed
      */
     public boolean checkSpecificationAccess(String userId, String specificationId, String action) {
-        recordMetrics("tool-security", "access-attempt", true, Duration.ZERO);
-
-        if (!securityEnabled) {
-            recordMetrics("tool-security", "access-allowed", true, Duration.ZERO);
-            return true;
-        }
-
-        // Check rate limiting
-        if (rateLimiting.get() && isRateLimited(userId)) {
-            recordMetrics("tool-security", "access-denied", false, Duration.ZERO);
-            logAccess(userId, specificationId, action, false, "Rate limit exceeded");
-            return false;
-        }
-
-        // Check role-based access control
-        if (roleBasedAccessControl.get()) {
-            boolean hasAccess = checkRoleBasedAccess(userId, specificationId, action);
-            if (hasAccess) {
-                recordMetrics("tool-security", "access-allowed", true, Duration.ZERO);
-                logAccess(userId, specificationId, action, true, "Access granted");
-                return true;
-            } else {
+        try {
+            if (userId == null || userId.trim().isEmpty()) {
+                logger.warn("Cannot check specification access: user ID is null or empty");
                 recordMetrics("tool-security", "access-denied", false, Duration.ZERO);
-                logAccess(userId, specificationId, action, false, "Insufficient permissions");
                 return false;
             }
-        }
 
-        // Default allow if no specific restrictions
-        recordMetrics("tool-security", "access-allowed", true, Duration.ZERO);
-        logAccess(userId, specificationId, action, true, "Default access granted");
-        return true;
+            if (specificationId == null || specificationId.trim().isEmpty()) {
+                logger.warn("Cannot check specification access: specification ID is null or empty for user: {}",
+                        userId);
+                recordMetrics("tool-security", "access-denied", false, Duration.ZERO);
+                return false;
+            }
+
+            if (action == null || action.trim().isEmpty()) {
+                logger.warn("Cannot check specification access: action is null or empty for user: {} on spec: {}",
+                        userId, specificationId);
+                recordMetrics("tool-security", "access-denied", false, Duration.ZERO);
+                return false;
+            }
+
+            recordMetrics("tool-security", "access-attempt", true, Duration.ZERO);
+
+            if (!securityEnabled) {
+                recordMetrics("tool-security", "access-allowed", true, Duration.ZERO);
+                logAccess(userId, specificationId, action, true, "Security disabled - access granted");
+                return true;
+            }
+
+            // Check rate limiting
+            try {
+                if (rateLimiting.get() && isRateLimited(userId)) {
+                    recordMetrics("tool-security", "access-denied", false, Duration.ZERO);
+                    logAccess(userId, specificationId, action, false, "Rate limit exceeded");
+                    logger.warn("Access denied due to rate limiting - User: {}, Spec: {}, Action: {}", userId,
+                            specificationId, action);
+                    return false;
+                }
+            } catch (Exception e) {
+                logger.error("Error during rate limit check for user '{}': {}", userId, e.getMessage(), e);
+                recordMetrics("tool-security", "access-denied", false, Duration.ZERO);
+                logAccess(userId, specificationId, action, false, "Rate limit check failed: " + e.getMessage());
+                return false; // Deny access if rate limiting check fails
+            }
+
+            // Check role-based access control
+            try {
+                if (roleBasedAccessControl.get()) {
+                    boolean hasAccess = checkRoleBasedAccess(userId, specificationId, action);
+                    if (hasAccess) {
+                        recordMetrics("tool-security", "access-allowed", true, Duration.ZERO);
+                        logAccess(userId, specificationId, action, true, "Access granted by role-based access control");
+                        logger.debug("Access granted - User: {}, Spec: {}, Action: {}", userId, specificationId,
+                                action);
+                        return true;
+                    } else {
+                        recordMetrics("tool-security", "access-denied", false, Duration.ZERO);
+                        logAccess(userId, specificationId, action, false, "Insufficient permissions");
+                        logger.warn("Access denied due to insufficient permissions - User: {}, Spec: {}, Action: {}",
+                                userId, specificationId, action);
+                        return false;
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("Error during role-based access check for user '{}': {}", userId, e.getMessage(), e);
+                recordMetrics("tool-security", "access-denied", false, Duration.ZERO);
+                logAccess(userId, specificationId, action, false, "Role-based access check failed: " + e.getMessage());
+                return false; // Deny access if role-based check fails
+            }
+
+            // Default allow if no specific restrictions
+            recordMetrics("tool-security", "access-allowed", true, Duration.ZERO);
+            logAccess(userId, specificationId, action, true, "Default access granted");
+            logger.debug("Default access granted - User: {}, Spec: {}, Action: {}", userId, specificationId, action);
+            return true;
+        } catch (Exception e) {
+            logger.error("Unexpected error during specification access check for user '{}': {}", userId, e.getMessage(),
+                    e);
+            recordMetrics("tool-security", "access-denied", false, Duration.ZERO);
+            try {
+                logAccess(userId, specificationId, action, false, "Unexpected error: " + e.getMessage());
+            } catch (Exception logError) {
+                logger.error("Failed to log access attempt after error: {}", logError.getMessage());
+            }
+            return false; // Deny access on unexpected errors
+        }
     }
 
     /**
@@ -347,9 +401,33 @@ public class DefaultToolSecurityService implements ToolSecurityService {
      */
     @Override
     public List<AccessLogEntry> getAccessLog(@Nullable String userId, @Nullable String specificationId) {
-        return accessLog.values().stream().filter(entry -> userId == null || entry.getUserId().equals(userId))
-                .filter(entry -> specificationId == null || entry.getSpecificationId().equals(specificationId))
-                .collect(Collectors.toList());
+        try {
+            List<AccessLogEntry> result = accessLog.values().stream().filter(entry -> {
+                try {
+                    return userId == null || (entry.getUserId() != null && entry.getUserId().equals(userId));
+                } catch (Exception e) {
+                    logger.warn("Error filtering access log by user ID: {}", e.getMessage());
+                    return false;
+                }
+            }).filter(entry -> {
+                try {
+                    return specificationId == null || (entry.getSpecificationId() != null
+                            && entry.getSpecificationId().equals(specificationId));
+                } catch (Exception e) {
+                    logger.warn("Error filtering access log by specification ID: {}", e.getMessage());
+                    return false;
+                }
+            }).collect(Collectors.toList());
+
+            recordMetrics("tool-security", "access-log-retrieval", true, Duration.ZERO);
+            logger.debug("Retrieved {} access log entries for userId: {}, specificationId: {}", result.size(), userId,
+                    specificationId);
+            return result;
+        } catch (Exception e) {
+            logger.error("Error retrieving access log entries: {}", e.getMessage(), e);
+            recordMetrics("tool-security", "access-log-retrieval", false, Duration.ZERO);
+            return new ArrayList<>(); // Return empty list on error
+        }
     }
 
     /**
@@ -360,9 +438,30 @@ public class DefaultToolSecurityService implements ToolSecurityService {
      * @param severity the alert severity
      */
     public void createSecurityAlert(String type, String message, String severity) {
-        // TODO: wire into a dedicated SecurityAlert store if available
-        recordMetrics("tool-security", "security-alert", true, Duration.ZERO);
-        logger.warn("Security alert created: {} - {}", type, message);
+        try {
+            if (type == null || type.trim().isEmpty()) {
+                logger.warn("Cannot create security alert: type is null or empty");
+                recordMetrics("tool-security", "security-alert", false, Duration.ZERO);
+                return;
+            }
+
+            if (message == null || message.trim().isEmpty()) {
+                logger.warn("Cannot create security alert: message is null or empty for type: {}", type);
+                recordMetrics("tool-security", "security-alert", false, Duration.ZERO);
+                return;
+            }
+
+            if (severity == null || severity.trim().isEmpty()) {
+                severity = "MEDIUM"; // Default severity
+            }
+
+            // TODO: wire into a dedicated SecurityAlert store if available
+            recordMetrics("tool-security", "security-alert", true, Duration.ZERO);
+            logger.warn("Security alert created: Type: {}, Severity: {}, Message: {}", type, severity, message);
+        } catch (Exception e) {
+            logger.error("Error creating security alert for type '{}': {}", type, e.getMessage(), e);
+            recordMetrics("tool-security", "security-alert", false, Duration.ZERO);
+        }
     }
 
     // Helper methods
@@ -558,19 +657,30 @@ public class DefaultToolSecurityService implements ToolSecurityService {
 
     @Override
     public ToolSecurityStatistics getSecurityStatistics() {
-        // Use MetricsService to get statistics instead of direct counters
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                // For now, return statistics with 0 values since we don't have a direct way to get specific counter
-                // values
-                // In a future enhancement, MetricsService could provide domain-specific statistics
-                return new ToolSecurityStatistics(0L, 0L, 0L, 0L, Instant.now());
-            } catch (Exception e) {
-                logger.debug("Failed to get security statistics: {}", e.getMessage());
+        try {
+            // Use MetricsService to get statistics instead of direct counters
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                try {
+                    // For now, return statistics with 0 values since we don't have a direct way to get specific counter
+                    // values
+                    // In a future enhancement, MetricsService could provide domain-specific statistics
+                    recordMetrics("tool-security", "statistics-retrieval", true, Duration.ZERO);
+                    return new ToolSecurityStatistics(0L, 0L, 0L, 0L, Instant.now());
+                } catch (Exception e) {
+                    logger.warn("Failed to get security statistics from MetricsService: {}", e.getMessage());
+                    recordMetrics("tool-security", "statistics-retrieval", false, Duration.ZERO);
+                }
+            } else {
+                logger.debug("MetricsService not available, returning empty security statistics");
             }
+
+            return new ToolSecurityStatistics(0L, 0L, 0L, 0L, Instant.now());
+        } catch (Exception e) {
+            logger.error("Unexpected error retrieving security statistics: {}", e.getMessage(), e);
+            recordMetrics("tool-security", "statistics-retrieval", false, Duration.ZERO);
+            return new ToolSecurityStatistics(0L, 0L, 0L, 0L, Instant.now());
         }
-        return new ToolSecurityStatistics(0L, 0L, 0L, 0L, Instant.now());
     }
 
     @Override
@@ -628,44 +738,112 @@ public class DefaultToolSecurityService implements ToolSecurityService {
      * @param duration the operation duration
      */
     private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
                 metrics.recordOperation(domain, operation, success, duration);
-            } catch (Exception e) {
-                logger.debug("Failed to record metrics for {}.{}: {}", domain, operation, e.getMessage());
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                        operation);
             }
+        } catch (Exception e) {
+            // Avoid recursive metric recording in error handler for security operations
+            logger.warn("Error recording security metrics for operation {}.{}: {}", domain, operation, e.getMessage());
         }
     }
 
     @Activate
     protected void activate(Map<String, Object> properties) {
-        securityEnabled = (boolean) properties.getOrDefault("securityEnabled", true);
-        logger.info("ToolSecurityService activated with securityEnabled: {}", securityEnabled);
+        try {
+            if (properties == null) {
+                logger.warn("Properties map is null during activation, using default security settings");
+                securityEnabled = true;
+            } else {
+                securityEnabled = (boolean) properties.getOrDefault("securityEnabled", true);
+            }
+
+            recordMetrics("tool-security", "service-activated", true, Duration.ZERO);
+            logger.info("ToolSecurityService activated with securityEnabled: {}", securityEnabled);
+        } catch (Exception e) {
+            logger.error("Error during ToolSecurityService activation: {}", e.getMessage(), e);
+            recordMetrics("tool-security", "service-activated", false, Duration.ZERO);
+            // Continue with activation using default security settings
+            securityEnabled = true;
+            logger.info("ToolSecurityService activated with default security settings after error");
+        }
     }
 
     @Modified
     protected void modified(Map<String, Object> properties) {
-        securityEnabled = (boolean) properties.getOrDefault("securityEnabled", true);
-        logger.info("ToolSecurityService modified with securityEnabled: {}", securityEnabled);
+        try {
+            if (properties == null) {
+                logger.warn("Properties map is null during modification, keeping current security settings");
+            } else {
+                securityEnabled = (boolean) properties.getOrDefault("securityEnabled", true);
+            }
+
+            recordMetrics("tool-security", "service-modified", true, Duration.ZERO);
+            logger.info("ToolSecurityService modified with securityEnabled: {}", securityEnabled);
+        } catch (Exception e) {
+            logger.error("Error during ToolSecurityService modification: {}", e.getMessage(), e);
+            recordMetrics("tool-security", "service-modified", false, Duration.ZERO);
+            // Keep current settings on error
+            logger.info("ToolSecurityService modification failed, keeping current settings");
+        }
     }
 
     @Deactivate
     protected void deactivate() {
-        securityProcessor.shutdown();
-        alertProcessor.shutdown();
-        logger.info("ToolSecurityService deactivated");
+        try {
+            try {
+                if (securityProcessor != null && !securityProcessor.isShutdown()) {
+                    securityProcessor.shutdown();
+                    logger.debug("Security processor shutdown initiated");
+                }
+            } catch (Exception e) {
+                logger.error("Error shutting down security processor: {}", e.getMessage(), e);
+            }
+
+            try {
+                if (alertProcessor != null && !alertProcessor.isShutdown()) {
+                    alertProcessor.shutdown();
+                    logger.debug("Alert processor shutdown initiated");
+                }
+            } catch (Exception e) {
+                logger.error("Error shutting down alert processor: {}", e.getMessage(), e);
+            }
+
+            recordMetrics("tool-security", "service-deactivated", true, Duration.ZERO);
+            logger.info("ToolSecurityService deactivated");
+        } catch (Exception e) {
+            logger.error("Error during ToolSecurityService deactivation: {}", e.getMessage(), e);
+            recordMetrics("tool-security", "service-deactivated", false, Duration.ZERO);
+            // Continue with deactivation despite errors
+        }
     }
 
     @Reference(cardinality = ReferenceCardinality.OPTIONAL)
     protected void setMetricsService(MetricsService metricsService) {
-        this.metricsService = metricsService;
-        logger.info("MetricsService reference set");
+        try {
+            this.metricsService = metricsService;
+            logger.info("MetricsService reference set for ToolSecurityService");
+            recordMetrics("tool-security", "metrics-service-set", true, Duration.ZERO);
+        } catch (Exception e) {
+            logger.error("Error setting MetricsService reference: {}", e.getMessage(), e);
+            // Cannot record metrics here as service might not be available
+            logger.debug("Failed to record metrics for metrics-service-set operation");
+        }
     }
 
     @Reference(cardinality = ReferenceCardinality.OPTIONAL)
     protected void unsetMetricsService(MetricsService metricsService) {
-        this.metricsService = null;
-        logger.info("MetricsService reference unset");
+        try {
+            recordMetrics("tool-security", "metrics-service-unset", true, Duration.ZERO);
+            this.metricsService = null;
+            logger.info("MetricsService reference unset for ToolSecurityService");
+        } catch (Exception e) {
+            logger.error("Error unsetting MetricsService reference: {}", e.getMessage(), e);
+            this.metricsService = null; // Ensure it's cleared even on error
+        }
     }
 }

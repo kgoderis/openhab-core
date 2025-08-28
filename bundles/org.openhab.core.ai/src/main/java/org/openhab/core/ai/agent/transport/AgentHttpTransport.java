@@ -150,15 +150,11 @@ public class AgentHttpTransport implements AgentTransport {
 
         Map<String, Object> healthMetrics = Map.of("uptime", currentTime - startTime, "messageCount",
                 // Placeholder - would need MetricsService to implement getMetric
-                0L,
-                "errorCount",
+                0L, "errorCount",
                 // Placeholder - would need MetricsService to implement getMetric
-                0L,
-                "averageLatency",
+                0L, "averageLatency",
                 // Placeholder - would need MetricsService to implement getMetric
-                0L,
-                "lastHealthCheck", lastHealthCheck,
-                "baseUrl", baseUrl);
+                0L, "lastHealthCheck", lastHealthCheck, "baseUrl", baseUrl);
 
         return new AgentHttpTransportHealth(healthy, "HTTP client transport health check", currentTime, healthMetrics);
     }
@@ -188,15 +184,12 @@ public class AgentHttpTransport implements AgentTransport {
                 long latency = System.currentTimeMillis() - startTime;
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("http_transport", "message")
-                            .withSuccess(true)
-                            .withDuration(Duration.ofMillis(latency).toNanos())
-                            .withData("transportId", transportId)
-                            .withData("latencyMs", latency)
-                            .withData("endpoint", "/a2a/message/send")
-                            .record();
+                        metricsService.recordOperation("http_transport", "message").withSuccess(true)
+                                .withDuration(Duration.ofMillis(latency).toNanos()).withData("transportId", transportId)
+                                .withData("latencyMs", latency).withData("endpoint", "/a2a/message/send").record();
                     } catch (Exception e) {
-                        logger.warn("Failed to record HTTP message metrics for transport {}: {}", transportId, e.getMessage());
+                        logger.warn("Failed to record HTTP message metrics for transport {}: {}", transportId,
+                                e.getMessage());
                         // Graceful degradation: continue with message processing even if metrics recording fails
                     }
                 }
@@ -211,13 +204,11 @@ public class AgentHttpTransport implements AgentTransport {
             } catch (Exception e) {
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("http_transport", "error")
-                            .withSuccess(false)
-                            .withDuration(0L)
-                            .withData("transportId", transportId)
-                            .withData("exceptionType", e.getClass().getSimpleName())
-                            .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
-                            .record();
+                        metricsService.recordOperation("http_transport", "error").withSuccess(false).withDuration(0L)
+                                .withData("transportId", transportId)
+                                .withData("exceptionType", e.getClass().getSimpleName())
+                                .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
+                                .record();
                     } catch (Exception ex) {
                         logger.debug("Failed to record HTTP error metrics: {}", ex.getMessage());
                     }
@@ -257,12 +248,12 @@ public class AgentHttpTransport implements AgentTransport {
         metrics.put("transportId", transportId);
         metrics.put("running", running);
         metrics.put("uptime", running ? System.currentTimeMillis() - startTime : 0);
-        
+
         if (metricsService != null) {
             try {
                 GenericMetricsSnapshot messageSnapshot = metricsService.getSnapshot("http_transport", "message");
                 GenericMetricsSnapshot errorSnapshot = metricsService.getSnapshot("http_transport", "error");
-                
+
                 metrics.put("messageCount", messageSnapshot.getMetricAsLong("total_count"));
                 metrics.put("errorCount", errorSnapshot.getMetricAsLong("total_count"));
                 metrics.put("requestCount", messageSnapshot.getMetricAsLong("total_count"));
@@ -282,7 +273,7 @@ public class AgentHttpTransport implements AgentTransport {
             metrics.put("requestCount", 0L);
             metrics.put("averageLatency", 0L);
         }
-        
+
         metrics.put("lastHealthCheck", lastHealthCheck);
         metrics.put("transportType", "http");
         metrics.put("baseUrl", baseUrl);

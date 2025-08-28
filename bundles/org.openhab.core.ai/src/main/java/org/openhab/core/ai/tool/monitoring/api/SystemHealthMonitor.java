@@ -6,12 +6,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.tool.monitoring.HealthCheckResult;
 import org.openhab.core.ai.tool.monitoring.PerformanceAlert;
 import org.openhab.core.ai.tool.monitoring.PerformanceOptimization;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.tool.monitoring.SystemHealthStatus;
 
 /**

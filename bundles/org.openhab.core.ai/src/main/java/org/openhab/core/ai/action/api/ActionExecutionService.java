@@ -71,13 +71,6 @@ public interface ActionExecutionService {
             ModelProviderType providerType);
 
     /**
-     * Get action execution statistics
-     * 
-     * @return map of execution statistics
-     */
-    Map<String, Object> getExecutionStatistics();
-
-    /**
      * Get action execution performance metrics
      * 
      * @return map of performance metrics

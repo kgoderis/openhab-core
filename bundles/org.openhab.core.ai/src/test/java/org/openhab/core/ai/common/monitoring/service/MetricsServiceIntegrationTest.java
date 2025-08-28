@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Dictionary;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -109,11 +108,7 @@ class MetricsServiceIntegrationTest {
         metricsServiceImpl.activate(componentContext);
 
         // Then
-        verify(bundleContext, times(1)).registerService(
-                eq(MetricsService.class),
-                eq(metricsServiceImpl),
-                any()
-        );
+        verify(bundleContext, times(1)).registerService(eq(MetricsService.class), eq(metricsServiceImpl), any());
     }
 
     @Test
@@ -138,7 +133,7 @@ class MetricsServiceIntegrationTest {
         for (int i = 0; i < 3; i++) {
             metricsServiceImpl.activate(componentContext);
             assertTrue(metricsServiceImpl.isActive());
-            
+
             metricsServiceImpl.deactivate(componentContext);
             assertFalse(metricsServiceImpl.isActive());
         }
@@ -212,11 +207,8 @@ class MetricsServiceIntegrationTest {
     @Test
     void testConfigurationValidation() {
         // Given
-        Map<String, Object> invalidConfig = Map.of(
-                "maxSnapshots", -1,
-                "retentionPeriod", -100L,
-                "enableCaching", "invalid"
-        );
+        Map<String, Object> invalidConfig = Map.of("maxSnapshots", -1, "retentionPeriod", -100L, "enableCaching",
+                "invalid");
         when(componentContext.getProperties()).thenReturn(invalidConfig);
 
         // When
@@ -241,7 +233,7 @@ class MetricsServiceIntegrationTest {
 
         // Then
         assertTrue(metricsServiceImpl.isActive());
-        
+
         // Verify operations were recorded
         ModelCompletionSnapshot snapshot = metricsServiceImpl.getModelCompletionSnapshot("test-model");
         assertNotNull(snapshot);
@@ -304,8 +296,10 @@ class MetricsServiceIntegrationTest {
                 final int threadId = i;
                 threads[i] = new Thread(() -> {
                     for (int j = 0; j < 100; j++) {
-                        metricsServiceImpl.recordOperation("domain-" + threadId, "operation-" + j, true, Duration.ofMillis(10));
-                        metricsServiceImpl.recordModelCompletion("model-" + threadId, true, Duration.ofMillis(20), 10, 5, 0.001);
+                        metricsServiceImpl.recordOperation("domain-" + threadId, "operation-" + j, true,
+                                Duration.ofMillis(10));
+                        metricsServiceImpl.recordModelCompletion("model-" + threadId, true, Duration.ofMillis(20), 10,
+                                5, 0.001);
                     }
                 });
             }
@@ -382,15 +376,12 @@ class MetricsServiceIntegrationTest {
         metricsServiceImpl.activate(componentContext);
 
         // Then
-        verify(bundleContext, times(1)).registerService(
-                eq(MetricsService.class),
-                eq(metricsServiceImpl),
+        verify(bundleContext, times(1)).registerService(eq(MetricsService.class), eq(metricsServiceImpl),
                 argThat(properties -> {
                     // Verify service properties are set correctly
-                    return properties != null && 
-                           "org.openhab.core.ai.common.monitoring.service.MetricsService".equals(properties.get("service.pid"));
-                })
-        );
+                    return properties != null && "org.openhab.core.ai.common.monitoring.service.MetricsService"
+                            .equals(properties.get("service.pid"));
+                }));
     }
 
     @Test
@@ -453,7 +444,7 @@ class MetricsServiceIntegrationTest {
                 throw new IllegalStateException("BundleContext cannot be null");
             }
             this.active = true;
-            
+
             // Apply configuration
             Map<String, Object> config = context.getProperties();
             if (config != null) {
@@ -461,12 +452,12 @@ class MetricsServiceIntegrationTest {
                 if (maxSnapshotsObj instanceof Number) {
                     this.maxSnapshots = ((Number) maxSnapshotsObj).intValue();
                 }
-                
+
                 Object retentionPeriodObj = config.get("retentionPeriod");
                 if (retentionPeriodObj instanceof Number) {
                     this.retentionPeriod = ((Number) retentionPeriodObj).longValue();
                 }
-                
+
                 Object cachingEnabledObj = config.get("enableCaching");
                 if (cachingEnabledObj instanceof Boolean) {
                     this.cachingEnabled = (Boolean) cachingEnabledObj;

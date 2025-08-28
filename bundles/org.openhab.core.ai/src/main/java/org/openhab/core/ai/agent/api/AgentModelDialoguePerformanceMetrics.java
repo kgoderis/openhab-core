@@ -1,8 +1,5 @@
 package org.openhab.core.ai.agent.api;
 
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -29,8 +26,7 @@ import org.openhab.core.ai.common.monitoring.api.Timing;
  */
 @NonNullByDefault
 public record AgentModelDialoguePerformanceMetrics(Counts counts, Timing timing, long timestampMs, long sessionCount,
-        long messageCount,
-        double comprehensionAccuracy) implements MetricsSnapshot, CountsMetrics, LatencyMetrics {
+        long messageCount, double comprehensionAccuracy) implements MetricsSnapshot, CountsMetrics, LatencyMetrics {
 
     /**
      * Validation constructor for the record.
@@ -93,8 +89,6 @@ public record AgentModelDialoguePerformanceMetrics(Counts counts, Timing timing,
     public double averageMs() {
         return LatencyMetrics.super.averageMs(total());
     }
-
-
 
     // ===== Dialogue Specific Metrics =====
 

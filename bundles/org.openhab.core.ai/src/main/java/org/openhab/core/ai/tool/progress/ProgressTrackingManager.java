@@ -2,14 +2,14 @@ package org.openhab.core.ai.tool.progress;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.tool.progress.api.tracking.ProgressOperation;
 import org.openhab.core.ai.tool.progress.api.tracking.ProgressStatus;
 import org.osgi.service.component.annotations.Activate;
@@ -202,21 +202,23 @@ public class ProgressTrackingManager implements ProgressService {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                MetricKey progressTrackingKey = MetricKeys.custom("progress-tracking", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metrics.getSnapshot(progressTrackingKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                
+                MetricKey progressTrackingKey = MetricKeys.custom("progress-tracking", Map.of(),
+                        Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(progressTrackingKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+
                 if (snapshot != null) {
                     long totalOperations = snapshot.getLong("total");
                     long failedOperations = snapshot.getLong("failure");
                     long successfulOperations = totalOperations - failedOperations;
                     long totalDurationNanos = snapshot.getLong("totalDurationNanos");
-                    
+
                     result.put("totalOperations", totalOperations);
                     result.put("completedOperations", successfulOperations);
                     result.put("cancelledOperations", 0L); // Placeholder or derive from domain-specific data
                     result.put("activeOperations", activeOperations.size());
                     result.put("totalResponseTimeMs", totalDurationNanos / 1_000_000); // Convert nanos to ms
-                    
+
                     if (totalOperations > 0) {
                         result.put("averageResponseTimeMs", (totalDurationNanos / 1_000_000) / totalOperations);
                         result.put("completionRate", (double) successfulOperations / totalOperations);
@@ -255,7 +257,8 @@ public class ProgressTrackingManager implements ProgressService {
             try {
                 metrics.recordOperation(domain, operation, success, Duration.ofNanos(durationNanos));
             } catch (Exception e) {
-                LOGGER.warn("Failed to record progress tracking metrics for operation {} - {}: {}", domain, operation, e.getMessage());
+                LOGGER.warn("Failed to record progress tracking metrics for operation {} - {}: {}", domain, operation,
+                        e.getMessage());
                 // Graceful degradation: continue with progress tracking even if metrics recording fails
             }
         } else {

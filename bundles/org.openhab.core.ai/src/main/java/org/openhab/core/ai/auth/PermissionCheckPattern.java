@@ -1,7 +1,5 @@
 package org.openhab.core.ai.auth;
 
-import java.time.Duration;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
@@ -30,13 +28,9 @@ public class PermissionCheckPattern {
     void recordCheck(boolean granted) {
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("permission_check", "check")
-                    .withSuccess(granted)
-                    .withDuration(0L)
-                    .withData("principalId", principalId)
-                    .withData("permission", permission)
-                    .withData("protocol", protocol)
-                    .record();
+                metricsService.recordOperation("permission_check", "check").withSuccess(granted).withDuration(0L)
+                        .withData("principalId", principalId).withData("permission", permission)
+                        .withData("protocol", protocol).record();
             } catch (Exception e) {
                 // Fallback to local logging if MetricsService fails
                 System.err.println("Failed to record permission check metrics: " + e.getMessage());

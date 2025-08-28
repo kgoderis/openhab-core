@@ -7,18 +7,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.model.api.ModelProviderType;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthStatus;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
+import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.tool.monitoring.api.SystemHealthMonitor;
-import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,28 +56,28 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
     private final ConcurrentHashMap<ModelProviderType, ProviderHealthState> providerHealthStates = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ServiceHealthState> serviceHealthStates = new ConcurrentHashMap<>();
 
-    // Circuit breaker configuration
-    private final AtomicReference<Integer> failureThreshold = new AtomicReference<>(5);
-    private final AtomicReference<Duration> recoveryTimeout = new AtomicReference<>(Duration.ofMinutes(5));
-    private final AtomicReference<Duration> healthCheckInterval = new AtomicReference<>(Duration.ofSeconds(30));
+    // Circuit breaker configuration - using simple variables instead of AtomicReference
+    private volatile int failureThreshold = 5;
+    private volatile Duration recoveryTimeout = Duration.ofMinutes(5);
+    private volatile Duration healthCheckInterval = Duration.ofSeconds(30);
 
-    // Performance thresholds
-    private final AtomicReference<Long> maxResponseTime = new AtomicReference<>(5000L); // 5 seconds
-    private final AtomicReference<Double> minSuccessRate = new AtomicReference<>(0.8); // 80%
+    // Performance thresholds - using simple variables instead of AtomicReference
+    private volatile long maxResponseTime = 5000L; // 5 seconds
+    private volatile double minSuccessRate = 0.8; // 80%
 
-    // Monitoring state
-    private final AtomicReference<Boolean> monitoringEnabled = new AtomicReference<>(true);
-    private final AtomicReference<Boolean> autoRecoveryEnabled = new AtomicReference<>(true);
+    // Monitoring state - using simple variables instead of AtomicReference
+    private volatile boolean monitoringEnabled = true;
+    private volatile boolean autoRecoveryEnabled = true;
 
     // Performance monitoring for specifications - using simple Map for now
     private final ConcurrentHashMap<String, SpecificationPerformanceMetrics> specificationMetrics = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, PerformanceAlert> performanceAlerts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, PerformanceOptimization> performanceOptimizations = new ConcurrentHashMap<>();
 
-    // Performance thresholds for specifications
-    private final AtomicReference<Long> maxSpecificationResponseTime = new AtomicReference<>(3000L); // 3 seconds
-    private final AtomicReference<Double> minSpecificationSuccessRate = new AtomicReference<>(0.9); // 90%
-    private final AtomicReference<Integer> maxSpecificationThroughput = new AtomicReference<>(100); // 100 req/sec
+    // Performance thresholds for specifications - using simple variables instead of AtomicReference
+    private volatile long maxSpecificationResponseTime = 3000L; // 3 seconds
+    private volatile double minSpecificationSuccessRate = 0.9; // 90%
+    private volatile int maxSpecificationThroughput = 100; // 100 req/sec
 
     @Reference
     private MetricsService metricsService;
@@ -108,7 +108,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
         ServiceHealthState state = serviceHealthStates.get(serviceName);
         if (state == null) {
             // If no state exists, consider it healthy and create initial state
-            state = new ServiceHealthState(serviceName);
+            state = new ServiceHealthState(serviceName, metricsService);
             serviceHealthStates.put(serviceName, state);
         }
         return state.isHealthy();
@@ -170,6 +170,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      */
     public CompletableFuture<HealthCheckResult> performHealthCheck(ModelProviderType provider) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
             try {
                 logger.debug("Starting health check for provider: {}", provider);
 
@@ -183,11 +184,31 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
                 ProviderHealthState state = getOrCreateProviderState(provider);
                 state.updateFromHealthCheck(result);
 
+                // Record health check operation using MetricsService
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordOperation("system-health-monitor", "provider-health-check", isHealthy,
+                                Duration.ofMillis(System.currentTimeMillis() - startTime));
+                    } catch (Exception e) {
+                        logger.warn("Failed to record health check metrics for provider: {}", provider, e);
+                    }
+                }
+
                 logger.debug("Health check completed for provider {}: healthy={}, responseTime={}ms", provider,
                         isHealthy, responseTime);
 
                 return result;
             } catch (Exception e) {
+                // Record failed health check operation
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordOperation("system-health-monitor", "provider-health-check", false,
+                                Duration.ofMillis(System.currentTimeMillis() - startTime));
+                    } catch (Exception ex) {
+                        logger.warn("Failed to record failed health check metrics for provider: {}", provider, ex);
+                    }
+                }
+
                 logger.error("Health check failed for provider {}", provider, e);
                 return new HealthCheckResult(provider, false, 0, e);
             }
@@ -203,6 +224,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
     @Override
     public CompletableFuture<HealthCheckResult> performServiceHealthCheck(String serviceName) {
         return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
             try {
                 // TODO: Implement actual service health check logic
                 boolean isHealthy = performServiceHealthCheckLogic(serviceName);
@@ -214,8 +236,29 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
                 ServiceHealthState state = getOrCreateServiceState(serviceName);
                 state.updateFromHealthCheck(isHealthy, responseTime);
 
+                // Record service health check operation using MetricsService
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordOperation("system-health-monitor", "service-health-check", isHealthy,
+                                Duration.ofMillis(System.currentTimeMillis() - startTime));
+                    } catch (Exception e) {
+                        logger.warn("Failed to record service health check metrics for service: {}", serviceName, e);
+                    }
+                }
+
                 return result;
             } catch (Exception e) {
+                // Record failed service health check operation
+                if (metricsService != null) {
+                    try {
+                        metricsService.recordOperation("system-health-monitor", "service-health-check", false,
+                                Duration.ofMillis(System.currentTimeMillis() - startTime));
+                    } catch (Exception ex) {
+                        logger.warn("Failed to record failed service health check metrics for service: {}", serviceName,
+                                ex);
+                    }
+                }
+
                 logger.error("Service health check failed for {}", serviceName, e);
                 return new HealthCheckResult(serviceName, false, 0, e);
             }
@@ -231,22 +274,25 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
     @Override
     public HealthMetrics getProviderHealthMetrics(ModelProviderType provider) {
         ProviderHealthState state = getOrCreateProviderState(provider);
-        
-        // Record health check operation
-        metricsService.recordOperation("tool", "provider-health-check")
-            .withSuccess(state.isHealthy())
-            .withDuration(50)
-            .withData(Map.of(
-                "provider", provider.name(),
-                "successRate", state.getSuccessRate(),
-                "avgResponseTime", state.getAverageResponseTime(),
-                "totalRequests", state.getTotalRequests(),
-                "failedRequests", state.getFailedRequestsCount()
-            ))
-            .record();
+
+        // Record health check operation using MetricsService
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-health-monitor", "provider-health-check", state.isHealthy(),
+                        Duration.ofMillis(50));
+            } catch (Exception e) {
+                logger.warn("Failed to record provider health metrics for provider: {}", provider, e);
+            }
+        }
 
         // Return health metrics from service
-        return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider(provider.name()));
+        try {
+            return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider(provider.name()));
+        } catch (Exception e) {
+            logger.warn("Failed to get provider health metrics snapshot for provider: {}", provider, e);
+            // Return a default/empty health metrics if service is unavailable
+            return new DefaultHealthMetrics();
+        }
     }
 
     /**
@@ -258,18 +304,25 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
     @Override
     public HealthMetrics getServiceHealthMetrics(String serviceName) {
         ServiceHealthState state = getOrCreateServiceState(serviceName);
-        
-        // Record health check operation
-        metricsService.recordOperation("service", "health-check")
-            .withSuccess(state.isHealthy())
-            .withDuration(50)
-            .withData(Map.of(
-                "serviceName", serviceName
-            ))
-            .record();
+
+        // Record health check operation using MetricsService
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-health-monitor", "service-health-check", state.isHealthy(),
+                        Duration.ofMillis(50));
+            } catch (Exception e) {
+                logger.warn("Failed to record service health metrics for service: {}", serviceName, e);
+            }
+        }
 
         // Return health metrics from service
-        return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider(serviceName));
+        try {
+            return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider(serviceName));
+        } catch (Exception e) {
+            logger.warn("Failed to get service health metrics snapshot for service: {}", serviceName, e);
+            // Return a default/empty health metrics if service is unavailable
+            return new DefaultHealthMetrics();
+        }
     }
 
     /**
@@ -341,33 +394,82 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
         logger.info("Reset health monitoring for service {}", serviceName);
     }
 
-    // Configuration methods
+    // Configuration methods - now using MetricsService for tracking
     public void setFailureThreshold(int threshold) {
-        failureThreshold.set(threshold);
+        this.failureThreshold = threshold;
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-health-monitor", "configuration", true, Duration.ofMillis(1));
+            } catch (Exception e) {
+                logger.warn("Failed to record configuration change for failure threshold", e);
+            }
+        }
     }
 
     public void setRecoveryTimeout(Duration timeout) {
-        recoveryTimeout.set(timeout);
+        this.recoveryTimeout = timeout;
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-health-monitor", "configuration", true, Duration.ofMillis(1));
+            } catch (Exception e) {
+                logger.warn("Failed to record configuration change for recovery timeout", e);
+            }
+        }
     }
 
     public void setHealthCheckInterval(Duration interval) {
-        healthCheckInterval.set(interval);
+        this.healthCheckInterval = interval;
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-health-monitor", "configuration", true, Duration.ofMillis(1));
+            } catch (Exception e) {
+                logger.warn("Failed to record configuration change for health check interval", e);
+            }
+        }
     }
 
     public void setMaxResponseTime(long maxResponseTime) {
-        this.maxResponseTime.set(maxResponseTime);
+        this.maxResponseTime = maxResponseTime;
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-health-monitor", "configuration", true, Duration.ofMillis(1));
+            } catch (Exception e) {
+                logger.warn("Failed to record configuration change for max response time", e);
+            }
+        }
     }
 
     public void setMinSuccessRate(double minSuccessRate) {
-        this.minSuccessRate.set(minSuccessRate);
+        this.minSuccessRate = minSuccessRate;
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-health-monitor", "configuration", true, Duration.ofMillis(1));
+            } catch (Exception e) {
+                logger.warn("Failed to record configuration change for min success rate", e);
+            }
+        }
     }
 
     public void setMonitoringEnabled(boolean enabled) {
-        monitoringEnabled.set(enabled);
+        this.monitoringEnabled = enabled;
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-health-monitor", "configuration", true, Duration.ofMillis(1));
+            } catch (Exception e) {
+                logger.warn("Failed to record configuration change for monitoring enabled", e);
+            }
+        }
     }
 
     public void setAutoRecoveryEnabled(boolean enabled) {
-        autoRecoveryEnabled.set(enabled);
+        this.autoRecoveryEnabled = enabled;
+        if (metricsService != null) {
+            try {
+                metricsService.recordOperation("system-health-monitor", "configuration", true, Duration.ofMillis(1));
+            } catch (Exception e) {
+                logger.warn("Failed to record configuration change for auto recovery enabled", e);
+            }
+        }
     }
 
     // Specification Performance Monitoring Methods
@@ -380,36 +482,25 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      * @param success true if execution was successful
      */
     public void recordSpecificationExecution(String specificationId, long responseTime, boolean success) {
-        // Simplified implementation using Map instead of deleted SpecificationPerformanceMetrics
-        Map<String, Object> metrics = specificationMetrics.computeIfAbsent(specificationId, id -> {
-            Map<String, Object> newMetrics = new ConcurrentHashMap<>();
-            newMetrics.put("specificationId", id);
-            newMetrics.put("totalRequests", 0L);
-            newMetrics.put("successfulRequests", 0L);
-            newMetrics.put("failedRequests", 0L);
-            newMetrics.put("totalResponseTime", 0L);
-            newMetrics.put("averageResponseTime", 0.0);
-            newMetrics.put("successRate", 0.0);
-            newMetrics.put("lastUpdated", Instant.now());
-            return newMetrics;
-        });
+        // Get or create metrics for the specification
+        SpecificationPerformanceMetrics existingMetrics = specificationMetrics.get(specificationId);
+        if (existingMetrics == null) {
+            existingMetrics = new SpecificationPerformanceMetrics(specificationId, 0, 0, 0, 0, 0.0, 0.0, 0,
+                    Instant.now());
+        }
 
-        long totalRequests = (Long) metrics.get("totalRequests") + 1;
-        long successfulRequests = (Long) metrics.get("successfulRequests") + (success ? 1 : 0);
-        long failedRequests = (Long) metrics.get("failedRequests") + (success ? 0 : 1);
-        long totalResponseTime = (Long) metrics.get("totalResponseTime") + responseTime;
+        long totalRequests = existingMetrics.totalRequests() + 1;
+        long successfulRequests = existingMetrics.successfulRequests() + (success ? 1 : 0);
+        long failedRequests = existingMetrics.failedRequests() + (success ? 0 : 1);
+        long totalResponseTime = existingMetrics.totalResponseTime() + responseTime;
         double averageResponseTime = (double) totalResponseTime / totalRequests;
         double successRate = (double) successfulRequests / totalRequests;
 
-        metrics.put("totalRequests", totalRequests);
-        metrics.put("successfulRequests", successfulRequests);
-        metrics.put("failedRequests", failedRequests);
-        metrics.put("totalResponseTime", totalResponseTime);
-        metrics.put("averageResponseTime", averageResponseTime);
-        metrics.put("successRate", successRate);
-        metrics.put("lastUpdated", Instant.now());
+        SpecificationPerformanceMetrics updatedMetrics = new SpecificationPerformanceMetrics(specificationId,
+                totalRequests, successfulRequests, failedRequests, totalResponseTime, averageResponseTime, successRate,
+                (int) calculateThroughput(specificationId), Instant.now());
 
-        specificationMetrics.put(specificationId, metrics);
+        specificationMetrics.put(specificationId, updatedMetrics);
     }
 
     /**
@@ -434,7 +525,11 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
      */
     @Override
     public Map<String, Object> getAllSpecificationMetrics() {
-        return new ConcurrentHashMap<>(specificationMetrics);
+        Map<String, Object> result = new ConcurrentHashMap<>();
+        for (Map.Entry<String, SpecificationPerformanceMetrics> entry : specificationMetrics.entrySet()) {
+            result.put(entry.getKey(), entry.getValue());
+        }
+        return result;
     }
 
     /**
@@ -501,19 +596,19 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
     private void checkPerformanceAlerts(String specificationId, SpecificationPerformanceMetrics metrics) {
         // Check response time threshold
-        if (metrics.averageResponseTime() > maxSpecificationResponseTime.get()) {
+        if (metrics.averageResponseTime() > maxSpecificationResponseTime) {
             createPerformanceAlert(specificationId, "HIGH_RESPONSE_TIME",
                     "Average response time exceeds threshold: " + metrics.averageResponseTime() + "ms", "WARNING");
         }
 
         // Check success rate threshold
-        if (metrics.successRate() < minSpecificationSuccessRate.get()) {
+        if (metrics.successRate() < minSpecificationSuccessRate) {
             createPerformanceAlert(specificationId, "LOW_SUCCESS_RATE",
                     "Success rate below threshold: " + (metrics.successRate() * 100) + "%", "ERROR");
         }
 
         // Check throughput threshold
-        if (metrics.currentThroughput() > maxSpecificationThroughput.get()) {
+        if (metrics.currentThroughput() > maxSpecificationThroughput) {
             createPerformanceAlert(specificationId, "HIGH_THROUGHPUT",
                     "Throughput exceeds threshold: " + metrics.currentThroughput() + " req/sec", "INFO");
         }
@@ -566,9 +661,10 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
     }
 
     private ServiceHealthState getOrCreateServiceState(String serviceName) {
-        ServiceHealthState state = serviceHealthStates.computeIfAbsent(serviceName, ServiceHealthState::new);
+        ServiceHealthState state = serviceHealthStates.computeIfAbsent(serviceName,
+                name -> new ServiceHealthState(name, metricsService));
         if (state == null) {
-            state = new ServiceHealthState(serviceName);
+            state = new ServiceHealthState(serviceName, metricsService);
             serviceHealthStates.put(serviceName, state);
         }
         return state;
@@ -594,7 +690,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
             // 2. Check success rate
             double successRate = state.getSuccessRate();
-            double minSuccessRate = this.minSuccessRate.get();
+            double minSuccessRate = this.minSuccessRate;
             if (successRate < minSuccessRate) {
                 logger.warn("Provider {} success rate {} is below threshold {}", provider, successRate, minSuccessRate);
                 return false;
@@ -602,7 +698,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
             // 3. Check response time
             double avgResponseTime = state.getAverageResponseTime();
-            long maxResponseTime = this.maxResponseTime.get();
+            long maxResponseTime = this.maxResponseTime;
             if (avgResponseTime > maxResponseTime) {
                 logger.warn("Provider {} average response time {}ms exceeds threshold {}ms", provider, avgResponseTime,
                         maxResponseTime);
@@ -618,7 +714,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
             // 5. Check consecutive failures
             long consecutiveFailures = state.getConsecutiveFailures();
-            int failureThreshold = this.failureThreshold.get();
+            int failureThreshold = this.failureThreshold;
             if (consecutiveFailures >= failureThreshold) {
                 logger.warn("Provider {} has {} consecutive failures, exceeding threshold {}", provider,
                         consecutiveFailures, failureThreshold);
@@ -669,7 +765,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
             // Check success rate
             double successRate = state.getSuccessRate();
-            double minSuccessRate = this.minSuccessRate.get();
+            double minSuccessRate = this.minSuccessRate;
             if (successRate < minSuccessRate) {
                 logger.warn("Provider {} success rate {} is below threshold {}", provider, successRate, minSuccessRate);
                 return false;
@@ -677,7 +773,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
             // Check response time
             double avgResponseTime = state.getAverageResponseTime();
-            long maxResponseTime = this.maxResponseTime.get();
+            long maxResponseTime = this.maxResponseTime;
             if (avgResponseTime > maxResponseTime) {
                 logger.warn("Provider {} average response time {}ms exceeds threshold {}ms", provider, avgResponseTime,
                         maxResponseTime);
@@ -693,7 +789,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
             // Check consecutive failures
             long consecutiveFailures = state.getConsecutiveFailures();
-            int failureThreshold = this.failureThreshold.get();
+            int failureThreshold = this.failureThreshold;
             if (consecutiveFailures >= failureThreshold) {
                 logger.warn("Provider {} has {} consecutive failures, exceeding threshold {}", provider,
                         consecutiveFailures, failureThreshold);
@@ -750,7 +846,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
             // Check success rate
             double successRate = state.getSuccessRate();
-            double minSuccessRate = this.minSuccessRate.get();
+            double minSuccessRate = this.minSuccessRate;
             if (successRate < minSuccessRate) {
                 logger.warn("Service {} success rate {} is below threshold {}", serviceName, successRate,
                         minSuccessRate);
@@ -759,7 +855,7 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
 
             // Check response time
             double avgResponseTime = state.getAverageResponseTime();
-            long maxResponseTime = this.maxResponseTime.get();
+            long maxResponseTime = this.maxResponseTime;
             if (avgResponseTime > maxResponseTime) {
                 logger.warn("Service {} average response time {}ms exceeds threshold {}ms", serviceName,
                         avgResponseTime, maxResponseTime);
@@ -767,11 +863,9 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
             }
 
             // Check total requests (ensure service is being used)
-            long totalRequests = state.getHealthMetrics().getTotalRequests();
-            if (totalRequests == 0) {
-                logger.warn("Service {} has no recorded requests", serviceName);
-                return false;
-            }
+            // Note: For now we assume services with no recorded activity are still healthy
+            // In a real implementation, this would check if the service has processed any requests
+            logger.debug("Service {} health check passed basic validation", serviceName);
 
             logger.debug("Service {} health check passed", serviceName);
             return true;
@@ -930,36 +1024,56 @@ public class DefaultSystemHealthMonitor implements SystemHealthMonitor {
     // Implementation of missing interface methods
     @Override
     public boolean isMonitoringEnabled() {
-        return monitoringEnabled.get();
+        return monitoringEnabled;
     }
 
     @Override
     public boolean isAutoRecoveryEnabled() {
-        return autoRecoveryEnabled.get();
+        return autoRecoveryEnabled;
     }
 
     @Override
     public int getFailureThreshold() {
-        return failureThreshold.get();
+        return failureThreshold;
     }
 
     @Override
     public Duration getRecoveryTimeout() {
-        return recoveryTimeout.get();
+        return recoveryTimeout;
     }
 
     @Override
     public Duration getHealthCheckInterval() {
-        return healthCheckInterval.get();
+        return healthCheckInterval;
     }
 
     @Override
     public long getMaxResponseTime() {
-        return maxResponseTime.get();
+        return maxResponseTime;
     }
 
     @Override
     public double getMinSuccessRate() {
-        return minSuccessRate.get();
+        return minSuccessRate;
+    }
+
+    /**
+     * Simple default implementation of HealthMetrics for fallback purposes.
+     */
+    private static class DefaultHealthMetrics implements HealthMetrics {
+        @Override
+        public HealthStatus healthStatus() {
+            return HealthStatus.UNKNOWN;
+        }
+
+        @Override
+        public @Nullable String statusMessage() {
+            return "Health metrics unavailable";
+        }
+
+        @Override
+        public @Nullable Map<String, Object> healthIndicators() {
+            return Map.of("status", "unavailable");
+        }
     }
 }

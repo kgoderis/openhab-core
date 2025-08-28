@@ -7,24 +7,20 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import java.util.Map;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
 import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
-import org.openhab.core.ai.common.monitoring.service.statistics.AgentPersistenceStatistics;
 import org.openhab.core.service.ReadyMarker;
 import org.openhab.core.service.ReadyService;
 import org.openhab.core.service.ReadyService.ReadyTracker;
@@ -99,32 +95,52 @@ public class AgentPersistenceManager implements ReadyTracker {
 
     @Activate
     public void activate() {
-        logger.debug("A2A Persistence Manager activated");
+        try {
+            logger.debug("A2A Persistence Manager activated");
 
-        // Register as a tracker
-        if (readyService != null) {
-            readyService.registerTracker(this);
+            // Register as a tracker
+            if (readyService != null) {
+                readyService.registerTracker(this);
+            } else {
+                logger.warn("ReadyService not available during activation");
+            }
+
+            // Initialize persistence
+            initializePersistence();
+
+            recordMetrics("agent-persistence", "service-activated", true, 0L);
+        } catch (Exception e) {
+            logger.error("Error during A2A Persistence Manager activation: {}", e.getMessage(), e);
+            recordMetrics("agent-persistence", "service-activated", false, 0L);
+            // Continue with activation despite errors
         }
-
-        // Initialize persistence
-        initializePersistence();
     }
 
     @Deactivate
     public void deactivate() {
-        logger.debug("A2A Persistence Manager deactivated");
+        try {
+            logger.debug("A2A Persistence Manager deactivated");
 
-        // Unregister tracker
-        if (readyService != null) {
-            readyService.unregisterTracker(this);
-        }
+            // Unregister tracker
+            if (readyService != null) {
+                readyService.unregisterTracker(this);
+            } else {
+                logger.warn("ReadyService not available during deactivation");
+            }
 
-        // Save all data before shutdown
-        saveAllData();
+            // Save all data before shutdown
+            saveAllData();
 
-        // Unmark ready marker
-        if (readyService != null) {
-            readyService.unmarkReady(AGENT_PERSISTENCE_READY);
+            // Unmark ready marker
+            if (readyService != null) {
+                readyService.unmarkReady(AGENT_PERSISTENCE_READY);
+            }
+
+            recordMetrics("agent-persistence", "service-deactivated", true, 0L);
+        } catch (Exception e) {
+            logger.error("Error during A2A Persistence Manager deactivation: {}", e.getMessage(), e);
+            recordMetrics("agent-persistence", "service-deactivated", false, 0L);
+            // Continue with deactivation despite errors
         }
     }
 
@@ -167,14 +183,27 @@ public class AgentPersistenceManager implements ReadyTracker {
         boolean success = false;
 
         try {
-            tasks.put(task.getId(), task);
+            if (task == null) {
+                logger.warn("Cannot save null task to persistence");
+                recordMetrics("agent-persistence", "task-save", false, System.nanoTime() - startTime);
+                return;
+            }
+
+            String taskId = task.getId();
+            if (taskId == null || taskId.trim().isEmpty()) {
+                logger.warn("Cannot save task with null or empty ID to persistence");
+                recordMetrics("agent-persistence", "task-save", false, System.nanoTime() - startTime);
+                return;
+            }
+
+            tasks.put(taskId, task);
             saveTasks();
             success = true;
-            logger.debug("Saved task: {}", task.getId());
+            logger.debug("Saved task: {}", taskId);
         } catch (Exception e) {
-            logger.error("Error saving task: {}", task.getId(), e);
+            logger.error("Error saving task '{}': {}", task != null ? task.getId() : "null", e.getMessage(), e);
         } finally {
-            recordMetrics("agent-persistence", "task-management", success, System.nanoTime() - startTime);
+            recordMetrics("agent-persistence", "task-save", success, System.nanoTime() - startTime);
         }
     }
 
@@ -275,8 +304,10 @@ public class AgentPersistenceManager implements ReadyTracker {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                MetricKey agentPersistenceKey = MetricKeys.custom("agent-persistence", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metrics.getSnapshot(agentPersistenceKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                MetricKey agentPersistenceKey = MetricKeys.custom("agent-persistence", Map.of(),
+                        Set.of("counts", "latency"));
+                var snapshot = metrics.getSnapshot(agentPersistenceKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
                 return snapshot != null ? snapshot.getLong("total") : 0L;
             } catch (Exception e) {
                 logger.warn("Error retrieving execution count for task {}: {}", taskId, e.getMessage());
@@ -334,8 +365,7 @@ public class AgentPersistenceManager implements ReadyTracker {
 
             // Update statistics based on state change using monitoring registry
             if (monitoringRegistry != null) {
-                MetricsCollector collector = monitoringRegistry
-                        .getCollector(MetricKeys.action("task-state-update"));
+                MetricsCollector collector = monitoringRegistry.getCollector(MetricKeys.action("task-state-update"));
 
                 if (newState == TaskState.COMPLETED) {
                     collector.recordExecution(true, 0L);
@@ -379,47 +409,10 @@ public class AgentPersistenceManager implements ReadyTracker {
         }
     }
 
-    // Statistics methods - now using MetricsService exclusively
-    public AgentPersistenceStatistics getStatistics() {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                return metrics.getStatistics(MetricKeys.custom("agent-persistence", Map.of("name", "default"), Set.of("counts", "latency")), AgentPersistenceStatistics.class, Duration.ofHours(1));
-            } catch (Exception e) {
-                logger.warn("Error retrieving metrics for agent-persistence: {}", e.getMessage());
-            }
-        } else {
-            logger.warn("MetricsService not available, returning empty statistics");
-        }
-        return AgentPersistenceStatistics.empty("default", Duration.ofHours(1));
-    }
-
-    // Enhanced statistics with additional context
-    public Map<String, Object> getEnhancedStatistics() {
-        Map<String, Object> stats = new HashMap<>();
-
-        // Get the agent persistence statistics
-        AgentPersistenceStatistics statistics = getStatistics();
-
-        // Add basic statistics data
-        stats.put("totalOperations", statistics.total());
-        stats.put("successfulOperations", statistics.success());
-        stats.put("failedOperations", statistics.failure());
-        stats.put("totalDurationNanos", statistics.totalDurationNanos());
-        stats.put("successRate", statistics.successRate());
-        stats.put("timestampMs", statistics.timestampMs());
-
-        // Add additional context-specific data
-        stats.put("totalTasks", tasks.size());
-
-        // Add per-executor statistics
-        Map<String, Object> executorStats = new HashMap<>();
-        taskExecutors.values().stream().collect(Collectors.groupingBy(executor -> executor, Collectors.counting()))
-                .forEach((executor, count) -> executorStats.put(executor, count));
-        stats.put("executorStatistics", executorStats);
-
-        return stats;
-    }
+    // Statistics methods - eliminated getStatistics() proxy method
+    // Consumers should call MetricsService directly:
+    // metricsService.getStatistics(MetricKeys.custom("agent-persistence", Map.of("name", "default"), Set.of("counts",
+    // "latency")), AgentPersistenceStatistics.class, Duration.ofHours(1))
 
     // Persistence file operations
     private void saveTasks() {
@@ -657,67 +650,6 @@ public class AgentPersistenceManager implements ReadyTracker {
     }
 
     /**
-     * Get task statistics using the new monitoring framework
-     */
-    public Map<String, Object> getTaskStatistics() {
-        Map<String, Object> statistics = new HashMap<>();
-
-        // Get metrics from MetricsService
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                MetricKey agentPersistenceKey = MetricKeys.custom("agent-persistence", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metrics.getSnapshot(agentPersistenceKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-                
-                if (snapshot != null) {
-                    long totalOperations = snapshot.getLong("total");
-                    long failedOperations = snapshot.getLong("failure");
-                    long successfulOperations = totalOperations - failedOperations;
-                    
-                    statistics.put("totalTasks", tasks.size());
-                    statistics.put("totalTaskSaves", totalOperations);
-                    statistics.put("successfulTaskSaves", successfulOperations);
-                    statistics.put("failedTaskSaves", failedOperations);
-                    statistics.put("totalTaskDeletions", totalOperations);
-                    statistics.put("successfulTaskDeletions", successfulOperations);
-                    statistics.put("failedTaskDeletions", failedOperations);
-                    statistics.put("totalStateUpdates", totalOperations);
-                    statistics.put("successfulStateUpdates", successfulOperations);
-                    statistics.put("failedStateUpdates", failedOperations);
-                }
-            } catch (Exception e) {
-                logger.warn("Error retrieving metrics for agent-persistence: {}", e.getMessage());
-                // Fallback to basic statistics
-                statistics.put("totalTasks", tasks.size());
-                statistics.put("totalTaskSaves", 0);
-                statistics.put("successfulTaskSaves", 0);
-                statistics.put("failedTaskSaves", 0);
-                statistics.put("totalTaskDeletions", 0);
-                statistics.put("successfulTaskDeletions", 0);
-                statistics.put("failedTaskDeletions", 0);
-                statistics.put("totalStateUpdates", 0);
-                statistics.put("successfulStateUpdates", 0);
-                statistics.put("failedStateUpdates", 0);
-            }
-        } else {
-            logger.warn("MetricsService not available, returning empty statistics");
-            // Fallback to basic statistics
-            statistics.put("totalTasks", tasks.size());
-            statistics.put("totalTaskSaves", 0);
-            statistics.put("successfulTaskSaves", 0);
-            statistics.put("failedTaskSaves", 0);
-            statistics.put("totalTaskDeletions", 0);
-            statistics.put("successfulTaskDeletions", 0);
-            statistics.put("failedTaskDeletions", 0);
-            statistics.put("totalStateUpdates", 0);
-            statistics.put("successfulStateUpdates", 0);
-            statistics.put("failedStateUpdates", 0);
-        }
-
-        return statistics;
-    }
-
-    /**
      * Record metrics for an operation.
      * 
      * @param domain the operation domain
@@ -731,7 +663,8 @@ public class AgentPersistenceManager implements ReadyTracker {
             try {
                 metrics.recordOperation(domain, operation, success, java.time.Duration.ofNanos(durationNanos));
             } catch (Exception e) {
-                logger.warn("Failed to record agent persistence metrics for operation {} - {}: {}", domain, operation, e.getMessage());
+                logger.warn("Failed to record agent persistence metrics for operation {} - {}: {}", domain, operation,
+                        e.getMessage());
                 // Graceful degradation: continue with persistence operations even if metrics recording fails
             }
         } else {

@@ -76,8 +76,6 @@ public interface PerformanceMetrics {
         return totalOperations() / totalTimeSeconds;
     }
 
-
-
     /**
      * Get the minimum processing time in milliseconds.
      * 

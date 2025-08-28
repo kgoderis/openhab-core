@@ -54,23 +54,38 @@ public final class AgentModelRegistry {
      * @return true if registration was successful, false if model already exists
      */
     public boolean registerModel(AgentModel model) {
-        Objects.requireNonNull(model, "model");
+        long startTime = System.nanoTime();
 
-        registryLock.writeLock().lock();
         try {
-            String modelId = model.getModelId();
+            Objects.requireNonNull(model, "model");
 
-            if (models.containsKey(modelId)) {
-                logger.warn("Model already registered: {}", modelId);
-                return false;
+            registryLock.writeLock().lock();
+            try {
+                String modelId = model.getModelId();
+                if (modelId == null || modelId.trim().isEmpty()) {
+                    logger.warn("Cannot register model: model ID is null or empty");
+                    recordMetrics("model-registration", false, System.nanoTime() - startTime);
+                    return false;
+                }
+
+                if (models.containsKey(modelId)) {
+                    logger.warn("Model already registered: {}", modelId);
+                    recordMetrics("model-registration", false, System.nanoTime() - startTime);
+                    return false;
+                }
+
+                models.put(modelId, model);
+                recordMetrics("model-registration", true, System.nanoTime() - startTime);
+                logger.debug("Registered model: {}", modelId);
+                return true;
+
+            } finally {
+                registryLock.writeLock().unlock();
             }
-
-            models.put(modelId, model);
-            logger.debug("Registered model: {}", modelId);
-            return true;
-
-        } finally {
-            registryLock.writeLock().unlock();
+        } catch (Exception e) {
+            logger.error("Error registering model: {}", e.getMessage(), e);
+            recordMetrics("model-registration", false, System.nanoTime() - startTime);
+            return false;
         }
     }
 
@@ -378,16 +393,33 @@ public final class AgentModelRegistry {
      * Record metrics for agent model registry operations
      */
     private void recordMetrics(String operation, boolean success, long durationNanos) {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            try {
-                metrics.recordOperation("agent-model-registry", operation, success, Duration.ofNanos(durationNanos));
-            } catch (Exception e) {
-                logger.debug("Failed to record metrics for {}.{}: {}", "agent-model-registry", operation,
-                        e.getMessage());
+        try {
+            if (operation == null || operation.trim().isEmpty()) {
+                logger.warn("Cannot record metrics: operation is null or empty");
+                return;
             }
-        } else {
-            logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+
+            if (durationNanos < 0) {
+                logger.warn("Cannot record metrics: duration is negative ({}) for operation: {}", durationNanos,
+                        operation);
+                return;
+            }
+
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                try {
+                    metrics.recordOperation("agent-model-registry", operation, success,
+                            Duration.ofNanos(durationNanos));
+                } catch (Exception e) {
+                    logger.error("Failed to record metrics for agent-model-registry.{}: {}", operation, e.getMessage(),
+                            e);
+                }
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {}", operation);
+            }
+        } catch (Exception e) {
+            // Prevent recursive error recording
+            logger.error("Error in metrics recording helper for operation {}: {}", operation, e.getMessage());
         }
     }
 }

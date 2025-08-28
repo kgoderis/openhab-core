@@ -71,8 +71,6 @@ public interface StatisticsMetrics {
         return end.toEpochMilli() - start.toEpochMilli();
     }
 
-
-
     /**
      * Get the throughput (items per second).
      * 

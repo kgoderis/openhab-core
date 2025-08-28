@@ -1,23 +1,29 @@
 package org.openhab.core.ai.tool.filter.validators;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of {@link FilterValidator}.
  *
- * Author: Karel Goderis - Initial Contribution
- * 
+ * @author Karel Goderis - Initial Contribution
  * @since 1.0.0
  */
+@Component(service = FilterValidator.class, immediate = true)
 @NonNullByDefault
 public class DefaultFilterValidator implements FilterValidator {
 
@@ -30,13 +36,23 @@ public class DefaultFilterValidator implements FilterValidator {
     private final Map<String, Object> configuration;
     private final Map<String, FilterValidator> customFilterTypes;
     private final Map<String, FilterValidationResult> validationCache;
-    private final AtomicLong validationCount = new AtomicLong(0);
-    private final AtomicLong cacheHitCount = new AtomicLong(0);
-    private final AtomicLong totalValidationTimeMs = new AtomicLong(0);
-    private final AtomicLong lastValidationTimeMs = new AtomicLong(0);
-    private final AtomicLong successCount = new AtomicLong(0);
-    private final AtomicLong failureCount = new AtomicLong(0);
     private boolean enabled = true;
+
+    // MetricsService for recording validation operations - migrated from AtomicLong counters
+    private @Nullable MetricsService metricsService;
+
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+    protected void setMetricsService(MetricsService metricsService) {
+        this.metricsService = metricsService;
+        LOGGER.debug("MetricsService set for DefaultFilterValidator");
+    }
+
+    protected void unsetMetricsService(MetricsService metricsService) {
+        if (this.metricsService == metricsService) {
+            this.metricsService = null;
+            LOGGER.debug("MetricsService unset for DefaultFilterValidator");
+        }
+    }
 
     public DefaultFilterValidator(String validatorId, String validatorName, String validatorDescription,
             String[] supportedFilterTypes) {
@@ -76,38 +92,36 @@ public class DefaultFilterValidator implements FilterValidator {
 
     @Override
     public FilterValidationResult validateFilter(Map<String, Object> filterConfig) {
-        long startTime = System.currentTimeMillis();
-        validationCount.incrementAndGet();
+        long startTimeNanos = System.nanoTime();
 
         try {
             String cacheKey = generateCacheKey(filterConfig);
             FilterValidationResult cachedResult = validationCache.get(cacheKey);
             if (cachedResult != null) {
-                cacheHitCount.incrementAndGet();
+                // Record cache hit - successful operation with zero duration
+                recordMetrics("filter-validator", "cache-hit", true,
+                        Duration.ofNanos(System.nanoTime() - startTimeNanos));
                 LOGGER.debug("Cache hit for filter validation: {}", cacheKey);
                 return cachedResult;
             }
 
             FilterValidationResult result = performFilterValidation(filterConfig);
-            long validationTime = System.currentTimeMillis() - startTime;
-            lastValidationTimeMs.set(validationTime);
-            totalValidationTimeMs.addAndGet(validationTime);
+            Duration validationDuration = Duration.ofNanos(System.nanoTime() - startTimeNanos);
 
-            if (result.isValid()) {
-                successCount.incrementAndGet();
-            } else {
-                failureCount.incrementAndGet();
-            }
+            // Record validation operation with success/failure status
+            recordMetrics("filter-validator", "validation", result.isValid(), validationDuration);
+
             validationCache.put(cacheKey, result);
-            LOGGER.debug("Filter validation completed in {}ms with result: {}", validationTime,
+            LOGGER.debug("Filter validation completed in {}ms with result: {}", validationDuration.toMillis(),
                     result.isValid() ? "valid" : "invalid");
             return result;
 
         } catch (Exception e) {
-            long validationTime = System.currentTimeMillis() - startTime;
-            lastValidationTimeMs.set(validationTime);
-            totalValidationTimeMs.addAndGet(validationTime);
-            failureCount.incrementAndGet();
+            Duration validationDuration = Duration.ofNanos(System.nanoTime() - startTimeNanos);
+
+            // Record failed validation operation
+            recordMetrics("filter-validator", "validation", false, validationDuration);
+
             LOGGER.error("Filter validation failed", e);
             return FilterValidationResult.invalid(List.of("Filter validation failed: " + e.getMessage()));
         }
@@ -115,36 +129,35 @@ public class DefaultFilterValidator implements FilterValidator {
 
     @Override
     public FilterValidationResult validateExpression(String filterExpression) {
-        long startTime = System.currentTimeMillis();
-        validationCount.incrementAndGet();
+        long startTimeNanos = System.nanoTime();
 
         try {
             String cacheKey = "expression:" + filterExpression;
             FilterValidationResult cachedResult = validationCache.get(cacheKey);
             if (cachedResult != null) {
-                cacheHitCount.incrementAndGet();
+                // Record cache hit for expression validation
+                recordMetrics("filter-validator", "expression-cache-hit", true,
+                        Duration.ofNanos(System.nanoTime() - startTimeNanos));
                 LOGGER.debug("Cache hit for expression validation: {}", cacheKey);
                 return cachedResult;
             }
 
             FilterValidationResult result = performExpressionValidation(filterExpression);
-            long validationTime = System.currentTimeMillis() - startTime;
-            lastValidationTimeMs.set(validationTime);
-            totalValidationTimeMs.addAndGet(validationTime);
-            if (result.isValid()) {
-                successCount.incrementAndGet();
-            } else {
-                failureCount.incrementAndGet();
-            }
+            Duration validationDuration = Duration.ofNanos(System.nanoTime() - startTimeNanos);
+
+            // Record expression validation operation
+            recordMetrics("filter-validator", "expression-validation", result.isValid(), validationDuration);
+
             validationCache.put(cacheKey, result);
-            LOGGER.debug("Expression validation completed in {}ms with result: {}", validationTime,
+            LOGGER.debug("Expression validation completed in {}ms with result: {}", validationDuration.toMillis(),
                     result.isValid() ? "valid" : "invalid");
             return result;
         } catch (Exception e) {
-            long validationTime = System.currentTimeMillis() - startTime;
-            lastValidationTimeMs.set(validationTime);
-            totalValidationTimeMs.addAndGet(validationTime);
-            failureCount.incrementAndGet();
+            Duration validationDuration = Duration.ofNanos(System.nanoTime() - startTimeNanos);
+
+            // Record failed expression validation
+            recordMetrics("filter-validator", "expression-validation", false, validationDuration);
+
             LOGGER.error("Expression validation failed", e);
             return FilterValidationResult.invalid(List.of("Expression validation failed: " + e.getMessage()));
         }
@@ -171,21 +184,57 @@ public class DefaultFilterValidator implements FilterValidator {
 
     @Override
     public Map<String, Object> getPerformanceMetrics() {
-        Map<String, Object> metrics = new HashMap<>();
-        long totalValidations = validationCount.get();
-        metrics.put("validationCount", totalValidations);
-        metrics.put("cacheHitCount", cacheHitCount.get());
-        metrics.put("totalValidationTimeMs", totalValidationTimeMs.get());
-        metrics.put("lastValidationTimeMs", lastValidationTimeMs.get());
-        metrics.put("successCount", successCount.get());
-        metrics.put("failureCount", failureCount.get());
-        metrics.put("cacheSize", validationCache.size());
-        metrics.put("customFilterTypes", customFilterTypes.size());
-        metrics.put("averageValidationTimeMs",
-                totalValidations > 0 ? totalValidationTimeMs.get() / totalValidations : 0L);
-        metrics.put("successRate", totalValidations > 0 ? (double) successCount.get() / totalValidations : 0.0);
-        metrics.put("cacheHitRate", totalValidations > 0 ? (double) cacheHitCount.get() / totalValidations : 0.0);
-        return metrics;
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            LOGGER.warn("MetricsService not available, returning basic cache metrics");
+            Map<String, Object> basicMetrics = new HashMap<>();
+            basicMetrics.put("cacheSize", validationCache.size());
+            basicMetrics.put("customFilterTypes", customFilterTypes.size());
+            basicMetrics.put("enabled", enabled);
+            return basicMetrics;
+        }
+
+        try {
+            // Get snapshots for different operation types
+            FilterValidatorSnapshot validationSnapshot = getFilterValidatorSnapshot(metrics, "validation");
+            FilterValidatorSnapshot cacheHitSnapshot = getFilterValidatorSnapshot(metrics, "cache-hit");
+            FilterValidatorSnapshot expressionSnapshot = getFilterValidatorSnapshot(metrics, "expression-validation");
+
+            Map<String, Object> performanceMetrics = new HashMap<>();
+
+            // Overall validation metrics
+            performanceMetrics.put("validationCount", validationSnapshot.total());
+            performanceMetrics.put("successCount", validationSnapshot.success());
+            performanceMetrics.put("failureCount", validationSnapshot.failure());
+            performanceMetrics.put("successRate", validationSnapshot.successRate());
+            performanceMetrics.put("averageValidationTimeMs", validationSnapshot.averageMs(validationSnapshot.total()));
+
+            // Cache metrics
+            performanceMetrics.put("cacheHitCount", cacheHitSnapshot.total());
+            performanceMetrics.put("cacheHitRate", calculateCacheHitRate(validationSnapshot, cacheHitSnapshot));
+            performanceMetrics.put("cacheSize", validationCache.size());
+
+            // Expression validation metrics
+            performanceMetrics.put("expressionValidationCount", expressionSnapshot.total());
+            performanceMetrics.put("expressionSuccessRate", expressionSnapshot.successRate());
+
+            // Additional metrics
+            performanceMetrics.put("customFilterTypes", customFilterTypes.size());
+            performanceMetrics.put("enabled", enabled);
+            performanceMetrics.put("validatorId", validatorId);
+            performanceMetrics.put("timestamp", System.currentTimeMillis());
+
+            return performanceMetrics;
+        } catch (Exception e) {
+            LOGGER.error("Error retrieving performance metrics from MetricsService", e);
+            // Fallback to basic metrics
+            Map<String, Object> fallbackMetrics = new HashMap<>();
+            fallbackMetrics.put("cacheSize", validationCache.size());
+            fallbackMetrics.put("customFilterTypes", customFilterTypes.size());
+            fallbackMetrics.put("enabled", enabled);
+            fallbackMetrics.put("error", "Metrics retrieval failed: " + e.getMessage());
+            return fallbackMetrics;
+        }
     }
 
     @Override
@@ -289,5 +338,69 @@ public class DefaultFilterValidator implements FilterValidator {
 
     private boolean hasValidFieldNames(String expression) {
         return !expression.contains("invalid_field") && !expression.contains("__private");
+    }
+
+    /**
+     * Record metrics with error handling and graceful degradation.
+     * 
+     * @param domain the operation domain
+     * @param operation the operation name
+     * @param success whether the operation was successful
+     * @param duration the operation duration
+     */
+    private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            LOGGER.debug("MetricsService not available, skipping metric recording for {}.{}", domain, operation);
+            return;
+        }
+
+        try {
+            metrics.recordOperation(domain, operation, success, duration);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to record metrics for {}.{}: {}", domain, operation, e.getMessage());
+        }
+    }
+
+    /**
+     * Get a FilterValidatorSnapshot from the MetricsService.
+     * 
+     * @param metrics the MetricsService instance
+     * @param operation the operation name
+     * @return FilterValidatorSnapshot or empty snapshot if not available
+     */
+    private FilterValidatorSnapshot getFilterValidatorSnapshot(MetricsService metrics, String operation) {
+        try {
+            var genericSnapshot = metrics.getSnapshot("filter-validator", operation);
+            if (genericSnapshot != null) {
+                // Convert generic snapshot to FilterValidatorSnapshot
+                return FilterValidatorSnapshot.of(genericSnapshot.getTotal(), genericSnapshot.getSuccess(),
+                        genericSnapshot.getFailure(), genericSnapshot.getTotalDurationNanos(), 0, // Cache hits - will
+                                                                                                  // be calculated
+                                                                                                  // separately
+                        validationCache.size(), customFilterTypes.size());
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Failed to get snapshot for operation {}: {}", operation, e.getMessage());
+        }
+        return FilterValidatorSnapshot.empty();
+    }
+
+    /**
+     * Calculate cache hit rate from validation and cache hit snapshots.
+     * 
+     * @param validationSnapshot the validation snapshot
+     * @param cacheHitSnapshot the cache hit snapshot
+     * @return cache hit rate as percentage (0.0 to 100.0)
+     */
+    private double calculateCacheHitRate(FilterValidatorSnapshot validationSnapshot,
+            FilterValidatorSnapshot cacheHitSnapshot) {
+        long totalValidations = validationSnapshot.total();
+        long cacheHits = cacheHitSnapshot.total();
+
+        if (totalValidations > 0) {
+            return ((double) cacheHits / totalValidations) * 100.0;
+        }
+        return 0.0;
     }
 }

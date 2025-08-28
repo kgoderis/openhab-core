@@ -15,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.service.snapshot.ModelCompletionSnapshot;
 import org.openhab.core.ai.common.monitoring.base.AbstractMetrics;
 
 /**
@@ -53,31 +52,26 @@ class MetricsMigrationTest {
         oldData.setDomain("test-domain");
         oldData.setSource("test-source");
 
-        doNothing().when(newMetricsService).recordOperation(anyString(), anyString(), anyBoolean(), any(Duration.class));
+        doNothing().when(newMetricsService).recordOperation(anyString(), anyString(), anyBoolean(),
+                any(Duration.class));
 
         // When
         boolean result = migrationService.migrateMetrics(oldData, newMetricsService);
 
         // Then
         assertTrue(result);
-        verify(newMetricsService, times(1)).recordOperation(
-                eq("test-domain"),
-                eq("migrated-operation"),
-                eq(true),
-                any(Duration.class)
-        );
+        verify(newMetricsService, times(1)).recordOperation(eq("test-domain"), eq("migrated-operation"), eq(true),
+                any(Duration.class));
     }
 
     @Test
     void testMigrateMultipleOldMetrics() {
         // Given
-        List<OldMetricsData> oldDataList = List.of(
-                createOldMetricsData("domain1", 100, 90, 10),
-                createOldMetricsData("domain2", 200, 180, 20),
-                createOldMetricsData("domain3", 300, 270, 30)
-        );
+        List<OldMetricsData> oldDataList = List.of(createOldMetricsData("domain1", 100, 90, 10),
+                createOldMetricsData("domain2", 200, 180, 20), createOldMetricsData("domain3", 300, 270, 30));
 
-        doNothing().when(newMetricsService).recordOperation(anyString(), anyString(), anyBoolean(), any(Duration.class));
+        doNothing().when(newMetricsService).recordOperation(anyString(), anyString(), anyBoolean(),
+                any(Duration.class));
 
         // When
         MigrationResult result = migrationService.migrateMultipleMetrics(oldDataList, newMetricsService);
@@ -87,7 +81,8 @@ class MetricsMigrationTest {
         assertEquals(3, result.getMigratedCount());
         assertEquals(0, result.getFailedCount());
         assertTrue(result.isSuccess());
-        verify(newMetricsService, times(3)).recordOperation(anyString(), anyString(), anyBoolean(), any(Duration.class));
+        verify(newMetricsService, times(3)).recordOperation(anyString(), anyString(), anyBoolean(),
+                any(Duration.class));
     }
 
     @Test
@@ -96,7 +91,8 @@ class MetricsMigrationTest {
         OldMetricsData oldData = createOldMetricsData("test-domain", 100, 90, 10);
         oldData.setValidationChecksum("abc123");
 
-        doNothing().when(newMetricsService).recordOperation(anyString(), anyString(), anyBoolean(), any(Duration.class));
+        doNothing().when(newMetricsService).recordOperation(anyString(), anyString(), anyBoolean(),
+                any(Duration.class));
 
         // When
         MigrationResult result = migrationService.migrateWithValidation(oldData, newMetricsService, "abc123");
@@ -132,8 +128,7 @@ class MetricsMigrationTest {
         // Given
         OldMetricsData oldData = createOldMetricsData("test-domain", 100, 90, 10);
         when(newMetricsService.recordOperation(anyString(), anyString(), anyBoolean(), any(Duration.class)))
-                .thenReturn(true)
-                .thenThrow(new RuntimeException("Migration failed"));
+                .thenReturn(true).thenThrow(new RuntimeException("Migration failed"));
 
         // When
         MigrationResult result = migrationService.migrateWithRollback(oldData, newMetricsService);
@@ -150,11 +145,8 @@ class MetricsMigrationTest {
     @Test
     void testIncrementalMigration() {
         // Given
-        List<OldMetricsData> oldDataList = List.of(
-                createOldMetricsData("domain1", 100, 90, 10),
-                createOldMetricsData("domain2", 200, 180, 20),
-                createOldMetricsData("domain3", 300, 270, 30)
-        );
+        List<OldMetricsData> oldDataList = List.of(createOldMetricsData("domain1", 100, 90, 10),
+                createOldMetricsData("domain2", 200, 180, 20), createOldMetricsData("domain3", 300, 270, 30));
 
         when(newMetricsService.recordOperation(anyString(), anyString(), anyBoolean(), any(Duration.class)))
                 .thenReturn(true);
@@ -177,28 +169,21 @@ class MetricsMigrationTest {
         OldMetricsData oldData = createOldMetricsData("test-domain", 100, 90, 10);
         oldData.setCustomField("old-format-data");
 
-        when(newMetricsService.recordOperationWithData(anyString(), anyString(), anyBoolean(), any(Duration.class), any()))
-                .thenReturn(true);
+        when(newMetricsService.recordOperationWithData(anyString(), anyString(), anyBoolean(), any(Duration.class),
+                any())).thenReturn(true);
 
         // When
         boolean result = migrationService.migrateWithTransformation(oldData, newMetricsService, data -> {
-            Map<String, Object> transformed = Map.of(
-                    "transformedField", "new-format-data",
-                    "originalField", data.getCustomField(),
-                    "migrationTimestamp", Instant.now().toEpochMilli()
-            );
+            Map<String, Object> transformed = Map.of("transformedField", "new-format-data", "originalField",
+                    data.getCustomField(), "migrationTimestamp", Instant.now().toEpochMilli());
             return transformed;
         });
 
         // Then
         assertTrue(result);
-        verify(newMetricsService, times(1)).recordOperationWithData(
-                eq("test-domain"),
-                eq("migrated-operation"),
-                eq(true),
-                any(Duration.class),
-                argThat(data -> data.containsKey("transformedField") && data.containsKey("originalField"))
-        );
+        verify(newMetricsService, times(1)).recordOperationWithData(eq("test-domain"), eq("migrated-operation"),
+                eq(true), any(Duration.class),
+                argThat(data -> data.containsKey("transformedField") && data.containsKey("originalField")));
     }
 
     @Test
@@ -239,13 +224,9 @@ class MetricsMigrationTest {
     @Test
     void testMigrationProgressTracking() {
         // Given
-        List<OldMetricsData> oldDataList = List.of(
-                createOldMetricsData("domain1", 100, 90, 10),
-                createOldMetricsData("domain2", 200, 180, 20),
-                createOldMetricsData("domain3", 300, 270, 30),
-                createOldMetricsData("domain4", 400, 360, 40),
-                createOldMetricsData("domain5", 500, 450, 50)
-        );
+        List<OldMetricsData> oldDataList = List.of(createOldMetricsData("domain1", 100, 90, 10),
+                createOldMetricsData("domain2", 200, 180, 20), createOldMetricsData("domain3", 300, 270, 30),
+                createOldMetricsData("domain4", 400, 360, 40), createOldMetricsData("domain5", 500, 450, 50));
 
         when(newMetricsService.recordOperation(anyString(), anyString(), anyBoolean(), any(Duration.class)))
                 .thenReturn(true);
@@ -267,16 +248,11 @@ class MetricsMigrationTest {
     @Test
     void testMigrationWithErrorHandling() {
         // Given
-        List<OldMetricsData> oldDataList = List.of(
-                createOldMetricsData("domain1", 100, 90, 10),
-                createOldMetricsData("domain2", 200, 180, 20),
-                createOldMetricsData("domain3", 300, 270, 30)
-        );
+        List<OldMetricsData> oldDataList = List.of(createOldMetricsData("domain1", 100, 90, 10),
+                createOldMetricsData("domain2", 200, 180, 20), createOldMetricsData("domain3", 300, 270, 30));
 
         when(newMetricsService.recordOperation(anyString(), anyString(), anyBoolean(), any(Duration.class)))
-                .thenReturn(true)
-                .thenThrow(new RuntimeException("Migration error"))
-                .thenReturn(true);
+                .thenReturn(true).thenThrow(new RuntimeException("Migration error")).thenReturn(true);
 
         // When
         MigrationResult result = migrationService.migrateWithErrorHandling(oldDataList, newMetricsService);
@@ -320,7 +296,8 @@ class MetricsMigrationTest {
                 .thenReturn(true);
 
         // When
-        DataIntegrityResult result = migrationService.migrateWithIntegrityCheck(oldData, newMetricsService, "different");
+        DataIntegrityResult result = migrationService.migrateWithIntegrityCheck(oldData, newMetricsService,
+                "different");
 
         // Then
         assertNotNull(result);
@@ -352,7 +329,7 @@ class MetricsMigrationTest {
         assertTrue(result.isSuccess());
         assertEquals(1000, result.getMigratedCount());
         assertEquals(0, result.getFailedCount());
-        
+
         long duration = endTime - startTime;
         assertTrue(duration < 5000, "Migration should complete within 5 seconds for 1000 records");
     }
@@ -419,41 +396,109 @@ class MetricsMigrationTest {
         private String dataIntegrityHash;
 
         // Getters and setters
-        public long getTotalOperations() { return totalOperations; }
-        public void setTotalOperations(long totalOperations) { this.totalOperations = totalOperations; }
-        public long getSuccessfulOperations() { return successfulOperations; }
-        public void setSuccessfulOperations(long successfulOperations) { this.successfulOperations = successfulOperations; }
-        public long getFailedOperations() { return failedOperations; }
-        public void setFailedOperations(long failedOperations) { this.failedOperations = failedOperations; }
-        public long getTotalProcessingTime() { return totalProcessingTime; }
-        public void setTotalProcessingTime(long totalProcessingTime) { this.totalProcessingTime = totalProcessingTime; }
-        public double getAverageResponseTime() { return averageResponseTime; }
-        public void setAverageResponseTime(double averageResponseTime) { this.averageResponseTime = averageResponseTime; }
-        public Instant getLastOperationTime() { return lastOperationTime; }
-        public void setLastOperationTime(Instant lastOperationTime) { this.lastOperationTime = lastOperationTime; }
-        public String getDomain() { return domain; }
-        public void setDomain(String domain) { this.domain = domain; }
-        public String getSource() { return source; }
-        public void setSource(String source) { this.source = source; }
-        public String getVersion() { return version; }
-        public void setVersion(String version) { this.version = version; }
-        public String getValidationChecksum() { return validationChecksum; }
-        public void setValidationChecksum(String validationChecksum) { this.validationChecksum = validationChecksum; }
-        public String getCustomField() { return customField; }
-        public void setCustomField(String customField) { this.customField = customField; }
-        public String getDataIntegrityHash() { return dataIntegrityHash; }
-        public void setDataIntegrityHash(String dataIntegrityHash) { this.dataIntegrityHash = dataIntegrityHash; }
+        public long getTotalOperations() {
+            return totalOperations;
+        }
+
+        public void setTotalOperations(long totalOperations) {
+            this.totalOperations = totalOperations;
+        }
+
+        public long getSuccessfulOperations() {
+            return successfulOperations;
+        }
+
+        public void setSuccessfulOperations(long successfulOperations) {
+            this.successfulOperations = successfulOperations;
+        }
+
+        public long getFailedOperations() {
+            return failedOperations;
+        }
+
+        public void setFailedOperations(long failedOperations) {
+            this.failedOperations = failedOperations;
+        }
+
+        public long getTotalProcessingTime() {
+            return totalProcessingTime;
+        }
+
+        public void setTotalProcessingTime(long totalProcessingTime) {
+            this.totalProcessingTime = totalProcessingTime;
+        }
+
+        public double getAverageResponseTime() {
+            return averageResponseTime;
+        }
+
+        public void setAverageResponseTime(double averageResponseTime) {
+            this.averageResponseTime = averageResponseTime;
+        }
+
+        public Instant getLastOperationTime() {
+            return lastOperationTime;
+        }
+
+        public void setLastOperationTime(Instant lastOperationTime) {
+            this.lastOperationTime = lastOperationTime;
+        }
+
+        public String getDomain() {
+            return domain;
+        }
+
+        public void setDomain(String domain) {
+            this.domain = domain;
+        }
+
+        public String getSource() {
+            return source;
+        }
+
+        public void setSource(String source) {
+            this.source = source;
+        }
+
+        public String getVersion() {
+            return version;
+        }
+
+        public void setVersion(String version) {
+            this.version = version;
+        }
+
+        public String getValidationChecksum() {
+            return validationChecksum;
+        }
+
+        public void setValidationChecksum(String validationChecksum) {
+            this.validationChecksum = validationChecksum;
+        }
+
+        public String getCustomField() {
+            return customField;
+        }
+
+        public void setCustomField(String customField) {
+            this.customField = customField;
+        }
+
+        public String getDataIntegrityHash() {
+            return dataIntegrityHash;
+        }
+
+        public void setDataIntegrityHash(String dataIntegrityHash) {
+            this.dataIntegrityHash = dataIntegrityHash;
+        }
     }
 
     private static class MetricsMigrationService {
         public boolean migrateMetrics(OldMetricsData oldData, MetricsService newService) {
             try {
-                newService.recordOperation(
-                        oldData.getDomain(),
-                        "migrated-operation",
+                newService.recordOperation(oldData.getDomain(), "migrated-operation",
                         oldData.getSuccessfulOperations() > oldData.getFailedOperations(),
-                        Duration.ofNanos(oldData.getTotalProcessingTime())
-                );
+                        Duration.ofNanos(oldData.getTotalProcessingTime()));
                 return true;
             } catch (Exception e) {
                 return false;
@@ -474,7 +519,8 @@ class MetricsMigrationTest {
             return result;
         }
 
-        public MigrationResult migrateWithValidation(OldMetricsData oldData, MetricsService newService, String expectedChecksum) {
+        public MigrationResult migrateWithValidation(OldMetricsData oldData, MetricsService newService,
+                String expectedChecksum) {
             MigrationResult result = new MigrationResult();
             if (expectedChecksum.equals(oldData.getValidationChecksum())) {
                 migrateMetrics(oldData, newService);
@@ -500,14 +546,15 @@ class MetricsMigrationTest {
             return result;
         }
 
-        public IncrementalMigrationResult migrateIncrementally(List<OldMetricsData> oldDataList, MetricsService newService, int batchSize) {
+        public IncrementalMigrationResult migrateIncrementally(List<OldMetricsData> oldDataList,
+                MetricsService newService, int batchSize) {
             IncrementalMigrationResult result = new IncrementalMigrationResult();
             result.setTotalCount(oldDataList.size());
-            
+
             for (int i = 0; i < oldDataList.size(); i += batchSize) {
                 int end = Math.min(i + batchSize, oldDataList.size());
                 List<OldMetricsData> batch = oldDataList.subList(i, end);
-                
+
                 for (OldMetricsData oldData : batch) {
                     try {
                         migrateMetrics(oldData, newService);
@@ -518,22 +565,18 @@ class MetricsMigrationTest {
                 }
                 result.incrementBatches();
             }
-            
+
             result.setComplete(true);
             return result;
         }
 
-        public boolean migrateWithTransformation(OldMetricsData oldData, MetricsService newService, 
+        public boolean migrateWithTransformation(OldMetricsData oldData, MetricsService newService,
                 java.util.function.Function<OldMetricsData, Map<String, Object>> transformer) {
             try {
                 Map<String, Object> transformedData = transformer.apply(oldData);
-                newService.recordOperationWithData(
-                        oldData.getDomain(),
-                        "migrated-operation",
+                newService.recordOperationWithData(oldData.getDomain(), "migrated-operation",
                         oldData.getSuccessfulOperations() > oldData.getFailedOperations(),
-                        Duration.ofNanos(oldData.getTotalProcessingTime()),
-                        transformedData
-                );
+                        Duration.ofNanos(oldData.getTotalProcessingTime()), transformedData);
                 return true;
             } catch (Exception e) {
                 return false;
@@ -544,22 +587,23 @@ class MetricsMigrationTest {
             CompatibilityResult result = new CompatibilityResult();
             result.setSourceVersion(oldData.getVersion());
             result.setTargetVersion(targetVersion);
-            
+
             if ("1.0.0".equals(oldData.getVersion()) || "1.5.0".equals(oldData.getVersion())) {
                 result.setCompatible(true);
             } else {
                 result.setCompatible(false);
-                result.addCompatibilityNote("Version " + oldData.getVersion() + " is not compatible with " + targetVersion);
+                result.addCompatibilityNote(
+                        "Version " + oldData.getVersion() + " is not compatible with " + targetVersion);
             }
-            
+
             return result;
         }
 
-        public MigrationResult migrateWithProgressTracking(List<OldMetricsData> oldDataList, MetricsService newService, 
+        public MigrationResult migrateWithProgressTracking(List<OldMetricsData> oldDataList, MetricsService newService,
                 MigrationProgressTracker tracker) {
             tracker.setTotalCount(oldDataList.size());
             MigrationResult result = new MigrationResult();
-            
+
             for (OldMetricsData oldData : oldDataList) {
                 try {
                     migrateMetrics(oldData, newService);
@@ -571,7 +615,7 @@ class MetricsMigrationTest {
                     tracker.incrementProcessed();
                 }
             }
-            
+
             return result;
         }
 
@@ -589,25 +633,26 @@ class MetricsMigrationTest {
             return result;
         }
 
-        public DataIntegrityResult migrateWithIntegrityCheck(OldMetricsData oldData, MetricsService newService, String expectedHash) {
+        public DataIntegrityResult migrateWithIntegrityCheck(OldMetricsData oldData, MetricsService newService,
+                String expectedHash) {
             DataIntegrityResult result = new DataIntegrityResult();
             result.setOriginalHash(oldData.getDataIntegrityHash());
             result.setValidatedHash(expectedHash);
-            
+
             boolean integrityValid = expectedHash.equals(oldData.getDataIntegrityHash());
             result.setIntegrityValid(integrityValid);
-            
+
             if (!integrityValid) {
                 result.addIntegrityWarning("Data integrity check failed");
             }
-            
+
             try {
                 migrateMetrics(oldData, newService);
                 result.setMigrationSuccessful(true);
             } catch (Exception e) {
                 result.setMigrationSuccessful(false);
             }
-            
+
             return result;
         }
     }
@@ -619,18 +664,49 @@ class MetricsMigrationTest {
         private boolean rolledBack = false;
         private final java.util.List<String> errors = new java.util.ArrayList<>();
 
-        public void incrementMigrated() { migratedCount++; }
-        public void incrementFailed() { failedCount++; }
-        public void addError(String error) { errors.add(error); }
-        public void setValidated(boolean validated) { this.validated = validated; }
-        public void setRolledBack(boolean rolledBack) { this.rolledBack = rolledBack; }
+        public void incrementMigrated() {
+            migratedCount++;
+        }
 
-        public int getMigratedCount() { return migratedCount; }
-        public int getFailedCount() { return failedCount; }
-        public boolean isSuccess() { return failedCount == 0; }
-        public boolean isValidated() { return validated; }
-        public boolean isRolledBack() { return rolledBack; }
-        public java.util.List<String> getErrors() { return errors; }
+        public void incrementFailed() {
+            failedCount++;
+        }
+
+        public void addError(String error) {
+            errors.add(error);
+        }
+
+        public void setValidated(boolean validated) {
+            this.validated = validated;
+        }
+
+        public void setRolledBack(boolean rolledBack) {
+            this.rolledBack = rolledBack;
+        }
+
+        public int getMigratedCount() {
+            return migratedCount;
+        }
+
+        public int getFailedCount() {
+            return failedCount;
+        }
+
+        public boolean isSuccess() {
+            return failedCount == 0;
+        }
+
+        public boolean isValidated() {
+            return validated;
+        }
+
+        public boolean isRolledBack() {
+            return rolledBack;
+        }
+
+        public java.util.List<String> getErrors() {
+            return errors;
+        }
     }
 
     private static class IncrementalMigrationResult {
@@ -640,17 +716,45 @@ class MetricsMigrationTest {
         private int batchesProcessed = 0;
         private boolean complete = false;
 
-        public void setTotalCount(int totalCount) { this.totalCount = totalCount; }
-        public void incrementMigrated() { migratedCount++; }
-        public void incrementFailed() { failedCount++; }
-        public void incrementBatches() { batchesProcessed++; }
-        public void setComplete(boolean complete) { this.complete = complete; }
+        public void setTotalCount(int totalCount) {
+            this.totalCount = totalCount;
+        }
 
-        public int getTotalProcessed() { return totalCount; }
-        public int getSuccessfullyMigrated() { return migratedCount; }
-        public int getFailed() { return failedCount; }
-        public int getBatchesProcessed() { return batchesProcessed; }
-        public boolean isComplete() { return complete; }
+        public void incrementMigrated() {
+            migratedCount++;
+        }
+
+        public void incrementFailed() {
+            failedCount++;
+        }
+
+        public void incrementBatches() {
+            batchesProcessed++;
+        }
+
+        public void setComplete(boolean complete) {
+            this.complete = complete;
+        }
+
+        public int getTotalProcessed() {
+            return totalCount;
+        }
+
+        public int getSuccessfullyMigrated() {
+            return migratedCount;
+        }
+
+        public int getFailed() {
+            return failedCount;
+        }
+
+        public int getBatchesProcessed() {
+            return batchesProcessed;
+        }
+
+        public boolean isComplete() {
+            return complete;
+        }
     }
 
     private static class CompatibilityResult {
@@ -659,29 +763,63 @@ class MetricsMigrationTest {
         private boolean compatible = false;
         private final java.util.List<String> compatibilityNotes = new java.util.ArrayList<>();
 
-        public void setSourceVersion(String sourceVersion) { this.sourceVersion = sourceVersion; }
-        public void setTargetVersion(String targetVersion) { this.targetVersion = targetVersion; }
-        public void setCompatible(boolean compatible) { this.compatible = compatible; }
-        public void addCompatibilityNote(String note) { compatibilityNotes.add(note); }
+        public void setSourceVersion(String sourceVersion) {
+            this.sourceVersion = sourceVersion;
+        }
 
-        public String getSourceVersion() { return sourceVersion; }
-        public String getTargetVersion() { return targetVersion; }
-        public boolean isCompatible() { return compatible; }
-        public java.util.List<String> getCompatibilityNotes() { return compatibilityNotes; }
+        public void setTargetVersion(String targetVersion) {
+            this.targetVersion = targetVersion;
+        }
+
+        public void setCompatible(boolean compatible) {
+            this.compatible = compatible;
+        }
+
+        public void addCompatibilityNote(String note) {
+            compatibilityNotes.add(note);
+        }
+
+        public String getSourceVersion() {
+            return sourceVersion;
+        }
+
+        public String getTargetVersion() {
+            return targetVersion;
+        }
+
+        public boolean isCompatible() {
+            return compatible;
+        }
+
+        public java.util.List<String> getCompatibilityNotes() {
+            return compatibilityNotes;
+        }
     }
 
     private static class MigrationProgressTracker {
         private final AtomicLong totalCount = new AtomicLong(0);
         private final AtomicLong processedCount = new AtomicLong(0);
 
-        public void setTotalCount(int total) { totalCount.set(total); }
-        public void incrementProcessed() { processedCount.incrementAndGet(); }
+        public void setTotalCount(int total) {
+            totalCount.set(total);
+        }
 
-        public long getTotalCount() { return totalCount.get(); }
-        public long getProcessedCount() { return processedCount.get(); }
+        public void incrementProcessed() {
+            processedCount.incrementAndGet();
+        }
+
+        public long getTotalCount() {
+            return totalCount.get();
+        }
+
+        public long getProcessedCount() {
+            return processedCount.get();
+        }
+
         public double getProgressPercentage() {
             long total = totalCount.get();
-            if (total == 0) return 0.0;
+            if (total == 0)
+                return 0.0;
             return (double) processedCount.get() / total * 100.0;
         }
     }
@@ -693,16 +831,44 @@ class MetricsMigrationTest {
         private boolean migrationSuccessful = false;
         private final java.util.List<String> integrityWarnings = new java.util.ArrayList<>();
 
-        public void setOriginalHash(String originalHash) { this.originalHash = originalHash; }
-        public void setValidatedHash(String validatedHash) { this.validatedHash = validatedHash; }
-        public void setIntegrityValid(boolean integrityValid) { this.integrityValid = integrityValid; }
-        public void setMigrationSuccessful(boolean migrationSuccessful) { this.migrationSuccessful = migrationSuccessful; }
-        public void addIntegrityWarning(String warning) { integrityWarnings.add(warning); }
+        public void setOriginalHash(String originalHash) {
+            this.originalHash = originalHash;
+        }
 
-        public String getOriginalHash() { return originalHash; }
-        public String getValidatedHash() { return validatedHash; }
-        public boolean isIntegrityValid() { return integrityValid; }
-        public boolean isMigrationSuccessful() { return migrationSuccessful; }
-        public java.util.List<String> getIntegrityWarnings() { return integrityWarnings; }
+        public void setValidatedHash(String validatedHash) {
+            this.validatedHash = validatedHash;
+        }
+
+        public void setIntegrityValid(boolean integrityValid) {
+            this.integrityValid = integrityValid;
+        }
+
+        public void setMigrationSuccessful(boolean migrationSuccessful) {
+            this.migrationSuccessful = migrationSuccessful;
+        }
+
+        public void addIntegrityWarning(String warning) {
+            integrityWarnings.add(warning);
+        }
+
+        public String getOriginalHash() {
+            return originalHash;
+        }
+
+        public String getValidatedHash() {
+            return validatedHash;
+        }
+
+        public boolean isIntegrityValid() {
+            return integrityValid;
+        }
+
+        public boolean isMigrationSuccessful() {
+            return migrationSuccessful;
+        }
+
+        public java.util.List<String> getIntegrityWarnings() {
+            return integrityWarnings;
+        }
     }
 }

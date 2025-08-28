@@ -3,14 +3,13 @@ package org.openhab.core.ai.tool.notifications;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.tool.notifications.api.events.Notification;
 import org.openhab.core.ai.tool.notifications.api.events.NotificationListener;
 import org.openhab.core.ai.tool.notifications.api.events.NotificationType;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -72,12 +71,8 @@ public class DefaultNotificationService implements NotificationService {
     @Override
     public boolean notify(String notificationId, NotificationType type, String message,
             @Nullable Map<String, Object> data) {
-        metricsService.recordOperation("notification", "total")
-            .withSuccess(true)
-            .withDuration(0L)
-            .withData("notificationId", notificationId)
-            .withData("type", type.name())
-            .record();
+        metricsService.recordOperation("notification", "total").withSuccess(true).withDuration(0L)
+                .withData("notificationId", notificationId).withData("type", type.name()).record();
         long startTime = System.currentTimeMillis();
 
         try {
@@ -111,23 +106,17 @@ public class DefaultNotificationService implements NotificationService {
 
             // Update counters
             if (sentToAll) {
-                metricsService.recordOperation("notification", "success")
-                    .withSuccess(true)
-                    .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
-                    .withData("notificationId", notificationId)
-                    .withData("type", type.name())
-                    .withData("recipientCount", listeners.size())
-                    .record();
+                metricsService.recordOperation("notification", "success").withSuccess(true)
+                        .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                        .withData("notificationId", notificationId).withData("type", type.name())
+                        .withData("recipientCount", listeners.size()).record();
                 LOGGER.info("Notification sent successfully: {} - Type: {} - Recipients: {}", notificationId, type,
                         listeners.size());
             } else {
-                metricsService.recordOperation("notification", "partial_failure")
-                    .withSuccess(false)
-                    .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
-                    .withData("notificationId", notificationId)
-                    .withData("type", type.name())
-                    .withData("recipientCount", listeners.size())
-                    .record();
+                metricsService.recordOperation("notification", "partial_failure").withSuccess(false)
+                        .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                        .withData("notificationId", notificationId).withData("type", type.name())
+                        .withData("recipientCount", listeners.size()).record();
                 LOGGER.warn("Notification partially failed: {} - Type: {}", notificationId, type);
             }
 
@@ -135,14 +124,11 @@ public class DefaultNotificationService implements NotificationService {
 
         } catch (Exception e) {
             LOGGER.error("Error sending notification: {} - Type: {}", notificationId, type, e);
-            metricsService.recordOperation("notification", "failure")
-                .withSuccess(false)
-                .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
-                .withData("notificationId", notificationId)
-                .withData("type", type.name())
-                .withData("exceptionType", e.getClass().getSimpleName())
-                .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error")
-                .record();
+            metricsService.recordOperation("notification", "failure").withSuccess(false)
+                    .withDuration(Duration.ofMillis(System.currentTimeMillis() - startTime).toNanos())
+                    .withData("notificationId", notificationId).withData("type", type.name())
+                    .withData("exceptionType", e.getClass().getSimpleName())
+                    .withData("errorMessage", e.getMessage() != null ? e.getMessage() : "Unknown error").record();
             return false;
         }
     }
@@ -218,9 +204,10 @@ public class DefaultNotificationService implements NotificationService {
         metrics.put("activeListeners", listeners.size());
         // metrics.put("totalResponseTimeMs", totalResponseTimeMs.get()); // Removed
         // metrics.put("averageResponseTimeMs", // Removed
-        //         totalNotifications.get() > 0 ? totalResponseTimeMs.get() / totalNotifications.get() : 0); // Removed
+        // totalNotifications.get() > 0 ? totalResponseTimeMs.get() / totalNotifications.get() : 0); // Removed
         // metrics.put("successRate", // Removed
-        //         totalNotifications.get() > 0 ? (double) successfulNotifications.get() / totalNotifications.get() : 0.0); // Removed
+        // totalNotifications.get() > 0 ? (double) successfulNotifications.get() / totalNotifications.get() : 0.0); //
+        // Removed
         return metrics;
     }
 

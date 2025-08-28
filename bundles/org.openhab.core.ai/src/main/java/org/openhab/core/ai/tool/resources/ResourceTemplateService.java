@@ -8,16 +8,16 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricKey;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.openhab.core.ai.tool.resources.api.ResourceContext;
 import org.openhab.core.ai.tool.resources.api.ResourceRegistry;
 import org.openhab.core.ai.tool.resources.api.ResourceResult;
 import org.openhab.core.ai.tool.resources.api.ResourceTemplate;
 import org.openhab.core.ai.tool.resources.api.TemplateParameter;
 import org.openhab.core.ai.tool.resources.api.validation.ResourceValidationResult;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.api.MetricKey;
-import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -205,11 +205,9 @@ public class ResourceTemplateService {
             // Record metrics using centralized MetricsService
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("resource-template", "list-templates")
-                        .withSuccess(success)
-                        .withDuration(executionTime * 1_000_000L) // Convert to nanoseconds
-                        .withData("templateCount", templates.size())
-                        .record();
+                    metricsService.recordOperation("resource-template", "list-templates").withSuccess(success)
+                            .withDuration(executionTime * 1_000_000L) // Convert to nanoseconds
+                            .withData("templateCount", templates.size()).record();
                 } catch (Exception e) {
                     logger.warn("Failed to record template listing metrics", e);
                 }
@@ -269,12 +267,9 @@ public class ResourceTemplateService {
             // Record metrics using centralized MetricsService
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("resource-template", "parameter-completions")
-                        .withSuccess(success)
-                        .withDuration(executionTime * 1_000_000L) // Convert to nanoseconds
-                        .withData("templateId", templateId)
-                        .withData("paramCount", partialParams.size())
-                        .record();
+                    metricsService.recordOperation("resource-template", "parameter-completions").withSuccess(success)
+                            .withDuration(executionTime * 1_000_000L) // Convert to nanoseconds
+                            .withData("templateId", templateId).withData("paramCount", partialParams.size()).record();
                 } catch (Exception e) {
                     logger.warn("Failed to record parameter completion metrics", e);
                 }
@@ -336,12 +331,9 @@ public class ResourceTemplateService {
             if (metricsService != null) {
                 try {
                     long executionTime = System.currentTimeMillis() - startTime;
-                    metricsService.recordOperation("resource-template", "validate-parameters")
-                        .withSuccess(success)
-                        .withDuration(executionTime * 1_000_000L) // Convert to nanoseconds
-                        .withData("templateId", templateId)
-                        .withData("paramCount", parameters.size())
-                        .record();
+                    metricsService.recordOperation("resource-template", "validate-parameters").withSuccess(success)
+                            .withDuration(executionTime * 1_000_000L) // Convert to nanoseconds
+                            .withData("templateId", templateId).withData("paramCount", parameters.size()).record();
                 } catch (Exception e) {
                     logger.warn("Failed to record parameter validation metrics", e);
                 }
@@ -356,7 +348,7 @@ public class ResourceTemplateService {
      */
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
-        
+
         if (metricsService != null) {
             try {
                 // Get template listing metrics using MetricKeys
@@ -369,7 +361,7 @@ public class ResourceTemplateService {
                     metrics.put("totalTemplateRequests", 0L);
                     metrics.put("averageTemplateTime", 0.0);
                 }
-                
+
                 // Get completion metrics
                 MetricKey completionKey = MetricKeys.execution("parameter-completions");
                 var completionSnapshot = metricsService.getSnapshot(completionKey, ExecutionMetricsSnapshot.class);
@@ -378,7 +370,7 @@ public class ResourceTemplateService {
                 } else {
                     metrics.put("totalTemplateCompletions", 0L);
                 }
-                
+
                 // Get validation metrics
                 MetricKey validationKey = MetricKeys.execution("validate-parameters");
                 var validationSnapshot = metricsService.getSnapshot(validationKey, ExecutionMetricsSnapshot.class);
@@ -387,7 +379,7 @@ public class ResourceTemplateService {
                 } else {
                     metrics.put("totalValidations", 0L);
                 }
-                
+
             } catch (Exception e) {
                 logger.warn("Failed to retrieve metrics from MetricsService", e);
                 // Fallback to basic metrics
@@ -403,7 +395,7 @@ public class ResourceTemplateService {
             metrics.put("averageTemplateTime", 0.0);
             metrics.put("totalValidations", 0L);
         }
-        
+
         metrics.put("templateCount", templates.size());
         return metrics;
     }

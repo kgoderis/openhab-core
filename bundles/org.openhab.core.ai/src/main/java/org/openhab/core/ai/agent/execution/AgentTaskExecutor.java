@@ -1,6 +1,7 @@
 package org.openhab.core.ai.agent.execution;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,11 +26,14 @@ import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManage
 import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentSynchronizationManager;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,9 +48,6 @@ import io.a2a.spec.Task;
 import io.a2a.spec.TaskNotCancelableError;
 import io.a2a.spec.TaskState;
 import io.a2a.spec.TextPart;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
 
 /**
  * A2A SDK Compliant Task Execution.
@@ -167,10 +168,142 @@ public class AgentTaskExecutor implements AgentExecutor {
     private final Map<String, AtomicLong> totalExecutionTime = new ConcurrentHashMap<>();
     private final Map<String, AtomicLong> averageExecutionTime = new ConcurrentHashMap<>();
 
+    // Business logic capture: Task executor assignments
+    private final Map<String, AtomicLong> executorTaskTypeAssignments = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> executorLoadBalancingDecisions = new ConcurrentHashMap<>();
+
+    // Business logic capture: Validation rule effectiveness
+    private final Map<String, AtomicLong> validationRuleSuccessCounts = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> validationRuleFailureCounts = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> validationRuleEffectivenessScores = new ConcurrentHashMap<>();
+
+    // Business logic capture: Skill usage patterns
+    private final Map<String, AtomicLong> skillUsageCounts = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> skillSuccessCounts = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> skillFailureCounts = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> skillUsagePatterns = new ConcurrentHashMap<>();
+
     // Configuration
     private final long defaultTimeoutMs = 30000; // 30 seconds
     private final int maxRetries = 3;
     private final long retryDelayMs = 1000; // 1 second
+
+    /**
+     * Record task executor assignment for business logic analysis.
+     * 
+     * @param executorId the executor identifier
+     * @param taskType the type of task being assigned
+     * @param assignmentReason the reason for this assignment (load-balancing, capability, etc.)
+     */
+    private void recordTaskExecutorAssignment(String executorId, String taskType, String assignmentReason) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                Map<String, Object> context = Map.of("executorId", executorId, "taskType", taskType, "assignmentReason",
+                        assignmentReason, "timestamp", System.currentTimeMillis());
+                metrics.recordOperationWithData("task-executor", "assignment", true, java.time.Duration.ofNanos(0),
+                        context);
+
+                // Update local tracking
+                String key = executorId + ":" + taskType;
+                executorTaskTypeAssignments.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
+                executorLoadBalancingDecisions.computeIfAbsent(assignmentReason, k -> new AtomicLong(0))
+                        .incrementAndGet();
+
+            } catch (Exception e) {
+                logger.warn("Failed to record task executor assignment metrics: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record validation rule effectiveness for business logic analysis.
+     * 
+     * @param ruleId the validation rule identifier
+     * @param success whether the validation rule was successful
+     * @param executionTime the time taken to execute the validation rule
+     * @param context additional context about the validation
+     */
+    private void recordValidationRuleEffectiveness(String ruleId, boolean success, long executionTime,
+            Map<String, Object> context) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                // Create enhanced context with validation rule details
+                Map<String, Object> enhancedContext = new HashMap<>(context);
+                enhancedContext.put("ruleId", ruleId);
+                enhancedContext.put("success", success);
+                enhancedContext.put("executionTime", executionTime);
+                enhancedContext.put("timestamp", System.currentTimeMillis());
+
+                // Record validation rule effectiveness metrics
+                metrics.recordOperationWithData("validation-rule", "effectiveness", success,
+                        java.time.Duration.ofNanos(executionTime), enhancedContext);
+
+                // Update local tracking
+                if (success) {
+                    validationRuleSuccessCounts.computeIfAbsent(ruleId, k -> new AtomicLong(0)).incrementAndGet();
+                } else {
+                    validationRuleFailureCounts.computeIfAbsent(ruleId, k -> new AtomicLong(0)).incrementAndGet();
+                }
+
+                // Calculate effectiveness score
+                long successCount = validationRuleSuccessCounts.getOrDefault(ruleId, new AtomicLong(0)).get();
+                long failureCount = validationRuleFailureCounts.getOrDefault(ruleId, new AtomicLong(0)).get();
+                long totalCount = successCount + failureCount;
+
+                if (totalCount > 0) {
+                    double effectivenessScore = (double) successCount / totalCount;
+                    validationRuleEffectivenessScores.put(ruleId, new AtomicLong((long) (effectivenessScore * 100)));
+                }
+
+            } catch (Exception e) {
+                logger.warn("Failed to record validation rule effectiveness metrics: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record skill usage patterns for business logic analysis.
+     * 
+     * @param skillId the skill identifier
+     * @param success whether the skill execution was successful
+     * @param executionTime the time taken to execute the skill
+     * @param usagePattern the usage pattern (e.g., "frequent", "occasional", "rare")
+     * @param context additional context about the skill usage
+     */
+    private void recordSkillUsagePattern(String skillId, boolean success, long executionTime, String usagePattern,
+            Map<String, Object> context) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                // Create enhanced context with skill usage details
+                Map<String, Object> enhancedContext = new HashMap<>(context);
+                enhancedContext.put("skillId", skillId);
+                enhancedContext.put("success", success);
+                enhancedContext.put("executionTime", executionTime);
+                enhancedContext.put("usagePattern", usagePattern);
+                enhancedContext.put("timestamp", System.currentTimeMillis());
+
+                // Record skill usage pattern metrics
+                metrics.recordOperationWithData("skill-usage", "pattern", success,
+                        java.time.Duration.ofNanos(executionTime), enhancedContext);
+
+                // Update local tracking
+                skillUsageCounts.computeIfAbsent(skillId, k -> new AtomicLong(0)).incrementAndGet();
+                skillUsagePatterns.computeIfAbsent(usagePattern, k -> new AtomicLong(0)).incrementAndGet();
+
+                if (success) {
+                    skillSuccessCounts.computeIfAbsent(skillId, k -> new AtomicLong(0)).incrementAndGet();
+                } else {
+                    skillFailureCounts.computeIfAbsent(skillId, k -> new AtomicLong(0)).incrementAndGet();
+                }
+
+            } catch (Exception e) {
+                logger.warn("Failed to record skill usage pattern metrics: {}", e.getMessage());
+            }
+        }
+    }
 
     @Activate
     public void activate(BundleContext context) {

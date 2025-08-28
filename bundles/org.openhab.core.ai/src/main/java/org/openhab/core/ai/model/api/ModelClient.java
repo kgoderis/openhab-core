@@ -10,7 +10,6 @@ import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelException;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 
 /**
  * Core interface for LLM (Large Language Model) clients.

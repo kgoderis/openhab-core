@@ -19,13 +19,9 @@ class GenericMetricsSnapshotTest {
     void testBasicSnapshotCreation() {
         // Create a snapshot using the builder pattern
         GenericMetricsSnapshot snapshot = GenericMetricsSnapshot.builder("authentication", "attempt")
-                .withCount("total_attempts", 100L)
-                .withCount("successful_attempts", 85L)
-                .withCount("failed_attempts", 15L)
-                .withDuration("total_duration_ms", 5000L)
-                .withRate("success_rate", 0.85)
-                .withSuccess("last_attempt", true)
-                .build();
+                .withCount("total_attempts", 100L).withCount("successful_attempts", 85L)
+                .withCount("failed_attempts", 15L).withDuration("total_duration_ms", 5000L)
+                .withRate("success_rate", 0.85).withSuccess("last_attempt", true).build();
 
         // Verify basic properties
         assertEquals("authentication", snapshot.getDomain());
@@ -54,12 +50,8 @@ class GenericMetricsSnapshotTest {
     @Test
     void testSnapshotWithMap() {
         // Create metrics map
-        Map<String, Object> metrics = Map.of(
-                "request_count", 50L,
-                "error_count", 5L,
-                "average_response_time_ms", 150.5,
-                "status", "healthy"
-        );
+        Map<String, Object> metrics = Map.of("request_count", 50L, "error_count", 5L, "average_response_time_ms", 150.5,
+                "status", "healthy");
 
         // Create snapshot with map
         GenericMetricsSnapshot snapshot = new GenericMetricsSnapshot("http_transport", "request", metrics);
@@ -74,13 +66,12 @@ class GenericMetricsSnapshotTest {
     @Test
     void testImmutableMetrics() {
         // Create snapshot
-        GenericMetricsSnapshot snapshot = GenericMetricsSnapshot.builder("test", "operation")
-                .withCount("count", 10L)
+        GenericMetricsSnapshot snapshot = GenericMetricsSnapshot.builder("test", "operation").withCount("count", 10L)
                 .build();
 
         // Get metrics map (should be unmodifiable)
         Map<String, Object> metrics = snapshot.getMetrics();
-        
+
         // Verify it's unmodifiable
         assertThrows(UnsupportedOperationException.class, () -> {
             metrics.put("new_metric", 20L);
@@ -89,26 +80,23 @@ class GenericMetricsSnapshotTest {
 
     @Test
     void testTimestampConversion() {
-        GenericMetricsSnapshot snapshot = GenericMetricsSnapshot.builder("test", "operation")
-                .withCount("count", 1L)
+        GenericMetricsSnapshot snapshot = GenericMetricsSnapshot.builder("test", "operation").withCount("count", 1L)
                 .build();
 
         // Verify timestamp conversion
         long timestampMs = snapshot.getTimestampMs();
         Instant timestamp = snapshot.getTimestamp();
-        
+
         assertEquals(timestampMs, timestamp.toEpochMilli());
         assertTrue(timestamp.isAfter(Instant.now().minusSeconds(1)));
     }
 
     @Test
     void testEqualsAndHashCode() {
-        GenericMetricsSnapshot snapshot1 = GenericMetricsSnapshot.builder("domain", "operation")
-                .withCount("count", 10L)
+        GenericMetricsSnapshot snapshot1 = GenericMetricsSnapshot.builder("domain", "operation").withCount("count", 10L)
                 .build();
 
-        GenericMetricsSnapshot snapshot2 = GenericMetricsSnapshot.builder("domain", "operation")
-                .withCount("count", 10L)
+        GenericMetricsSnapshot snapshot2 = GenericMetricsSnapshot.builder("domain", "operation").withCount("count", 10L)
                 .build();
 
         // Note: These might not be equal due to different timestamps
@@ -120,12 +108,10 @@ class GenericMetricsSnapshotTest {
     @Test
     void testToString() {
         GenericMetricsSnapshot snapshot = GenericMetricsSnapshot.builder("test_domain", "test_operation")
-                .withCount("count", 42L)
-                .withRate("rate", 0.95)
-                .build();
+                .withCount("count", 42L).withRate("rate", 0.95).build();
 
         String toString = snapshot.toString();
-        
+
         assertTrue(toString.contains("test_domain"));
         assertTrue(toString.contains("test_operation"));
         assertTrue(toString.contains("count"));

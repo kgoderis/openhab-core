@@ -118,7 +118,9 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
         MetricsService service = metricsService;
         if (service != null) {
             try {
-                service.recordErrorRecovery(errorType, false, Duration.ofMillis(0), "none", false);
+                service.recordOperation("error-recovery", errorType).withSuccess(false)
+                        .withDuration(Duration.ofMillis(0).toNanos()).withData("recoveryStrategy", "none")
+                        .withData("fallbackUsed", false).record();
             } catch (Exception e) {
                 logger.warn("Failed to record error recovery metrics for error type {}: {}", errorType, e.getMessage());
                 // Graceful degradation: continue with error handling even if metrics recording fails
@@ -153,7 +155,9 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
         // Record successful recovery metrics
         MetricsService service = metricsService;
         if (service != null) {
-            service.recordErrorRecovery(errorType, true, Duration.ofMillis(100), "automatic", false);
+            service.recordOperation("error-recovery", errorType).withSuccess(true)
+                    .withDuration(Duration.ofMillis(100).toNanos()).withData("recoveryStrategy", "automatic")
+                    .withData("fallbackUsed", false).record();
         }
 
         logger.info("Recovery recorded for error type: {}", errorType);

@@ -3,7 +3,7 @@ package org.openhab.core.ai.agent.core;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
+
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,7 +19,7 @@ import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.common.monitoring.api.HealthStatus;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.service.statistics.AgentBehaviorStatistics;
+
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelTrackingService;
@@ -295,16 +295,7 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
         return response != null && response.getContent() != null;
     }
 
-    @Override
-    public AgentBehaviorStatistics getStatistics() {
-        // Create a single snapshot with current agent data
-        // In a real implementation, you would collect multiple snapshots over time
-        // For now, we create a simplified statistics object
-        return AgentBehaviorStatistics.fromSnapshots(List.of(), // Empty list for now - would contain AgentTaskSnapshot
-                                                                // objects
-                Duration.ofDays(1) // Default time range
-        );
-    }
+
 
     @Override
     public HealthMetrics getHealthStatus() {
@@ -321,16 +312,10 @@ public class DefaultAgentModelProvider implements AgentModelProvider {
         }
 
         // Record health check operation
-        metricsService.recordOperation("agent", "health-check")
-            .withSuccess(healthStatus == HealthStatus.HEALTHY)
-            .withDuration(50)
-            .withData(Map.of(
-                "agentId", agentId,
-                "errorRate", errorRate,
-                "avgResponseTime", avgResponseTime,
-                "fallbackActive", fallbackActive
-            ))
-            .record();
+        metricsService.recordOperation("agent", "health-check").withSuccess(healthStatus == HealthStatus.HEALTHY)
+                .withDuration(50).withData(Map.of("agentId", agentId, "errorRate", errorRate, "avgResponseTime",
+                        avgResponseTime, "fallbackActive", fallbackActive))
+                .record();
 
         // Return health metrics from service
         return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider("agent-" + agentId));

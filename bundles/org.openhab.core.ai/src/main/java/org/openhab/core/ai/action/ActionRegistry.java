@@ -93,8 +93,6 @@ public class ActionRegistry {
 
     // Caching and optimization
     private final Map<String, ActionCacheEntry> actionCache = new ConcurrentHashMap<>();
-    // private final AtomicLong cacheHits = new AtomicLong(0);
-    // private final AtomicLong cacheMisses = new AtomicLong(0);
 
     // Versioning and compatibility
     private final Map<String, ActionVersionInfo> versionInfo = new ConcurrentHashMap<>();
@@ -425,16 +423,13 @@ public class ActionRegistry {
         // Record action execution metrics with builder pattern
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("action", "execution")
-                    .withSuccess(success)
-                    .withDuration(Duration.ofMillis(executionTimeMs).toNanos())
-                    .withData("actionId", actionId)
-                    .withData("agentId", agentId)
-                    .withData("executionTimeMs", executionTimeMs)
-                    .withData("error", error != null ? error : "null")
-                    .record();
+                metricsService.recordOperation("action", "execution").withSuccess(success)
+                        .withDuration(Duration.ofMillis(executionTimeMs).toNanos()).withData("actionId", actionId)
+                        .withData("agentId", agentId).withData("executionTimeMs", executionTimeMs)
+                        .withData("error", error != null ? error : "null").record();
             } catch (Exception e) {
-                logger.warn("Failed to record action execution metrics for action {} by agent {}: {}", actionId, agentId, e.getMessage());
+                logger.warn("Failed to record action execution metrics for action {} by agent {}: {}", actionId,
+                        agentId, e.getMessage());
                 // Graceful degradation: continue with execution history even if metrics recording fails
             }
         }
@@ -550,19 +545,34 @@ public class ActionRegistry {
             return;
         }
 
-        String cacheKey = generateCacheKey(actionId, parameters);
-        ActionCacheEntry entry = new ActionCacheEntry(actionId, parameters, result, Instant.now(),
-                Instant.now().plus(cacheExpiration));
+        long startTime = System.nanoTime();
+        boolean success = false;
+        try {
+            String cacheKey = generateCacheKey(actionId, parameters);
+            ActionCacheEntry entry = new ActionCacheEntry(actionId, parameters, result, Instant.now(),
+                    Instant.now().plus(cacheExpiration));
 
-        // Check cache size limit
-        if (actionCache.size() >= maxCacheSize) {
-            // Remove oldest entry
-            String oldestKey = actionCache.keySet().iterator().next();
-            actionCache.remove(oldestKey);
+            // Check cache size limit
+            if (actionCache.size() >= maxCacheSize) {
+                // Remove oldest entry
+                String oldestKey = actionCache.keySet().iterator().next();
+                actionCache.remove(oldestKey);
+            }
+
+            actionCache.put(cacheKey, entry);
+            logger.debug("Cached result for action {} with key {}", actionId, cacheKey);
+            success = true;
+        } finally {
+            // Record cache operation metrics
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("action-cache", "cache-result", success,
+                            Duration.ofNanos(System.nanoTime() - startTime));
+                } catch (Exception e) {
+                    logger.debug("Failed to record cache metrics: {}", e.getMessage());
+                }
+            }
         }
-
-        actionCache.put(cacheKey, entry);
-        logger.debug("Cached result for action {} with key {}", actionId, cacheKey);
     }
 
     /**
@@ -577,23 +587,39 @@ public class ActionRegistry {
             return null;
         }
 
-        String cacheKey = generateCacheKey(actionId, parameters);
-        ActionCacheEntry entry = actionCache.get(cacheKey);
+        long startTime = System.nanoTime();
+        boolean success = false;
+        boolean cacheHit = false;
+        try {
+            String cacheKey = generateCacheKey(actionId, parameters);
+            ActionCacheEntry entry = actionCache.get(cacheKey);
 
-        if (entry == null) {
-            // cacheMisses.incrementAndGet(); // Removed AtomicLong
-            return null;
+            if (entry == null) {
+                return null; // Cache miss
+            }
+
+            if (entry.isExpired()) {
+                actionCache.remove(cacheKey);
+                return null; // Cache miss (expired)
+            }
+
+            // Cache hit
+            cacheHit = true;
+            success = true;
+            actionCache.put(cacheKey, entry.withAccess());
+            return entry.getResult();
+        } finally {
+            // Record cache operation metrics
+            if (metricsService != null) {
+                try {
+                    String operation = cacheHit ? "cache-hit" : "cache-miss";
+                    metricsService.recordOperation("action-cache", operation, success,
+                            Duration.ofNanos(System.nanoTime() - startTime));
+                } catch (Exception e) {
+                    logger.debug("Failed to record cache metrics: {}", e.getMessage());
+                }
+            }
         }
-
-        if (entry.isExpired()) {
-            actionCache.remove(cacheKey);
-            // cacheMisses.incrementAndGet(); // Removed AtomicLong
-            return null;
-        }
-
-        // cacheHits.incrementAndGet(); // Removed AtomicLong
-        actionCache.put(cacheKey, entry.withAccess());
-        return entry.getResult();
     }
 
     /**
@@ -602,31 +628,46 @@ public class ActionRegistry {
      * @param actionId the action ID
      */
     public void clearCache(String actionId) {
-        actionCache.entrySet().removeIf(entry -> entry.getValue().getActionId().equals(actionId));
-        logger.debug("Cleared cache for action {}", actionId);
+        long startTime = System.nanoTime();
+        boolean success = false;
+        try {
+            actionCache.entrySet().removeIf(entry -> entry.getValue().getActionId().equals(actionId));
+            logger.debug("Cleared cache for action {}", actionId);
+            success = true;
+        } finally {
+            // Record cache operation metrics
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("action-cache", "clear-cache", success,
+                            Duration.ofNanos(System.nanoTime() - startTime));
+                } catch (Exception e) {
+                    logger.debug("Failed to record cache metrics: {}", e.getMessage());
+                }
+            }
+        }
     }
 
     /**
      * Clear all caches.
      */
     public void clearAllCaches() {
-        actionCache.clear();
-        logger.debug("Cleared all action caches");
-    }
-
-    /**
-     * Get cache statistics.
-     * 
-     * @return a map containing cache statistics
-     */
-    public Map<String, Object> getCacheStatistics() {
-        Map<String, Object> stats = new HashMap<>();
-        // stats.put("cacheHits", cacheHits.get()); // Removed AtomicLong
-        // stats.put("cacheMisses", cacheMisses.get()); // Removed AtomicLong
-        stats.put("cacheSize", actionCache.size());
-        stats.put("maxCacheSize", maxCacheSize);
-        stats.put("enableCaching", enableCaching);
-        return stats;
+        long startTime = System.nanoTime();
+        boolean success = false;
+        try {
+            actionCache.clear();
+            logger.debug("Cleared all action caches");
+            success = true;
+        } finally {
+            // Record cache operation metrics
+            if (metricsService != null) {
+                try {
+                    metricsService.recordOperation("action-cache", "clear-all-caches", success,
+                            Duration.ofNanos(System.nanoTime() - startTime));
+                } catch (Exception e) {
+                    logger.debug("Failed to record cache metrics: {}", e.getMessage());
+                }
+            }
+        }
     }
 
     /**

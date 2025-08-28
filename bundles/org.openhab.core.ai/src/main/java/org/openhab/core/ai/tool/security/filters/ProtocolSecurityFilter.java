@@ -5,17 +5,17 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.auth.AuthenticationManager;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import java.util.Map;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.security.filters.FilterStatistics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -78,8 +78,14 @@ public class ProtocolSecurityFilter implements Filter {
      */
     @Reference
     public void setAuthenticationManager(AuthenticationManager authenticationManager) {
-        this.authenticationManager = authenticationManager;
-        logger.debug("Authentication manager set for protocol security filter");
+        try {
+            this.authenticationManager = authenticationManager;
+            logger.debug("Authentication manager set for protocol security filter");
+            recordMetrics("protocol-security", "auth-manager-set", true, Duration.ZERO);
+        } catch (Exception e) {
+            logger.error("Error setting authentication manager for protocol security filter: {}", e.getMessage(), e);
+            recordMetrics("protocol-security", "auth-manager-set", false, Duration.ZERO);
+        }
     }
 
     /**
@@ -99,8 +105,15 @@ public class ProtocolSecurityFilter implements Filter {
      */
     @Reference
     public void setMetricsService(MetricsService metricsService) {
-        this.metricsService = metricsService;
-        logger.debug("Metrics service set for protocol security filter");
+        try {
+            this.metricsService = metricsService;
+            logger.debug("Metrics service set for protocol security filter");
+            recordMetrics("protocol-security", "metrics-service-set", true, Duration.ZERO);
+        } catch (Exception e) {
+            logger.error("Error setting metrics service for protocol security filter: {}", e.getMessage(), e);
+            // Cannot record metrics here as service might not be available
+            logger.debug("Failed to record metrics for metrics-service-set operation");
+        }
     }
 
     /**
@@ -196,22 +209,37 @@ public class ProtocolSecurityFilter implements Filter {
      * @return true if rate limit is exceeded
      */
     private boolean isRateLimitExceeded(HttpServletRequest request) {
-        String clientIp = getClientIpAddress(request);
-        long currentTime = System.currentTimeMillis();
+        try {
+            String clientIp = getClientIpAddress(request);
+            if (clientIp == null || clientIp.trim().isEmpty()) {
+                logger.warn("Cannot perform rate limiting: client IP is null or empty");
+                recordMetrics("protocol-security", "rate-limit-check", false, Duration.ZERO);
+                return false; // Allow request if we can't determine IP
+            }
 
-        // Get or create rate limit tracking for this client
-        RateLimitTracker tracker = rateLimitTrackers.computeIfAbsent(clientIp,
-                k -> new RateLimitTracker(RATE_LIMIT_PER_MINUTE, RATE_LIMIT_WINDOW_MS));
+            long currentTime = System.currentTimeMillis();
 
-        // Check if rate limit is exceeded
-        boolean exceeded = tracker.isRateLimitExceeded(currentTime);
+            // Get or create rate limit tracking for this client
+            RateLimitTracker tracker = rateLimitTrackers.computeIfAbsent(clientIp,
+                    k -> new RateLimitTracker(RATE_LIMIT_PER_MINUTE, RATE_LIMIT_WINDOW_MS));
 
-        if (exceeded) {
-            logger.warn("Rate limit exceeded for client IP: {} - {} requests in {} ms", clientIp,
-                    tracker.getCurrentCount(), RATE_LIMIT_WINDOW_MS);
+            // Check if rate limit is exceeded
+            boolean exceeded = tracker.isRateLimitExceeded(currentTime);
+
+            if (exceeded) {
+                logger.warn("Rate limit exceeded for client IP: {} - {} requests in {} ms", clientIp,
+                        tracker.getCurrentCount(), RATE_LIMIT_WINDOW_MS);
+                recordMetrics("protocol-security", "rate-limit-exceeded", false, Duration.ZERO);
+            } else {
+                recordMetrics("protocol-security", "rate-limit-check", true, Duration.ZERO);
+            }
+
+            return exceeded;
+        } catch (Exception e) {
+            logger.error("Error during rate limit check: {}", e.getMessage(), e);
+            recordMetrics("protocol-security", "rate-limit-check", false, Duration.ZERO);
+            return false; // Allow request if rate limiting fails - graceful degradation
         }
-
-        return exceeded;
     }
 
     /**
@@ -221,13 +249,14 @@ public class ProtocolSecurityFilter implements Filter {
      * @return authentication context if successful
      */
     private Optional<AuthenticationContext> authenticateRequest(HttpServletRequest request) {
-        AuthenticationManager authManager = authenticationManager;
-        if (authManager == null) {
-            logger.warn("Authentication manager not available");
-            return Optional.empty();
-        }
-
         try {
+            AuthenticationManager authManager = authenticationManager;
+            if (authManager == null) {
+                logger.warn("Authentication manager not available");
+                recordMetrics("protocol-security", "authentication", false, Duration.ZERO);
+                return Optional.empty();
+            }
+
             // Extract credentials from request
             Map<String, String> credentials = extractCredentials(request);
             String protocol = getProtocolFromUri(request.getRequestURI());
@@ -235,30 +264,45 @@ public class ProtocolSecurityFilter implements Filter {
 
             if (protocol == null) {
                 logger.warn("Unknown protocol for request: {}", request.getRequestURI());
+                recordMetrics("protocol-security", "authentication", false, Duration.ZERO);
                 return Optional.empty();
             }
 
             // Try authentication with credentials
-            Optional<AuthenticationContext> context = authManager.authenticate(credentials, protocol, clientId);
-            if (context.isPresent()) {
-                logger.debug("Authentication successful for protocol: {}, client: {}", protocol, clientId);
-                return context;
+            try {
+                Optional<AuthenticationContext> context = authManager.authenticate(credentials, protocol, clientId);
+                if (context.isPresent()) {
+                    logger.debug("Authentication successful for protocol: {}, client: {}", protocol, clientId);
+                    recordMetrics("protocol-security", "authentication", true, Duration.ZERO);
+                    return context;
+                }
+            } catch (Exception e) {
+                logger.warn("Credential authentication failed for protocol: {}, client: {}: {}", protocol, clientId,
+                        e.getMessage());
             }
 
             // Try JWT authentication if no other method succeeded
             String jwtToken = extractJwtToken(request);
             if (jwtToken != null) {
-                context = authManager.authenticateWithJWT(jwtToken, protocol);
-                if (context.isPresent()) {
-                    logger.debug("JWT authentication successful for protocol: {}, client: {}", protocol, clientId);
-                    return context;
+                try {
+                    Optional<AuthenticationContext> context = authManager.authenticateWithJWT(jwtToken, protocol);
+                    if (context.isPresent()) {
+                        logger.debug("JWT authentication successful for protocol: {}, client: {}", protocol, clientId);
+                        recordMetrics("protocol-security", "authentication", true, Duration.ZERO);
+                        return context;
+                    }
+                } catch (Exception e) {
+                    logger.warn("JWT authentication failed for protocol: {}, client: {}: {}", protocol, clientId,
+                            e.getMessage());
                 }
             }
 
             logger.debug("Authentication failed for protocol: {}, client: {}", protocol, clientId);
+            recordMetrics("protocol-security", "authentication", false, Duration.ZERO);
             return Optional.empty();
         } catch (Exception e) {
-            logger.error("Authentication error: {}", e.getMessage(), e);
+            logger.error("Unexpected error during authentication: {}", e.getMessage(), e);
+            recordMetrics("protocol-security", "authentication", false, Duration.ZERO);
             return Optional.empty();
         }
     }
@@ -330,22 +374,51 @@ public class ProtocolSecurityFilter implements Filter {
      * @return true if authorized
      */
     private boolean isAuthorized(HttpServletRequest request, AuthenticationContext authContext) {
-        String method = request.getMethod();
-        String requestURI = request.getRequestURI();
+        try {
+            if (request == null) {
+                logger.warn("Cannot authorize: request is null");
+                recordMetrics("protocol-security", "authorization", false, Duration.ZERO);
+                return false;
+            }
 
-        // MCP protocol authorization
-        if (requestURI.startsWith("/mcp/")) {
-            return validateMcpRequest(request, authContext);
+            if (authContext == null) {
+                logger.warn("Cannot authorize: authentication context is null");
+                recordMetrics("protocol-security", "authorization", false, Duration.ZERO);
+                return false;
+            }
+
+            String requestURI = request.getRequestURI();
+
+            if (requestURI == null || requestURI.trim().isEmpty()) {
+                logger.warn("Cannot authorize: request URI is null or empty");
+                recordMetrics("protocol-security", "authorization", false, Duration.ZERO);
+                return false;
+            }
+
+            boolean authorized = false;
+
+            // MCP protocol authorization
+            if (requestURI.startsWith("/mcp/")) {
+                authorized = validateMcpRequest(request, authContext);
+            }
+            // A2A protocol authorization
+            else if (requestURI.startsWith("/a2a/")) {
+                authorized = validateA2ARequest(request, authContext);
+            }
+            // Unknown protocol - deny by default
+            else {
+                logger.warn("Unknown protocol for request: {}", requestURI);
+                recordMetrics("protocol-security", "authorization", false, Duration.ZERO);
+                return false;
+            }
+
+            recordMetrics("protocol-security", "authorization", authorized, Duration.ZERO);
+            return authorized;
+        } catch (Exception e) {
+            logger.error("Error during authorization check: {}", e.getMessage(), e);
+            recordMetrics("protocol-security", "authorization", false, Duration.ZERO);
+            return false; // Deny access if authorization check fails
         }
-
-        // A2A protocol authorization
-        if (requestURI.startsWith("/a2a/")) {
-            return validateA2ARequest(request, authContext);
-        }
-
-        // Unknown protocol - deny by default
-        logger.warn("Unknown protocol for request: {}", requestURI);
-        return false;
     }
 
     /**
@@ -514,8 +587,14 @@ public class ProtocolSecurityFilter implements Filter {
      */
     @Activate
     public void activate() {
-        recordMetrics("protocol-security", "filter-activated", true, Duration.ZERO);
-        logger.info("Protocol Security Filter activated - registering with openHAB HTTP server");
+        try {
+            recordMetrics("protocol-security", "filter-activated", true, Duration.ZERO);
+            logger.info("Protocol Security Filter activated - registering with openHAB HTTP server");
+        } catch (Exception e) {
+            logger.error("Error during Protocol Security Filter activation: {}", e.getMessage(), e);
+            recordMetrics("protocol-security", "filter-activated", false, Duration.ZERO);
+            // Continue with activation even if metrics recording fails - graceful degradation
+        }
     }
 
     /**
@@ -523,8 +602,14 @@ public class ProtocolSecurityFilter implements Filter {
      */
     @Deactivate
     public void deactivate() {
-        recordMetrics("protocol-security", "filter-deactivated", true, Duration.ZERO);
-        logger.info("Protocol Security Filter deactivated - unregistering from openHAB HTTP server");
+        try {
+            recordMetrics("protocol-security", "filter-deactivated", true, Duration.ZERO);
+            logger.info("Protocol Security Filter deactivated - unregistering from openHAB HTTP server");
+        } catch (Exception e) {
+            logger.error("Error during Protocol Security Filter deactivation: {}", e.getMessage(), e);
+            recordMetrics("protocol-security", "filter-deactivated", false, Duration.ZERO);
+            // Continue with deactivation even if metrics recording fails
+        }
     }
 
     /**
@@ -533,36 +618,56 @@ public class ProtocolSecurityFilter implements Filter {
      * @return filter statistics
      */
     public FilterStatistics getFilterStatistics() {
-        MetricsService metrics = metricsService;
-        if (metrics == null) {
-            logger.warn("MetricsService not available, returning empty statistics");
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics == null) {
+                logger.debug("MetricsService not available, returning empty statistics");
+                return new FilterStatistics(0, 0, System.currentTimeMillis() - startTime);
+            }
+
+            MetricKey protocolSecurityKey = MetricKeys.custom("protocol-security", Map.of(),
+                    Set.of("counts", "latency"));
+            var snapshot = metrics.getSnapshot(protocolSecurityKey,
+                    org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+            if (snapshot != null) {
+                return new FilterStatistics(snapshot.getLong("total"), snapshot.getLong("failure"),
+                        System.currentTimeMillis() - startTime);
+            } else {
+                logger.debug("No metrics snapshot available for protocol security filter");
+                return new FilterStatistics(0, 0, System.currentTimeMillis() - startTime);
+            }
+        } catch (Exception e) {
+            logger.warn("Error retrieving filter statistics: {}", e.getMessage());
+            recordMetrics("protocol-security", "statistics-retrieval", false, Duration.ZERO);
             return new FilterStatistics(0, 0, System.currentTimeMillis() - startTime);
         }
-
-        MetricKey protocolSecurityKey = MetricKeys.custom("protocol-security", Map.of(), Set.of("counts", "latency"));
-        var snapshot = metrics.getSnapshot(protocolSecurityKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-        if (snapshot != null) {
-            return new FilterStatistics(snapshot.getLong("total"), snapshot.getLong("failure"),
-                    System.currentTimeMillis() - startTime);
-        }
-        return new FilterStatistics(0, 0, System.currentTimeMillis() - startTime);
     }
 
     /**
      * Reset the filter statistics.
      */
     public void resetStatistics() {
-        recordMetrics("protocol-security", "statistics-reset", true, Duration.ZERO);
-        logger.info("Protocol Security Filter statistics reset");
+        try {
+            recordMetrics("protocol-security", "statistics-reset", true, Duration.ZERO);
+            logger.info("Protocol Security Filter statistics reset");
+        } catch (Exception e) {
+            logger.error("Error resetting protocol security filter statistics: {}", e.getMessage(), e);
+            recordMetrics("protocol-security", "statistics-reset", false, Duration.ZERO);
+        }
     }
 
     private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            metrics.recordOperation(domain, operation, success, duration);
-        } else {
-            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
-                    operation);
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation(domain, operation, success, duration);
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                        operation);
+            }
+        } catch (Exception e) {
+            // Avoid recursive metric recording in error handler
+            logger.warn("Error recording security metrics for operation {}.{}: {}", domain, operation, e.getMessage());
         }
     }
 

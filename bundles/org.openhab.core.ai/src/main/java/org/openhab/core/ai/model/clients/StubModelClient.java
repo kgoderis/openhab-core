@@ -6,19 +6,18 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.common.response.ModelResponse;
-import org.osgi.service.component.annotations.Reference;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
 import org.openhab.core.ai.model.ModelRateLimitInfo;
 import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * Stub implementation of ModelClient for testing and development.
@@ -75,14 +74,8 @@ public class StubModelClient implements ModelClient {
     @Override
     public HealthMetrics getHealthStatus() {
         // Record health check operation
-        metricsService.recordOperation("model", "health-check")
-            .withSuccess(true)
-            .withDuration(10)
-            .withData(Map.of(
-                "provider", "stub",
-                "model", modelName
-            ))
-            .record();
+        metricsService.recordOperation("model", "health-check").withSuccess(true).withDuration(10)
+                .withData(Map.of("provider", "stub", "model", modelName)).record();
 
         // Return health metrics from service
         return metricsService.getSnapshot(MetricKeys.modelHealth(modelName), UnifiedMetricsSnapshot.class);

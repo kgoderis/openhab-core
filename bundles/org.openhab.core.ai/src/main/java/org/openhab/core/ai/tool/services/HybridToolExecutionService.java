@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -18,13 +17,15 @@ import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ToolContext;
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthStatus;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
+import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.openhab.core.ai.common.services.LoadBalancingStrategy;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.tool.monitoring.DefaultSystemHealthMonitor;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
 import org.openhab.core.ai.tool.registry.ToolRegistry;
 import org.openhab.core.ai.tool.resources.ResourceManager;
 import org.openhab.core.ai.tool.services.api.ToolExecutionService;
@@ -86,7 +87,6 @@ public class HybridToolExecutionService implements ToolExecutionService {
     private final AtomicReference<Duration> fallbackDelay = new AtomicReference<>(Duration.ofSeconds(1));
 
     // Load balancing state
-    private final ConcurrentHashMap<ModelProviderType, AtomicLong> providerLoadCounters = new ConcurrentHashMap<>();
     private final AtomicReference<LoadBalancingStrategy> loadBalancingStrategy = new AtomicReference<>(
             LoadBalancingStrategy.ROUND_ROBIN);
 
@@ -289,8 +289,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
      */
     private CompletableFuture<ActionResult> executeToolDirectly(ExecutionContext actionContext,
             ModelProviderType provider, Instant startTime) {
-        // Update provider load counter
-        providerLoadCounters.computeIfAbsent(provider, p -> new AtomicLong(0)).incrementAndGet();
+        // Record provider operation start - MetricsService will track load internally
 
         // Execute the tool (integrate with the actual tool execution system)
         return CompletableFuture.supplyAsync(() -> {
@@ -401,20 +400,153 @@ public class HybridToolExecutionService implements ToolExecutionService {
     }
 
     private ModelProviderType selectLeastConnections(List<ModelProviderType> providers) {
-        return providers.stream()
-                .min((p1, p2) -> Long.compare(providerLoadCounters.getOrDefault(p1, new AtomicLong(0)).get(),
-                        providerLoadCounters.getOrDefault(p2, new AtomicLong(0)).get()))
-                .orElse(providers.get(0));
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            // Fallback to simple round-robin if MetricsService not available
+            return providers.get(0);
+        }
+
+        try {
+            return providers.stream().min((p1, p2) -> {
+                try {
+                    long load1 = getProviderLoad(p1);
+                    long load2 = getProviderLoad(p2);
+                    return Long.compare(load1, load2);
+                } catch (Exception e) {
+                    logger.debug("Failed to get provider load for comparison, using first provider", e);
+                    return 0; // Equal comparison, will use first provider
+                }
+            }).orElse(providers.get(0));
+        } catch (Exception e) {
+            logger.warn("Failed to select least connections provider: {}", e.getMessage());
+            return providers.get(0);
+        }
     }
 
     private ModelProviderType selectWeightedResponseTime(List<ModelProviderType> providers) {
-        return providers.stream().min((p1, p2) -> Double.compare(getProviderMetrics(p1).getAverageResponseTime(),
-                getProviderMetrics(p2).getAverageResponseTime())).orElse(providers.get(0));
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            // Fallback to simple selection if MetricsService not available
+            return providers.get(0);
+        }
+
+        try {
+            return providers.stream().min((p1, p2) -> {
+                try {
+                    double avgTime1 = getProviderAverageResponseTime(p1);
+                    double avgTime2 = getProviderAverageResponseTime(p2);
+                    return Double.compare(avgTime1, avgTime2);
+                } catch (Exception e) {
+                    logger.debug("Failed to get provider response time for comparison, using first provider", e);
+                    return 0; // Equal comparison, will use first provider
+                }
+            }).orElse(providers.get(0));
+        } catch (Exception e) {
+            logger.warn("Failed to select weighted response time provider: {}", e.getMessage());
+            return providers.get(0);
+        }
     }
 
     private ModelProviderType selectHealthBased(List<ModelProviderType> providers) {
-        return providers.stream().max((p1, p2) -> Double.compare(getProviderMetrics(p1).getHealthScore(),
-                getProviderMetrics(p2).getHealthScore())).orElse(providers.get(0));
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            // Fallback to simple selection if MetricsService not available
+            return providers.get(0);
+        }
+
+        try {
+            return providers.stream().max((p1, p2) -> {
+                try {
+                    double healthScore1 = getProviderHealthScore(p1);
+                    double healthScore2 = getProviderHealthScore(p2);
+                    return Double.compare(healthScore1, healthScore2);
+                } catch (Exception e) {
+                    logger.debug("Failed to get provider health score for comparison, using first provider", e);
+                    return 0; // Equal comparison, will use first provider
+                }
+            }).orElse(providers.get(0));
+        } catch (Exception e) {
+            logger.warn("Failed to select health-based provider: {}", e.getMessage());
+            return providers.get(0);
+        }
+    }
+
+    // Helper methods for provider metrics using MetricsService
+
+    /**
+     * Get current load for a provider based on MetricsService data.
+     */
+    private long getProviderLoad(ModelProviderType provider) {
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            return 0;
+        }
+
+        try {
+            var snapshot = metrics.getSnapshot(MetricKeys.provider(provider.name()), ExecutionMetricsSnapshot.class);
+            return snapshot != null ? snapshot.total() : 0;
+        } catch (Exception e) {
+            logger.debug("Failed to get provider load for {}: {}", provider, e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Get average response time for a provider based on MetricsService data.
+     */
+    private double getProviderAverageResponseTime(ModelProviderType provider) {
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            return 0.0;
+        }
+
+        try {
+            var snapshot = metrics.getSnapshot(MetricKeys.provider(provider.name()), ExecutionMetricsSnapshot.class);
+            return snapshot != null ? snapshot.averageMs() : 0.0;
+        } catch (Exception e) {
+            logger.debug("Failed to get provider average response time for {}: {}", provider, e.getMessage());
+            return 0.0;
+        }
+    }
+
+    /**
+     * Get health score for a provider based on MetricsService data.
+     */
+    private double getProviderHealthScore(ModelProviderType provider) {
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            return 1.0; // Default to healthy
+        }
+
+        try {
+            var snapshot = metrics.getSnapshot(MetricKeys.provider(provider.name()), ExecutionMetricsSnapshot.class);
+            if (snapshot == null) {
+                return 1.0; // Default to healthy if no data
+            }
+
+            // Calculate health score based on success rate and performance
+            double successRate = snapshot.successRate() / 100.0; // Convert percentage to decimal
+            double performanceScore = calculatePerformanceScore(snapshot);
+            return (successRate * 0.7) + (performanceScore * 0.3);
+        } catch (Exception e) {
+            logger.debug("Failed to get provider health score for {}: {}", provider, e.getMessage());
+            return 1.0; // Default to healthy on error
+        }
+    }
+
+    /**
+     * Calculate performance score from ExecutionMetricsSnapshot.
+     */
+    private double calculatePerformanceScore(ExecutionMetricsSnapshot snapshot) {
+        if (snapshot.total() == 0) {
+            return 1.0; // Default to good performance if no data
+        }
+
+        // Performance score based on latency and throughput
+        double latencyScore = snapshot.averageMs() > 0 ? Math.min(1.0, 100.0 / snapshot.averageMs()) : 1.0;
+        double throughputScore = Math.min(1.0, snapshot.operationsPerSecond() / 100.0);
+
+        return (latencyScore + throughputScore) / 2.0;
     }
 
     // Privacy and security methods
@@ -553,8 +685,15 @@ public class HybridToolExecutionService implements ToolExecutionService {
     }
 
     private boolean isProviderAcceptable(ModelProviderType provider, ExecutionContext actionContext) {
-        ProviderMetrics metrics = getProviderMetrics(provider);
-        return metrics.getSuccessRate() > 0.8 && metrics.getAverageResponseTime() < 5000; // 5 seconds
+        try {
+            double successRate = getProviderHealthScore(provider) * 100.0; // Convert to percentage
+            double avgResponseTime = getProviderAverageResponseTime(provider);
+            return successRate > 80.0 && avgResponseTime < 5000; // 5 seconds
+        } catch (Exception e) {
+            logger.debug("Failed to check provider acceptability for {}, defaulting to acceptable: {}", provider,
+                    e.getMessage());
+            return true; // Default to acceptable if we can't get metrics
+        }
     }
 
     private Map<ModelProviderType, Double> estimateCosts(List<ModelProviderType> providers,
@@ -704,14 +843,14 @@ public class HybridToolExecutionService implements ToolExecutionService {
         if (registry != null) {
             try {
                 // Record provider metrics
-                var providerCollector = registry.executionCollector(MetricKeys.provider(provider.name()));
+                var providerCollector = registry.getCollector(MetricKeys.provider(provider.name()));
                 providerCollector.recordExecution(result.isSuccess(), executionTime * 1_000_000); // Convert to
                                                                                                   // nanoseconds
 
                 // Record tool metrics
                 String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
                 if (actionName != null) {
-                    var toolCollector = registry.executionCollector(MetricKeys.tool(actionName));
+                    var toolCollector = registry.getCollector(MetricKeys.tool(actionName));
                     toolCollector.recordExecution(result.isSuccess(), executionTime * 1_000_000); // Convert to
                                                                                                   // nanoseconds
                 }
@@ -726,9 +865,9 @@ public class HybridToolExecutionService implements ToolExecutionService {
 
         // Update global metrics
         if (result.isSuccess()) {
-            recordMetrics("tool-execution", "success", true, Duration.ofMillis(executionTime));
+            recordMetrics("success", true, Duration.ofMillis(executionTime).toNanos());
         } else {
-            recordMetrics("tool-execution", "failure", false, Duration.ofMillis(executionTime));
+            recordMetrics("failure", false, Duration.ofMillis(executionTime).toNanos());
         }
     }
 
@@ -737,16 +876,9 @@ public class HybridToolExecutionService implements ToolExecutionService {
      */
     private void updateLegacyMetrics(ModelProviderType provider, ExecutionContext actionContext, ActionResult result,
             long executionTime) {
-        // Update provider metrics
-        ProviderMetrics providerMetrics = getProviderMetrics(provider);
-        providerMetrics.recordExecution(result.isSuccess(), executionTime);
-
-        // Update tool metrics
-        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
-        if (actionName != null) {
-            ToolMetrics toolMetrics = getToolMetrics(actionName);
-            toolMetrics.recordExecution(result.isSuccess(), executionTime);
-        }
+        // Legacy metrics are no longer used - all metrics now go through MetricsService
+        logger.debug("Legacy metrics update requested for provider {} but ignored - using MetricsService instead",
+                provider);
     }
 
     private void updateFailureMetrics(ModelProviderType provider, ExecutionContext actionContext, Exception error,
@@ -758,13 +890,13 @@ public class HybridToolExecutionService implements ToolExecutionService {
         if (registry != null) {
             try {
                 // Record provider metrics
-                var providerCollector = registry.executionCollector(MetricKeys.provider(provider.name()));
+                var providerCollector = registry.getCollector(MetricKeys.provider(provider.name()));
                 providerCollector.recordExecution(false, executionTime * 1_000_000); // Convert to nanoseconds
 
                 // Record tool metrics
                 String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
                 if (actionName != null) {
-                    var toolCollector = registry.executionCollector(MetricKeys.tool(actionName));
+                    var toolCollector = registry.getCollector(MetricKeys.tool(actionName));
                     toolCollector.recordExecution(false, executionTime * 1_000_000); // Convert to nanoseconds
                 }
             } catch (Exception e) {
@@ -782,33 +914,13 @@ public class HybridToolExecutionService implements ToolExecutionService {
      */
     private void updateLegacyFailureMetrics(ModelProviderType provider, ExecutionContext actionContext,
             long executionTime) {
-        ProviderMetrics providerMetrics = getProviderMetrics(provider);
-        providerMetrics.recordExecution(false, executionTime);
-
-        String actionName = actionContext.getValue(ActionKeys.ACTION_NAME.getKey(), String.class);
-        if (actionName != null) {
-            ToolMetrics toolMetrics = getToolMetrics(actionName);
-            toolMetrics.recordExecution(false, executionTime);
-        }
+        // Legacy metrics are no longer used - all metrics now go through MetricsService
+        logger.debug(
+                "Legacy failure metrics update requested for provider {} but ignored - using MetricsService instead",
+                provider);
     }
 
-    private ProviderMetrics getProviderMetrics(ModelProviderType provider) {
-        ProviderMetrics metrics = providerMetrics.computeIfAbsent(provider, p -> new ProviderMetrics());
-        if (metrics == null) {
-            metrics = new ProviderMetrics();
-            providerMetrics.put(provider, metrics);
-        }
-        return metrics;
-    }
-
-    private ToolMetrics getToolMetrics(String toolName) {
-        ToolMetrics metrics = toolMetrics.computeIfAbsent(toolName, t -> new ToolMetrics());
-        if (metrics == null) {
-            metrics = new ToolMetrics();
-            toolMetrics.put(toolName, metrics);
-        }
-        return metrics;
-    }
+    // Legacy getProviderMetrics and getToolMetrics methods removed - using MetricsService instead
 
     // Configuration methods
     public void setEnableFallback(boolean enable) {
@@ -839,50 +951,69 @@ public class HybridToolExecutionService implements ToolExecutionService {
     // Metrics retrieval
     @Override
     public HealthMetrics getMetrics() {
-        // Record metrics retrieval operation
-        metricsService.recordOperation("tool", "metrics-retrieval")
-            .withSuccess(true)
-            .withDuration(10)
-            .withData(Map.of(
-                "service", "hybrid-tool-execution"
-            ))
-            .record();
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            // Return empty snapshot if MetricsService not available
+            return createHealthMetricsFromSnapshot(createEmptyExecutionSnapshot());
+        }
 
-        // Return health metrics from service
-        return (HealthMetrics) metricsService.getSnapshot(MetricKeys.provider("hybrid-tool-execution"));
+        try {
+            // Record metrics retrieval operation
+            recordMetrics("metrics-retrieval", true, 0);
+
+            // Return health metrics from service
+            var snapshot = metrics.getSnapshot(MetricKeys.toolExecution("hybrid-tool-execution"),
+                    ExecutionMetricsSnapshot.class);
+            return snapshot != null ? createHealthMetricsFromSnapshot(snapshot)
+                    : createHealthMetricsFromSnapshot(createEmptyExecutionSnapshot());
+        } catch (Exception e) {
+            logger.warn("Failed to get metrics from MetricsService, falling back to empty snapshot: {}",
+                    e.getMessage());
+            return createHealthMetricsFromSnapshot(createEmptyExecutionSnapshot());
+        }
     }
 
     /**
-     * Legacy metrics retrieval for backward compatibility.
+     * Create an empty ExecutionMetricsSnapshot for fallback scenarios.
      */
-    private HybridServiceMetrics getLegacyMetrics() {
-        Map<ModelProviderType, ProviderMetrics> interfaceProviderMetrics = new ConcurrentHashMap<>();
-        providerMetrics.forEach((provider, metrics) -> {
-            ProviderMetrics interfaceMetrics = new ProviderMetrics();
-            // Copy the metrics data
-            for (int i = 0; i < metrics.getTotalExecutions(); i++) {
-                interfaceMetrics.recordExecution(true, 0);
-            }
-            for (int i = 0; i < metrics.getTotalFailures(); i++) {
-                interfaceMetrics.recordExecution(false, 0);
-            }
-            interfaceProviderMetrics.put(provider, interfaceMetrics);
-        });
+    private ExecutionMetricsSnapshot createEmptyExecutionSnapshot() {
+        return ExecutionMetricsSnapshot.builder().withTotal(0).withSuccess(0).withFailure(0).withTotalDurationNanos(0)
+                .withTimestampMs(System.currentTimeMillis()).build();
+    }
 
-        // Convert tool metrics to interface format
-        Map<String, ToolMetrics> interfaceToolMetrics = new ConcurrentHashMap<>();
-        toolMetrics.forEach((tool, metrics) -> {
-            ToolMetrics interfaceMetrics = new ToolMetrics();
-            // Copy the metrics data
-            for (int i = 0; i < metrics.getTotalExecutions(); i++) {
-                interfaceMetrics.recordExecution(true, 0);
+    /**
+     * Create HealthMetrics from ExecutionMetricsSnapshot.
+     */
+    private HealthMetrics createHealthMetricsFromSnapshot(ExecutionMetricsSnapshot snapshot) {
+        return new HealthMetrics() {
+            @Override
+            public HealthStatus healthStatus() {
+                return snapshot.healthStatus();
             }
-            interfaceToolMetrics.put(tool, interfaceMetrics);
-        });
 
-        return new HybridServiceMetrics(0, 0, 0, 0, 0, 0, // totalToolExecutions.get(), successfulToolExecutions.get(), failedToolExecutions.get(), fallbackExecutions.get(),
-                totalExecutionTime.get(), totalCost.get(), // totalExecutionTime.get(), totalCost.get(), // Removed
-                interfaceProviderMetrics, interfaceToolMetrics);
+            @Override
+            public String statusMessage() {
+                return snapshot.statusMessage();
+            }
+
+            @Override
+            public Map<String, Object> healthIndicators() {
+                Map<String, Object> indicators = new HashMap<>();
+                indicators.put("total", snapshot.total());
+                indicators.put("success", snapshot.success());
+                indicators.put("failure", snapshot.failure());
+                indicators.put("successRate", snapshot.successRate());
+                indicators.put("averageMs", snapshot.averageMs());
+                indicators.put("operationsPerSecond", snapshot.operationsPerSecond());
+                return indicators;
+            }
+
+            @Override
+            public Object getHealthIndicator(String indicatorName) {
+                Map<String, Object> indicators = healthIndicators();
+                return indicators != null ? indicators.get(indicatorName) : null;
+            }
+        };
     }
 
     public void resetMetrics() {
@@ -894,7 +1025,7 @@ public class HybridToolExecutionService implements ToolExecutionService {
         // totalCost.set(0); // Removed
         providerMetrics.clear();
         toolMetrics.clear();
-        providerLoadCounters.clear();
+        // providerLoadCounters.clear(); // Removed - now using MetricsService
     }
 
     @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
@@ -917,7 +1048,8 @@ public class HybridToolExecutionService implements ToolExecutionService {
             try {
                 metrics.recordOperation("tool-execution", operation, success, Duration.ofNanos(durationNanos));
             } catch (Exception e) {
-                logger.warn("Failed to record hybrid tool execution metrics for operation {}: {}", operation, e.getMessage());
+                logger.warn("Failed to record hybrid tool execution metrics for operation {}: {}", operation,
+                        e.getMessage());
                 // Graceful degradation: continue with tool execution even if metrics recording fails
             }
         } else {

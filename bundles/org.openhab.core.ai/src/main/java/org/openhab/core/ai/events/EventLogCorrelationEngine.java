@@ -7,16 +7,19 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -63,16 +66,16 @@ public class EventLogCorrelationEngine {
     private final Map<String, List<String>> logCorrelations = new ConcurrentHashMap<>();
     private final Map<String, CorrelationPattern> correlationPatterns = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalCorrelationsCreated = new AtomicLong(0);
-    private final AtomicLong totalCorrelationsValidated = new AtomicLong(0);
-    private final AtomicLong totalProcessingTime = new AtomicLong(0);
+    // Performance monitoring now handled by centralized MetricsService
 
     // Threading
     private final ExecutorService correlationExecutor = Executors.newFixedThreadPool(4);
     private volatile boolean isRunning = false;
 
     // Dependencies
+    @Reference
+    private MetricsService metricsService;
+
     @Reference
     private @Nullable EventSystemIntegration eventSystemIntegration;
 
@@ -88,6 +91,31 @@ public class EventLogCorrelationEngine {
     private boolean enablePatternCorrelation = true;
     private boolean enableCausalityDetection = true;
     private boolean enablePerformanceMonitoring = true;
+
+    /**
+     * Record correlation metrics using MetricsService with proper error handling.
+     * 
+     * @param operationType the type of correlation operation
+     * @param success whether the operation was successful
+     * @param duration the operation duration in nanoseconds
+     * @param dataEntries additional key-value pairs for context
+     */
+    private void recordCorrelationMetrics(String operationType, boolean success, long duration, String... dataEntries) {
+        try {
+            var recorder = metricsService.recordOperation("event-log-correlation", operationType).withSuccess(success)
+                    .withDuration(duration);
+
+            // Add data entries in pairs
+            for (int i = 0; i < dataEntries.length - 1; i += 2) {
+                recorder.withData(dataEntries[i], dataEntries[i + 1]);
+            }
+
+            recorder.record();
+        } catch (Exception e) {
+            logger.warn("Failed to record correlation metrics for operation {}: {}", operationType, e.getMessage());
+            // Graceful degradation - continue without metrics if recording fails
+        }
+    }
 
     @Activate
     public void activate() {
@@ -174,15 +202,22 @@ public class EventLogCorrelationEngine {
                     storeCorrelation(correlation);
                 }
 
-                totalCorrelationsCreated.addAndGet(correlations.size());
+                // Record correlation metrics using MetricsService
+                long processingTimeMs = Duration.between(startTime, Instant.now()).toMillis();
+                recordCorrelationMetrics("events-with-logs", true, processingTimeMs * 1_000_000, // Convert to
+                                                                                                 // nanoseconds
+                        "correlationsCreated", String.valueOf(correlations.size()), "eventCount",
+                        String.valueOf(events.size()), "logEntryCount", String.valueOf(logEntries.size()));
 
                 logger.debug("Created {} correlations between {} events and {} log entries", correlations.size(),
                         events.size(), logEntries.size());
 
             } catch (Exception e) {
                 logger.error("Error correlating events with logs", e);
-            } finally {
-                totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+                // Record error metrics
+                long processingTimeMs = Duration.between(startTime, Instant.now()).toMillis();
+                recordCorrelationMetrics("events-with-logs", false, processingTimeMs * 1_000_000, "error",
+                        e.getMessage() != null ? e.getMessage() : "Unknown error");
             }
 
             return correlations;
@@ -211,15 +246,22 @@ public class EventLogCorrelationEngine {
                     storeCorrelation(correlation);
                 }
 
-                totalCorrelationsCreated.addAndGet(correlations.size());
+                // Record correlation metrics using MetricsService
+                long processingTimeMs = Duration.between(startTime, Instant.now()).toMillis();
+                recordCorrelationMetrics("event-with-logs", true, processingTimeMs * 1_000_000, // Convert to
+                                                                                                // nanoseconds
+                        "correlationsCreated", String.valueOf(correlations.size()), "logEntryCount",
+                        String.valueOf(logEntries.size()));
 
                 logger.debug("Created {} correlations for event with {} log entries", correlations.size(),
                         logEntries.size());
 
             } catch (Exception e) {
                 logger.error("Error correlating event with logs", e);
-            } finally {
-                totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+                // Record error metrics
+                long processingTimeMs = Duration.between(startTime, Instant.now()).toMillis();
+                recordCorrelationMetrics("event-with-logs", false, processingTimeMs * 1_000_000, "error",
+                        e.getMessage() != null ? e.getMessage() : "Unknown error");
             }
 
             return correlations;
@@ -250,15 +292,22 @@ public class EventLogCorrelationEngine {
                     storeCorrelation(correlation);
                 }
 
-                totalCorrelationsCreated.addAndGet(correlations.size());
+                // Record correlation metrics using MetricsService
+                long processingTimeMs = Duration.between(startTime, Instant.now()).toMillis();
+                recordCorrelationMetrics("logs-with-events", true, processingTimeMs * 1_000_000, // Convert to
+                                                                                                 // nanoseconds
+                        "correlationsCreated", String.valueOf(correlations.size()), "logEntryCount",
+                        String.valueOf(logEntries.size()), "eventCount", String.valueOf(events.size()));
 
                 logger.debug("Created {} correlations for {} log entries with {} events", correlations.size(),
                         logEntries.size(), events.size());
 
             } catch (Exception e) {
                 logger.error("Error correlating logs with events", e);
-            } finally {
-                totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+                // Record error metrics
+                long processingTimeMs = Duration.between(startTime, Instant.now()).toMillis();
+                recordCorrelationMetrics("logs-with-events", false, processingTimeMs * 1_000_000, "error",
+                        e.getMessage() != null ? e.getMessage() : "Unknown error");
             }
 
             return correlations;
@@ -587,7 +636,10 @@ public class EventLogCorrelationEngine {
                             causalityConfidence);
                 }
 
-                totalCorrelationsValidated.incrementAndGet();
+                // Record validation metrics using MetricsService
+                recordCorrelationMetrics("correlation-validation", true, 0, "correlationId", correlationId,
+                        "oldConfidence", String.valueOf(correlation.getConfidence()), "newConfidence",
+                        String.valueOf(newConfidence));
 
                 return CorrelationValidationResult.valid(correlation.getConfidence());
 
@@ -599,11 +651,72 @@ public class EventLogCorrelationEngine {
     }
 
     /**
-     * Get performance metrics
+     * Get correlation count from MetricsService for a specific operation type.
+     * 
+     * @param operationType the operation type to query
+     * @return the correlation count, or 0 if not available
+     */
+    private long getCorrelationCount(String operationType) {
+        try {
+            var metricKey = MetricKeys.custom("event-log-correlation", Map.of("operation", operationType),
+                    Set.of("counts", "latency"));
+            var snapshot = metricsService.getSnapshot(metricKey, UnifiedMetricsSnapshot.class);
+            if (snapshot != null) {
+                Map<String, Object> rawData = snapshot.getRawData();
+                if (rawData != null) {
+                    Object count = rawData.get("correlationsCreated");
+                    return count instanceof Number ? ((Number) count).longValue() : 0L;
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to retrieve correlation count for operation {}: {}", operationType, e.getMessage());
+        }
+        return 0L;
+    }
+
+    /**
+     * Get total processing time from MetricsService.
+     * 
+     * @return the total processing time in milliseconds, or 0 if not available
+     */
+    private long getTotalProcessingTime() {
+        try {
+            // Aggregate processing time from all correlation operations
+            long totalTime = 0;
+            String[] operations = { "events-with-logs", "event-with-logs", "logs-with-events" };
+
+            for (String operation : operations) {
+                var metricKey = MetricKeys.custom("event-log-correlation", Map.of("operation", operation),
+                        Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(metricKey, UnifiedMetricsSnapshot.class);
+                if (snapshot != null) {
+                    Map<String, Object> rawData = snapshot.getRawData();
+                    if (rawData != null) {
+                        Object duration = rawData.get("duration-total-nanos");
+                        if (duration instanceof Number) {
+                            totalTime += ((Number) duration).longValue() / 1_000_000; // Convert to milliseconds
+                        }
+                    }
+                }
+            }
+            return totalTime;
+        } catch (Exception e) {
+            logger.warn("Failed to retrieve total processing time: {}", e.getMessage());
+            return 0L;
+        }
+    }
+
+    /**
+     * Get performance metrics from MetricsService
      */
     public CorrelationPerformanceMetrics getPerformanceMetrics() {
-        return new CorrelationPerformanceMetrics(totalCorrelationsCreated.get(), totalCorrelationsValidated.get(),
-                totalProcessingTime.get(), correlations.size(), eventCorrelations.size(), logCorrelations.size(),
+        long totalCorrelationsCreated = getCorrelationCount("events-with-logs") + getCorrelationCount("event-with-logs")
+                + getCorrelationCount("logs-with-events");
+        long totalCorrelationsValidated = getCorrelationCount("correlation-validation");
+        long totalProcessingTime = getTotalProcessingTime();
+
+        return new CorrelationPerformanceMetrics(totalCorrelationsCreated, totalCorrelationsValidated,
+                totalProcessingTime, correlations.size(), eventCorrelations.size(), logCorrelations.size(),
                 correlationPatterns.size());
     }
 

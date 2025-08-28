@@ -65,13 +65,6 @@ public interface ValidationEngine {
     ToolValidationResult validate(Map<String, Object> data, List<String> ruleIds);
 
     /**
-     * Get validation statistics.
-     * 
-     * @return validation statistics
-     */
-    Map<String, Object> getValidationStatistics();
-
-    /**
      * Enable or disable a validation rule.
      * 
      * @param ruleId the rule ID

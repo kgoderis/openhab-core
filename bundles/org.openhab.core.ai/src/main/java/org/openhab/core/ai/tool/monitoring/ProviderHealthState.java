@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.core.ai.common.monitoring.api.HealthStatus;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
@@ -37,17 +36,14 @@ final class ProviderHealthState {
 
     void recordSuccess(long responseTime) {
         // Get current snapshot to reset consecutive failures
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()), UnifiedMetricsSnapshot.class);
+        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()),
+                UnifiedMetricsSnapshot.class);
         int currentConsecutiveFailures = 0; // Reset to 0 on success
-        
+
         // Record success metrics using MetricsService
-        metricsService.recordOperation("provider", "request")
-            .withSuccess(true)
-            .withDuration(responseTime)
-            .withData("provider", provider.name())
-            .withData("responseTimeMs", responseTime)
-            .withData("consecutiveFailures", currentConsecutiveFailures)
-            .record();
+        metricsService.recordOperation("provider", "request").withSuccess(true).withDuration(responseTime)
+                .withData("provider", provider.name()).withData("responseTimeMs", responseTime)
+                .withData("consecutiveFailures", currentConsecutiveFailures).record();
 
         if (circuitBreakerState.get() == CircuitBreakerState.HALF_OPEN) {
             circuitBreakerState.set(CircuitBreakerState.CLOSED);
@@ -56,26 +52,25 @@ final class ProviderHealthState {
 
     void recordFailure(Exception error) {
         // Get current snapshot to increment consecutive failures
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()), UnifiedMetricsSnapshot.class);
+        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()),
+                UnifiedMetricsSnapshot.class);
         int currentConsecutiveFailures = 0;
-        
+
         if (snapshot != null && snapshot.healthIndicators() != null) {
             Object consecutiveFailuresObj = snapshot.healthIndicators().get("consecutiveFailures");
-            currentConsecutiveFailures = consecutiveFailuresObj instanceof Number ? ((Number) consecutiveFailuresObj).intValue() : 0;
+            currentConsecutiveFailures = consecutiveFailuresObj instanceof Number
+                    ? ((Number) consecutiveFailuresObj).intValue()
+                    : 0;
         }
-        
+
         // Increment consecutive failures
         int newConsecutiveFailures = currentConsecutiveFailures + 1;
-        
+
         // Record failure metrics using MetricsService
-        metricsService.recordOperation("provider", "request")
-            .withSuccess(false)
-            .withDuration(0L)
-            .withData("provider", provider.name())
-            .withData("exceptionType", error.getClass().getSimpleName())
-            .withData("errorMessage", error.getMessage() != null ? error.getMessage() : "Unknown error")
-            .withData("consecutiveFailures", newConsecutiveFailures)
-            .record();
+        metricsService.recordOperation("provider", "request").withSuccess(false).withDuration(0L)
+                .withData("provider", provider.name()).withData("exceptionType", error.getClass().getSimpleName())
+                .withData("errorMessage", error.getMessage() != null ? error.getMessage() : "Unknown error")
+                .withData("consecutiveFailures", newConsecutiveFailures).record();
 
         lastFailureTime.set(Instant.now());
 
@@ -105,7 +100,8 @@ final class ProviderHealthState {
     }
 
     double getSuccessRate() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()), UnifiedMetricsSnapshot.class);
+        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()),
+                UnifiedMetricsSnapshot.class);
         if (snapshot != null) {
             return snapshot.successRate();
         }
@@ -113,7 +109,8 @@ final class ProviderHealthState {
     }
 
     double getAverageResponseTime() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()), UnifiedMetricsSnapshot.class);
+        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()),
+                UnifiedMetricsSnapshot.class);
         if (snapshot != null) {
             return snapshot.averageMs(snapshot.total());
         }
@@ -121,17 +118,20 @@ final class ProviderHealthState {
     }
 
     long getFailedRequestsCount() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()), UnifiedMetricsSnapshot.class);
+        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()),
+                UnifiedMetricsSnapshot.class);
         return snapshot != null ? snapshot.failure() : 0;
     }
 
     long getTotalRequests() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()), UnifiedMetricsSnapshot.class);
+        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()),
+                UnifiedMetricsSnapshot.class);
         return snapshot != null ? snapshot.total() : 0;
     }
 
     long getConsecutiveFailures() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()), UnifiedMetricsSnapshot.class);
+        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.provider(provider.name()),
+                UnifiedMetricsSnapshot.class);
         if (snapshot != null && snapshot.healthIndicators() != null) {
             Object consecutiveFailuresObj = snapshot.healthIndicators().get("consecutiveFailures");
             return consecutiveFailuresObj instanceof Number ? ((Number) consecutiveFailuresObj).longValue() : 0;

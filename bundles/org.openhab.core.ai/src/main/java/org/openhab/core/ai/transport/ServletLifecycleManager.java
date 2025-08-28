@@ -3,15 +3,15 @@ package org.openhab.core.ai.transport;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -47,9 +47,16 @@ public class ServletLifecycleManager {
      */
     @Activate
     public void activate() {
-        isActive.set(true);
-        recordMetrics("servlet-lifecycle", "manager-activated", true, Duration.ZERO);
-        logger.info("Servlet Lifecycle Manager activated");
+        try {
+            isActive.set(true);
+            recordMetrics("servlet-lifecycle", "manager-activated", true, Duration.ZERO);
+            logger.info("Servlet Lifecycle Manager activated");
+        } catch (Exception e) {
+            logger.error("Error during Servlet Lifecycle Manager activation: {}", e.getMessage(), e);
+            recordMetrics("servlet-lifecycle", "manager-activated", false, Duration.ZERO);
+            // Continue activation even if metrics recording fails - graceful degradation
+            isActive.set(true);
+        }
     }
 
     /**
@@ -57,9 +64,16 @@ public class ServletLifecycleManager {
      */
     @Deactivate
     public void deactivate() {
-        isActive.set(false);
-        recordMetrics("servlet-lifecycle", "manager-deactivated", true, Duration.ZERO);
-        logger.info("Servlet Lifecycle Manager deactivated");
+        try {
+            isActive.set(false);
+            recordMetrics("servlet-lifecycle", "manager-deactivated", true, Duration.ZERO);
+            logger.info("Servlet Lifecycle Manager deactivated");
+        } catch (Exception e) {
+            logger.error("Error during Servlet Lifecycle Manager deactivation: {}", e.getMessage(), e);
+            recordMetrics("servlet-lifecycle", "manager-deactivated", false, Duration.ZERO);
+            // Ensure deactivation continues even if metrics recording fails
+            isActive.set(false);
+        }
     }
 
     /**
@@ -116,10 +130,24 @@ public class ServletLifecycleManager {
      * @param servletId the servlet ID
      */
     public void recordRequest(String servletId) {
-        recordMetrics("servlet-lifecycle", "request-recorded", true, Duration.ZERO);
-        ServletInfo servletInfo = registeredServlets.get(servletId);
-        if (servletInfo != null) {
-            servletInfo.incrementRequestCount();
+        if (servletId == null || servletId.trim().isEmpty()) {
+            logger.warn("Cannot record servlet request: servlet ID is null or empty");
+            recordMetrics("servlet-lifecycle", "request-recorded", false, Duration.ZERO);
+            return;
+        }
+
+        try {
+            recordMetrics("servlet-lifecycle", "request-recorded", true, Duration.ZERO);
+            ServletInfo servletInfo = registeredServlets.get(servletId);
+            if (servletInfo != null) {
+                servletInfo.incrementRequestCount();
+                logger.debug("Request recorded for servlet: {}", servletId);
+            } else {
+                logger.warn("Cannot record request for unknown servlet: {}", servletId);
+            }
+        } catch (Exception e) {
+            logger.error("Error recording request for servlet '{}': {}", servletId, e.getMessage(), e);
+            recordMetrics("servlet-lifecycle", "request-recorded", false, Duration.ZERO);
         }
     }
 
@@ -129,10 +157,24 @@ public class ServletLifecycleManager {
      * @param servletId the servlet ID
      */
     public void recordError(String servletId) {
-        recordMetrics("servlet-lifecycle", "error-recorded", false, Duration.ZERO);
-        ServletInfo servletInfo = registeredServlets.get(servletId);
-        if (servletInfo != null) {
-            servletInfo.incrementErrorCount();
+        if (servletId == null || servletId.trim().isEmpty()) {
+            logger.warn("Cannot record servlet error: servlet ID is null or empty");
+            recordMetrics("servlet-lifecycle", "error-recorded", false, Duration.ZERO);
+            return;
+        }
+
+        try {
+            recordMetrics("servlet-lifecycle", "error-recorded", false, Duration.ZERO);
+            ServletInfo servletInfo = registeredServlets.get(servletId);
+            if (servletInfo != null) {
+                servletInfo.incrementErrorCount();
+                logger.warn("Error recorded for servlet: {}", servletId);
+            } else {
+                logger.warn("Cannot record error for unknown servlet: {}", servletId);
+            }
+        } catch (Exception e) {
+            logger.error("Error recording error for servlet '{}': {}", servletId, e.getMessage(), e);
+            recordMetrics("servlet-lifecycle", "error-recorded", false, Duration.ZERO);
         }
     }
 
@@ -143,14 +185,29 @@ public class ServletLifecycleManager {
      * @param healthy the health status
      */
     public void updateServletHealth(String servletId, boolean healthy) {
-        ServletInfo servletInfo = registeredServlets.get(servletId);
-        if (servletInfo != null) {
-            servletInfo.setHealthy(healthy);
-            if (!healthy) {
-                logger.warn("Servlet {} marked as unhealthy", servletInfo.getServletName());
+        if (servletId == null || servletId.trim().isEmpty()) {
+            logger.warn("Cannot update servlet health: servlet ID is null or empty");
+            recordMetrics("servlet-lifecycle", "health-updated", false, Duration.ZERO);
+            return;
+        }
+
+        try {
+            ServletInfo servletInfo = registeredServlets.get(servletId);
+            if (servletInfo != null) {
+                servletInfo.setHealthy(healthy);
+                if (!healthy) {
+                    logger.warn("Servlet {} marked as unhealthy", servletInfo.getServletName());
+                } else {
+                    logger.debug("Servlet {} marked as healthy", servletInfo.getServletName());
+                }
+                recordMetrics("servlet-lifecycle", "health-updated", true, Duration.ZERO);
             } else {
-                logger.debug("Servlet {} marked as healthy", servletInfo.getServletName());
+                logger.warn("Cannot update health for unknown servlet: {}", servletId);
+                recordMetrics("servlet-lifecycle", "health-updated", false, Duration.ZERO);
             }
+        } catch (Exception e) {
+            logger.error("Error updating health for servlet '{}': {}", servletId, e.getMessage(), e);
+            recordMetrics("servlet-lifecycle", "health-updated", false, Duration.ZERO);
         }
     }
 
@@ -188,15 +245,22 @@ public class ServletLifecycleManager {
      * @return total requests
      */
     public long getTotalRequests() {
-        MetricsService metrics = metricsService;
-        if (metrics == null) {
-            logger.warn("MetricsService not available, returning 0 for total requests");
-            return 0;
-        }
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics == null) {
+                logger.debug("MetricsService not available, returning 0 for total requests");
+                return 0;
+            }
 
-        MetricKey servletLifecycleKey = MetricKeys.custom("servlet-lifecycle", Map.of(), Set.of("counts", "latency"));
-        var snapshot = metrics.getSnapshot(servletLifecycleKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-        return snapshot != null ? snapshot.getLong("total") : 0L;
+            MetricKey servletLifecycleKey = MetricKeys.custom("servlet-lifecycle", Map.of(),
+                    Set.of("counts", "latency"));
+            var snapshot = metrics.getSnapshot(servletLifecycleKey,
+                    org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+            return snapshot != null ? snapshot.getLong("total") : 0L;
+        } catch (Exception e) {
+            logger.warn("Error retrieving total requests from MetricsService: {}", e.getMessage());
+            return 0L;
+        }
     }
 
     /**
@@ -205,15 +269,22 @@ public class ServletLifecycleManager {
      * @return total errors
      */
     public long getTotalErrors() {
-        MetricsService metrics = metricsService;
-        if (metrics == null) {
-            logger.warn("MetricsService not available, returning 0 for total errors");
-            return 0;
-        }
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics == null) {
+                logger.debug("MetricsService not available, returning 0 for total errors");
+                return 0;
+            }
 
-        MetricKey servletLifecycleKey = MetricKeys.custom("servlet-lifecycle", Map.of(), Set.of("counts", "latency"));
-        var snapshot = metrics.getSnapshot(servletLifecycleKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-        return snapshot != null ? snapshot.getLong("failure") : 0L;
+            MetricKey servletLifecycleKey = MetricKeys.custom("servlet-lifecycle", Map.of(),
+                    Set.of("counts", "latency"));
+            var snapshot = metrics.getSnapshot(servletLifecycleKey,
+                    org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+            return snapshot != null ? snapshot.getLong("failure") : 0L;
+        } catch (Exception e) {
+            logger.warn("Error retrieving total errors from MetricsService: {}", e.getMessage());
+            return 0L;
+        }
     }
 
     /**
@@ -231,8 +302,14 @@ public class ServletLifecycleManager {
      * @return error rate as a percentage
      */
     public double getErrorRate() {
-        long total = getTotalRequests();
-        return total > 0 ? (double) getTotalErrors() / total : 0.0;
+        try {
+            long total = getTotalRequests();
+            long errors = getTotalErrors();
+            return total > 0 ? (double) errors / total : 0.0;
+        } catch (Exception e) {
+            logger.warn("Error calculating error rate: {}", e.getMessage());
+            return 0.0;
+        }
     }
 
     /**
@@ -241,8 +318,14 @@ public class ServletLifecycleManager {
      * @return requests per minute
      */
     public double getRequestsPerMinute() {
-        long uptimeMs = getUptimeMs();
-        return uptimeMs > 0 ? (getTotalRequests() * 60000.0) / uptimeMs : 0.0;
+        try {
+            long uptimeMs = getUptimeMs();
+            long totalRequests = getTotalRequests();
+            return uptimeMs > 0 ? (totalRequests * 60000.0) / uptimeMs : 0.0;
+        } catch (Exception e) {
+            logger.warn("Error calculating requests per minute: {}", e.getMessage());
+            return 0.0;
+        }
     }
 
     /**
@@ -294,27 +377,45 @@ public class ServletLifecycleManager {
      * @return statistics object
      */
     public LifecycleStatistics getStatistics() {
-        return new LifecycleStatistics(isActive.get(), getServletCount(), getTotalRequests(), getTotalErrors(),
-                getUptimeMs(), getErrorRate(), getRequestsPerMinute(), areAllServletsHealthy(),
-                new ConcurrentHashMap<>(registeredServlets));
+        try {
+            return new LifecycleStatistics(isActive.get(), getServletCount(), getTotalRequests(), getTotalErrors(),
+                    getUptimeMs(), getErrorRate(), getRequestsPerMinute(), areAllServletsHealthy(),
+                    new ConcurrentHashMap<>(registeredServlets));
+        } catch (Exception e) {
+            logger.error("Error creating statistics object: {}", e.getMessage(), e);
+            recordMetrics("servlet-lifecycle", "statistics-retrieval", false, Duration.ZERO);
+            // Return basic statistics with safe defaults
+            return new LifecycleStatistics(isActive.get(), 0, 0, 0, getUptimeMs(), 0.0, 0.0, false,
+                    new ConcurrentHashMap<>());
+        }
     }
 
     /**
      * Reset statistics.
      */
     public void resetStatistics() {
-        recordMetrics("servlet-lifecycle", "statistics-reset", true, Duration.ZERO);
-        registeredServlets.values().forEach(ServletInfo::resetStatistics);
-        logger.info("Servlet Lifecycle Manager statistics reset");
+        try {
+            recordMetrics("servlet-lifecycle", "statistics-reset", true, Duration.ZERO);
+            registeredServlets.values().forEach(ServletInfo::resetStatistics);
+            logger.info("Servlet Lifecycle Manager statistics reset");
+        } catch (Exception e) {
+            logger.error("Error resetting servlet lifecycle statistics: {}", e.getMessage(), e);
+            recordMetrics("servlet-lifecycle", "statistics-reset", false, Duration.ZERO);
+        }
     }
 
     private void recordMetrics(String domain, String operation, boolean success, Duration duration) {
-        MetricsService metrics = metricsService;
-        if (metrics != null) {
-            metrics.recordOperation(domain, operation, success, duration);
-        } else {
-            logger.warn("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
-                    operation);
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                metrics.recordOperation(domain, operation, success, duration);
+            } else {
+                logger.debug("MetricsService not available, cannot record metrics for operation: {} - {}", domain,
+                        operation);
+            }
+        } catch (Exception e) {
+            // Avoid recursive metric recording in error handler
+            logger.warn("Error recording metrics for operation {}.{}: {}", domain, operation, e.getMessage());
         }
     }
 }

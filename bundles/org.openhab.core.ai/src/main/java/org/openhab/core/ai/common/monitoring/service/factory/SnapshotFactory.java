@@ -9,7 +9,6 @@ import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.api.Timing;
 import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
-import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.ActionExecutionSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.AgentModelSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.AgentTaskSnapshot;
@@ -20,6 +19,7 @@ import org.openhab.core.ai.common.monitoring.service.snapshot.ModelCompletionSna
 import org.openhab.core.ai.common.monitoring.service.snapshot.SecurityMonitoringSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.ToolExecutionSnapshot;
 import org.openhab.core.ai.common.monitoring.service.snapshot.ToolFileReadSnapshot;
+import org.openhab.core.ai.common.monitoring.snapshot.ExecutionMetricsSnapshot;
 import org.openhab.core.ai.common.security.MessageSecurityStatistics;
 import org.openhab.core.ai.tool.monitoring.MonitoringStatistics;
 import org.slf4j.Logger;
@@ -57,9 +57,7 @@ public final class SnapshotFactory {
      * @throws IllegalArgumentException if the snapshot type is not supported
      */
     @SuppressWarnings("unchecked")
-    public static <T extends MetricsSnapshot> T createSnapshot(
-            MetricsCollector collector,
-            Class<T> snapshotType,
+    public static <T extends MetricsSnapshot> T createSnapshot(MetricsCollector collector, Class<T> snapshotType,
             MetricKey key) {
 
         Objects.requireNonNull(collector, "collector");
@@ -120,29 +118,12 @@ public final class SnapshotFactory {
             String operation = key.labels().getOrDefault("operation", "unknown");
             return (T) GenericMetricsSnapshot.builder(domain, operation).build();
         } else if (snapshotType == ModelCompletionSnapshot.class) {
-            return (T) new ModelCompletionSnapshot(
-                new Counts(0, 0, 0), 
-                new Timing(0), 
-                System.currentTimeMillis(), 
-                0, 
-                0.0
-            );
+            return (T) new ModelCompletionSnapshot(new Counts(0, 0, 0), new Timing(0), System.currentTimeMillis(), 0,
+                    0.0);
         } else if (snapshotType == ToolFileReadSnapshot.class) {
-            return (T) new ToolFileReadSnapshot(
-                new Counts(0, 0, 0), 
-                new Timing(0), 
-                System.currentTimeMillis(), 
-                0, 
-                0
-            );
+            return (T) new ToolFileReadSnapshot(new Counts(0, 0, 0), new Timing(0), System.currentTimeMillis(), 0, 0);
         } else if (snapshotType == AgentTaskSnapshot.class) {
-            return (T) new AgentTaskSnapshot(
-                new Counts(0, 0, 0), 
-                new Timing(0), 
-                System.currentTimeMillis(), 
-                0.0, 
-                0.0
-            );
+            return (T) new AgentTaskSnapshot(new Counts(0, 0, 0), new Timing(0), System.currentTimeMillis(), 0.0, 0.0);
         } else if (snapshotType == AgentModelSnapshot.class) {
             String modelId = extractModelId(key);
             return (T) AgentModelSnapshot.empty(modelId, "unknown");
@@ -175,17 +156,11 @@ public final class SnapshotFactory {
      * Create base execution snapshot from collector data.
      */
     private static ExecutionMetricsSnapshot createExecutionSnapshot(MetricsCollector collector) {
-        return ExecutionMetricsSnapshot.builder()
-                .withTotal(collector.getTotal())
-                .withSuccess(collector.getSuccess())
-                .withFailure(collector.getFailure())
-                .withTotalDurationNanos(collector.getTotalDurationNanos())
-                .withHealthStatus(collector.getHealthStatus())
-                .withStatusMessage(collector.getStatusMessage())
-                .withLastFailureTime(collector.getLastFailureTime())
-                .withLastSuccessTime(collector.getLastSuccessTime())
-                .withLastError(collector.getLastError())
-                .withConsecutiveFailures(collector.getConsecutiveFailures())
+        return ExecutionMetricsSnapshot.builder().withTotal(collector.getTotal()).withSuccess(collector.getSuccess())
+                .withFailure(collector.getFailure()).withTotalDurationNanos(collector.getTotalDurationNanos())
+                .withHealthStatus(collector.getHealthStatus()).withStatusMessage(collector.getStatusMessage())
+                .withLastFailureTime(collector.getLastFailureTime()).withLastSuccessTime(collector.getLastSuccessTime())
+                .withLastError(collector.getLastError()).withConsecutiveFailures(collector.getConsecutiveFailures())
                 .build();
     }
 
@@ -197,12 +172,13 @@ public final class SnapshotFactory {
         String operation = key.labels().getOrDefault("operation", "unknown");
 
         GenericMetricsSnapshot.Builder builder = GenericMetricsSnapshot.builder(domain, operation)
-                .withMetric("total_count", collector.getTotal())
-                .withMetric("success_count", collector.getSuccess())
+                .withMetric("total_count", collector.getTotal()).withMetric("success_count", collector.getSuccess())
                 .withMetric("failure_count", collector.getFailure())
                 .withMetric("total_duration_ms", collector.getTotalDurationNanos() / 1_000_000)
-                .withMetric("average_duration_ms", 
-                    collector.getTotal() > 0 ? (collector.getTotalDurationNanos() / collector.getTotal()) / 1_000_000 : 0)
+                .withMetric("average_duration_ms",
+                        collector.getTotal() > 0
+                                ? (collector.getTotalDurationNanos() / collector.getTotal()) / 1_000_000
+                                : 0)
                 .withMetric("success_rate", collector.getSuccessRate())
                 .withMetric("failure_rate", 1.0 - collector.getSuccessRate())
                 .withMetric("health_status", collector.getHealthStatus().name())
@@ -224,10 +200,9 @@ public final class SnapshotFactory {
     /**
      * Create model completion snapshot.
      */
-    private static ModelCompletionSnapshot createModelCompletionSnapshot(
-            MetricsCollector collector, 
+    private static ModelCompletionSnapshot createModelCompletionSnapshot(MetricsCollector collector,
             ExecutionMetricsSnapshot baseSnapshot) {
-        
+
         // Extract model-specific data
         Integer inputTokens = collector.getExtendedData("inputTokens", Integer.class);
         Integer outputTokens = collector.getExtendedData("outputTokens", Integer.class);
@@ -236,22 +211,16 @@ public final class SnapshotFactory {
         long totalTokens = (inputTokens != null ? inputTokens : 0) + (outputTokens != null ? outputTokens : 0);
         double totalCost = cost != null ? cost : 0.0;
 
-        return new ModelCompletionSnapshot(
-            baseSnapshot.counts(),
-            baseSnapshot.timing(),
-            baseSnapshot.getTimestampMs(),
-            totalTokens,
-            totalCost
-        );
+        return new ModelCompletionSnapshot(baseSnapshot.counts(), baseSnapshot.timing(), baseSnapshot.getTimestampMs(),
+                totalTokens, totalCost);
     }
 
     /**
      * Create tool file read snapshot.
      */
-    private static ToolFileReadSnapshot createToolFileReadSnapshot(
-            MetricsCollector collector, 
+    private static ToolFileReadSnapshot createToolFileReadSnapshot(MetricsCollector collector,
             ExecutionMetricsSnapshot baseSnapshot) {
-        
+
         // Extract file-specific data
         Long fileSize = collector.getExtendedData("fileSize", Long.class);
         String fileType = collector.getExtendedData("fileType", String.class);
@@ -259,22 +228,16 @@ public final class SnapshotFactory {
         long totalBytesRead = fileSize != null ? fileSize : 0L;
         long totalFilesRead = baseSnapshot.success(); // Assume one file per successful operation
 
-        return new ToolFileReadSnapshot(
-            baseSnapshot.counts(),
-            baseSnapshot.timing(),
-            baseSnapshot.getTimestampMs(),
-            totalBytesRead,
-            totalFilesRead
-        );
+        return new ToolFileReadSnapshot(baseSnapshot.counts(), baseSnapshot.timing(), baseSnapshot.getTimestampMs(),
+                totalBytesRead, totalFilesRead);
     }
 
     /**
      * Create agent task snapshot.
      */
-    private static AgentTaskSnapshot createAgentTaskSnapshot(
-            MetricsCollector collector, 
+    private static AgentTaskSnapshot createAgentTaskSnapshot(MetricsCollector collector,
             ExecutionMetricsSnapshot baseSnapshot) {
-        
+
         // Extract agent-specific data
         Double decisionAccuracy = collector.getExtendedData("decisionAccuracy", Double.class);
         Double learningRate = collector.getExtendedData("learningRate", Double.class);
@@ -282,25 +245,18 @@ public final class SnapshotFactory {
         double avgDecisionAccuracy = decisionAccuracy != null ? decisionAccuracy : 0.0;
         double avgLearningRate = learningRate != null ? learningRate : 0.0;
 
-        return new AgentTaskSnapshot(
-            baseSnapshot.counts(),
-            baseSnapshot.timing(),
-            baseSnapshot.getTimestampMs(),
-            avgDecisionAccuracy,
-            avgLearningRate
-        );
+        return new AgentTaskSnapshot(baseSnapshot.counts(), baseSnapshot.timing(), baseSnapshot.getTimestampMs(),
+                avgDecisionAccuracy, avgLearningRate);
     }
 
     /**
      * Create agent model snapshot.
      */
-    private static AgentModelSnapshot createAgentModelSnapshot(
-            MetricsCollector collector, 
-            ExecutionMetricsSnapshot baseSnapshot,
-            MetricKey key) {
-        
+    private static AgentModelSnapshot createAgentModelSnapshot(MetricsCollector collector,
+            ExecutionMetricsSnapshot baseSnapshot, MetricKey key) {
+
         String modelId = extractModelId(key);
-        
+
         // Extract model-specific data
         String modelType = collector.getExtendedData("modelType", String.class);
         Double accuracy = collector.getExtendedData("accuracy", Double.class);
@@ -313,31 +269,18 @@ public final class SnapshotFactory {
         Map<String, Long> operationCounts = Map.of("model-operation", baseSnapshot.total());
         Map<String, Long> errorCounts = Map.of("model-error", baseSnapshot.failure());
 
-        return new AgentModelSnapshot(
-            baseSnapshot.counts(),
-            baseSnapshot.timing(),
-            baseSnapshot.getTimestampMs(),
-            modelId,
-            modelType,
-            avgAccuracy,
-            avgPerformance,
-            operationCounts,
-            errorCounts,
-            null,
-            null
-        );
+        return new AgentModelSnapshot(baseSnapshot.counts(), baseSnapshot.timing(), baseSnapshot.getTimestampMs(),
+                modelId, modelType, avgAccuracy, avgPerformance, operationCounts, errorCounts, null, null);
     }
 
     /**
      * Create action execution snapshot.
      */
-    private static ActionExecutionSnapshot createActionExecutionSnapshot(
-            MetricsCollector collector, 
-            ExecutionMetricsSnapshot baseSnapshot,
-            MetricKey key) {
-        
+    private static ActionExecutionSnapshot createActionExecutionSnapshot(MetricsCollector collector,
+            ExecutionMetricsSnapshot baseSnapshot, MetricKey key) {
+
         String actionId = extractActionId(key);
-        
+
         // Extract action-specific data
         Long inputDataSize = collector.getExtendedData("inputDataSize", Long.class);
         Long outputDataSize = collector.getExtendedData("outputDataSize", Long.class);
@@ -347,29 +290,18 @@ public final class SnapshotFactory {
         long outputSize = outputDataSize != null ? outputDataSize : 0L;
         int actionPriority = priority != null ? priority : 10;
 
-        return new ActionExecutionSnapshot(
-            baseSnapshot.counts(),
-            baseSnapshot.timing(),
-            baseSnapshot.getTimestampMs(),
-            actionId,
-            inputSize,
-            outputSize,
-            baseSnapshot.failure(),
-            actionPriority,
-            null
-        );
+        return new ActionExecutionSnapshot(baseSnapshot.counts(), baseSnapshot.timing(), baseSnapshot.getTimestampMs(),
+                actionId, inputSize, outputSize, baseSnapshot.failure(), actionPriority, null);
     }
 
     /**
      * Create tool execution snapshot.
      */
-    private static ToolExecutionSnapshot createToolExecutionSnapshot(
-            MetricsCollector collector, 
-            ExecutionMetricsSnapshot baseSnapshot,
-            MetricKey key) {
-        
+    private static ToolExecutionSnapshot createToolExecutionSnapshot(MetricsCollector collector,
+            ExecutionMetricsSnapshot baseSnapshot, MetricKey key) {
+
         String toolId = extractToolId(key);
-        
+
         // Extract tool-specific data
         Double accuracy = collector.getExtendedData("accuracy", Double.class);
         Double reliability = collector.getExtendedData("reliability", Double.class);
@@ -379,25 +311,16 @@ public final class SnapshotFactory {
         double toolReliability = reliability != null ? reliability : 0.0;
         long processedData = dataProcessed != null ? dataProcessed : 0L;
 
-        return new ToolExecutionSnapshot(
-            baseSnapshot.counts(),
-            baseSnapshot.timing(),
-            baseSnapshot.getTimestampMs(),
-            toolId,
-            toolAccuracy,
-            toolReliability,
-            processedData
-        );
+        return new ToolExecutionSnapshot(baseSnapshot.counts(), baseSnapshot.timing(), baseSnapshot.getTimestampMs(),
+                toolId, toolAccuracy, toolReliability, processedData);
     }
 
     /**
      * Create error recovery snapshot.
      */
-    private static ErrorRecoverySnapshot createErrorRecoverySnapshot(
-            MetricsCollector collector, 
-            ExecutionMetricsSnapshot baseSnapshot,
-            MetricKey key) {
-        
+    private static ErrorRecoverySnapshot createErrorRecoverySnapshot(MetricsCollector collector,
+            ExecutionMetricsSnapshot baseSnapshot, MetricKey key) {
+
         // Extract error recovery-specific data
         String recoveryStrategy = collector.getExtendedData("recoveryStrategy", String.class);
         Boolean fallbackUsed = collector.getExtendedData("fallbackUsed", Boolean.class);
@@ -409,30 +332,19 @@ public final class SnapshotFactory {
         Map<String, Long> errorCountsByType = Map.of("error", baseSnapshot.total());
         Map<String, Long> recoveryCountsByStrategy = Map.of(strategy, baseSnapshot.success());
 
-        return new ErrorRecoverySnapshot(
-            baseSnapshot.counts(),
-            baseSnapshot.timing(),
-            baseSnapshot.getTimestampMs(),
-            baseSnapshot.total(),
-            baseSnapshot.success(),
-            fallback ? baseSnapshot.success() : 0L,
-            baseSnapshot.failure(),
-            baseSnapshot.total(),
-            errorCountsByType,
-            recoveryCountsByStrategy
-        );
+        return new ErrorRecoverySnapshot(baseSnapshot.counts(), baseSnapshot.timing(), baseSnapshot.getTimestampMs(),
+                baseSnapshot.total(), baseSnapshot.success(), fallback ? baseSnapshot.success() : 0L,
+                baseSnapshot.failure(), baseSnapshot.total(), errorCountsByType, recoveryCountsByStrategy);
     }
 
     /**
      * Create security monitoring snapshot.
      */
-    private static SecurityMonitoringSnapshot createSecurityMonitoringSnapshot(
-            MetricsCollector collector, 
-            ExecutionMetricsSnapshot baseSnapshot,
-            MetricKey key) {
-        
+    private static SecurityMonitoringSnapshot createSecurityMonitoringSnapshot(MetricsCollector collector,
+            ExecutionMetricsSnapshot baseSnapshot, MetricKey key) {
+
         String securityId = extractSecurityId(key);
-        
+
         // Extract security-specific data
         Long securityViolations = collector.getExtendedData("securityViolations", Long.class);
         Long activeClients = collector.getExtendedData("activeClients", Long.class);
@@ -453,55 +365,36 @@ public final class SnapshotFactory {
         int timeout = sessionTimeoutMinutes != null ? sessionTimeoutMinutes : 30;
 
         return new SecurityMonitoringSnapshot(
-            new SecurityMonitoringSnapshot.Counts(baseSnapshot.total(), baseSnapshot.success(), baseSnapshot.failure()),
-            new SecurityMonitoringSnapshot.Timing(baseSnapshot.totalDurationNanos()),
-            baseSnapshot.getTimestampMs(),
-            violations,
-            active,
-            blocked,
-            authEnabled,
-            validationEnabled,
-            maxConn,
-            rateLimit,
-            timeout
-        );
+                new SecurityMonitoringSnapshot.Counts(baseSnapshot.total(), baseSnapshot.success(),
+                        baseSnapshot.failure()),
+                new SecurityMonitoringSnapshot.Timing(baseSnapshot.totalDurationNanos()), baseSnapshot.getTimestampMs(),
+                violations, active, blocked, authEnabled, validationEnabled, maxConn, rateLimit, timeout);
     }
 
     /**
      * Create domain aggregated snapshot.
      */
-    private static DomainAggregatedSnapshot createDomainAggregatedSnapshot(
-            MetricsCollector collector, 
-            ExecutionMetricsSnapshot baseSnapshot,
-            MetricKey key) {
-        
+    private static DomainAggregatedSnapshot createDomainAggregatedSnapshot(MetricsCollector collector,
+            ExecutionMetricsSnapshot baseSnapshot, MetricKey key) {
+
         String domain = key.labels().getOrDefault("domain", "unknown");
-        
+
         // For domain aggregation, we'd typically need multiple collectors
         // This is a simplified version that just uses the single collector
-        double averageSuccessRate = baseSnapshot.total() > 0 
-            ? (double) baseSnapshot.success() / baseSnapshot.total() 
-            : 0.0;
+        double averageSuccessRate = baseSnapshot.total() > 0 ? (double) baseSnapshot.success() / baseSnapshot.total()
+                : 0.0;
 
-        return new DomainAggregatedSnapshot(
-            domain,
-            baseSnapshot.total(),
-            baseSnapshot.success(),
-            baseSnapshot.failure(),
-            baseSnapshot.totalDurationNanos(),
-            averageSuccessRate,
-            java.util.List.of(baseSnapshot),
-            java.time.Instant.now()
-        );
+        return new DomainAggregatedSnapshot(domain, baseSnapshot.total(), baseSnapshot.success(),
+                baseSnapshot.failure(), baseSnapshot.totalDurationNanos(), averageSuccessRate,
+                java.util.List.of(baseSnapshot), java.time.Instant.now());
     }
 
     /**
      * Create monitoring statistics.
      */
-    private static MonitoringStatistics createMonitoringStatistics(
-            MetricsCollector collector, 
+    private static MonitoringStatistics createMonitoringStatistics(MetricsCollector collector,
             ExecutionMetricsSnapshot baseSnapshot) {
-        
+
         // Extract monitoring-specific data
         Integer metricsCollected = collector.getExtendedData("metricsCollected", Integer.class);
         Integer alertsGenerated = collector.getExtendedData("alertsGenerated", Integer.class);
@@ -517,24 +410,16 @@ public final class SnapshotFactory {
         Map<String, Long> metricsByType = Map.of(type, (long) totalMetrics);
         Map<String, Long> alertsBySeverity = Map.of(severity, (long) totalAlerts);
 
-        return new MonitoringStatistics(
-            totalMetrics,
-            totalAlerts,
-            metricsByType,
-            alertsBySeverity,
-            baseSnapshot.getTimestampMs(),
-            java.time.Duration.ZERO,
-            System.currentTimeMillis()
-        );
+        return new MonitoringStatistics(totalMetrics, totalAlerts, metricsByType, alertsBySeverity,
+                baseSnapshot.getTimestampMs(), java.time.Duration.ZERO, System.currentTimeMillis());
     }
 
     /**
      * Create message security statistics.
      */
-    private static MessageSecurityStatistics createMessageSecurityStatistics(
-            MetricsCollector collector, 
+    private static MessageSecurityStatistics createMessageSecurityStatistics(MetricsCollector collector,
             ExecutionMetricsSnapshot baseSnapshot) {
-        
+
         // For now, return empty statistics since we need more specific data
         return MessageSecurityStatistics.empty(java.time.Duration.ZERO);
     }

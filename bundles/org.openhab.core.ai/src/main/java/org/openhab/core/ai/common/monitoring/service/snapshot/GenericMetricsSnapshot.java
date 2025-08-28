@@ -9,8 +9,8 @@ import java.util.Set;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.ai.common.monitoring.api.CountsMetrics;
 import org.openhab.core.ai.common.monitoring.api.LatencyMetrics;
-import org.openhab.core.ai.common.monitoring.api.ModelMetrics;
 import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
+import org.openhab.core.ai.common.monitoring.api.ModelMetrics;
 
 /**
  * Generic metrics snapshot that stores metrics as a flexible data map.
@@ -406,7 +406,6 @@ public final class GenericMetricsSnapshot implements MetricsSnapshot {
         return new java.util.HashSet<>(detectedCapabilities);
     }
 
-
     /**
      * Automatic capability detection.
      * 
@@ -415,19 +414,19 @@ public final class GenericMetricsSnapshot implements MetricsSnapshot {
      */
     private Set<Class<?>> detectCapabilities(Map<String, Object> metrics) {
         Set<Class<?>> capabilities = new HashSet<>();
-        
+
         if (metrics.containsKey("total") && metrics.containsKey("success") && metrics.containsKey("failure")) {
             capabilities.add(CountsMetrics.class);
         }
-        
+
         if (metrics.containsKey("totalDurationNanos")) {
             capabilities.add(LatencyMetrics.class);
         }
-        
+
         if (metrics.containsKey("tokens") && metrics.containsKey("cost")) {
             capabilities.add(ModelMetrics.class);
         }
-        
+
         return capabilities;
     }
 
@@ -558,7 +557,8 @@ public final class GenericMetricsSnapshot implements MetricsSnapshot {
 
     @Override
     public String toString() {
-        return String.format("GenericMetricsSnapshot{domain='%s', operation='%s', timestamp=%d, metrics=%s, capabilities=%s}", 
+        return String.format(
+                "GenericMetricsSnapshot{domain='%s', operation='%s', timestamp=%d, metrics=%s, capabilities=%s}",
                 domain, operation, timestampMs, metrics, detectedCapabilities);
     }
 
@@ -571,10 +571,8 @@ public final class GenericMetricsSnapshot implements MetricsSnapshot {
             return false;
         }
         GenericMetricsSnapshot other = (GenericMetricsSnapshot) obj;
-        return timestampMs == other.timestampMs && 
-               domain.equals(other.domain) && 
-               operation.equals(other.operation) && 
-               metrics.equals(other.metrics);
+        return timestampMs == other.timestampMs && domain.equals(other.domain) && operation.equals(other.operation)
+                && metrics.equals(other.metrics);
     }
 
     @Override

@@ -103,7 +103,8 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
                 // successCount.incrementAndGet(); // Removed
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("compliance_test", "success", true, Duration.ofMillis(executionTime));
+                        metricsService.recordOperation("compliance_test", "success", true,
+                                Duration.ofMillis(executionTime));
                     } catch (Exception e) {
                         // Fallback to local logging if MetricsService fails
                         System.err.println("Failed to record compliance test success metrics: " + e.getMessage());
@@ -113,7 +114,8 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
                 // failureCount.incrementAndGet(); // Removed
                 if (metricsService != null) {
                     try {
-                        metricsService.recordOperation("compliance_test", "failure", false, Duration.ofMillis(executionTime));
+                        metricsService.recordOperation("compliance_test", "failure", false,
+                                Duration.ofMillis(executionTime));
                     } catch (Exception e) {
                         // Fallback to local logging if MetricsService fails
                         System.err.println("Failed to record compliance test failure metrics: " + e.getMessage());
@@ -128,7 +130,8 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
             // failureCount.incrementAndGet(); // Removed
             if (metricsService != null) {
                 try {
-                    metricsService.recordOperation("compliance_test", "failure", false, Duration.ofMillis(executionTime));
+                    metricsService.recordOperation("compliance_test", "failure", false,
+                            Duration.ofMillis(executionTime));
                 } catch (Exception e2) {
                     // Fallback to local logging if MetricsService fails
                     System.err.println("Failed to record compliance test failure metrics: " + e2.getMessage());
@@ -169,11 +172,11 @@ public abstract class AbstractComplianceTest implements ComplianceTest {
         // metrics.put("successCount", successCount.get()); // Removed
         // metrics.put("failureCount", failureCount.get()); // Removed
         // if (totalExecutions > 0) { // Removed
-        //     metrics.put("averageExecutionTimeMs", totalExecutionTimeMs.get() / totalExecutions); // Removed
-        //     metrics.put("successRate", (double) successCount.get() / totalExecutions); // Removed
+        // metrics.put("averageExecutionTimeMs", totalExecutionTimeMs.get() / totalExecutions); // Removed
+        // metrics.put("successRate", (double) successCount.get() / totalExecutions); // Removed
         // } else { // Removed
-        //     metrics.put("averageExecutionTimeMs", 0L); // Removed
-        //     metrics.put("successRate", 0.0); // Removed
+        // metrics.put("averageExecutionTimeMs", 0L); // Removed
+        // metrics.put("successRate", 0.0); // Removed
         // } // Removed
         return metrics;
     }

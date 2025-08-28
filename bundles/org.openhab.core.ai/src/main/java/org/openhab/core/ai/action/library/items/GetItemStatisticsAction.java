@@ -161,7 +161,6 @@ public class GetItemStatisticsAction implements Action {
             String itemName = (String) parameters.get("itemName");
             String serviceId = (String) parameters.getOrDefault("serviceId", "rrd4j");
             String timeRange = (String) parameters.getOrDefault("timeRange", "24h");
-            Boolean includeStateBreakdown = (Boolean) parameters.getOrDefault("includeStateBreakdown", true);
             Boolean includeChangePatterns = (Boolean) parameters.getOrDefault("includeChangePatterns", false);
             Boolean includeUsageMetrics = (Boolean) parameters.getOrDefault("includeUsageMetrics", true);
 
@@ -188,19 +187,43 @@ public class GetItemStatisticsAction implements Action {
                 PersistenceService service = persistenceServiceRegistry.get(serviceId);
                 if (service instanceof QueryablePersistenceService queryableService) {
                     // Implement real persistence API integration with ItemHistoryDTO
+                    long queryStartTime = System.currentTimeMillis();
                     Map<String, Object> statistics = calculateAdvancedStatistics(item, duration, queryableService);
+                    long queryDuration = System.currentTimeMillis() - queryStartTime;
                     result.putAll(statistics);
+
+                    // Record enhanced metrics for advanced statistics
+                    recordItemStateMetrics(itemName, statistics);
+                    if (includeUsageMetrics) {
+                        recordItemUsageMetrics(itemName, statistics);
+                    }
+                    if (includeChangePatterns) {
+                        recordItemChangePatterns(itemName, statistics);
+                    }
+                    recordItemQueryPerformance(itemName, serviceId, timeRange, queryDuration);
                 } else {
                     // Fallback to basic statistics without historical data
                     Map<String, Object> basicStats = calculateBasicStatistics(item, duration);
                     result.putAll(basicStats);
                     result.put("note", "Persistence service not available, using basic statistics");
+
+                    // Record basic metrics for fallback statistics
+                    recordItemStateMetrics(itemName, basicStats);
+                    if (includeUsageMetrics) {
+                        recordItemUsageMetrics(itemName, basicStats);
+                    }
                 }
             } else {
                 // Fallback to basic statistics without persistence
                 Map<String, Object> basicStats = calculateBasicStatistics(item, duration);
                 result.putAll(basicStats);
                 result.put("note", "Persistence service registry not available, using basic statistics");
+
+                // Record basic metrics for fallback statistics
+                recordItemStateMetrics(itemName, basicStats);
+                if (includeUsageMetrics) {
+                    recordItemUsageMetrics(itemName, basicStats);
+                }
             }
 
             long executionTime = System.currentTimeMillis() - executionStartTime;
@@ -221,7 +244,6 @@ public class GetItemStatisticsAction implements Action {
             return ActionResult.success(result, executionTime);
 
         } catch (Exception e) {
-            long executionTime = System.currentTimeMillis() - executionStartTime;
             logger.error("Error getting item statistics", e);
             throw new ActionException(getActionId(), "Failed to get item statistics: " + e.getMessage(), e);
         } finally {
@@ -473,5 +495,135 @@ public class GetItemStatisticsAction implements Action {
         }
 
         return totalActiveTime;
+    }
+
+    /**
+     * Record item state metrics to MetricsService
+     */
+    private void recordItemStateMetrics(String itemName, Map<String, Object> statistics) {
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            return;
+        }
+
+        try {
+            // Record total state changes
+            Object stateChanges = statistics.get("totalStateChanges");
+            if (stateChanges instanceof Integer) {
+                metrics.recordOperationWithData("item-statistics", "state-changes", true, java.time.Duration.ZERO,
+                        Map.of("itemName", itemName, "count", stateChanges));
+            }
+
+            // Record change frequency
+            Object changesPerHour = statistics.get("changesPerHour");
+            if (changesPerHour instanceof Double) {
+                metrics.recordOperationWithData("item-statistics", "changes-per-hour", true, java.time.Duration.ZERO,
+                        Map.of("itemName", itemName, "rate", changesPerHour));
+            }
+
+            // Record state breakdown distribution
+            Object stateBreakdown = statistics.get("stateBreakdown");
+            if (stateBreakdown instanceof Map<?, ?>) {
+                @SuppressWarnings("unchecked")
+                Map<String, Integer> breakdown = (Map<String, Integer>) stateBreakdown;
+                for (Map.Entry<String, Integer> entry : breakdown.entrySet()) {
+                    metrics.recordOperationWithData("item-statistics", "state-distribution", true,
+                            java.time.Duration.ZERO,
+                            Map.of("itemName", itemName, "state", entry.getKey(), "count", entry.getValue()));
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Error recording item state metrics for {}: {}", itemName, e.getMessage());
+        }
+    }
+
+    /**
+     * Record item usage patterns to MetricsService
+     */
+    private void recordItemUsageMetrics(String itemName, Map<String, Object> statistics) {
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            return;
+        }
+
+        try {
+            // Record active time percentage
+            Object activeTimePercentage = statistics.get("activeTimePercentage");
+            if (activeTimePercentage instanceof Double) {
+                metrics.recordOperationWithData("item-statistics", "active-time-percentage", true,
+                        java.time.Duration.ZERO, Map.of("itemName", itemName, "percentage", activeTimePercentage));
+            }
+
+            // Record total active time
+            Object totalActiveTime = statistics.get("totalActiveTimeMs");
+            if (totalActiveTime instanceof Long) {
+                metrics.recordOperationWithData("item-statistics", "total-active-time", true, java.time.Duration.ZERO,
+                        Map.of("itemName", itemName, "timeMs", totalActiveTime));
+            }
+
+            // Record average time between changes
+            Object avgTimeBetween = statistics.get("averageTimeBetweenChangesMs");
+            if (avgTimeBetween instanceof Double) {
+                metrics.recordOperationWithData("item-statistics", "avg-time-between-changes", true,
+                        java.time.Duration.ZERO, Map.of("itemName", itemName, "avgMs", avgTimeBetween));
+            }
+        } catch (Exception e) {
+            logger.debug("Error recording item usage metrics for {}: {}", itemName, e.getMessage());
+        }
+    }
+
+    /**
+     * Record item change patterns to MetricsService
+     */
+    private void recordItemChangePatterns(String itemName, Map<String, Object> statistics) {
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            return;
+        }
+
+        try {
+            // Record change patterns distribution
+            Object changePatterns = statistics.get("changePatterns");
+            if (changePatterns instanceof Map<?, ?>) {
+                @SuppressWarnings("unchecked")
+                Map<String, Integer> patterns = (Map<String, Integer>) changePatterns;
+                for (Map.Entry<String, Integer> entry : patterns.entrySet()) {
+                    metrics.recordOperationWithData("item-statistics", "change-patterns", true, java.time.Duration.ZERO,
+                            Map.of("itemName", itemName, "pattern", entry.getKey(), "count", entry.getValue()));
+                }
+            }
+
+            // Record most common state
+            Object mostCommonState = statistics.get("mostCommonState");
+            if (mostCommonState instanceof String) {
+                metrics.recordOperationWithData("item-statistics", "most-common-state", true, java.time.Duration.ZERO,
+                        Map.of("itemName", itemName, "state", (String) mostCommonState));
+            }
+        } catch (Exception e) {
+            logger.debug("Error recording item change patterns for {}: {}", itemName, e.getMessage());
+        }
+    }
+
+    /**
+     * Record item query performance to MetricsService
+     */
+    private void recordItemQueryPerformance(String itemName, String serviceId, String timeRange, long queryDuration) {
+        MetricsService metrics = metricsService;
+        if (metrics == null) {
+            return;
+        }
+
+        try {
+            // Record query performance
+            metrics.recordOperationWithData("item-statistics", "persistence-query", true,
+                    java.time.Duration.ofMillis(queryDuration),
+                    Map.of("itemName", itemName, "serviceId", serviceId, "timeRange", timeRange));
+
+            // Record query timing distribution
+            metrics.recordOperationWithData("item-statistics", "query-duration", true, java.time.Duration.ZERO, Map.of(
+                    "itemName", itemName, "serviceId", serviceId, "timeRange", timeRange, "durationMs", queryDuration));
+        } catch (Exception e) {
+            logger.debug("Error recording item query performance for {}: {}", itemName, e.getMessage());
+        }
     }
 }

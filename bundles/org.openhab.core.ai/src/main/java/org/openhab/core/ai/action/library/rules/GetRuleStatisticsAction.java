@@ -222,6 +222,18 @@ public class GetRuleStatisticsAction implements Action {
             Map<String, Object> statistics = getRealRuleStatistics(ruleUID, queryableService, startTime, endTime,
                     includePerformance, includeUsage, includeErrors, includeTrends);
 
+            // Record enhanced metrics for the rule statistics
+            recordRuleExecutionMetrics(ruleUID, statistics);
+            if (includePerformance) {
+                recordRulePerformanceMetrics(ruleUID, statistics);
+            }
+            if (includeUsage) {
+                recordRuleUsageMetrics(ruleUID, statistics);
+            }
+            if (includeErrors) {
+                recordRuleErrorMetrics(ruleUID, statistics);
+            }
+
             Map<String, Object> result = new HashMap<>();
             result.put("success", true);
             result.put("ruleUID", ruleUID);
@@ -700,5 +712,104 @@ public class GetRuleStatisticsAction implements Action {
             }
         }
         return 0.0;
+    }
+
+    /**
+     * Record rule execution metrics for comprehensive monitoring
+     */
+    private void recordRuleExecutionMetrics(String ruleUID, Map<String, Object> statistics) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                Object totalExecutions = statistics.get("totalExecutions");
+                Object successfulExecutions = statistics.get("successfulExecutions");
+                Object failedExecutions = statistics.get("failedExecutions");
+                Object averageExecutionTime = statistics.get("averageExecutionTime");
+
+                metrics.recordOperation("rule-statistics", "execution-metrics").withSuccess(true)
+                        .withData("ruleUID", ruleUID)
+                        .withData("totalExecutions", totalExecutions != null ? totalExecutions : 0)
+                        .withData("successfulExecutions", successfulExecutions != null ? successfulExecutions : 0)
+                        .withData("failedExecutions", failedExecutions != null ? failedExecutions : 0)
+                        .withData("averageExecutionTimeMs", averageExecutionTime != null ? averageExecutionTime : 0.0)
+                        .record();
+            } catch (Exception e) {
+                logger.warn("Failed to record rule execution metrics for {}: {}", ruleUID, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record rule performance metrics
+     */
+    private void recordRulePerformanceMetrics(String ruleUID, Map<String, Object> statistics) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                Object performanceStats = statistics.get("performance");
+                if (performanceStats instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> perfMap = (Map<String, Object>) performanceStats;
+
+                    metrics.recordOperation("rule-statistics", "performance-metrics").withSuccess(true)
+                            .withData("ruleUID", ruleUID)
+                            .withData("averageMemoryUsage", perfMap.getOrDefault("averageMemoryUsage", 0))
+                            .withData("averageCpuUsage", perfMap.getOrDefault("averageCpuUsage", 0.0))
+                            .withData("maxExecutionTime", perfMap.getOrDefault("maxExecutionTime", 0))
+                            .withData("minExecutionTime", perfMap.getOrDefault("minExecutionTime", 0)).record();
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to record rule performance metrics for {}: {}", ruleUID, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record rule usage pattern metrics
+     */
+    private void recordRuleUsageMetrics(String ruleUID, Map<String, Object> statistics) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                Object usagePatterns = statistics.get("usagePatterns");
+                if (usagePatterns instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> usageMap = (Map<String, Object>) usagePatterns;
+
+                    metrics.recordOperation("rule-statistics", "usage-patterns").withSuccess(true)
+                            .withData("ruleUID", ruleUID).withData("peakHour", usageMap.getOrDefault("peakHour", -1))
+                            .withData("peakDay", usageMap.getOrDefault("peakDay", "UNKNOWN")).record();
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to record rule usage metrics for {}: {}", ruleUID, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Record rule error analysis metrics
+     */
+    private void recordRuleErrorMetrics(String ruleUID, Map<String, Object> statistics) {
+        MetricsService metrics = metricsService;
+        if (metrics != null) {
+            try {
+                Object errorData = statistics.get("errorAnalysis");
+                if (errorData instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> errorMap = (Map<String, Object>) errorData;
+
+                    Object errorTypes = errorMap.get("errorTypes");
+                    int totalErrorTypes = (errorTypes instanceof Map) ? ((Map<?, ?>) errorTypes).size() : 0;
+
+                    metrics.recordOperation("rule-statistics", "error-analysis")
+                            .withSuccess(statistics.get("failedExecutions") == null
+                                    || ((Number) statistics.get("failedExecutions")).intValue() == 0)
+                            .withData("ruleUID", ruleUID).withData("errorTypeCount", totalErrorTypes)
+                            .withData("hasRecentErrors", errorMap.containsKey("recentErrors")).record();
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to record rule error metrics for {}: {}", ruleUID, e.getMessage());
+            }
+        }
     }
 }

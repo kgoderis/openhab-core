@@ -1,11 +1,10 @@
 package org.openhab.core.ai.stub;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import java.util.Map;
-import java.util.Set;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
@@ -42,15 +41,31 @@ public class StubServiceStatistics {
      * Record request handling using the new monitoring framework
      */
     public void recordRequest(String serviceName, long processingTimeMs, boolean success) {
+        if (serviceName == null || serviceName.trim().isEmpty()) {
+            logger.warn("Cannot record stub service request metrics: service name is null or empty");
+            return;
+        }
+
+        if (processingTimeMs < 0) {
+            logger.warn(
+                    "Cannot record stub service request metrics for service '{}': processing time cannot be negative ({}ms)",
+                    serviceName, processingTimeMs);
+            return;
+        }
+
         // Use centralized metrics service
         if (metricsService != null) {
             try {
                 metricsService.recordOperation("stub-service", serviceName, success,
                         java.time.Duration.ofMillis(processingTimeMs));
             } catch (Exception e) {
-                logger.warn("Failed to record stub service request metrics for service {}: {}", serviceName, e.getMessage());
+                logger.error("Failed to record stub service request metrics for service '{}': {}", serviceName,
+                        e.getMessage(), e);
                 // Graceful degradation: continue with logging even if metrics recording fails
             }
+        } else {
+            logger.debug("MetricsService not available - skipping stub service request metrics for service: {}",
+                    serviceName);
         }
 
         // Log the operation
@@ -66,56 +81,39 @@ public class StubServiceStatistics {
      * Record error occurrence using the new monitoring framework
      */
     public void recordError(String serviceName, String errorType) {
+        if (serviceName == null || serviceName.trim().isEmpty()) {
+            logger.warn("Cannot record stub service error metrics: service name is null or empty");
+            return;
+        }
+
         // Use centralized metrics service with builder pattern
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("stub-service", "error")
-                    .withSuccess(false)
-                    .withDuration(0L)
-                    .withData("serviceName", serviceName)
-                    .withData("errorType", errorType)
-                    .record();
+                metricsService.recordOperation("stub-service", "error").withSuccess(false).withDuration(0L)
+                        .withData("serviceName", serviceName)
+                        .withData("errorType", errorType != null ? errorType : "unknown").record();
             } catch (Exception e) {
-                logger.warn("Failed to record stub service error metrics for service {}: {}", serviceName, e.getMessage());
+                logger.error("Failed to record stub service error metrics for service '{}': {}", serviceName,
+                        e.getMessage(), e);
                 // Graceful degradation: continue with logging even if metrics recording fails
             }
+        } else {
+            logger.debug("MetricsService not available - skipping stub service error metrics for service: {}",
+                    serviceName);
         }
 
         // Log the error
-        logger.warn("Stub service error recorded - Service: {}, Error: {}", serviceName, errorType);
+        logger.warn("Stub service error recorded - Service: {}, Error: {}", serviceName,
+                errorType != null ? errorType : "unknown");
     }
 
     /**
      * Get stub service statistics using the new monitoring framework
      */
-    public Map<String, Object> getStatistics() {
-        Map<String, Object> statistics = new java.util.HashMap<>();
-
-        if (metricsService != null) {
-            try {
-                // Get statistics from metrics service for stub services
-                MetricKey stubKey = MetricKeys.custom("stub-service", Map.of(), Set.of("counts", "latency"));
-                var snapshot = metricsService.getSnapshot(stubKey, org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
-
-                if (snapshot != null) {
-                    statistics.put("requestCount", snapshot.getLong("total"));
-                    statistics.put("successCount", snapshot.getLong("success"));
-                    statistics.put("errorCount", snapshot.getLong("failure"));
-                    statistics.put("totalProcessingTimeMs", snapshot.getLong("totalDurationNanos") / 1_000_000); // Convert from nanoseconds
-                    statistics.put("averageProcessingTimeMs",
-                            snapshot.getLong("total") > 0
-                                    ? snapshot.getLong("totalDurationNanos") / (snapshot.getLong("total") * 1_000_000)
-                                    : 0);
-                    statistics.put("successRate", snapshot.getDouble("successRate"));
-                }
-                statistics.put("lastUpdated", System.currentTimeMillis());
-            } catch (Exception e) {
-                logger.debug("Failed to get stub service statistics: {}", e.getMessage());
-            }
-        }
-
-        return statistics;
-    }
+    // Eliminated getStatistics() proxy method - unit conversion moved to StatisticsFactory
+    // Consumers should access snapshots directly via MetricsService:
+    // metricsService.getSnapshot(MetricKeys.custom("stub-service", Map.of(), Set.of("counts", "latency")),
+    // GenericMetricsSnapshot.class)
 
     /**
      * Get the total number of requests handled.
@@ -124,7 +122,15 @@ public class StubServiceStatistics {
      */
     public long getRequestCount() {
         if (metricsService != null) {
-            return metricsService.executionSnapshot().total();
+            try {
+                MetricKey stubKey = MetricKeys.custom("stub-service", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(stubKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                return snapshot != null ? snapshot.getLong("total") : 0;
+            } catch (Exception e) {
+                logger.debug("Failed to get request count from MetricsService: {}", e.getMessage());
+                return 0;
+            }
         }
         return 0;
     }
@@ -136,7 +142,15 @@ public class StubServiceStatistics {
      */
     public long getSuccessCount() {
         if (metricsService != null) {
-            return metricsService.executionSnapshot().success();
+            try {
+                MetricKey stubKey = MetricKeys.custom("stub-service", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(stubKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                return snapshot != null ? snapshot.getLong("success") : 0;
+            } catch (Exception e) {
+                logger.debug("Failed to get success count from MetricsService: {}", e.getMessage());
+                return 0;
+            }
         }
         return 0;
     }
@@ -148,7 +162,15 @@ public class StubServiceStatistics {
      */
     public long getErrorCount() {
         if (metricsService != null) {
-            return metricsService.executionSnapshot().failure();
+            try {
+                MetricKey stubKey = MetricKeys.custom("stub-service", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(stubKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                return snapshot != null ? snapshot.getLong("failure") : 0;
+            } catch (Exception e) {
+                logger.debug("Failed to get error count from MetricsService: {}", e.getMessage());
+                return 0;
+            }
         }
         return 0;
     }
@@ -160,7 +182,16 @@ public class StubServiceStatistics {
      */
     public long getTotalProcessingTimeMs() {
         if (metricsService != null) {
-            return metricsService.executionSnapshot().totalDurationNanos() / 1_000_000; // Convert from nanoseconds
+            try {
+                MetricKey stubKey = MetricKeys.custom("stub-service", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(stubKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                return snapshot != null ? snapshot.getLong("totalDurationNanos") / 1_000_000 : 0; // Convert from
+                                                                                                  // nanoseconds
+            } catch (Exception e) {
+                logger.debug("Failed to get total processing time from MetricsService: {}", e.getMessage());
+                return 0;
+            }
         }
         return 0;
     }
@@ -172,9 +203,20 @@ public class StubServiceStatistics {
      */
     public long getAverageProcessingTimeMs() {
         if (metricsService != null) {
-            var snapshot = metricsService.executionSnapshot();
-            return snapshot.totalDurationNanos() / Math.max(1, snapshot.total()) / 1_000_000; // Convert from
-                                                                                              // nanoseconds
+            try {
+                MetricKey stubKey = MetricKeys.custom("stub-service", Map.of(), Set.of("counts", "latency"));
+                var snapshot = metricsService.getSnapshot(stubKey,
+                        org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot.class);
+                if (snapshot != null) {
+                    long total = snapshot.getLong("total");
+                    long totalDurationNanos = snapshot.getLong("totalDurationNanos");
+                    return totalDurationNanos / Math.max(1, total) / 1_000_000; // Convert from nanoseconds
+                }
+                return 0;
+            } catch (Exception e) {
+                logger.debug("Failed to get average processing time from MetricsService: {}", e.getMessage());
+                return 0;
+            }
         }
         return 0;
     }
@@ -183,10 +225,8 @@ public class StubServiceStatistics {
      * Reset statistics (clears the monitoring registry data for stub services)
      */
     public void resetStatistics() {
-        if (metricsService != null) {
-            metricsService.reset();
-            logger.info("Stub service statistics reset");
-        }
+        // Reset functionality is not available in MetricsService
+        logger.info("Stub service statistics reset not supported - using centralized MetricsService");
     }
 
     /**

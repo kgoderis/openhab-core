@@ -145,7 +145,8 @@ public interface ConfigurationManager {
      * 
      * @return configuration statistics
      */
-    ConfigurationStatistics getStatistics();
+    // Eliminated getStatistics() method - consumers should access statistics directly via MetricsService
+    // Use: metricsService.getSnapshot(MetricKeys.custom("configuration", Map.of("operation", "cache-hit")))
 
     /**
      * Registers a configuration change listener.

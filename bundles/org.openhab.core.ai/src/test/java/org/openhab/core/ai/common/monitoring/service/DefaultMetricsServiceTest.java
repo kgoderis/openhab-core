@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.collector.MetricsCollector;
 import org.openhab.core.ai.common.monitoring.registry.MetricsRegistry;
 import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
@@ -184,11 +183,9 @@ class DefaultMetricsServiceTest {
         metricsService.getSnapshot("auth", "login");
 
         // Then
-        verify(monitoringRegistry).getCollector(argThat(metricKey -> 
-            metricKey.kind().equals("auth.login") &&
-            metricKey.labels().get("domain").equals("auth") &&
-            metricKey.labels().get("operation").equals("login")
-        ));
+        verify(monitoringRegistry).getCollector(argThat(
+                metricKey -> metricKey.kind().equals("auth.login") && metricKey.labels().get("domain").equals("auth")
+                        && metricKey.labels().get("operation").equals("login")));
     }
 
     @Test
@@ -200,7 +197,8 @@ class DefaultMetricsServiceTest {
         when(executionSnapshot.success()).thenReturn(45L);
         when(executionSnapshot.failure()).thenReturn(5L);
         when(executionSnapshot.totalDurationNanos()).thenReturn(2500_000_000L); // 2.5 seconds
-        when(executionSnapshot.healthStatus()).thenReturn(org.openhab.core.ai.common.monitoring.api.Health.HealthStatus.HEALTHY);
+        when(executionSnapshot.healthStatus())
+                .thenReturn(org.openhab.core.ai.common.monitoring.api.Health.HealthStatus.HEALTHY);
         when(executionSnapshot.statusMessage()).thenReturn("Operations successful");
         when(executionSnapshot.consecutiveFailures()).thenReturn(0L);
         when(executionSnapshot.lastFailureTime()).thenReturn(0L);
@@ -208,13 +206,8 @@ class DefaultMetricsServiceTest {
         when(executionSnapshot.lastError()).thenReturn("");
 
         // Mock recorded data from the collector
-        Map<String, Object> recordedData = Map.of(
-                "input_tokens", 1500,
-                "output_tokens", 500,
-                "model_cost", 0.0025,
-                "cache_hit", true,
-                "response_time_ms", 1250L
-        );
+        Map<String, Object> recordedData = Map.of("input_tokens", 1500, "output_tokens", 500, "model_cost", 0.0025,
+                "cache_hit", true, "response_time_ms", 1250L);
         when(metricsCollector.getData()).thenReturn(recordedData);
 
         // When
@@ -224,7 +217,7 @@ class DefaultMetricsServiceTest {
         assertNotNull(snapshot);
         assertEquals("model", snapshot.getDomain());
         assertEquals("completion", snapshot.getOperation());
-        
+
         // Verify basic metrics
         assertEquals(50L, snapshot.getMetricAsLong("total_count"));
         assertEquals(45L, snapshot.getMetricAsLong("success_count"));
@@ -257,7 +250,8 @@ class DefaultMetricsServiceTest {
         when(executionSnapshot.success()).thenReturn(10L);
         when(executionSnapshot.failure()).thenReturn(0L);
         when(executionSnapshot.totalDurationNanos()).thenReturn(500_000_000L); // 0.5 seconds
-        when(executionSnapshot.healthStatus()).thenReturn(org.openhab.core.ai.common.monitoring.api.Health.HealthStatus.HEALTHY);
+        when(executionSnapshot.healthStatus())
+                .thenReturn(org.openhab.core.ai.common.monitoring.api.Health.HealthStatus.HEALTHY);
         when(executionSnapshot.statusMessage()).thenReturn("All operations successful");
         when(executionSnapshot.consecutiveFailures()).thenReturn(0L);
         when(executionSnapshot.lastFailureTime()).thenReturn(0L);
@@ -274,7 +268,7 @@ class DefaultMetricsServiceTest {
         assertNotNull(snapshot);
         assertEquals("tool", snapshot.getDomain());
         assertEquals("file_read", snapshot.getOperation());
-        
+
         // Verify basic metrics are present
         assertEquals(10L, snapshot.getMetricAsLong("total_count"));
         assertEquals(10L, snapshot.getMetricAsLong("success_count"));

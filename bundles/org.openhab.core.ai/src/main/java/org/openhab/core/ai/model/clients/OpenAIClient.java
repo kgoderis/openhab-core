@@ -1,22 +1,22 @@
 package org.openhab.core.ai.model.clients;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
-
+import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
+import org.openhab.core.ai.common.monitoring.api.HealthStatus;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.openhab.core.ai.common.response.ModelResponse;
 import org.openhab.core.ai.model.ModelClientInfo;
 import org.openhab.core.ai.model.ModelParameters;
@@ -25,10 +25,6 @@ import org.openhab.core.ai.model.api.ModelClient;
 import org.openhab.core.ai.model.api.ModelProviderType;
 import org.openhab.core.ai.model.api.ModelStreamHandler;
 import org.openhab.core.ai.model.config.OpenAIConfiguration;
-import org.openhab.core.ai.common.monitoring.api.HealthMetrics;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
-import org.openhab.core.ai.common.monitoring.service.snapshot.UnifiedMetricsSnapshot;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,8 +50,6 @@ public class OpenAIClient implements ModelClient {
     private final @Nullable ActionRegistry actionRegistry;
     private final ExecutorService executorService;
     private final ModelClientInfo providerInfo;
-
-
 
     @Reference
     private MetricsService metricsService;
@@ -94,16 +88,15 @@ public class OpenAIClient implements ModelClient {
 
                 // Record operation metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                metricsService.recordOperation("model", "completion")
-                    .withSuccess(true)
-                    .withDuration(responseTime)
-                    .withData(Map.of(
-                        "provider", "openai",
-                        "model", config.getModelName(),
-                        "promptLength", prompt.length(),
-                        "maxTokens", params.getMaxTokens()
-                    ))
-                    .record();
+                try {
+                    metricsService.recordOperation("model", "completion").withSuccess(true).withDuration(responseTime)
+                            .withData(Map.of("provider", "openai", "model", config.getModelName(), "promptLength",
+                                    prompt.length(), "maxTokens", params.getMaxTokens()))
+                            .record();
+                } catch (Exception metricError) {
+                    logger.warn("Failed to record OpenAI completion metrics: {}", metricError.getMessage());
+                    // Graceful degradation: continue with response even if metrics recording fails
+                }
 
                 // Return regular text response
                 String content = response.choices().get(0).message().content().orElse("");
@@ -113,15 +106,15 @@ public class OpenAIClient implements ModelClient {
             } catch (Exception e) {
                 // Record error metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                metricsService.recordOperation("model", "completion")
-                    .withSuccess(false)
-                    .withDuration(responseTime)
-                    .withData(Map.of(
-                        "provider", "openai",
-                        "model", config.getModelName(),
-                        "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
-                    ))
-                    .record();
+                try {
+                    metricsService.recordOperation("model", "completion").withSuccess(false).withDuration(responseTime)
+                            .withData(Map.of("provider", "openai", "model", config.getModelName(), "error",
+                                    e.getMessage() != null ? e.getMessage() : "Unknown error"))
+                            .record();
+                } catch (Exception metricError) {
+                    logger.warn("Failed to record OpenAI completion error metrics: {}", metricError.getMessage());
+                    // Graceful degradation: continue with error handling even if metrics recording fails
+                }
 
                 logger.error("Error completing OpenAI request", e);
                 throw new RuntimeException("OpenAI completion failed", e);
@@ -163,16 +156,16 @@ public class OpenAIClient implements ModelClient {
 
                 // Record operation metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                metricsService.recordOperation("model", "streaming-completion")
-                    .withSuccess(true)
-                    .withDuration(responseTime)
-                    .withData(Map.of(
-                        "provider", "openai",
-                        "model", config.getModelName(),
-                        "promptLength", prompt.length(),
-                        "maxTokens", params.getMaxTokens()
-                    ))
-                    .record();
+                try {
+                    metricsService.recordOperation("model", "streaming-completion").withSuccess(true)
+                            .withDuration(responseTime)
+                            .withData(Map.of("provider", "openai", "model", config.getModelName(), "promptLength",
+                                    prompt.length(), "maxTokens", params.getMaxTokens()))
+                            .record();
+                } catch (Exception metricError) {
+                    logger.warn("Failed to record OpenAI streaming completion metrics: {}", metricError.getMessage());
+                    // Graceful degradation: continue with response even if metrics recording fails
+                }
 
                 ModelResponse response = ModelResponse.builder().withContent(content)
                         .withModelName(finalResponse.model()).withProviderType(ModelProviderType.OPENAI.name()).build();
@@ -183,15 +176,17 @@ public class OpenAIClient implements ModelClient {
             } catch (Exception e) {
                 // Record error metrics
                 long responseTime = System.currentTimeMillis() - startTime;
-                metricsService.recordOperation("model", "streaming-completion")
-                    .withSuccess(false)
-                    .withDuration(responseTime)
-                    .withData(Map.of(
-                        "provider", "openai",
-                        "model", config.getModelName(),
-                        "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
-                    ))
-                    .record();
+                try {
+                    metricsService.recordOperation("model", "streaming-completion").withSuccess(false)
+                            .withDuration(responseTime)
+                            .withData(Map.of("provider", "openai", "model", config.getModelName(), "error",
+                                    e.getMessage() != null ? e.getMessage() : "Unknown error"))
+                            .record();
+                } catch (Exception metricError) {
+                    logger.warn("Failed to record OpenAI streaming completion error metrics: {}",
+                            metricError.getMessage());
+                    // Graceful degradation: continue with error handling even if metrics recording fails
+                }
 
                 logger.error("Error completing OpenAI streaming request", e);
                 handler.onError(e);
@@ -199,8 +194,6 @@ public class OpenAIClient implements ModelClient {
             }
         }, executorService);
     }
-
-
 
     @Override
     public boolean isAvailable() {
@@ -224,32 +217,47 @@ public class OpenAIClient implements ModelClient {
             boolean available = isAvailable();
 
             // Record health check operation
-            metricsService.recordOperation("model", "health-check")
-                .withSuccess(available)
-                .withDuration(100)
-                .withData(Map.of(
-                    "provider", "openai",
-                    "model", config.getModelName()
-                ))
-                .record();
+            try {
+                metricsService.recordOperation("model", "health-check").withSuccess(available).withDuration(100)
+                        .withData(Map.of("provider", "openai", "model", config.getModelName())).record();
+            } catch (Exception metricError) {
+                logger.warn("Failed to record OpenAI health check metrics: {}", metricError.getMessage());
+                // Graceful degradation: continue with health status even if metrics recording fails
+            }
 
             // Return health metrics from service
-            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
-            
+            try {
+                return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                        UnifiedMetricsSnapshot.class);
+            } catch (Exception metricError) {
+                logger.warn("Failed to retrieve health metrics snapshot: {}", metricError.getMessage());
+                // Return a default health metrics implementation for graceful degradation
+                return UnifiedMetricsSnapshot.builder("default", "model", "health-check")
+                        .withHealthStatus(HealthStatus.UNKNOWN).withStatusMessage("Health metrics unavailable").build();
+            }
+
         } catch (Exception e) {
             // Record failed health check
-            metricsService.recordOperation("model", "health-check")
-                .withSuccess(false)
-                .withDuration(100)
-                .withData(Map.of(
-                    "provider", "openai",
-                    "model", config.getModelName(),
-                    "error", e.getMessage() != null ? e.getMessage() : "Unknown error"
-                ))
-                .record();
+            try {
+                metricsService.recordOperation("model", "health-check").withSuccess(false).withDuration(100)
+                        .withData(Map.of("provider", "openai", "model", config.getModelName(), "error",
+                                e.getMessage() != null ? e.getMessage() : "Unknown error"))
+                        .record();
+            } catch (Exception metricError) {
+                logger.warn("Failed to record OpenAI health check error metrics: {}", metricError.getMessage());
+                // Graceful degradation: continue with health status even if metrics recording fails
+            }
 
             // Return health metrics from service (will reflect the failure)
-            return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
+            try {
+                return metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                        UnifiedMetricsSnapshot.class);
+            } catch (Exception metricError) {
+                logger.warn("Failed to retrieve health metrics snapshot after error: {}", metricError.getMessage());
+                // Return a default health metrics implementation for graceful degradation
+                return UnifiedMetricsSnapshot.builder("default", "model", "health-check")
+                        .withHealthStatus(HealthStatus.DEGRADED).withStatusMessage("Health check failed").build();
+            }
         }
     }
 
@@ -347,48 +355,78 @@ public class OpenAIClient implements ModelClient {
      * Get minimum response time in milliseconds from metrics snapshot
      */
     public long getMinResponseTime() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
-        if (snapshot != null && snapshot.healthIndicators() != null) {
-            Object minTime = snapshot.healthIndicators().get("minResponseTimeMs");
-            return minTime instanceof Number ? ((Number) minTime).longValue() : 0;
+        try {
+            UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                    UnifiedMetricsSnapshot.class);
+            if (snapshot != null && snapshot.healthIndicators() != null) {
+                Object minTime = snapshot.healthIndicators().get("minResponseTimeMs");
+                return minTime instanceof Number ? ((Number) minTime).longValue() : 0;
+            }
+            return 0;
+        } catch (Exception e) {
+            logger.warn("Failed to retrieve min response time metrics: {}", e.getMessage());
+            return 0; // Graceful degradation: return default value
         }
-        return 0;
     }
 
     /**
      * Get maximum response time in milliseconds from metrics snapshot
      */
     public long getMaxResponseTime() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
-        if (snapshot != null && snapshot.healthIndicators() != null) {
-            Object maxTime = snapshot.healthIndicators().get("maxResponseTimeMs");
-            return maxTime instanceof Number ? ((Number) maxTime).longValue() : 0;
+        try {
+            UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                    UnifiedMetricsSnapshot.class);
+            if (snapshot != null && snapshot.healthIndicators() != null) {
+                Object maxTime = snapshot.healthIndicators().get("maxResponseTimeMs");
+                return maxTime instanceof Number ? ((Number) maxTime).longValue() : 0;
+            }
+            return 0;
+        } catch (Exception e) {
+            logger.warn("Failed to retrieve max response time metrics: {}", e.getMessage());
+            return 0; // Graceful degradation: return default value
         }
-        return 0;
     }
 
     /**
      * Get total number of requests made from metrics snapshot
      */
     public int getTotalRequests() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
-        return snapshot != null ? (int) snapshot.total() : 0;
+        try {
+            UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                    UnifiedMetricsSnapshot.class);
+            return snapshot != null ? (int) snapshot.total() : 0;
+        } catch (Exception e) {
+            logger.warn("Failed to retrieve total requests metrics: {}", e.getMessage());
+            return 0; // Graceful degradation: return default value
+        }
     }
 
     /**
      * Get total number of successful requests from metrics snapshot
      */
     public int getSuccessfulRequests() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
-        return snapshot != null ? (int) snapshot.success() : 0;
+        try {
+            UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                    UnifiedMetricsSnapshot.class);
+            return snapshot != null ? (int) snapshot.success() : 0;
+        } catch (Exception e) {
+            logger.warn("Failed to retrieve successful requests metrics: {}", e.getMessage());
+            return 0; // Graceful degradation: return default value
+        }
     }
 
     /**
      * Get total number of failed requests from metrics snapshot
      */
     public int getFailedRequests() {
-        UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()), UnifiedMetricsSnapshot.class);
-        return snapshot != null ? (int) snapshot.failure() : 0;
+        try {
+            UnifiedMetricsSnapshot snapshot = metricsService.getSnapshot(MetricKeys.modelHealth(config.getModelName()),
+                    UnifiedMetricsSnapshot.class);
+            return snapshot != null ? (int) snapshot.failure() : 0;
+        } catch (Exception e) {
+            logger.warn("Failed to retrieve failed requests metrics: {}", e.getMessage());
+            return 0; // Graceful degradation: return default value
+        }
     }
 
     /**

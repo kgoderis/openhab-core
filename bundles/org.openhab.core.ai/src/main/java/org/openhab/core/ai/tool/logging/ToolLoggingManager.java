@@ -45,13 +45,12 @@ public class ToolLoggingManager {
         // Use centralized metrics service with builder pattern
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("tool", "execution")
-                    .withSuccess(success)
-                    .withDuration(java.time.Duration.ofMillis(executionTime).toNanos())
-                    .withData("toolId", toolId)
-                    .withData("executionTimeMs", executionTime)
-                    .withData("result", result != null ? result.substring(0, Math.min(result.length(), 100)) + "..." : "null")
-                    .record();
+                metricsService.recordOperation("tool", "execution").withSuccess(success)
+                        .withDuration(java.time.Duration.ofMillis(executionTime).toNanos()).withData("toolId", toolId)
+                        .withData("executionTimeMs", executionTime)
+                        .withData("result",
+                                result != null ? result.substring(0, Math.min(result.length(), 100)) + "..." : "null")
+                        .record();
             } catch (Exception e) {
                 logger.warn("Failed to record tool execution metrics for tool {}: {}", toolId, e.getMessage());
                 // Graceful degradation: continue with logging even if metrics recording fails
@@ -83,16 +82,14 @@ public class ToolLoggingManager {
         // Use centralized metrics service with builder pattern
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("server", "request")
-                    .withSuccess(success)
-                    .withDuration(java.time.Duration.ofMillis(processingTime).toNanos())
-                    .withData("requestType", requestType)
-                    .withData("transportType", transportType.name())
-                    .withData("processingTimeMs", processingTime)
-                    .withData("details", details != null ? details.toString() : "null")
-                    .record();
+                metricsService.recordOperation("server", "request").withSuccess(success)
+                        .withDuration(java.time.Duration.ofMillis(processingTime).toNanos())
+                        .withData("requestType", requestType).withData("transportType", transportType.name())
+                        .withData("processingTimeMs", processingTime)
+                        .withData("details", details != null ? details.toString() : "null").record();
             } catch (Exception e) {
-                logger.warn("Failed to record server request metrics for request type {}: {}", requestType, e.getMessage());
+                logger.warn("Failed to record server request metrics for request type {}: {}", requestType,
+                        e.getMessage());
                 // Graceful degradation: continue with logging even if metrics recording fails
             }
         }
@@ -120,15 +117,13 @@ public class ToolLoggingManager {
         // Use centralized metrics service with builder pattern
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("transport", "health-check")
-                    .withSuccess("UP".equals(healthStatus))
-                    .withDuration(0L)
-                    .withData("transportType", transportType.name())
-                    .withData("healthStatus", healthStatus)
-                    .withData("details", details != null ? details.toString() : "null")
-                    .record();
+                metricsService.recordOperation("transport", "health-check").withSuccess("UP".equals(healthStatus))
+                        .withDuration(0L).withData("transportType", transportType.name())
+                        .withData("healthStatus", healthStatus)
+                        .withData("details", details != null ? details.toString() : "null").record();
             } catch (Exception e) {
-                logger.warn("Failed to record transport health metrics for transport type {}: {}", transportType, e.getMessage());
+                logger.warn("Failed to record transport health metrics for transport type {}: {}", transportType,
+                        e.getMessage());
                 // Graceful degradation: continue with logging even if metrics recording fails
             }
         }
@@ -149,13 +144,9 @@ public class ToolLoggingManager {
         // Use centralized metrics service with builder pattern
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("security", "event")
-                    .withSuccess(true)
-                    .withDuration(0L)
-                    .withData("eventType", eventType)
-                    .withData("severity", severity)
-                    .withData("details", details != null ? details.toString() : "null")
-                    .record();
+                metricsService.recordOperation("security", "event").withSuccess(true).withDuration(0L)
+                        .withData("eventType", eventType).withData("severity", severity)
+                        .withData("details", details != null ? details.toString() : "null").record();
             } catch (Exception e) {
                 logger.warn("Failed to record security event metrics for event type {}: {}", eventType, e.getMessage());
                 // Graceful degradation: continue with logging even if metrics recording fails
@@ -164,6 +155,92 @@ public class ToolLoggingManager {
 
         // Structured logging
         logger.info("Security event - Type: {}, Severity: {}", eventType, severity);
+    }
+
+    /**
+     * Log audit event with enhanced categorization and severity levels.
+     * 
+     * @param auditEvent the audit event to log
+     */
+    public void logAuditEvent(org.openhab.core.ai.tool.logging.audit.AuditEvent auditEvent) {
+        if (auditEvent == null) {
+            logger.warn("Cannot log null audit event");
+            return;
+        }
+
+        // Use centralized metrics service with enhanced context
+        if (metricsService != null) {
+            try {
+                // Determine success based on audit level
+                boolean success = !"ERROR".equals(auditEvent.getLevel());
+
+                // Create enhanced context with audit event details
+                Map<String, Object> context = new java.util.HashMap<>();
+                context.put("auditId", auditEvent.getId());
+                context.put("auditLevel", auditEvent.getLevel());
+                context.put("auditAction", auditEvent.getAction());
+                context.put("userId", auditEvent.getUserId());
+                context.put("timestamp", auditEvent.getTimestamp());
+                context.put("category", determineAuditCategory(auditEvent.getAction()));
+                context.put("severity", determineSeverityLevel(auditEvent.getLevel()));
+                context.put("details", auditEvent.getDetails());
+                context.put("encryptedHash", auditEvent.getEncryptedHash());
+
+                // Record audit event metrics using generic method
+                metricsService.recordOperationWithData("audit", "event", success, java.time.Duration.ofNanos(0),
+                        context);
+
+            } catch (Exception e) {
+                logger.warn("Failed to record audit event metrics for audit ID {}: {}", auditEvent.getId(),
+                        e.getMessage());
+                // Graceful degradation: continue with logging even if metrics recording fails
+            }
+        }
+
+        // Structured logging based on audit level
+        String logMessage = String.format("Audit event - ID: %s, Level: %s, Action: %s, User: %s, Category: %s",
+                auditEvent.getId(), auditEvent.getLevel(), auditEvent.getAction(), auditEvent.getUserId(),
+                determineAuditCategory(auditEvent.getAction()));
+
+        switch (auditEvent.getLevel()) {
+            case "ERROR":
+                logger.error(logMessage);
+                break;
+            case "WARN":
+                logger.warn(logMessage);
+                break;
+            case "INFO":
+                logger.info(logMessage);
+                break;
+            case "DEBUG":
+                logger.debug(logMessage);
+                break;
+            default:
+                logger.info(logMessage);
+                break;
+        }
+    }
+
+    /**
+     * Log audit event with enhanced categorization and severity levels.
+     * 
+     * @param eventId the audit event ID
+     * @param level the audit level (INFO, WARN, ERROR, DEBUG)
+     * @param action the action being audited
+     * @param userId the user ID
+     * @param category the audit category
+     * @param details additional audit details
+     */
+    public void logAuditEvent(String eventId, String level, String action, String userId, String category,
+            @Nullable Map<String, Object> details) {
+
+        // Create audit event
+        org.openhab.core.ai.tool.logging.audit.AuditEvent auditEvent = new org.openhab.core.ai.tool.logging.audit.AuditEvent(
+                eventId, level, action, userId, java.time.Instant.now().toString(),
+                details != null ? details : new java.util.HashMap<>());
+
+        // Log the audit event
+        logAuditEvent(auditEvent);
     }
 
     /**
@@ -179,15 +256,12 @@ public class ToolLoggingManager {
         // Use centralized metrics service with builder pattern
         if (metricsService != null) {
             try {
-                metricsService.recordOperation("performance", "metric")
-                    .withSuccess(success)
-                    .withDuration(java.time.Duration.ofMillis(duration).toNanos())
-                    .withData("component", component)
-                    .withData("operation", operation)
-                    .withData("durationMs", duration)
-                    .record();
+                metricsService.recordOperation("performance", "metric").withSuccess(success)
+                        .withDuration(java.time.Duration.ofMillis(duration).toNanos()).withData("component", component)
+                        .withData("operation", operation).withData("durationMs", duration).record();
             } catch (Exception e) {
-                logger.warn("Failed to record performance metrics for component {} operation {}: {}", component, operation, e.getMessage());
+                logger.warn("Failed to record performance metrics for component {} operation {}: {}", component,
+                        operation, e.getMessage());
                 // Graceful degradation: continue with logging even if metrics recording fails
             }
         }
@@ -199,6 +273,110 @@ public class ToolLoggingManager {
         } else {
             logger.warn("Performance metric - Component: {}, Operation: {}, Duration: {}ms (FAILED)", component,
                     operation, duration);
+        }
+    }
+
+    // ============================================================================
+    // Enhanced Audit Event Categorization Helper Methods
+    // ============================================================================
+
+    /**
+     * Determine audit category based on the action being audited.
+     * 
+     * @param action the audit action
+     * @return the audit category
+     */
+    private String determineAuditCategory(String action) {
+        if (action == null || action.trim().isEmpty()) {
+            return "UNKNOWN";
+        }
+
+        String normalizedAction = action.toLowerCase().trim();
+
+        // Authentication and authorization events
+        if (normalizedAction.contains("login") || normalizedAction.contains("logout")
+                || normalizedAction.contains("authenticate") || normalizedAction.contains("authorize")) {
+            return "AUTHENTICATION";
+        }
+
+        // Data access events
+        if (normalizedAction.contains("read") || normalizedAction.contains("write")
+                || normalizedAction.contains("delete") || normalizedAction.contains("update")
+                || normalizedAction.contains("create") || normalizedAction.contains("modify")) {
+            return "DATA_ACCESS";
+        }
+
+        // Configuration changes
+        if (normalizedAction.contains("config") || normalizedAction.contains("setting")
+                || normalizedAction.contains("parameter") || normalizedAction.contains("property")) {
+            return "CONFIGURATION";
+        }
+
+        // System operations
+        if (normalizedAction.contains("start") || normalizedAction.contains("stop")
+                || normalizedAction.contains("restart") || normalizedAction.contains("shutdown")
+                || normalizedAction.contains("install") || normalizedAction.contains("uninstall")) {
+            return "SYSTEM_OPERATION";
+        }
+
+        // Security events
+        if (normalizedAction.contains("security") || normalizedAction.contains("permission")
+                || normalizedAction.contains("access") || normalizedAction.contains("violation")) {
+            return "SECURITY";
+        }
+
+        // Tool execution events
+        if (normalizedAction.contains("tool") || normalizedAction.contains("execute")
+                || normalizedAction.contains("run") || normalizedAction.contains("invoke")) {
+            return "TOOL_EXECUTION";
+        }
+
+        // Agent operations
+        if (normalizedAction.contains("agent") || normalizedAction.contains("skill")
+                || normalizedAction.contains("task") || normalizedAction.contains("action")) {
+            return "AGENT_OPERATION";
+        }
+
+        // Network and communication
+        if (normalizedAction.contains("network") || normalizedAction.contains("connection")
+                || normalizedAction.contains("transport") || normalizedAction.contains("communication")) {
+            return "NETWORK";
+        }
+
+        // Error and exception handling
+        if (normalizedAction.contains("error") || normalizedAction.contains("exception")
+                || normalizedAction.contains("failure") || normalizedAction.contains("timeout")) {
+            return "ERROR_HANDLING";
+        }
+
+        // Default category for unrecognized actions
+        return "GENERAL";
+    }
+
+    /**
+     * Determine severity level based on the audit level.
+     * 
+     * @param level the audit level
+     * @return the severity level
+     */
+    private String determineSeverityLevel(String level) {
+        if (level == null || level.trim().isEmpty()) {
+            return "UNKNOWN";
+        }
+
+        String normalizedLevel = level.trim().toUpperCase();
+
+        switch (normalizedLevel) {
+            case "ERROR":
+                return "HIGH";
+            case "WARN":
+                return "MEDIUM";
+            case "INFO":
+                return "LOW";
+            case "DEBUG":
+                return "VERY_LOW";
+            default:
+                return "UNKNOWN";
         }
     }
 }
