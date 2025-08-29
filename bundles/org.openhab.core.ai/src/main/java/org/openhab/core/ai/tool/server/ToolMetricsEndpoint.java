@@ -8,13 +8,14 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
 import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.tool.config.ToolServerConfiguration;
 import org.openhab.core.ai.tool.server.http.HealthHandler;
 import org.openhab.core.ai.tool.server.http.MetricsHandler;
@@ -64,9 +65,7 @@ public class ToolMetricsEndpoint {
     // Start time for uptime calculation
     private final long startTime = System.currentTimeMillis();
 
-    // Request counters for HTTP handlers (legacy support)
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong totalErrors = new AtomicLong(0);
+    // Request counters for HTTP handlers - now handled by MetricsService
 
     @Activate
     protected void activate() {
@@ -97,8 +96,8 @@ public class ToolMetricsEndpoint {
 
             // Set up endpoints - always enable health and metrics for now
             try {
-                httpServer.createContext("/health", new HealthHandler(serverInstance, config, startTime, totalRequests,
-                        totalErrors, metricsService));
+                httpServer.createContext("/health", new HealthHandler(serverInstance, config, startTime, null,
+                        null, metricsService));
                 logger.info("Health endpoint enabled at /health");
             } catch (Exception e) {
                 logger.error("Failed to create health endpoint: {}", e.getMessage(), e);
@@ -108,7 +107,7 @@ public class ToolMetricsEndpoint {
 
             try {
                 httpServer.createContext("/metrics",
-                        new MetricsHandler(serverInstance, startTime, totalRequests, totalErrors, metricsService));
+                        new MetricsHandler(serverInstance, startTime, null, null, metricsService));
                 logger.info("Metrics endpoint enabled at /metrics");
             } catch (Exception e) {
                 logger.error("Failed to create metrics endpoint: {}", e.getMessage(), e);
@@ -222,7 +221,7 @@ public class ToolMetricsEndpoint {
                     // Recreate endpoints with new configuration
                     try {
                         httpServer.createContext("/health", new HealthHandler(serverInstance, config, startTime,
-                                totalRequests, totalErrors, metricsService));
+                                null, null, metricsService));
                     } catch (Exception e) {
                         logger.error("Failed to recreate health endpoint during modification: {}", e.getMessage(), e);
                         recordMetrics("config-modification", false, 0);
@@ -231,7 +230,7 @@ public class ToolMetricsEndpoint {
 
                     try {
                         httpServer.createContext("/metrics", new MetricsHandler(serverInstance, startTime,
-                                totalRequests, totalErrors, metricsService));
+                                null, null, metricsService));
                     } catch (Exception e) {
                         logger.error("Failed to recreate metrics endpoint during modification: {}", e.getMessage(), e);
                         recordMetrics("config-modification", false, 0);
@@ -671,6 +670,24 @@ public class ToolMetricsEndpoint {
         } catch (Exception e) {
             logger.warn("Could not get disk free space", e);
             return 0L;
+        }
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record metrics operation - replaces totalRequests.incrementAndGet() and totalErrors.incrementAndGet()
+     */
+    private void recordMetrics(String operation, boolean success, long duration) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for tool metrics endpoint operations
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "tool-metrics-endpoint", operation, 
+                        duration, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record metrics for operation {}: {}", operation, e.getMessage());
         }
     }
 }

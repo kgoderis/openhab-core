@@ -2,10 +2,11 @@ package org.openhab.core.ai.tool.prompts;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.tool.prompts.adapter.ItemPromptAdapter;
 import org.openhab.core.ai.tool.prompts.adapter.RulePromptAdapter;
 import org.openhab.core.ai.tool.prompts.adapter.SystemPromptAdapter;
@@ -35,8 +36,11 @@ public class PromptExecutionService {
     private static final Logger logger = LoggerFactory.getLogger(PromptExecutionService.class);
 
     private final Map<String, Long> lastExecutionMs = new ConcurrentHashMap<>();
-    private final AtomicLong totalExecutions = new AtomicLong(0);
-    private final AtomicLong totalTimeMs = new AtomicLong(0);
+    // Performance monitoring - now handled by MetricsService
+    
+    // Metrics service
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     private @Nullable ItemPromptAdapter itemPromptAdapter;
     private @Nullable RulePromptAdapter rulePromptAdapter;
@@ -120,10 +124,33 @@ public class PromptExecutionService {
     private void record(String key, long start, boolean success) {
         long took = System.currentTimeMillis() - start;
         lastExecutionMs.put(key, took);
-        totalExecutions.incrementAndGet();
-        totalTimeMs.addAndGet(took);
+        
+        // ONE-FOR-ONE REPLACEMENT: 
+        // - totalExecutions.incrementAndGet() -> automatically handled by recordOperation()
+        // - totalTimeMs.addAndGet(took) -> handled by withDuration()
+        recordPromptExecution(key, success, took);
+        
         if (!success) {
             logger.warn("Prompt execution failed: {} ({} ms)", key, took);
+        }
+    }
+    
+    /**
+     * Record prompt execution - replaces totalExecutions.incrementAndGet() and totalTimeMs.addAndGet()
+     * ONE-FOR-ONE REPLACEMENT: Single MetricsService call handles all AtomicLong operations automatically
+     */
+    private void recordPromptExecution(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // ONE-FOR-ONE REPLACEMENT: 
+                // - totalExecutions.incrementAndGet() -> automatically handled by recordOperation()
+                // - totalTimeMs.addAndGet(duration) -> handled by withDuration()
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "prompt-execution-service", operation, 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record prompt execution metric for {}: {}", operation, e.getMessage());
         }
     }
 }

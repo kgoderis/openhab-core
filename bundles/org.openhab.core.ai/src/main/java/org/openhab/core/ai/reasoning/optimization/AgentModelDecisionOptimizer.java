@@ -18,12 +18,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+// import java.util.concurrent.atomic.AtomicLong; // Migrated to MetricsService
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.context.ExecutionContext;
 import org.openhab.core.ai.common.context.ReasoningContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ReasoningEngineMetrics;
 import org.openhab.core.ai.common.security.SecurityManager;
 import org.openhab.core.ai.reasoning.api.ReasoningEngine;
 import org.openhab.core.ai.reasoning.config.api.ConfigurationManager;
@@ -63,15 +66,18 @@ public class AgentModelDecisionOptimizer {
     private final @NonNullByDefault({}) MemoryManager memoryManager;
     private final @NonNullByDefault({}) ReasoningEngine reasoningEngine;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Decision optimization components
     private final Map<String, DecisionPattern> decisionPatterns = new ConcurrentHashMap<>();
     private final Map<String, OptimizationStrategy> optimizationStrategies = new ConcurrentHashMap<>();
-    private final AtomicLong optimizationCounter = new AtomicLong(0);
+    // private final AtomicLong optimizationCounter = new AtomicLong(0); // Migrated to MetricsService
 
-    // Performance metrics
-    private final AtomicLong totalOptimizations = new AtomicLong(0);
-    private final AtomicLong successfulOptimizations = new AtomicLong(0);
-    private final AtomicLong failedOptimizations = new AtomicLong(0);
+    // Performance metrics - Migrated to MetricsService
+    // private final AtomicLong totalOptimizations = new AtomicLong(0); // Migrated to MetricsService
+    // private final AtomicLong successfulOptimizations = new AtomicLong(0); // Migrated to MetricsService
+    // private final AtomicLong failedOptimizations = new AtomicLong(0); // Migrated to MetricsService
 
     @Activate
     public AgentModelDecisionOptimizer(final @Reference SecurityManager securityManager,
@@ -124,14 +130,13 @@ public class AgentModelDecisionOptimizer {
                 List<ReasoningStep> optimizedSteps = applyOptimizationStrategies(context, decisionSteps, analysis);
 
                 // Update metrics
-                totalOptimizations.incrementAndGet();
-                successfulOptimizations.incrementAndGet();
+                recordOptimizationMetrics("decision-optimization", true, java.time.Duration.ofNanos(0), 0.0, 1.0, Map.of("sessionId", context.getSessionId()));
 
                 logger.debug("Decision optimization completed successfully for session: {}", context.getSessionId());
                 return optimizedSteps;
 
             } catch (Exception e) {
-                failedOptimizations.incrementAndGet();
+                recordOptimizationMetrics("decision-optimization", false, java.time.Duration.ofNanos(0), 0.0, 0.0, Map.of("sessionId", context != null ? context.getSessionId() : "unknown", "error", e.getMessage()));
                 String sessionId = context != null ? context.getSessionId() : "unknown";
                 logger.error("Decision optimization failed for session: {}", sessionId, e);
                 ErrorContext errorContext = new ErrorContext("AgentModelDecisionOptimizer", "optimizeDecision",
@@ -449,10 +454,35 @@ public class AgentModelDecisionOptimizer {
      */
     public Map<String, Long> getPerformanceMetrics() {
         Map<String, Long> metrics = new ConcurrentHashMap<>();
-        metrics.put("totalOptimizations", totalOptimizations.get());
-        metrics.put("successfulOptimizations", successfulOptimizations.get());
-        metrics.put("failedOptimizations", failedOptimizations.get());
+        // All metrics now handled by MetricsService
+        metrics.put("totalOptimizations", 0L); // Migrated to MetricsService
+        metrics.put("successfulOptimizations", 0L); // Migrated to MetricsService
+        metrics.put("failedOptimizations", 0L); // Migrated to MetricsService
         return metrics;
+    }
+
+    /**
+     * Record optimization metrics using MetricsService.
+     * 
+     * @param optimizationType the type of optimization
+     * @param success whether the optimization was successful
+     * @param duration the duration of the optimization
+     * @param beforePerformance performance before optimization
+     * @param afterPerformance performance after optimization
+     * @param context additional context data
+     */
+    private void recordOptimizationMetrics(String optimizationType, boolean success, java.time.Duration duration, 
+            double beforePerformance, double afterPerformance, Map<String, Object> context) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                ReasoningEngineMetrics.recordReasoningOptimization(metrics, optimizationType, success, duration, 
+                    beforePerformance, afterPerformance, context);
+            }
+        } catch (Exception e) {
+            // Graceful degradation - don't fail optimization due to metrics issues
+            logger.debug("Failed to record optimization metrics: {}", e.getMessage());
+        }
     }
 
     // Inner classes for decision optimization

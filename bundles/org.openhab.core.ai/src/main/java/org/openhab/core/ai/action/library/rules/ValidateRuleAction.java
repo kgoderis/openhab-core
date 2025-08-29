@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.Action;
@@ -44,10 +44,10 @@ public class ValidateRuleAction implements Action {
     @Reference
     private @Nullable MetricsService metricsService;
 
-    // Business logic capture: Validation rule effectiveness
-    private final Map<String, AtomicLong> validationRuleTriggers = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> validationRuleFailures = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> validationRuleSuccesses = new ConcurrentHashMap<>();
+    // Business logic capture: Validation rule effectiveness - migrated to MetricsService
+    private final Map<String, Long> validationRuleTriggers = new ConcurrentHashMap<>();
+    private final Map<String, Long> validationRuleFailures = new ConcurrentHashMap<>();
+    private final Map<String, Long> validationRuleSuccesses = new ConcurrentHashMap<>();
 
     /**
      * Record validation rule effectiveness for business logic analysis.
@@ -70,11 +70,11 @@ public class ValidateRuleAction implements Action {
 
                 // Update local tracking
                 String key = ruleUID + ":" + validationType;
-                validationRuleTriggers.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
+                validationRuleTriggers.merge(key, 1L, Long::sum);
                 if (success) {
-                    validationRuleSuccesses.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
+                    validationRuleSuccesses.merge(key, 1L, Long::sum);
                 } else {
-                    validationRuleFailures.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
+                    validationRuleFailures.merge(key, 1L, Long::sum);
                 }
 
             } catch (Exception e) {

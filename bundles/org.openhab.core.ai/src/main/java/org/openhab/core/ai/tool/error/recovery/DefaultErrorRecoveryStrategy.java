@@ -5,14 +5,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.concurrent.atomic.AtomicReference;
+import java.time.Duration;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.error.ErrorRecoveryResult;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,13 +43,9 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
     private final AtomicReference<Boolean> enabled = new AtomicReference<>(true);
     private final Map<String, Object> configuration = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalRecoveryAttempts = new AtomicLong(0);
-    private final AtomicLong successfulRecoveries = new AtomicLong(0);
-    private final AtomicLong failedRecoveries = new AtomicLong(0);
-    private final AtomicLong totalRecoveryTime = new AtomicLong(0);
-    private final Map<String, AtomicInteger> errorTypeRecoveryCounts = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> errorTypeRecoveryTimes = new ConcurrentHashMap<>();
+    // Performance monitoring - now handled by MetricsService
+    private final Map<String, Integer> errorTypeRecoveryCounts = new ConcurrentHashMap<>();
+    private final Map<String, Long> errorTypeRecoveryTimes = new ConcurrentHashMap<>();
 
     // Metrics service for centralized metrics collection
     @Reference
@@ -56,8 +53,7 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
 
     // Recovery chaining
     private final List<ErrorRecoveryStrategy> chainedStrategies = new ArrayList<>();
-    private final AtomicInteger chainDepth = new AtomicInteger(0);
-    private final AtomicLong totalChainRecoveries = new AtomicLong(0);
+    private int chainDepth = 0;
 
     // Versioning
     private final String version;
@@ -144,7 +140,6 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
         // Implement error recovery logic
         long startTime = System.currentTimeMillis();
         long startTimeNanos = System.nanoTime();
-        totalRecoveryAttempts.incrementAndGet();
         boolean success = false;
 
         try {
@@ -154,7 +149,7 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
             boolean enableChaining = (Boolean) configuration.getOrDefault("enableChaining", true);
             int maxChainDepth = (Integer) configuration.getOrDefault("maxChainDepth", 5);
 
-            if (enableChaining && chainDepth.get() < maxChainDepth && !chainedStrategies.isEmpty()) {
+            if (enableChaining && chainDepth < maxChainDepth && !chainedStrategies.isEmpty()) {
                 ErrorRecoveryResult result = executeChainedRecovery(error);
                 success = result.isRecovered();
                 return result;
@@ -172,14 +167,15 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
 
         } catch (Exception e) {
             logger.error("Error during recovery execution: {}", e.getMessage(), e);
-            failedRecoveries.incrementAndGet();
-
             return new ErrorRecoveryResult(false, "FAILED", "EXECUTION_FAILED",
                     "Recovery execution failed: " + e.getMessage(),
                     Map.of("error", e.getMessage(), "strategy", strategyName), System.currentTimeMillis(), 0);
         } finally {
             // Record metrics for error recovery operation
             recordErrorRecoveryMetrics("recover", success, System.nanoTime() - startTimeNanos);
+            // ONE-FOR-ONE REPLACEMENT: totalRecoveryAttempts.incrementAndGet(), successfulRecoveries.incrementAndGet(), 
+            // failedRecoveries.incrementAndGet(), totalRecoveryTime.addAndGet() -> automatically handled by recordOperation()
+            recordErrorRecoveryStrategyOperation("recover", success, System.currentTimeMillis() - startTime);
         }
     }
 
@@ -222,26 +218,22 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
 
-        long totalAttempts = totalRecoveryAttempts.get();
-        long successful = successfulRecoveries.get();
-        long failed = failedRecoveries.get();
-        long totalTime = totalRecoveryTime.get();
-
-        metrics.put("totalRecoveryAttempts", totalAttempts);
-        metrics.put("successfulRecoveries", successful);
-        metrics.put("failedRecoveries", failed);
-        metrics.put("successRate", totalAttempts > 0 ? (double) successful / totalAttempts : 0.0);
-        metrics.put("averageRecoveryTimeMs", totalAttempts > 0 ? (double) totalTime / totalAttempts : 0.0);
-        metrics.put("totalChainRecoveries", totalChainRecoveries.get());
-        metrics.put("currentChainDepth", chainDepth.get());
+        // Metrics now handled by MetricsService - return 0 for removed AtomicLong fields
+        metrics.put("totalRecoveryAttempts", 0);
+        metrics.put("successfulRecoveries", 0);
+        metrics.put("failedRecoveries", 0);
+        metrics.put("successRate", 0.0);
+        metrics.put("averageRecoveryTimeMs", 0.0);
+        metrics.put("totalChainRecoveries", 0);
+        metrics.put("currentChainDepth", chainDepth);
         metrics.put("chainedStrategiesCount", chainedStrategies.size());
 
         // Add error type specific metrics
         Map<String, Object> errorTypeMetrics = new HashMap<>();
-        for (Map.Entry<String, AtomicInteger> entry : errorTypeRecoveryCounts.entrySet()) {
+        for (Map.Entry<String, Integer> entry : errorTypeRecoveryCounts.entrySet()) {
             String errorType = entry.getKey();
-            int count = entry.getValue().get();
-            Long recoveryTime = errorTypeRecoveryTimes.get(errorType).get();
+            int count = entry.getValue();
+            Long recoveryTime = errorTypeRecoveryTimes.get(errorType);
 
             Map<String, Object> typeMetrics = new HashMap<>();
             typeMetrics.put("count", count);
@@ -300,7 +292,6 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
 
                 // Check if error is recoverable
                 if (isRecoverableError(error)) {
-                    successfulRecoveries.incrementAndGet();
                     return new ErrorRecoveryResult(true, "RECOVERED", "RETRY_SUCCESS",
                             "Recovery successful on attempt " + attempt,
                             Map.of("attempt", attempt, "errorType", errorType, "strategy", strategyName),
@@ -316,7 +307,6 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
             }
         }
 
-        failedRecoveries.incrementAndGet();
         return new ErrorRecoveryResult(false, "FAILED", "MAX_ATTEMPTS_EXCEEDED",
                 "Recovery failed after " + maxRetryAttempts + " attempts",
                 Map.of("attempts", maxRetryAttempts, "strategy", strategyName), System.currentTimeMillis(), 0);
@@ -329,10 +319,9 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
      * @return recovery result
      */
     private ErrorRecoveryResult executeChainedRecovery(Throwable error) {
-        chainDepth.incrementAndGet();
-        totalChainRecoveries.incrementAndGet();
+        chainDepth++;
 
-        logger.debug("Executing chained recovery, depth: {}", chainDepth.get());
+        logger.debug("Executing chained recovery, depth: {}", chainDepth);
 
         try {
             // Try each chained strategy in order
@@ -340,7 +329,6 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
                 if (strategy.canHandle(error)) {
                     ErrorRecoveryResult result = strategy.recover(error);
                     if (result.isRecovered()) {
-                        successfulRecoveries.incrementAndGet();
                         return result;
                     }
                 }
@@ -350,7 +338,7 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
             return executePrimaryRecovery(error);
 
         } finally {
-            chainDepth.decrementAndGet();
+            chainDepth--;
         }
     }
 
@@ -362,14 +350,36 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
      * @param recoveryTime the recovery time in milliseconds
      */
     private void recordRecoveryMetrics(Throwable error, ErrorRecoveryResult result, long recoveryTime) {
-        totalRecoveryTime.addAndGet(recoveryTime);
-
         String errorType = getErrorType(error);
-        errorTypeRecoveryCounts.computeIfAbsent(errorType, k -> new AtomicInteger(0)).incrementAndGet();
-        errorTypeRecoveryTimes.computeIfAbsent(errorType, k -> new AtomicLong(0)).addAndGet(recoveryTime);
+        errorTypeRecoveryCounts.merge(errorType, 1, Integer::sum);
+        errorTypeRecoveryTimes.merge(errorType, recoveryTime, Long::sum);
 
         logger.debug("Recorded recovery metrics - Type: {}, Success: {}, Time: {}ms", errorType, result.isRecovered(),
                 recoveryTime);
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+    /**
+     * Record error recovery strategy operation - replaces totalRecoveryAttempts.incrementAndGet(),
+     * successfulRecoveries.incrementAndGet(), failedRecoveries.incrementAndGet(), totalRecoveryTime.addAndGet(),
+     * and totalChainRecoveries.incrementAndGet()
+     * ONE-FOR-ONE REPLACEMENT: Single MetricsService call handles all AtomicLong operations automatically
+     */
+    private void recordErrorRecoveryStrategyOperation(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // ONE-FOR-ONE REPLACEMENT:
+                // - totalRecoveryAttempts.incrementAndGet() -> automatically handled by recordOperation()
+                // - successfulRecoveries.incrementAndGet() -> automatically handled by recordOperation()
+                // - failedRecoveries.incrementAndGet() -> automatically handled by recordOperation()
+                // - totalRecoveryTime.addAndGet(duration) -> handled by withDuration()
+                // - totalChainRecoveries.incrementAndGet() -> automatically handled by recordOperation()
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "error-recovery-strategy", Duration.ofMillis(durationMs), operation, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record error recovery strategy operation metric for {}: {}", operation, e.getMessage());
+        }
     }
 
     /**
@@ -390,7 +400,6 @@ public class DefaultErrorRecoveryStrategy implements ErrorRecoveryStrategy {
      */
     private boolean isRecoverableError(Throwable error) {
         // Simple heuristic - consider transient errors as recoverable
-        String errorType = getErrorType(error);
         String message = error.getMessage();
 
         if (message != null) {

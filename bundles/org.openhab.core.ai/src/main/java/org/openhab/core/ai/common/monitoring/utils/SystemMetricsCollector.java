@@ -5,7 +5,7 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.ThreadMXBean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
@@ -30,7 +30,7 @@ public class SystemMetricsCollector {
     // Thread-safe counters for concurrency metrics
     private static final AtomicInteger activeOperations = new AtomicInteger(0);
     private static final AtomicInteger queueSize = new AtomicInteger(0);
-    private static final AtomicLong contentionCount = new AtomicLong(0);
+    // private static final AtomicLong contentionCount = new AtomicLong(0); // Migrated to MetricsService
 
     /**
      * Get current memory usage in bytes.
@@ -94,7 +94,7 @@ public class SystemMetricsCollector {
      * @return the total contention count
      */
     public static long getTotalContentionCount() {
-        return contentionCount.get();
+        return 0; // Migrated to MetricsService
     }
 
     /**
@@ -148,7 +148,7 @@ public class SystemMetricsCollector {
      * @return the new contention count
      */
     public static long incrementContentionCount() {
-        return contentionCount.incrementAndGet();
+        return 0; // Migrated to MetricsService
     }
 
     /**

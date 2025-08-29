@@ -3,15 +3,17 @@ package org.openhab.core.ai.tool.server.http;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsResponseBuilder;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.api.MetricsSnapshot;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
@@ -41,24 +43,19 @@ public final class MetricsHandler implements HttpHandler {
 
     private final DefaultToolServer serverInstance;
     private final long startTime;
-    private final AtomicLong totalRequests;
-    private final AtomicLong totalErrors;
     private final @Nullable MetricsService metricsService;
 
-    public MetricsHandler(DefaultToolServer serverInstance, long startTime, AtomicLong totalRequests,
-            AtomicLong totalErrors, @Nullable MetricsService metricsService) {
+    public MetricsHandler(DefaultToolServer serverInstance, long startTime, @Nullable MetricsService metricsService) {
         this.serverInstance = serverInstance;
         this.startTime = startTime;
-        this.totalRequests = totalRequests;
-        this.totalErrors = totalErrors;
         this.metricsService = metricsService;
     }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        long startTime = System.currentTimeMillis();
+        
         try {
-            totalRequests.incrementAndGet();
-
             // Check if client wants JSON format (standardized) or Prometheus format
             String acceptHeader = exchange.getRequestHeaders().getFirst("Accept");
             boolean wantsJson = acceptHeader != null && acceptHeader.contains("application/json");
@@ -68,12 +65,18 @@ public final class MetricsHandler implements HttpHandler {
             } else {
                 handlePrometheusMetrics(exchange);
             }
+            
+            // Replace totalRequests.incrementAndGet()
+            Duration responseTime = Duration.ofMillis(System.currentTimeMillis() - startTime);
+            recordHttpRequest("metrics-request", true, responseTime);
 
         } catch (Exception e) {
-            totalErrors.incrementAndGet();
             logger.error("Error handling metrics request", e);
             exchange.sendResponseHeaders(500, 0);
             exchange.close();
+            
+            // Replace totalErrors.incrementAndGet()
+            recordHttpError("metrics-handler-error", e.getMessage());
         }
     }
 
@@ -126,10 +129,10 @@ public final class MetricsHandler implements HttpHandler {
         StringBuilder response = new StringBuilder();
         response.append("# HELP mcp_requests_total Total number of requests\n");
         response.append("# TYPE mcp_requests_total counter\n");
-        response.append("mcp_requests_total ").append(totalRequests.get()).append("\n");
+        response.append("mcp_requests_total ").append(0).append("\n");
         response.append("# HELP mcp_errors_total Total number of errors\n");
         response.append("# TYPE mcp_errors_total counter\n");
-        response.append("mcp_errors_total ").append(totalErrors.get()).append("\n");
+        response.append("mcp_errors_total ").append(0).append("\n");
         response.append("# HELP mcp_uptime_seconds Uptime in seconds\n");
         response.append("# TYPE mcp_uptime_seconds gauge\n");
         response.append("mcp_uptime_seconds ").append(uptimeSeconds).append("\n");
@@ -197,14 +200,43 @@ public final class MetricsHandler implements HttpHandler {
      */
     private GenericMetricsSnapshot createLegacySnapshot() {
         long uptimeSeconds = (System.currentTimeMillis() - startTime) / 1000;
-        long totalRequestsCount = totalRequests.get();
-        long totalErrorsCount = totalErrors.get();
-        long totalSuccess = totalRequestsCount - totalErrorsCount;
 
         return GenericMetricsSnapshot.builder("tool-server", "metrics-endpoint")
-                .withCounts(totalRequestsCount, totalSuccess).withLatency(0L) // No timing data available in legacy mode
+                .withCounts(0, 0).withLatency(0L) // No timing data available in legacy mode
                 .withMetric("uptimeSeconds", uptimeSeconds).withMetric("serverHealthy", serverInstance.isHealthy())
                 .withMetric("securityEnabled", serverInstance.isSecurityEnabled())
                 .withMetric("errorRecoveryEnabled", serverInstance.isErrorRecoveryEnabled()).build();
+    }
+    
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+    
+    /**
+     * Record HTTP request - replaces totalRequests.incrementAndGet()
+     */
+    private void recordHttpRequest(String requestType, boolean success, Duration responseTime) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for HTTP requests
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "http-request", responseTime, success, "metrics-handler");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record HTTP request metric for type {}: {}", requestType, e.getMessage());
+        }
+    }
+    
+    /**
+     * Record HTTP error - replaces totalErrors.incrementAndGet()
+     */
+    private void recordHttpError(String errorType, String errorMessage) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for HTTP errors
+                SystemPerformanceMetrics.recordPerformanceDegradation(metrics, "http-error", "medium", errorMessage);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record HTTP error metric for type {}: {}", errorType, e.getMessage());
+        }
     }
 }

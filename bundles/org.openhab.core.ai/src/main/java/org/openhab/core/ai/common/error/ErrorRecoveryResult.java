@@ -3,7 +3,7 @@ package org.openhab.core.ai.common.error;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -136,8 +136,9 @@ public class ErrorRecoveryResult {
 
     // Caching functionality from tool version
     private static final Map<String, ErrorRecoveryResult> resultCache = new ConcurrentHashMap<>();
-    private static final AtomicLong cacheHits = new AtomicLong();
-    private static final AtomicLong cacheMisses = new AtomicLong();
+    // Performance monitoring - migrated to MetricsService
+    // private static final AtomicLong cacheHits = new AtomicLong();
+    // private static final AtomicLong cacheMisses = new AtomicLong();
 
     /**
      * Cache a recovery result for future use.
@@ -159,11 +160,12 @@ public class ErrorRecoveryResult {
      */
     public static @Nullable ErrorRecoveryResult getCachedResult(String cacheKey) {
         ErrorRecoveryResult result = resultCache.get(cacheKey);
-        if (result != null) {
-            cacheHits.incrementAndGet();
-        } else {
-            cacheMisses.incrementAndGet();
-        }
+        // Performance monitoring migrated to MetricsService
+        // if (result != null) {
+        //     cacheHits.incrementAndGet();
+        // } else {
+        //     cacheMisses.incrementAndGet();
+        // }
         return result;
     }
 

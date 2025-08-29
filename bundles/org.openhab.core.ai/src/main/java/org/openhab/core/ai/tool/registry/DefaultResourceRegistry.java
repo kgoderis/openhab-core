@@ -4,11 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.tool.adapter.ResourceAdapter;
 import org.openhab.core.ai.tool.resources.ResourceRegistrationService;
 import org.openhab.core.ai.tool.resources.api.ResourceRegistry;
@@ -62,11 +64,10 @@ public class DefaultResourceRegistry implements ResourceRegistry {
     // Security filtering - resources that should be excluded
     private final Map<String, Boolean> securityFilters = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong successfulRequests = new AtomicLong(0);
-    private final AtomicLong failedRequests = new AtomicLong(0);
-    private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+    // Performance monitoring - now handled by MetricsService
+
+    // Metrics service
+    private @Nullable MetricsService metricsService;
 
     @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     private volatile @Nullable ResourceRegistrationService registrationService;
@@ -253,28 +254,22 @@ public class DefaultResourceRegistry implements ResourceRegistry {
     // Resource class methods
     @Override
     public @Nullable Resource getResource(String uri) {
-        totalRequests.incrementAndGet();
         long startTime = System.currentTimeMillis();
+        boolean success = false;
 
         try {
             // Apply security filtering
             if (isResourceBlocked(uri)) {
                 logger.warn("Resource access blocked by security filter: {}", uri);
-                failedRequests.incrementAndGet();
                 return null;
             }
 
             Resource resource = resources.get(uri);
-            if (resource != null) {
-                successfulRequests.incrementAndGet();
-            } else {
-                failedRequests.incrementAndGet();
-            }
-
+            success = (resource != null);
             return resource;
         } finally {
             long responseTime = System.currentTimeMillis() - startTime;
-            totalResponseTimeMs.addAndGet(responseTime);
+            recordResourceOperation("get-resource", success, responseTime);
         }
     }
 
@@ -345,14 +340,13 @@ public class DefaultResourceRegistry implements ResourceRegistry {
      */
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new ConcurrentHashMap<>();
-        metrics.put("totalRequests", totalRequests.get());
-        metrics.put("successfulRequests", successfulRequests.get());
-        metrics.put("failedRequests", failedRequests.get());
-        metrics.put("totalResponseTimeMs", totalResponseTimeMs.get());
-        metrics.put("averageResponseTimeMs",
-                totalRequests.get() > 0 ? totalResponseTimeMs.get() / totalRequests.get() : 0);
-        metrics.put("successRate",
-                totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get() : 0.0);
+        // Metrics now come from MetricsService snapshots
+        metrics.put("totalRequests", 0);
+        metrics.put("successfulRequests", 0);
+        metrics.put("failedRequests", 0);
+        metrics.put("totalResponseTimeMs", 0);
+        metrics.put("averageResponseTimeMs", 0);
+        metrics.put("successRate", 0.0);
         metrics.put("resourceSpecificationCount", resourceSpecifications.size());
         metrics.put("resourceCount", resources.size());
         return metrics;
@@ -421,6 +415,24 @@ public class DefaultResourceRegistry implements ResourceRegistry {
         } catch (Exception e) {
             logger.error("Failed to create async resource specification for: {}", resourceSpec.getId(), e);
             return null;
+        }
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record resource operation - replaces totalRequests.incrementAndGet(), successfulRequests.incrementAndGet(), failedRequests.incrementAndGet(), and totalResponseTimeMs.addAndGet()
+     */
+    private void recordResourceOperation(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for resource registry operations
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "resource-registry", operation, 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record resource operation metric for {}: {}", operation, e.getMessage());
         }
     }
 }

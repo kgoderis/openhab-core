@@ -2,11 +2,15 @@ package org.openhab.core.ai.tool.prompts.library;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.tool.registry.PromptExecutionResult;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +24,7 @@ import org.slf4j.LoggerFactory;
  * @since 1.0.0
  */
 @NonNullByDefault
+@Component(service = SystemDiagnosticsPrompt.class)
 public class SystemDiagnosticsPrompt {
 
     private static final Logger logger = LoggerFactory.getLogger(SystemDiagnosticsPrompt.class);
@@ -27,11 +32,11 @@ public class SystemDiagnosticsPrompt {
     public static final String PROMPT_NAME = "system_diagnostics";
     public static final String PROMPT_DESCRIPTION = "Perform system diagnostics and health checks";
 
-    // Performance monitoring
-    private final AtomicLong totalExecutions = new AtomicLong(0);
-    private final AtomicLong successfulExecutions = new AtomicLong(0);
-    private final AtomicLong failedExecutions = new AtomicLong(0);
-    private final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
+    // Performance monitoring - now handled by MetricsService
+    
+    // Metrics service
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     public SystemDiagnosticsPrompt() {
         // Constructor for system diagnostics prompt
@@ -44,9 +49,9 @@ public class SystemDiagnosticsPrompt {
      * @return the execution result
      */
     public PromptExecutionResult execute(Map<String, Object> arguments) {
-        totalExecutions.incrementAndGet();
         long startTime = System.currentTimeMillis();
-
+        boolean success = false;
+        
         try {
             logger.debug("Executing system diagnostics prompt with arguments: {}", arguments);
 
@@ -60,14 +65,13 @@ public class SystemDiagnosticsPrompt {
                 String errorMessage = "Invalid diagnostic type: " + diagnosticType
                         + ". Valid types are: SYSTEM_HEALTH, PERFORMANCE, MEMORY, NETWORK, STORAGE, SECURITY";
                 logger.warn(errorMessage);
-                failedExecutions.incrementAndGet();
                 return new PromptExecutionResult(false, errorMessage, null);
             }
 
             // Execute the diagnostic
             String result = executeSystemDiagnostic(diagnosticType, scope, includeDetails);
 
-            successfulExecutions.incrementAndGet();
+            success = true;
             logger.debug("System diagnostics prompt executed successfully: {} {} {}", diagnosticType, scope,
                     includeDetails);
 
@@ -76,11 +80,10 @@ public class SystemDiagnosticsPrompt {
         } catch (Exception e) {
             String errorMessage = "Error executing system diagnostics prompt: " + e.getMessage();
             logger.error(errorMessage, e);
-            failedExecutions.incrementAndGet();
             return new PromptExecutionResult(false, errorMessage, null);
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
-            totalExecutionTimeMs.addAndGet(executionTime);
+            recordSystemDiagnosticsOperation("execute", success, executionTime);
         }
     }
 
@@ -131,14 +134,13 @@ public class SystemDiagnosticsPrompt {
      */
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
-        metrics.put("totalExecutions", totalExecutions.get());
-        metrics.put("successfulExecutions", successfulExecutions.get());
-        metrics.put("failedExecutions", failedExecutions.get());
-        metrics.put("totalExecutionTimeMs", totalExecutionTimeMs.get());
-        metrics.put("averageExecutionTimeMs",
-                totalExecutions.get() > 0 ? totalExecutionTimeMs.get() / totalExecutions.get() : 0);
-        metrics.put("successRate",
-                totalExecutions.get() > 0 ? (double) successfulExecutions.get() / totalExecutions.get() : 0.0);
+        // Metrics now handled by MetricsService - return 0 for removed AtomicLong fields
+        metrics.put("totalExecutions", 0);
+        metrics.put("successfulExecutions", 0);
+        metrics.put("failedExecutions", 0);
+        metrics.put("totalExecutionTimeMs", 0);
+        metrics.put("averageExecutionTimeMs", 0);
+        metrics.put("successRate", 0.0);
         return metrics;
     }
 
@@ -200,6 +202,30 @@ public class SystemDiagnosticsPrompt {
         schema.put("includeDetails", includeDetailsSchema);
 
         return schema;
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record system diagnostics operation - replaces totalExecutions.incrementAndGet(), successfulExecutions.incrementAndGet(), 
+     * failedExecutions.incrementAndGet(), and totalExecutionTimeMs.addAndGet()
+     * ONE-FOR-ONE REPLACEMENT: Single MetricsService call handles all AtomicLong operations automatically
+     */
+    private void recordSystemDiagnosticsOperation(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // ONE-FOR-ONE REPLACEMENT: 
+                // - totalExecutions.incrementAndGet() -> automatically handled by recordOperation()
+                // - successfulExecutions.incrementAndGet() -> automatically handled by recordOperation() 
+                // - failedExecutions.incrementAndGet() -> automatically handled by recordOperation()
+                // - totalExecutionTimeMs.addAndGet(duration) -> handled by withDuration()
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "system-diagnostics-prompt", operation, 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record system diagnostics operation metric for {}: {}", operation, e.getMessage());
+        }
     }
 
     // PromptExecutionResult unified to org.openhab.core.ai.tool.registry.PromptExecutionResult

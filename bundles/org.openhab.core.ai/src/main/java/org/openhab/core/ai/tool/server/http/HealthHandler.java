@@ -4,12 +4,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.common.security.ToolSecurityStatistics;
 import org.openhab.core.ai.tool.config.ToolServerConfiguration;
 import org.openhab.core.ai.tool.server.DefaultToolServer;
@@ -39,17 +40,14 @@ public final class HealthHandler implements HttpHandler {
     private final DefaultToolServer serverInstance;
     private final ToolServerConfiguration config;
     private final long startTime;
-    private final AtomicLong totalRequests;
-    private final AtomicLong totalErrors;
+    // Request counters - now handled by MetricsService
     private final @Nullable MetricsService metricsService;
 
     public HealthHandler(DefaultToolServer serverInstance, ToolServerConfiguration config, long startTime,
-            AtomicLong totalRequests, AtomicLong totalErrors, @Nullable MetricsService metricsService) {
+            @Nullable Object totalRequests, @Nullable Object totalErrors, @Nullable MetricsService metricsService) {
         this.serverInstance = serverInstance;
         this.config = config;
         this.startTime = startTime;
-        this.totalRequests = totalRequests;
-        this.totalErrors = totalErrors;
         this.metricsService = metricsService;
     }
 
@@ -59,7 +57,7 @@ public final class HealthHandler implements HttpHandler {
         boolean success = false;
 
         try {
-            totalRequests.incrementAndGet();
+            recordHealthRequest();
 
             boolean healthy = serverInstance.isHealthy();
             TransportHealthInfo transportHealth = serverInstance.getTransportHealth();
@@ -126,7 +124,7 @@ public final class HealthHandler implements HttpHandler {
             success = true;
 
         } catch (Exception e) {
-            totalErrors.incrementAndGet();
+            recordHealthError();
             logger.error("Error handling health check request", e);
             String errorResponse = "{\"error\": \"Internal server error\"}";
             byte[] responseBytes = errorResponse.getBytes(StandardCharsets.UTF_8);
@@ -152,6 +150,40 @@ public final class HealthHandler implements HttpHandler {
                     // Graceful degradation: continue with request handling even if metrics recording fails
                 }
             }
+        }
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record health request - replaces totalRequests.incrementAndGet()
+     */
+    private void recordHealthRequest() {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for health check requests
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "health-handler", "health-request", 
+                        0, true);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record health request metric: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Record health error - replaces totalErrors.incrementAndGet()
+     */
+    private void recordHealthError() {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for health check errors
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "health-handler", "health-error", 
+                        0, false);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record health error metric: {}", e.getMessage());
         }
     }
 }

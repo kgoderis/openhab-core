@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -23,8 +23,9 @@ import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.common.context.AgentContext;
 import org.openhab.core.ai.common.monitoring.api.MetricKey;
-import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentExecutionMetrics;
+import org.openhab.core.ai.common.monitoring.api.MetricKeys;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
 import org.openhab.core.ai.reasoning.input.AutonomousReasoningInputManager;
 import org.osgi.service.component.annotations.Activate;
@@ -68,7 +69,6 @@ public abstract class BaseAutonomousAgent {
     private final Map<String, Object> persistentState = new ConcurrentHashMap<>();
 
     // Performance monitoring - now handled by MetricsService
-    protected final AtomicLong totalProcessingTime = new AtomicLong(0);
 
     // Threading
     private final ExecutorService skillExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_CONCURRENT_SKILLS);
@@ -586,7 +586,7 @@ public abstract class BaseAutonomousAgent {
             }
         }
 
-        totalProcessingTime.addAndGet(duration.toMillis());
+        recordProcessingTime(duration);
 
         // Record analytics if available
         if (analytics != null) {
@@ -751,7 +751,7 @@ public abstract class BaseAutonomousAgent {
         }
 
         return new AgentMetrics(getAgentId(), state.get(), totalSkillsExecuted, totalSkillsSucceeded, totalSkillsFailed,
-                totalProcessingTime.get(), new ArrayList<>(), Instant.now());
+                0, new ArrayList<>(), Instant.now()); // Processing time now comes from MetricsService
     }
 
     /**
@@ -853,4 +853,22 @@ public abstract class BaseAutonomousAgent {
     protected abstract boolean onSkillSafetyCheck(String skillName, Map<String, Object> parameters) throws Exception;
 
     // Exception classes moved to top-level
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentExecutionMetrics pattern
+
+    /**
+     * Record processing time - replaces totalProcessingTime.addAndGet()
+     */
+    private void recordProcessingTime(Duration duration) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for processing time
+                AgentExecutionMetrics.recordAgentExecution(metrics, "autonomous-agent", "processing-time", 
+                        true, duration, 1, getAgentId());
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record processing time metric for agent {}: {}", getAgentId(), e.getMessage());
+        }
+    }
 }

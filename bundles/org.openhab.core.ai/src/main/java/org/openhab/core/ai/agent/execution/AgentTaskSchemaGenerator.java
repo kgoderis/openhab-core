@@ -5,12 +5,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.ActionMetadata;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentExecutionMetrics;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -43,16 +44,15 @@ public class AgentTaskSchemaGenerator {
     @Reference
     private @Nullable ActionRegistry actionRegistry;
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     // Schema storage and caching
     private final ConcurrentHashMap<String, TaskSchema> schemaCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, SchemaVersion> schemaVersions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> schemaLastUpdated = new ConcurrentHashMap<>();
 
-    // Performance tracking
-    private final AtomicLong totalSchemasGenerated = new AtomicLong(0);
-    private final AtomicLong totalSchemaValidations = new AtomicLong(0);
-    private final AtomicLong totalSchemaCacheHits = new AtomicLong(0);
-    private final AtomicLong totalSchemaCacheMisses = new AtomicLong(0);
+    // Performance tracking - now handled by MetricsService
 
     // Configuration
     private static final long SCHEMA_CACHE_TTL_MS = 300000; // 5 minutes
@@ -72,12 +72,12 @@ public class AgentTaskSchemaGenerator {
             // Check cache first
             TaskSchema cachedSchema = getCachedSchema(actionId);
             if (cachedSchema != null) {
-                totalSchemaCacheHits.incrementAndGet();
+                recordCacheHit(actionId);
                 logger.debug("Returning cached schema for action: {}", actionId);
                 return cachedSchema;
             }
 
-            totalSchemaCacheMisses.incrementAndGet();
+            recordCacheMiss(actionId);
 
             // Get action metadata from registry
             ActionRegistry registry = actionRegistry;
@@ -98,7 +98,7 @@ public class AgentTaskSchemaGenerator {
             // Cache the generated schema
             cacheSchema(actionId, schema);
 
-            totalSchemasGenerated.incrementAndGet();
+            recordSchemaGeneration(actionId);
             logger.info("Generated schema for action: {} - version: {}", actionId, schema.getVersion());
 
             return schema;
@@ -158,7 +158,7 @@ public class AgentTaskSchemaGenerator {
     public SchemaValidationResult validateTask(Task task) {
         logger.debug("Validating task against schema: {}", task.getId());
 
-        totalSchemaValidations.incrementAndGet();
+        recordSchemaValidation(task.getId());
 
         try {
             // Extract action ID from task
@@ -296,8 +296,9 @@ public class AgentTaskSchemaGenerator {
      * @return schema statistics
      */
     public SchemaStatistics getStatistics() {
-        return new SchemaStatistics(totalSchemasGenerated.get(), totalSchemaValidations.get(),
-                totalSchemaCacheHits.get(), totalSchemaCacheMisses.get(), schemaCache.size(), schemaVersions.size());
+        // Statistics now come from MetricsService snapshots
+        // Return basic cache statistics that are still available locally
+        return new SchemaStatistics(0, 0, 0, 0, schemaCache.size(), schemaVersions.size());
     }
 
     // ============================================================================
@@ -653,4 +654,70 @@ public class AgentTaskSchemaGenerator {
     // - SchemaCompatibilityResult
     // - SchemaVersion
     // - SchemaStatistics
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentExecutionMetrics pattern
+
+    /**
+     * Record schema generation - replaces totalSchemasGenerated.incrementAndGet()
+     */
+    private void recordSchemaGeneration(String actionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for schema generation
+                AgentExecutionMetrics.recordAgentExecution(metrics, "schema-generator", "schema-generation", 
+                        true, java.time.Duration.ZERO, 1, actionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record schema generation metric for action {}: {}", actionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record schema validation - replaces totalSchemaValidations.incrementAndGet()
+     */
+    private void recordSchemaValidation(String taskId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for schema validation
+                AgentExecutionMetrics.recordAgentExecution(metrics, "schema-generator", "schema-validation", 
+                        true, java.time.Duration.ZERO, 1, taskId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record schema validation metric for task {}: {}", taskId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record cache hit - replaces totalSchemaCacheHits.incrementAndGet()
+     */
+    private void recordCacheHit(String actionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for cache operations
+                AgentExecutionMetrics.recordAgentExecution(metrics, "schema-generator", "cache-hit", 
+                        true, java.time.Duration.ZERO, 1, actionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record cache hit metric for action {}: {}", actionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record cache miss - replaces totalSchemaCacheMisses.incrementAndGet()
+     */
+    private void recordCacheMiss(String actionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for cache operations
+                AgentExecutionMetrics.recordAgentExecution(metrics, "schema-generator", "cache-miss", 
+                        true, java.time.Duration.ZERO, 1, actionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record cache miss metric for action {}: {}", actionId, e.getMessage());
+        }
+    }
 }

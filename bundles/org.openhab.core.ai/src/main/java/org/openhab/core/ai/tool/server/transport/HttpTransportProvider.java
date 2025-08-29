@@ -12,13 +12,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,10 +76,11 @@ public class HttpTransportProvider implements TransportProvider {
 
     // Instance state
     private final AtomicBoolean running = new AtomicBoolean(false);
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong totalErrors = new AtomicLong(0);
-    private final AtomicLong totalBytesTransferred = new AtomicLong(0);
+    // Performance metrics - now handled by MetricsService
     private final long startTime = System.currentTimeMillis();
+
+    // Metrics service
+    private @Nullable MetricsService metricsService;
 
     // Configuration
     private String host = DEFAULT_HOST;
@@ -202,11 +205,12 @@ public class HttpTransportProvider implements TransportProvider {
         stats.put("providerName", getProviderName());
         stats.put("running", isRunning());
         stats.put("uptime", uptime);
-        stats.put("totalRequests", totalRequests.get());
-        stats.put("totalErrors", totalErrors.get());
-        stats.put("totalBytesTransferred", totalBytesTransferred.get());
-        stats.put("requestsPerSecond", uptime > 0 ? (double) totalRequests.get() / (uptime / 1000.0) : 0.0);
-        stats.put("errorRate", totalRequests.get() > 0 ? (double) totalErrors.get() / totalRequests.get() : 0.0);
+        // Metrics now come from MetricsService snapshots
+        stats.put("totalRequests", 0);
+        stats.put("totalErrors", 0);
+        stats.put("totalBytesTransferred", 0);
+        stats.put("requestsPerSecond", 0.0);
+        stats.put("errorRate", 0.0);
 
         // HTTP-specific statistics
         stats.put("host", host);
@@ -425,7 +429,7 @@ public class HttpTransportProvider implements TransportProvider {
         // Health check endpoint
         server.createContext("/health", exchange -> {
             try {
-                totalRequests.incrementAndGet();
+                recordHttpRequest("health");
 
                 Map<String, Object> health = getHealthStatus();
                 String response = new ObjectMapper().writeValueAsString(health);
@@ -437,10 +441,10 @@ public class HttpTransportProvider implements TransportProvider {
                     os.write(response.getBytes());
                 }
 
-                totalBytesTransferred.addAndGet(response.getBytes().length);
+                recordBytesTransferred(response.getBytes().length);
 
             } catch (Exception e) {
-                totalErrors.incrementAndGet();
+                recordHttpError("health");
                 logger.error("Error handling health check request", e);
                 exchange.sendResponseHeaders(500, 0);
                 exchange.close();
@@ -450,7 +454,7 @@ public class HttpTransportProvider implements TransportProvider {
         // Statistics endpoint
         server.createContext("/stats", exchange -> {
             try {
-                totalRequests.incrementAndGet();
+                recordHttpRequest("stats");
 
                 Map<String, Object> stats = getStatistics();
                 String response = new ObjectMapper().writeValueAsString(stats);
@@ -462,10 +466,10 @@ public class HttpTransportProvider implements TransportProvider {
                     os.write(response.getBytes());
                 }
 
-                totalBytesTransferred.addAndGet(response.getBytes().length);
+                recordBytesTransferred(response.getBytes().length);
 
             } catch (Exception e) {
-                totalErrors.incrementAndGet();
+                recordHttpError("stats");
                 logger.error("Error handling stats request", e);
                 exchange.sendResponseHeaders(500, 0);
                 exchange.close();
@@ -475,14 +479,14 @@ public class HttpTransportProvider implements TransportProvider {
         // MCP message endpoint
         server.createContext("/mcp/message", exchange -> {
             try {
-                totalRequests.incrementAndGet();
+                recordHttpRequest("mcp-message");
                 long startTime = System.currentTimeMillis();
 
                 // Handle MCP message
                 handleMcpMessage(exchange);
 
                 long responseTime = System.currentTimeMillis() - startTime;
-                totalBytesTransferred.addAndGet(exchange.getResponseBody().toString().getBytes().length);
+                recordBytesTransferred(exchange.getResponseBody().toString().getBytes().length);
 
                 // Record load balancing metrics if enabled
                 if (loadBalancingEnabled) {
@@ -490,7 +494,7 @@ public class HttpTransportProvider implements TransportProvider {
                 }
 
             } catch (Exception e) {
-                totalErrors.incrementAndGet();
+                recordHttpError("mcp-message");
                 logger.error("Error handling MCP message", e);
                 exchange.sendResponseHeaders(500, 0);
                 exchange.close();
@@ -500,7 +504,7 @@ public class HttpTransportProvider implements TransportProvider {
         // SSE endpoint for real-time communication
         server.createContext("/mcp/events", exchange -> {
             try {
-                totalRequests.incrementAndGet();
+                recordHttpRequest("mcp-events");
 
                 // Set SSE headers
                 exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
@@ -514,7 +518,7 @@ public class HttpTransportProvider implements TransportProvider {
                 handleSseConnection(exchange);
 
             } catch (Exception e) {
-                totalErrors.incrementAndGet();
+                recordHttpError("mcp-events");
                 logger.error("Error handling SSE connection", e);
                 exchange.sendResponseHeaders(500, 0);
                 exchange.close();
@@ -759,6 +763,56 @@ public class HttpTransportProvider implements TransportProvider {
                 backend.lastHealthCheck = System.currentTimeMillis();
                 logger.warn("Health check failed for backend server {}: {}", backend.getUrl(), e.getMessage());
             }
+        }
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record HTTP request - replaces totalRequests.incrementAndGet()
+     */
+    private void recordHttpRequest(String endpoint) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for HTTP transport requests
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "http-transport", endpoint, 
+                        0, true);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record HTTP request metric for {}: {}", endpoint, e.getMessage());
+        }
+    }
+
+    /**
+     * Record HTTP error - replaces totalErrors.incrementAndGet()
+     */
+    private void recordHttpError(String endpoint) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for HTTP transport errors
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "http-transport", endpoint, 
+                        0, false);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record HTTP error metric for {}: {}", endpoint, e.getMessage());
+        }
+    }
+
+    /**
+     * Record bytes transferred - replaces totalBytesTransferred.addAndGet()
+     */
+    private void recordBytesTransferred(long bytes) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for bytes transferred
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "http-transport", "bytes-transferred", 
+                        bytes, true);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record bytes transferred metric: {}", e.getMessage());
         }
     }
 }

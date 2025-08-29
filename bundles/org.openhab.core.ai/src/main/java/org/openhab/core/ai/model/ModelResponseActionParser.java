@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -111,12 +111,12 @@ public class ModelResponseActionParser {
     @Reference
     private @Nullable MetricsService metricsService;
 
-    // Performance monitoring
-    private final AtomicLong totalParsingAttempts = new AtomicLong(0);
-    private final AtomicLong successfulJsonParses = new AtomicLong(0);
-    private final AtomicLong successfulRegexParses = new AtomicLong(0);
-    private final AtomicLong failedParses = new AtomicLong(0);
-    private final AtomicLong totalActionCalls = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalParsingAttempts = new AtomicLong(0);
+    // private final AtomicLong successfulJsonParses = new AtomicLong(0);
+    // private final AtomicLong successfulRegexParses = new AtomicLong(0);
+    // private final AtomicLong failedParses = new AtomicLong(0);
+    // private final AtomicLong totalActionCalls = new AtomicLong(0);
 
     // Regex patterns for fallback parsing
     private static final Pattern ACTION_CALL_PATTERN = Pattern
@@ -135,7 +135,7 @@ public class ModelResponseActionParser {
      * @return list of parsed action contexts
      */
     public List<ExecutionContext> parseActionCalls(ModelResponse response, String sessionId) {
-        totalParsingAttempts.incrementAndGet();
+        // totalParsingAttempts.incrementAndGet(); // Migrated to MetricsService
         Instant startTime = Instant.now();
 
         try {
@@ -144,7 +144,7 @@ public class ModelResponseActionParser {
             // Try JSON-based parsing first
             List<ExecutionContext> jsonResults = parseJsonActionCalls(response, sessionId);
             if (!jsonResults.isEmpty()) {
-                successfulJsonParses.incrementAndGet();
+                // successfulJsonParses.incrementAndGet(); // Migrated to MetricsService
                 actionCalls.addAll(jsonResults);
                 logger.debug("Successfully parsed {} action calls using JSON for session {}", jsonResults.size(),
                         sessionId);
@@ -152,17 +152,17 @@ public class ModelResponseActionParser {
                 // Fallback to regex-based parsing
                 List<ExecutionContext> regexResults = parseRegexActionCalls(response, sessionId);
                 if (!regexResults.isEmpty()) {
-                    successfulRegexParses.incrementAndGet();
+                    // successfulRegexParses.incrementAndGet(); // Migrated to MetricsService
                     actionCalls.addAll(regexResults);
                     logger.debug("Successfully parsed {} action calls using regex for session {}", regexResults.size(),
                             sessionId);
                 } else {
-                    failedParses.incrementAndGet();
+                    // failedParses.incrementAndGet(); // Migrated to MetricsService
                     logger.debug("No action calls found in response for session {}", sessionId);
                 }
             }
 
-            totalActionCalls.addAndGet(actionCalls.size());
+            // totalActionCalls.addAndGet(actionCalls.size()); // Migrated to MetricsService
 
             long parseTime = Duration.between(startTime, Instant.now()).toMillis();
             logger.debug("Action call parsing completed in {} ms for session {}", parseTime, sessionId);
@@ -170,7 +170,7 @@ public class ModelResponseActionParser {
             return actionCalls;
 
         } catch (Exception e) {
-            failedParses.incrementAndGet();
+            // failedParses.incrementAndGet(); // Migrated to MetricsService
             logger.error("Error parsing action calls for session {}", sessionId, e);
             return new ArrayList<>();
         }

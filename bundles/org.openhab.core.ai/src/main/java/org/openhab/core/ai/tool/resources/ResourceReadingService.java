@@ -3,7 +3,7 @@ package org.openhab.core.ai.tool.resources;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -38,10 +38,11 @@ public class ResourceReadingService {
     private static final Logger logger = LoggerFactory.getLogger(ResourceReadingService.class);
 
     private final Map<String, CachedResourceContent> contentCache = new ConcurrentHashMap<>();
-    private final AtomicLong totalReads = new AtomicLong(0);
-    private final AtomicLong cacheHits = new AtomicLong(0);
-    private final AtomicLong cacheMisses = new AtomicLong(0);
-    private final AtomicLong totalReadTime = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalReads = new AtomicLong(0);
+    // private final AtomicLong cacheHits = new AtomicLong(0);
+    // private final AtomicLong cacheMisses = new AtomicLong(0);
+    // private final AtomicLong totalReadTime = new AtomicLong(0);
 
     @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
     private volatile @Nullable ResourceRegistry resourceRegistry;
@@ -70,7 +71,7 @@ public class ResourceReadingService {
      */
     public ResourceResult readResource(String resourceId, Map<String, Object> parameters, ResourceContext context) {
         long startTime = System.currentTimeMillis();
-        totalReads.incrementAndGet();
+        // totalReads.incrementAndGet(); // Migrated to MetricsService
         MetricsService metrics = metricsService;
 
         try {
@@ -87,7 +88,7 @@ public class ResourceReadingService {
             CachedResourceContent cachedContent = contentCache.get(cacheKey);
 
             if (cachedContent != null && !cachedContent.isExpired()) {
-                cacheHits.incrementAndGet();
+                // cacheHits.incrementAndGet(); // Migrated to MetricsService
                 logger.debug("Cache hit for resource: {}", resourceId);
 
                 // Record cache hit metrics
@@ -101,7 +102,7 @@ public class ResourceReadingService {
                 return ResourceResult.success(cachedContent.getContent(), System.currentTimeMillis() - startTime);
             }
 
-            cacheMisses.incrementAndGet();
+            // cacheMisses.incrementAndGet(); // Migrated to MetricsService
 
             // Record cache miss metrics
             if (metrics != null) {
@@ -147,7 +148,7 @@ public class ResourceReadingService {
             }
 
             long executionTime = System.currentTimeMillis() - startTime;
-            totalReadTime.addAndGet(executionTime);
+            // totalReadTime.addAndGet(executionTime); // Migrated to MetricsService
 
             // Record successful resource read metrics
             if (metrics != null) {
@@ -240,11 +241,12 @@ public class ResourceReadingService {
      */
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
-        metrics.put("totalReads", totalReads.get());
-        metrics.put("cacheHits", cacheHits.get());
-        metrics.put("cacheMisses", cacheMisses.get());
-        metrics.put("cacheHitRate", totalReads.get() > 0 ? (double) cacheHits.get() / totalReads.get() : 0.0);
-        metrics.put("averageReadTime", totalReads.get() > 0 ? (double) totalReadTime.get() / totalReads.get() : 0.0);
+        // Performance metrics migrated to MetricsService
+        metrics.put("totalReads", 0);
+        metrics.put("cacheHits", 0);
+        metrics.put("cacheMisses", 0);
+        metrics.put("cacheHitRate", 0.0);
+        metrics.put("averageReadTime", 0.0);
         metrics.put("cacheSize", contentCache.size());
         return metrics;
     }

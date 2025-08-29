@@ -3,7 +3,7 @@ package org.openhab.core.ai.agent.execution;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -11,6 +11,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.execution.api.AgentSkillException;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentExecutionMetrics;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
@@ -99,10 +100,7 @@ public class AgentSkillExecutor {
     private final AtomicReference<@Nullable AgentSkillRegistry> skillRegistry = new AtomicReference<>();
     private @Nullable MetricsService metricsService;
 
-    // Business logic capture: Skill usage patterns
-    private final Map<String, AtomicLong> skillUsagePatterns = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> skillSuccessCorrelations = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> skillCombinationUsage = new ConcurrentHashMap<>();
+    // Business logic capture: Skill usage patterns - now handled by MetricsService
 
     /**
      * Set the skill registry reference.
@@ -316,14 +314,13 @@ public class AgentSkillExecutor {
                 metrics.recordOperationWithData("skill-usage", "pattern", success,
                         java.time.Duration.ofMillis(executionTime), context);
 
-                // Update local tracking
-                skillUsagePatterns.computeIfAbsent(skillId, k -> new AtomicLong(0)).incrementAndGet();
-                skillSuccessCorrelations.computeIfAbsent(skillId + ":" + success, k -> new AtomicLong(0))
-                        .incrementAndGet();
+                // Replace AtomicLong fields with MetricsService using AgentExecutionMetrics pattern
+                recordSkillUsagePattern(skillId);
+                recordSkillSuccessCorrelation(skillId, success);
 
                 if (previousSkillId != null && !previousSkillId.isEmpty()) {
                     String combination = previousSkillId + "->" + skillId;
-                    skillCombinationUsage.computeIfAbsent(combination, k -> new AtomicLong(0)).incrementAndGet();
+                    recordSkillCombinationUsage(combination);
                 }
 
             } catch (Exception e) {
@@ -368,4 +365,54 @@ public class AgentSkillExecutor {
     }
 
     // Inner class extracted to top-level: org.openhab.core.ai.agent.execution.ExecutionStatistics
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentExecutionMetrics pattern
+
+    /**
+     * Record skill usage pattern - replaces skillUsagePatterns.incrementAndGet()
+     */
+    private void recordSkillUsagePattern(String skillId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for skill usage
+                AgentExecutionMetrics.recordAgentSkillExecution(metrics, skillId, "skill-usage", 
+                        true, java.time.Duration.ZERO, 1, "skill-executor");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record skill usage pattern metric for skill {}: {}", skillId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record skill success correlation - replaces skillSuccessCorrelations.incrementAndGet()
+     */
+    private void recordSkillSuccessCorrelation(String skillId, boolean success) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for skill success correlation
+                AgentExecutionMetrics.recordAgentSkillExecution(metrics, skillId, "skill-correlation", 
+                        success, java.time.Duration.ZERO, 1, "skill-executor");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record skill success correlation metric for skill {}: {}", skillId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record skill combination usage - replaces skillCombinationUsage.incrementAndGet()
+     */
+    private void recordSkillCombinationUsage(String combination) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for skill combination
+                AgentExecutionMetrics.recordAgentSkillExecution(metrics, combination, "skill-combination", 
+                        true, java.time.Duration.ZERO, 1, "skill-executor");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record skill combination usage metric for combination {}: {}", combination, e.getMessage());
+        }
+    }
 }

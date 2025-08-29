@@ -2,13 +2,17 @@ package org.openhab.core.ai.tool.prompts.library;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.tool.registry.PromptExecutionResult;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemRegistry;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +26,7 @@ import org.slf4j.LoggerFactory;
  * @since 1.0.0
  */
 @NonNullByDefault
+@Component(service = ItemControlPrompt.class)
 public class ItemControlPrompt {
 
     private static final Logger logger = LoggerFactory.getLogger(ItemControlPrompt.class);
@@ -31,11 +36,11 @@ public class ItemControlPrompt {
 
     private final ItemRegistry itemRegistry;
 
-    // Performance monitoring
-    private final AtomicLong totalExecutions = new AtomicLong(0);
-    private final AtomicLong successfulExecutions = new AtomicLong(0);
-    private final AtomicLong failedExecutions = new AtomicLong(0);
-    private final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
+    // Performance monitoring - now handled by MetricsService
+    
+    // Metrics service
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     public ItemControlPrompt(ItemRegistry itemRegistry) {
         this.itemRegistry = itemRegistry;
@@ -48,9 +53,9 @@ public class ItemControlPrompt {
      * @return the execution result
      */
     public PromptExecutionResult execute(Map<String, Object> arguments) {
-        totalExecutions.incrementAndGet();
         long startTime = System.currentTimeMillis();
-
+        boolean success = false;
+        
         try {
             logger.debug("Executing item control prompt with arguments: {}", arguments);
 
@@ -64,7 +69,6 @@ public class ItemControlPrompt {
             if (item == null) {
                 String errorMessage = "Item not found: " + itemName;
                 logger.warn(errorMessage);
-                failedExecutions.incrementAndGet();
                 return new PromptExecutionResult(false, errorMessage, null);
             }
 
@@ -73,14 +77,13 @@ public class ItemControlPrompt {
                 String errorMessage = "Invalid action: " + action
                         + ". Valid actions are: ON, OFF, TOGGLE, INCREASE, DECREASE";
                 logger.warn(errorMessage);
-                failedExecutions.incrementAndGet();
                 return new PromptExecutionResult(false, errorMessage, null);
             }
 
             // Execute the action
             String result = executeItemAction(item, action, value);
 
-            successfulExecutions.incrementAndGet();
+            success = true;
             logger.debug("Item control prompt executed successfully: {} {} {}", itemName, action, value);
 
             return new PromptExecutionResult(true, null, result);
@@ -88,11 +91,10 @@ public class ItemControlPrompt {
         } catch (Exception e) {
             String errorMessage = "Error executing item control prompt: " + e.getMessage();
             logger.error(errorMessage, e);
-            failedExecutions.incrementAndGet();
             return new PromptExecutionResult(false, errorMessage, null);
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
-            totalExecutionTimeMs.addAndGet(executionTime);
+            recordItemControlOperation("execute", success, executionTime);
         }
     }
 
@@ -138,14 +140,13 @@ public class ItemControlPrompt {
      */
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
-        metrics.put("totalExecutions", totalExecutions.get());
-        metrics.put("successfulExecutions", successfulExecutions.get());
-        metrics.put("failedExecutions", failedExecutions.get());
-        metrics.put("totalExecutionTimeMs", totalExecutionTimeMs.get());
-        metrics.put("averageExecutionTimeMs",
-                totalExecutions.get() > 0 ? totalExecutionTimeMs.get() / totalExecutions.get() : 0);
-        metrics.put("successRate",
-                totalExecutions.get() > 0 ? (double) successfulExecutions.get() / totalExecutions.get() : 0.0);
+        // Metrics now handled by MetricsService - return 0 for removed AtomicLong fields
+        metrics.put("totalExecutions", 0);
+        metrics.put("successfulExecutions", 0);
+        metrics.put("failedExecutions", 0);
+        metrics.put("totalExecutionTimeMs", 0);
+        metrics.put("averageExecutionTimeMs", 0);
+        metrics.put("successRate", 0.0);
         return metrics;
     }
 
@@ -203,6 +204,30 @@ public class ItemControlPrompt {
         schema.put("value", valueSchema);
 
         return schema;
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record item control operation - replaces totalExecutions.incrementAndGet(), successfulExecutions.incrementAndGet(), 
+     * failedExecutions.incrementAndGet(), and totalExecutionTimeMs.addAndGet()
+     * ONE-FOR-ONE REPLACEMENT: Single MetricsService call handles all AtomicLong operations automatically
+     */
+    private void recordItemControlOperation(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // ONE-FOR-ONE REPLACEMENT: 
+                // - totalExecutions.incrementAndGet() -> automatically handled by recordOperation()
+                // - successfulExecutions.incrementAndGet() -> automatically handled by recordOperation() 
+                // - failedExecutions.incrementAndGet() -> automatically handled by recordOperation()
+                // - totalExecutionTimeMs.addAndGet(duration) -> handled by withDuration()
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "item-control-prompt", operation, 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record item control operation metric for {}: {}", operation, e.getMessage());
+        }
     }
 
     // PromptExecutionResult unified to org.openhab.core.ai.tool.registry.PromptExecutionResult

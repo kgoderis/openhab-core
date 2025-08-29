@@ -5,12 +5,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+// import java.util.concurrent.atomic.AtomicLong; // Migrated to MetricsService
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.audit.AuditLogger;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ReasoningEngineMetrics;
 import org.openhab.core.ai.reasoning.policies.PolicyResult;
 import org.openhab.core.ai.reasoning.policies.SafetyPolicy;
 import org.openhab.core.ai.reasoning.policies.SafetyValidationResult;
@@ -53,11 +56,14 @@ public class SafetyConstraintManager {
     private final Map<String, ConstraintViolation> constraintViolations = new ConcurrentHashMap<>();
     private final Map<String, SafetyIncident> safetyIncidents = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalSafetyValidations = new AtomicLong(0);
-    private final AtomicLong totalConstraintViolations = new AtomicLong(0);
-    private final AtomicLong totalSafetyIncidents = new AtomicLong(0);
-    private final AtomicLong totalSafetyOverrides = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalSafetyValidations = new AtomicLong(0);
+    // private final AtomicLong totalConstraintViolations = new AtomicLong(0);
+    // private final AtomicLong totalSafetyIncidents = new AtomicLong(0);
+    // private final AtomicLong totalSafetyOverrides = new AtomicLong(0);
+    
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Thread safety
     private final ReadWriteLock policyLock = new ReentrantReadWriteLock();
@@ -97,7 +103,16 @@ public class SafetyConstraintManager {
             policyLock.readLock().lock();
             constraintLock.readLock().lock();
 
-            totalSafetyValidations.incrementAndGet();
+            // totalSafetyValidations.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordEventProcessing(metrics, "safety-validation", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail safety validation
+            }
 
             // Check safety policies
             SafetyPolicy policy = safetyPolicies.get(agentId);
@@ -225,7 +240,16 @@ public class SafetyConstraintManager {
                     "OVERRIDE: " + overrideReason, Instant.now());
             constraintViolations.put(violation.getId(), violation);
 
-            totalSafetyOverrides.incrementAndGet();
+            // totalSafetyOverrides.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordEventProcessing(metrics, "safety-override", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail safety override
+            }
             logger.debug("Safety constraint overridden: {} for agent: {} by user: {}", actionType, agentId, userId);
 
             return OverrideResult.success(violation);
@@ -250,7 +274,16 @@ public class SafetyConstraintManager {
                     Instant.now());
             safetyIncidents.put(incident.getId(), incident);
 
-            totalSafetyIncidents.incrementAndGet();
+            // totalSafetyIncidents.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordEventProcessing(metrics, "safety-incident", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail safety incident reporting
+            }
             logger.warn("Safety incident reported: {} for agent: {} by: {}", incidentType, agentId, reporterId);
 
             return IncidentResult.success(incident);
@@ -341,7 +374,16 @@ public class SafetyConstraintManager {
                     reason, Instant.now());
             constraintViolations.put(violation.getId(), violation);
 
-            totalConstraintViolations.incrementAndGet();
+            // totalConstraintViolations.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordEventProcessing(metrics, "constraint-violation", 
+                        java.time.Duration.ofNanos(0), false);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail constraint violation recording
+            }
             logger.warn("Constraint violation recorded: {} for agent: {} - {}", actionType, agentId, reason);
         } finally {
             violationLock.writeLock().unlock();

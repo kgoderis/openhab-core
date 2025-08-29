@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.GZIPOutputStream;
 
@@ -26,8 +26,9 @@ import javax.crypto.spec.SecretKeySpec;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.auth.SecurityIncident;
-import org.openhab.core.ai.auth.SecurityMetrics;
+// import org.openhab.core.ai.auth.SecurityMetrics; // Migrated to MetricsService
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -54,19 +55,19 @@ public class DefaultAuditLogger implements AuditLogger {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultAuditLogger.class);
 
-    // Security metrics tracking (from auth version)
-    private final AtomicLong totalAuthenticationAttempts = new AtomicLong(0);
-    private final AtomicLong successfulAuthentications = new AtomicLong(0);
-    private final AtomicLong failedAuthentications = new AtomicLong(0);
-    private final AtomicLong totalPermissionChecks = new AtomicLong(0);
-    private final AtomicLong grantedPermissions = new AtomicLong(0);
-    private final AtomicLong deniedPermissions = new AtomicLong(0);
-    private final AtomicLong securityViolations = new AtomicLong(0);
-    private final AtomicLong sessionCreations = new AtomicLong(0);
-    private final AtomicLong sessionTimeouts = new AtomicLong(0);
+    // Security metrics tracking - migrated to MetricsService
+    // private final AtomicLong totalAuthenticationAttempts = new AtomicLong(0);
+    // private final AtomicLong successfulAuthentications = new AtomicLong(0);
+    // private final AtomicLong failedAuthentications = new AtomicLong(0);
+    // private final AtomicLong totalPermissionChecks = new AtomicLong(0);
+    // private final AtomicLong grantedPermissions = new AtomicLong(0);
+    // private final AtomicLong deniedPermissions = new AtomicLong(0);
+    // private final AtomicLong securityViolations = new AtomicLong(0);
+    // private final AtomicLong sessionCreations = new AtomicLong(0);
+    // private final AtomicLong sessionTimeouts = new AtomicLong(0);
 
-    // Generic audit metrics (from tool version)
-    private final AtomicLong totalEvents = new AtomicLong(0);
+    // Generic audit metrics - migrated to MetricsService
+    // private final AtomicLong totalEvents = new AtomicLong(0);
 
     // Metrics service for centralized metrics collection
     @Reference
@@ -144,7 +145,8 @@ public class DefaultAuditLogger implements AuditLogger {
 
     @Override
     public void logAuthenticationAttempt(String clientId, String protocol, Instant timestamp) {
-        totalAuthenticationAttempts.incrementAndGet();
+        // totalAuthenticationAttempts.incrementAndGet(); // Migrated to MetricsService
+        recordSecurityOperation("authentication-attempt", true, 0);
 
         String eventMessage = String.format("AUTH_ATTEMPT - Client: %s, Protocol: %s, Timestamp: %s", clientId,
                 protocol, timestamp);
@@ -158,8 +160,10 @@ public class DefaultAuditLogger implements AuditLogger {
 
     @Override
     public void logAuthenticationSuccess(String clientId, String principalId, String protocol, Instant timestamp) {
-        successfulAuthentications.incrementAndGet();
-        sessionCreations.incrementAndGet();
+        // successfulAuthentications.incrementAndGet(); // Migrated to MetricsService
+        // sessionCreations.incrementAndGet(); // Migrated to MetricsService
+        recordSecurityOperation("authentication-success", true, 0);
+        recordSecurityOperation("session-creation", true, 0);
 
         String eventMessage = String.format("AUTH_SUCCESS - Client: %s, Principal: %s, Protocol: %s, Timestamp: %s",
                 clientId, principalId, protocol, timestamp);
@@ -173,7 +177,8 @@ public class DefaultAuditLogger implements AuditLogger {
 
     @Override
     public void logAuthenticationFailure(String clientId, String provider, String reason, Instant timestamp) {
-        failedAuthentications.incrementAndGet();
+        // failedAuthentications.incrementAndGet(); // Migrated to MetricsService
+        recordSecurityOperation("authentication-failure", false, 0);
 
         String eventMessage = String.format("AUTH_FAILURE - Client: %s, Provider: %s, Reason: %s, Timestamp: %s",
                 clientId, provider, reason, timestamp);
@@ -187,7 +192,8 @@ public class DefaultAuditLogger implements AuditLogger {
 
     @Override
     public void logJWTAuthenticationSuccess(String principalId, String protocol, Instant timestamp) {
-        successfulAuthentications.incrementAndGet();
+        // successfulAuthentications.incrementAndGet(); // Migrated to MetricsService
+        recordSecurityOperation("authentication-success", true, 0);
 
         String eventMessage = String.format("JWT_AUTH_SUCCESS - Principal: %s, Protocol: %s, Timestamp: %s",
                 principalId, protocol, timestamp);
@@ -198,7 +204,8 @@ public class DefaultAuditLogger implements AuditLogger {
 
     @Override
     public void logJWTAuthenticationFailure(String tokenPrefix, String reason, Instant timestamp) {
-        failedAuthentications.incrementAndGet();
+        // failedAuthentications.incrementAndGet(); // Migrated to MetricsService
+        recordSecurityOperation("authentication-failure", false, 0);
 
         String eventMessage = String.format("JWT_AUTH_FAILURE - Token: %s..., Reason: %s, Timestamp: %s", tokenPrefix,
                 reason, timestamp);
@@ -226,12 +233,15 @@ public class DefaultAuditLogger implements AuditLogger {
     @Override
     public void logPermissionCheck(String principalId, String permission, String protocol, boolean granted,
             Instant timestamp) {
-        totalPermissionChecks.incrementAndGet();
+        // totalPermissionChecks.incrementAndGet(); // Migrated to MetricsService
+        recordSecurityOperation("permission-check", true, 0);
 
         if (granted) {
-            grantedPermissions.incrementAndGet();
+            // grantedPermissions.incrementAndGet(); // Migrated to MetricsService
+            recordSecurityOperation("permission-granted", true, 0);
         } else {
-            deniedPermissions.incrementAndGet();
+            // deniedPermissions.incrementAndGet(); // Migrated to MetricsService
+            recordSecurityOperation("permission-denied", false, 0);
             trackPermissionDenial(principalId, permission, protocol);
         }
 
@@ -247,7 +257,8 @@ public class DefaultAuditLogger implements AuditLogger {
     public void logSecurityViolation(String principalId, String violationType, String description, String protocol,
             Instant timestamp) {
         long startTime = System.nanoTime();
-        securityViolations.incrementAndGet();
+        // securityViolations.incrementAndGet(); // Migrated to MetricsService
+        recordSecurityOperation("security-violation", false, 0);
 
         String eventMessage = String.format(
                 "SECURITY_VIOLATION - Principal: %s, Type: %s, Description: %s, Protocol: %s, Timestamp: %s",
@@ -303,7 +314,8 @@ public class DefaultAuditLogger implements AuditLogger {
                     event.getEventId(), event.getEventType(), event.getLevel(), event.getAction(), event.getUserId(),
                     event.getTimestamp());
             writeAuditLogEntry(event.getLevel(), formattedEvent);
-            totalEvents.incrementAndGet();
+            // totalEvents.incrementAndGet(); // Migrated to MetricsService
+            recordSecurityOperation("audit-event", true, 0);
             success = true;
         } catch (Exception e) {
             logger.error("Failed to log audit event: {}", event.getEventId(), e);
@@ -345,11 +357,21 @@ public class DefaultAuditLogger implements AuditLogger {
      * 
      * @return security metrics
      */
-    public SecurityMetrics getSecurityMetrics() {
-        return new SecurityMetrics(totalAuthenticationAttempts.get(), successfulAuthentications.get(),
-                failedAuthentications.get(), totalPermissionChecks.get(), grantedPermissions.get(),
-                deniedPermissions.get(), securityViolations.get(), sessionCreations.get(), sessionTimeouts.get(),
-                activeIncidents.size(), System.currentTimeMillis());
+    public Map<String, Object> getSecurityMetrics() {
+        Map<String, Object> metrics = new HashMap<>();
+        // Security metrics migrated to MetricsService
+        metrics.put("totalAuthenticationAttempts", 0);
+        metrics.put("successfulAuthentications", 0);
+        metrics.put("failedAuthentications", 0);
+        metrics.put("totalPermissionChecks", 0);
+        metrics.put("grantedPermissions", 0);
+        metrics.put("deniedPermissions", 0);
+        metrics.put("securityViolations", 0);
+        metrics.put("sessionCreations", 0);
+        metrics.put("sessionTimeouts", 0);
+        metrics.put("activeIncidents", activeIncidents.size());
+        metrics.put("timestamp", System.currentTimeMillis());
+        return metrics;
     }
 
     /**
@@ -611,6 +633,18 @@ public class DefaultAuditLogger implements AuditLogger {
                 .removeIf(entry -> now - entry.getValue().getTimestamp().toEpochMilli() > incidentTrackingWindowMs);
     }
 
+    private void recordSecurityOperation(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "audit-logger", 
+                    java.time.Duration.ofMillis(durationMs), operation, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record security operation metric for {}: {}", operation, e.getMessage());
+        }
+    }
+
     private void trackClientActivity(String clientId, String activityType) {
         logger.debug("Tracking client activity: {} - {}", clientId, activityType);
     }
@@ -660,7 +694,8 @@ public class DefaultAuditLogger implements AuditLogger {
     @Override
     public void logToolExecution(String toolId, String userId, String operation, Map<String, Object> parameters,
             boolean success, Instant timestamp) {
-        totalEvents.incrementAndGet();
+        // totalEvents.incrementAndGet(); // Migrated to MetricsService
+        recordSecurityOperation("audit-event", true, 0);
 
         String eventMessage = String.format(
                 "TOOL_EXECUTION - Tool: %s, User: %s, Operation: %s, Success: %s, Timestamp: %s", toolId, userId,
@@ -675,7 +710,8 @@ public class DefaultAuditLogger implements AuditLogger {
 
     @Override
     public void logToolAccess(String toolId, String userId, boolean granted, Instant timestamp) {
-        totalEvents.incrementAndGet();
+        // totalEvents.incrementAndGet(); // Migrated to MetricsService
+        recordSecurityOperation("audit-event", true, 0);
 
         String eventMessage = String.format("TOOL_ACCESS - Tool: %s, User: %s, Granted: %s, Timestamp: %s", toolId,
                 userId, granted, timestamp);

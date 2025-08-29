@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,16 +14,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationPreset;
 import org.openhab.core.ai.agent.infrastructure.config.api.ConfigurationTemplate;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ConfigurationOperationMetrics;
 import org.openhab.core.ai.common.validation.ConfigurationValidationResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,18 +51,10 @@ public class AgentCommunicationConfigurationManager {
 
     // Configuration versioning
     private final Map<String, ConfigurationVersion> versionHistory = new ConcurrentHashMap<>();
-    private final AtomicLong configurationVersionCounter = new AtomicLong(0);
 
-    // Configuration monitoring
-    private final AtomicLong totalConfigurations = new AtomicLong(0);
-    private final AtomicLong successfulLoads = new AtomicLong(0);
-    private final AtomicLong failedLoads = new AtomicLong(0);
-    private final AtomicLong hotReloads = new AtomicLong(0);
-
-    // Business logic capture: Configuration changes
-    private final Map<String, AtomicLong> configurationChangePatterns = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> configurationImpactMetrics = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> configurationPerformanceImpact = new ConcurrentHashMap<>();
+    // Configuration monitoring - now handled by MetricsService
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Background processors
     private final ScheduledExecutorService configMonitor = Executors.newScheduledThreadPool(1);
@@ -72,31 +68,7 @@ public class AgentCommunicationConfigurationManager {
     private static final String BACKUP_CONFIG_PATH = "conf/agent-communication/backup";
     private static final String TEMPLATES_CONFIG_PATH = "conf/agent-communication/templates";
 
-    /**
-     * Record configuration changes for business logic analysis.
-     * 
-     * @param configId the configuration identifier
-     * @param changeType the type of configuration change
-     * @param oldValue the previous configuration value
-     * @param newValue the new configuration value
-     * @param performanceImpact the performance impact of the change
-     */
-    private void recordConfigurationChange(String configId, String changeType, Object oldValue, Object newValue,
-            double performanceImpact) {
-        try {
-            String changeKey = configId + ":" + changeType;
-            configurationChangePatterns.computeIfAbsent(changeKey, k -> new AtomicLong(0)).incrementAndGet();
 
-            String impactKey = configId + ":" + (performanceImpact > 0 ? "positive" : "negative");
-            configurationImpactMetrics.computeIfAbsent(impactKey, k -> new AtomicLong(0)).incrementAndGet();
-
-            String performanceKey = configId + ":" + Math.round(performanceImpact * 100) / 100.0;
-            configurationPerformanceImpact.computeIfAbsent(performanceKey, k -> new AtomicLong(0)).incrementAndGet();
-
-        } catch (Exception e) {
-            logger.warn("Failed to record configuration change metrics: {}", e.getMessage());
-        }
-    }
 
     @Activate
     public AgentCommunicationConfigurationManager() {
@@ -131,8 +103,6 @@ public class AgentCommunicationConfigurationManager {
 
                 // Store configuration
                 configurations.put(configId, config);
-                totalConfigurations.incrementAndGet();
-                successfulLoads.incrementAndGet();
 
                 // Create version entry
                 ConfigurationVersion version = new ConfigurationVersion(configId, config.getVersion(), Instant.now(),
@@ -140,11 +110,18 @@ public class AgentCommunicationConfigurationManager {
                 versionHistory.put(configId + "_" + config.getVersion(), version);
 
                 logger.debug("Successfully loaded configuration: {} from {}", configId, filePath);
+                
+                // Replace totalConfigurations.incrementAndGet() and successfulLoads.incrementAndGet()
+                recordConfigurationLoad("communication-config", true, Files.size(path), Duration.ZERO);
+                
                 return config;
 
             } catch (Exception e) {
-                failedLoads.incrementAndGet();
                 logger.error("Error loading configuration: {} from {}", configId, filePath, e);
+                
+                // Replace failedLoads.incrementAndGet()
+                recordConfigurationLoad("communication-config", false, 0, Duration.ZERO);
+                
                 throw new ConfigurationException("Failed to load configuration: " + e.getMessage(), e);
             }
         });
@@ -205,7 +182,6 @@ public class AgentCommunicationConfigurationManager {
 
                 // Update configuration
                 configurations.put(configId, newConfig);
-                hotReloads.incrementAndGet();
 
                 // Create version entry
                 ConfigurationVersion version = new ConfigurationVersion(configId, newConfig.getVersion(), Instant.now(),
@@ -305,7 +281,6 @@ public class AgentCommunicationConfigurationManager {
 
                 // Store configuration
                 configurations.put(configId, config);
-                totalConfigurations.incrementAndGet();
 
                 logger.debug("Successfully created configuration: {} from template: {}", configId, templateId);
                 return config;
@@ -345,7 +320,6 @@ public class AgentCommunicationConfigurationManager {
 
                 // Update configuration
                 configurations.put(configId, updatedConfig);
-                hotReloads.incrementAndGet();
 
                 logger.debug("Successfully applied preset: {} to configuration: {}", presetId, configId);
                 return updatedConfig;
@@ -450,7 +424,6 @@ public class AgentCommunicationConfigurationManager {
 
                 // Store configuration
                 configurations.put(configId, config);
-                totalConfigurations.incrementAndGet();
 
                 logger.debug("Successfully imported configuration: {} in format: {}", configId, format);
                 return config;
@@ -566,4 +539,51 @@ public class AgentCommunicationConfigurationManager {
     /* Extracted: org.openhab.core.ai.agent.infrastructure.config.TestingPreset implements ConfigurationPreset */
 
     // ConfigurationException extracted to top-level
+    
+    // Metrics recording methods - replacing removed AtomicLong fields using ConfigurationOperationMetrics pattern
+    
+    /**
+     * Record configuration load operation - replaces totalConfigurations.incrementAndGet() and successfulLoads.incrementAndGet()
+     */
+    private void recordConfigurationLoad(String configType, boolean success, long fileSize, Duration loadTime) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use ConfigurationOperationMetrics pattern for configuration loading
+                ConfigurationOperationMetrics.recordConfigurationReload(metrics, configType, "config-path", fileSize, loadTime, success, null);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record configuration load metric for type {}: {}", configType, e.getMessage());
+        }
+    }
+    
+    /**
+     * Record configuration change operation - replaces configurationChangePatterns.incrementAndGet()
+     */
+    private void recordConfigurationChange(String configKey, String oldValue, String newValue, Duration changeTime) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use ConfigurationOperationMetrics pattern for configuration changes
+                ConfigurationOperationMetrics.recordConfigurationChange(metrics, configKey, oldValue, newValue, changeTime, true, "config-change");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record configuration change metric for key {}: {}", configKey, e.getMessage());
+        }
+    }
+    
+    /**
+     * Record hot reload operation - replaces hotReloads.incrementAndGet()
+     */
+    private void recordHotReload(String configType, boolean success, Duration reloadTime) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use ConfigurationOperationMetrics pattern for hot reloads
+                ConfigurationOperationMetrics.recordConfigurationReload(metrics, configType, "hot-reload", 0, reloadTime, success, "hot-reload");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record hot reload metric for type {}: {}", configType, e.getMessage());
+        }
+    }
 }

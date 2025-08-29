@@ -20,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
+// import java.util.concurrent.atomic.AtomicLong; // Migrated to MetricsService
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -65,7 +65,7 @@ public class ReasoningOrchestrationService {
     private final Map<String, ReasoningSession> activeSessions = new ConcurrentHashMap<>();
     private final Map<String, ReasoningStrategy> strategies = new ConcurrentHashMap<>();
     private final ExecutorService executorService;
-    private final AtomicLong sessionCounter = new AtomicLong(0);
+    // private final AtomicLong sessionCounter = new AtomicLong(0); // Migrated to MetricsService
 
     private boolean activated = false;
 
@@ -133,7 +133,7 @@ public class ReasoningOrchestrationService {
             return CompletableFuture.failedFuture(new IllegalStateException("Service not activated"));
         }
 
-        String sessionId = "session-" + sessionCounter.incrementAndGet();
+        String sessionId = "session-" + System.currentTimeMillis(); // Migrated from AtomicLong
         ReasoningSession session = new ReasoningSession(sessionId, client, context, params, executorService);
         activeSessions.put(sessionId, session);
 

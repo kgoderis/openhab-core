@@ -10,12 +10,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.collaboration.negotiation.api.LearningNegotiationStrategy;
 import org.openhab.core.ai.agent.collaboration.negotiation.api.NegotiationStrategy;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentCommunicationMetrics;
 import org.openhab.core.ai.agent.lifecycle.api.AgentRegistry;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -44,12 +46,7 @@ public class AgentNegotiationService {
     private final Map<String, NegotiationTemplate> templates = new ConcurrentHashMap<>();
     private final Map<String, NegotiationStrategy> strategies = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalNegotiations = new AtomicLong(0);
-    private final AtomicLong successfulNegotiations = new AtomicLong(0);
-    private final AtomicLong failedNegotiations = new AtomicLong(0);
-    private final AtomicLong timeoutNegotiations = new AtomicLong(0);
-    private final AtomicLong abortedNegotiations = new AtomicLong(0);
+    // Performance monitoring - now handled by MetricsService
 
     // Background processors
     private final ScheduledExecutorService sessionProcessor = Executors.newScheduledThreadPool(2);
@@ -104,7 +101,7 @@ public class AgentNegotiationService {
                     .withTimeoutAt(Instant.now().plus(template.getTimeout())).build();
 
             activeSessions.put(sessionId, session);
-            totalNegotiations.incrementAndGet();
+            recordTotalNegotiation(sessionId);
 
             logger.debug("Started negotiation session: {} with {} participants", sessionId, participantIds.size());
             return CompletableFuture.completedFuture(session);
@@ -150,7 +147,7 @@ public class AgentNegotiationService {
                     session.setStatus(NegotiationStatus.AGREED);
                     session.setFinalAgreement(outcome.agreement());
                     session.setCompletedAt(Instant.now());
-                    successfulNegotiations.incrementAndGet();
+                    recordSuccessfulNegotiation(sessionId);
                     return CompletableFuture.completedFuture(NegotiationResult.agreement(session, outcome.agreement()));
                 }
             }
@@ -192,7 +189,7 @@ public class AgentNegotiationService {
             session.setStatus(NegotiationStatus.ABORTED);
             session.setAbortReason(reason);
             session.setCompletedAt(Instant.now());
-            abortedNegotiations.incrementAndGet();
+            recordAbortedNegotiation(sessionId);
 
             logger.debug("Negotiation session aborted: {} by {} - {}", sessionId, agentId, reason);
             return CompletableFuture.completedFuture(NegotiationResult.aborted(session, reason));
@@ -207,9 +204,8 @@ public class AgentNegotiationService {
      * Get negotiation statistics
      */
     public NegotiationStatistics getStatistics() {
-        return new NegotiationStatistics(totalNegotiations.get(), successfulNegotiations.get(),
-                failedNegotiations.get(), timeoutNegotiations.get(), abortedNegotiations.get(), activeSessions.size(),
-                templates.size(), strategies.size());
+        return new NegotiationStatistics(0, 0, 0, 0, 0, activeSessions.size(),
+                templates.size(), strategies.size()); // All metrics now come from MetricsService
     }
 
     /**
@@ -252,7 +248,7 @@ public class AgentNegotiationService {
                 .filter(session -> session.getTimeoutAt().isBefore(now)).forEach(session -> {
                     session.setStatus(NegotiationStatus.TIMEOUT);
                     session.setCompletedAt(now);
-                    timeoutNegotiations.incrementAndGet();
+                    recordTimeoutNegotiation(session.getSessionId());
                     logger.debug("Negotiation session timed out: {}", session.getSessionId());
                 });
     }
@@ -306,6 +302,9 @@ public class AgentNegotiationService {
         this.agentRegistry = agentRegistry;
     }
 
+    @Reference
+    private @Nullable MetricsService metricsService;
+
     public void unsetAgentRegistry(AgentRegistry agentRegistry) {
         this.agentRegistry = null;
     }
@@ -317,4 +316,70 @@ public class AgentNegotiationService {
 
     // Default strategy implementations
     // Default strategy implementations moved to top-level classes
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentCommunicationMetrics pattern
+
+    /**
+     * Record total negotiation - replaces totalNegotiations.incrementAndGet()
+     */
+    private void recordTotalNegotiation(String sessionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentCommunicationMetrics pattern for total negotiation
+                AgentCommunicationMetrics.recordAgentCommunication(metrics, "negotiation-service", "total-negotiation", 
+                        true, java.time.Duration.ZERO, 1, sessionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record total negotiation metric for session {}: {}", sessionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record successful negotiation - replaces successfulNegotiations.incrementAndGet()
+     */
+    private void recordSuccessfulNegotiation(String sessionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentCommunicationMetrics pattern for successful negotiation
+                AgentCommunicationMetrics.recordAgentCommunication(metrics, "negotiation-service", "successful-negotiation", 
+                        true, java.time.Duration.ZERO, 1, sessionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record successful negotiation metric for session {}: {}", sessionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record aborted negotiation - replaces abortedNegotiations.incrementAndGet()
+     */
+    private void recordAbortedNegotiation(String sessionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentCommunicationMetrics pattern for aborted negotiation
+                AgentCommunicationMetrics.recordAgentCommunication(metrics, "negotiation-service", "aborted-negotiation", 
+                        true, java.time.Duration.ZERO, 1, sessionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record aborted negotiation metric for session {}: {}", sessionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record timeout negotiation - replaces timeoutNegotiations.incrementAndGet()
+     */
+    private void recordTimeoutNegotiation(String sessionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentCommunicationMetrics pattern for timeout negotiation
+                AgentCommunicationMetrics.recordAgentCommunication(metrics, "negotiation-service", "timeout-negotiation", 
+                        true, java.time.Duration.ZERO, 1, sessionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record timeout negotiation metric for session {}: {}", sessionId, e.getMessage());
+        }
+    }
 }

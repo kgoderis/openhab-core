@@ -7,13 +7,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+// import java.util.concurrent.atomic.AtomicLong; // Migrated to MetricsService
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.ActionRegistry;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ReasoningEngineMetrics;
 import org.openhab.core.ai.reasoning.actions.AutonomousAction;
 import org.openhab.core.ai.reasoning.constraints.ConstraintViolation;
 import org.openhab.core.ai.reasoning.constraints.SafetyConstraint;
@@ -62,12 +64,15 @@ public class AutonomousEventProcessor {
     private final Map<String, SafetyConstraint> safetyConstraints = new ConcurrentHashMap<>();
     private final List<AutonomousAction> pendingActions = new ArrayList<>();
 
-    // Performance monitoring
-    private final AtomicLong totalEventsProcessed = new AtomicLong(0);
-    private final AtomicLong totalAutonomousActions = new AtomicLong(0);
-    private final AtomicLong totalPatternDetections = new AtomicLong(0);
-    private final AtomicLong totalSafetyViolations = new AtomicLong(0);
-    private final AtomicLong totalUserOverrides = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalEventsProcessed = new AtomicLong(0);
+    // private final AtomicLong totalAutonomousActions = new AtomicLong(0);
+    // private final AtomicLong totalPatternDetections = new AtomicLong(0);
+    // private final AtomicLong totalSafetyViolations = new AtomicLong(0);
+    // private final AtomicLong totalUserOverrides = new AtomicLong(0);
+    
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Thread safety
     private final ReadWriteLock eventLock = new ReentrantReadWriteLock();
@@ -106,7 +111,16 @@ public class AutonomousEventProcessor {
         try {
             eventLock.writeLock().lock();
 
-            totalEventsProcessed.incrementAndGet();
+            // totalEventsProcessed.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordEventProcessing(metrics, "autonomous-event", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail event processing
+            }
 
             // Detect patterns
             if (enablePatternDetection) {
@@ -194,7 +208,16 @@ public class AutonomousEventProcessor {
             action.setOverrideReason(reason);
             action.setOverrideTimestamp(Instant.now());
 
-            totalUserOverrides.incrementAndGet();
+            // totalUserOverrides.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordEventProcessing(metrics, "user-override", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail user override
+            }
             logger.debug("Overridden autonomous action: {} - {}", actionId, reason);
 
             // Create a dummy violation record to capture override context
@@ -346,7 +369,16 @@ public class AutonomousEventProcessor {
         pattern.analyzeEvent(event);
 
         if (pattern.isPatternDetected()) {
-            totalPatternDetections.incrementAndGet();
+            // totalPatternDetections.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordEventProcessing(metrics, "pattern-detection", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail pattern detection
+            }
             logger.debug("Pattern detected for agent: {}", agentId);
         }
     }
@@ -445,7 +477,16 @@ public class AutonomousEventProcessor {
             if (validateAction(action)) {
                 validActions.add(action);
             } else {
-                totalSafetyViolations.incrementAndGet();
+                // totalSafetyViolations.incrementAndGet(); // Migrated to MetricsService
+                try {
+                    MetricsService metrics = metricsService;
+                    if (metrics != null) {
+                        ReasoningEngineMetrics.recordEventProcessing(metrics, "safety-violation", 
+                            java.time.Duration.ofNanos(0), false);
+                    }
+                } catch (Exception e) {
+                    // Graceful degradation - don't fail safety validation
+                }
                 logger.warn("Safety violation detected for action: {}", action.getId());
             }
         }
@@ -473,7 +514,16 @@ public class AutonomousEventProcessor {
             for (AutonomousAction action : actions) {
                 if (action.getConfidence() >= confidenceThreshold) {
                     pendingActions.add(action);
-                    totalAutonomousActions.incrementAndGet();
+                    // totalAutonomousActions.incrementAndGet(); // Migrated to MetricsService
+                    try {
+                        MetricsService metrics = metricsService;
+                        if (metrics != null) {
+                            ReasoningEngineMetrics.recordEventProcessing(metrics, "autonomous-action", 
+                                java.time.Duration.ofNanos(0), true);
+                        }
+                    } catch (Exception e) {
+                        // Graceful degradation - don't fail action execution
+                    }
                     logger.debug("Added autonomous action: {}", action.getId());
                 }
             }

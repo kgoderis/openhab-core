@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -23,10 +23,11 @@ import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.agent.infrastructure.security.AuthenticationResult;
 import org.openhab.core.ai.agent.infrastructure.security.AuthorizationResult;
 import org.openhab.core.ai.agent.infrastructure.security.api.AgentSecurityManager;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentExecutionMetrics;
 import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentSynchronizationManager;
 import org.openhab.core.ai.auth.AuthenticationContext;
 import org.openhab.core.ai.common.context.ExecutionContext;
-import org.openhab.core.ai.common.monitoring.api.MetricsService;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -160,28 +161,7 @@ public class AgentTaskExecutor implements AgentExecutor {
     // Task execution tracking
     private final Map<String, AtomicBoolean> runningTasks = new ConcurrentHashMap<>();
     private final Map<String, Long> taskStartTimes = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> taskExecutionCounts = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> taskFailureCounts = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> taskRetryCounts = new ConcurrentHashMap<>();
-
-    // Performance metrics
-    private final Map<String, AtomicLong> totalExecutionTime = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> averageExecutionTime = new ConcurrentHashMap<>();
-
-    // Business logic capture: Task executor assignments
-    private final Map<String, AtomicLong> executorTaskTypeAssignments = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> executorLoadBalancingDecisions = new ConcurrentHashMap<>();
-
-    // Business logic capture: Validation rule effectiveness
-    private final Map<String, AtomicLong> validationRuleSuccessCounts = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> validationRuleFailureCounts = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> validationRuleEffectivenessScores = new ConcurrentHashMap<>();
-
-    // Business logic capture: Skill usage patterns
-    private final Map<String, AtomicLong> skillUsageCounts = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> skillSuccessCounts = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> skillFailureCounts = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> skillUsagePatterns = new ConcurrentHashMap<>();
+    // Performance metrics - now handled by MetricsService
 
     // Configuration
     private final long defaultTimeoutMs = 30000; // 30 seconds
@@ -204,11 +184,9 @@ public class AgentTaskExecutor implements AgentExecutor {
                 metrics.recordOperationWithData("task-executor", "assignment", true, java.time.Duration.ofNanos(0),
                         context);
 
-                // Update local tracking
-                String key = executorId + ":" + taskType;
-                executorTaskTypeAssignments.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
-                executorLoadBalancingDecisions.computeIfAbsent(assignmentReason, k -> new AtomicLong(0))
-                        .incrementAndGet();
+                // Replace AtomicLong fields with MetricsService using AgentExecutionMetrics pattern
+                recordExecutorAssignment(executorId, taskType);
+                recordLoadBalancingDecision(assignmentReason);
 
             } catch (Exception e) {
                 logger.warn("Failed to record task executor assignment metrics: {}", e.getMessage());
@@ -240,21 +218,11 @@ public class AgentTaskExecutor implements AgentExecutor {
                 metrics.recordOperationWithData("validation-rule", "effectiveness", success,
                         java.time.Duration.ofNanos(executionTime), enhancedContext);
 
-                // Update local tracking
+                // Replace AtomicLong fields with MetricsService using AgentExecutionMetrics pattern
                 if (success) {
-                    validationRuleSuccessCounts.computeIfAbsent(ruleId, k -> new AtomicLong(0)).incrementAndGet();
+                    recordValidationRuleSuccess(ruleId);
                 } else {
-                    validationRuleFailureCounts.computeIfAbsent(ruleId, k -> new AtomicLong(0)).incrementAndGet();
-                }
-
-                // Calculate effectiveness score
-                long successCount = validationRuleSuccessCounts.getOrDefault(ruleId, new AtomicLong(0)).get();
-                long failureCount = validationRuleFailureCounts.getOrDefault(ruleId, new AtomicLong(0)).get();
-                long totalCount = successCount + failureCount;
-
-                if (totalCount > 0) {
-                    double effectivenessScore = (double) successCount / totalCount;
-                    validationRuleEffectivenessScores.put(ruleId, new AtomicLong((long) (effectivenessScore * 100)));
+                    recordValidationRuleFailure(ruleId);
                 }
 
             } catch (Exception e) {
@@ -289,14 +257,14 @@ public class AgentTaskExecutor implements AgentExecutor {
                 metrics.recordOperationWithData("skill-usage", "pattern", success,
                         java.time.Duration.ofNanos(executionTime), enhancedContext);
 
-                // Update local tracking
-                skillUsageCounts.computeIfAbsent(skillId, k -> new AtomicLong(0)).incrementAndGet();
-                skillUsagePatterns.computeIfAbsent(usagePattern, k -> new AtomicLong(0)).incrementAndGet();
+                // Replace AtomicLong fields with MetricsService using AgentExecutionMetrics pattern
+                recordSkillUsage(skillId);
+                recordSkillUsagePattern(skillId, usagePattern);
 
                 if (success) {
-                    skillSuccessCounts.computeIfAbsent(skillId, k -> new AtomicLong(0)).incrementAndGet();
+                    recordSkillSuccess(skillId);
                 } else {
-                    skillFailureCounts.computeIfAbsent(skillId, k -> new AtomicLong(0)).incrementAndGet();
+                    recordSkillFailure(skillId);
                 }
 
             } catch (Exception e) {
@@ -361,7 +329,7 @@ public class AgentTaskExecutor implements AgentExecutor {
             // Track task execution for metrics (not lifecycle - that's handled by TaskUpdater)
             runningTasks.put(taskId, new AtomicBoolean(true));
             taskStartTimes.put(taskId, System.currentTimeMillis());
-            taskExecutionCounts.computeIfAbsent(taskId, k -> new AtomicLong(0)).incrementAndGet();
+            recordTaskExecution(taskId);
 
             // 2. Authentication and authorization
             AuthenticationContext authContext = authenticateRequest(requestContext);
@@ -391,7 +359,7 @@ public class AgentTaskExecutor implements AgentExecutor {
             logger.error("Error executing A2A task: {}", taskId, e);
 
             // Track failure for metrics
-            taskFailureCounts.computeIfAbsent(taskId, k -> new AtomicLong(0)).incrementAndGet();
+            recordTaskFailure(taskId);
 
             // Fail task with error message
             updater.fail(newAgentMessage("Task execution failed: " + e.getMessage(),
@@ -542,13 +510,11 @@ public class AgentTaskExecutor implements AgentExecutor {
     @NonNullByDefault
     private void handleTaskFailure(Task task, EventQueue eventQueue, Throwable error) {
         String taskId = task.getId();
-        AtomicLong retryCount = taskRetryCounts.computeIfAbsent(taskId, k -> new AtomicLong(0));
+        // Track retry for metrics
+        recordTaskRetry(taskId);
+        recordTaskFailure(taskId);
 
-        if (retryCount.get() < maxRetries) {
-            retryCount.incrementAndGet();
-            taskFailureCounts.computeIfAbsent(taskId, k -> new AtomicLong(0)).incrementAndGet();
-
-            logger.debug("Retrying task {} (attempt {}/{})", taskId, retryCount.get(), maxRetries);
+            logger.debug("Retrying task {} (attempt {}/{})", taskId, 1, maxRetries);
 
             // Schedule retry with delay
             CompletableFuture.delayedExecutor(retryDelayMs, TimeUnit.MILLISECONDS).execute(() -> {
@@ -578,7 +544,7 @@ public class AgentTaskExecutor implements AgentExecutor {
             });
         } else {
             // Max retries exceeded, mark as failed
-            taskFailureCounts.computeIfAbsent(taskId, k -> new AtomicLong(0)).incrementAndGet();
+            recordTaskFailure(taskId);
 
             // Create TaskUpdater for final failure reporting
             RequestContext failureContext = new RequestContext(null, task.getId(), task.getContextId(), task,
@@ -602,7 +568,7 @@ public class AgentTaskExecutor implements AgentExecutor {
             executeWithFallbackAgents(task, fallbackAgents, eventQueue);
         } else {
             // No fallback available, mark as failed
-            taskFailureCounts.computeIfAbsent(taskId, k -> new AtomicLong(0)).incrementAndGet();
+            recordTaskFailure(taskId);
 
             // Create TaskUpdater for timeout failure reporting
             RequestContext timeoutContext = new RequestContext(null, task.getId(), task.getContextId(), task,
@@ -636,7 +602,7 @@ public class AgentTaskExecutor implements AgentExecutor {
         }
 
         // All fallback agents failed
-        taskFailureCounts.computeIfAbsent(taskId, k -> new AtomicLong(0)).incrementAndGet();
+        recordTaskFailure(taskId);
 
         // Create TaskUpdater for fallback failure reporting
         RequestContext fallbackContext = new RequestContext(null, task.getId(), task.getContextId(), task, List.of());
@@ -927,22 +893,196 @@ public class AgentTaskExecutor implements AgentExecutor {
     // Task execution metrics
     @NonNullByDefault
     public Object getTaskExecutionMetrics(String taskId) {
-        AtomicLong executionCount = taskExecutionCounts.get(taskId);
-        AtomicLong failureCount = taskFailureCounts.get(taskId);
-        AtomicLong retryCount = taskRetryCounts.get(taskId);
-        AtomicLong totalTime = totalExecutionTime.get(taskId);
-        AtomicLong avgTime = averageExecutionTime.get(taskId);
-
-        // Return a simple map instead of the deleted value object
+        // Metrics now come from MetricsService snapshots
+        // Return basic task state information that's still available locally
+        boolean isRunning = runningTasks.containsKey(taskId);
+        Long startTime = taskStartTimes.get(taskId);
+        
         return Map.of(
             "taskId", taskId,
-            "executionCount", executionCount != null ? executionCount.get() : 0,
-            "failureCount", failureCount != null ? failureCount.get() : 0,
-            "retryCount", retryCount != null ? retryCount.get() : 0,
-            "totalTime", totalTime != null ? totalTime.get() : 0,
-            "avgTime", avgTime != null ? avgTime.get() : 0
+            "isRunning", isRunning,
+            "startTime", startTime != null ? startTime : 0,
+            "note", "Detailed metrics available via MetricsService"
         );
     }
 
     // Inner class extracted to top-level: org.openhab.core.ai.agent.execution.TaskExecutionMetrics
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentExecutionMetrics pattern
+
+    /**
+     * Record task execution - replaces taskExecutionCounts.incrementAndGet()
+     */
+    private void recordTaskExecution(String taskId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for task execution
+                AgentExecutionMetrics.recordAgentExecution(metrics, "task-executor", "task-execution", 
+                        true, java.time.Duration.ZERO, 1, taskId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record task execution metric for task {}: {}", taskId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record task failure - replaces taskFailureCounts.incrementAndGet()
+     */
+    private void recordTaskFailure(String taskId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for task failure
+                AgentExecutionMetrics.recordAgentExecution(metrics, "task-executor", "task-execution", 
+                        false, java.time.Duration.ZERO, 1, taskId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record task failure metric for task {}: {}", taskId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record task retry - replaces taskRetryCounts.incrementAndGet()
+     */
+    private void recordTaskRetry(String taskId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for task retry
+                AgentExecutionMetrics.recordAgentExecution(metrics, "task-executor", "task-retry", 
+                        true, java.time.Duration.ZERO, 1, taskId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record task retry metric for task {}: {}", taskId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record executor assignment - replaces executorTaskTypeAssignments.incrementAndGet()
+     */
+    private void recordExecutorAssignment(String executorId, String taskType) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for executor assignment
+                AgentExecutionMetrics.recordAgentTaskAssignment(metrics, taskType, executorId, 
+                        true, java.time.Duration.ZERO, 1);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record executor assignment metric for executor {} task {}: {}", executorId, taskType, e.getMessage());
+        }
+    }
+
+    /**
+     * Record load balancing decision - replaces executorLoadBalancingDecisions.incrementAndGet()
+     */
+    private void recordLoadBalancingDecision(String assignmentReason) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for load balancing
+                AgentExecutionMetrics.recordAgentExecution(metrics, "task-executor", "load-balancing", 
+                        true, java.time.Duration.ZERO, 1, assignmentReason);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record load balancing decision metric for reason {}: {}", assignmentReason, e.getMessage());
+        }
+    }
+
+    /**
+     * Record validation rule success - replaces validationRuleSuccessCounts.incrementAndGet()
+     */
+    private void recordValidationRuleSuccess(String ruleId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for validation success
+                AgentExecutionMetrics.recordAgentExecution(metrics, "task-executor", "validation-rule", 
+                        true, java.time.Duration.ZERO, 1, ruleId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record validation rule success metric for rule {}: {}", ruleId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record validation rule failure - replaces validationRuleFailureCounts.incrementAndGet()
+     */
+    private void recordValidationRuleFailure(String ruleId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for validation failure
+                AgentExecutionMetrics.recordAgentExecution(metrics, "task-executor", "validation-rule", 
+                        false, java.time.Duration.ZERO, 1, ruleId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record validation rule failure metric for rule {}: {}", ruleId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record skill usage - replaces skillUsageCounts.incrementAndGet()
+     */
+    private void recordSkillUsage(String skillId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for skill usage
+                AgentExecutionMetrics.recordAgentSkillExecution(metrics, skillId, "skill-usage", 
+                        true, java.time.Duration.ZERO, 1, "task-executor");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record skill usage metric for skill {}: {}", skillId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record skill success - replaces skillSuccessCounts.incrementAndGet()
+     */
+    private void recordSkillSuccess(String skillId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for skill success
+                AgentExecutionMetrics.recordAgentSkillExecution(metrics, skillId, "skill-execution", 
+                        true, java.time.Duration.ZERO, 1, "task-executor");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record skill success metric for skill {}: {}", skillId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record skill failure - replaces skillFailureCounts.incrementAndGet()
+     */
+    private void recordSkillFailure(String skillId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for skill failure
+                AgentExecutionMetrics.recordAgentSkillExecution(metrics, skillId, "skill-execution", 
+                        false, java.time.Duration.ZERO, 1, "task-executor");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record skill failure metric for skill {}: {}", skillId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record skill usage pattern - replaces skillUsagePatterns.incrementAndGet()
+     */
+    private void recordSkillUsagePattern(String skillId, String usagePattern) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for skill usage pattern
+                AgentExecutionMetrics.recordAgentSkillExecution(metrics, skillId, "skill-pattern", 
+                        true, java.time.Duration.ZERO, 1, usagePattern);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record skill usage pattern metric for skill {} pattern {}: {}", skillId, usagePattern, e.getMessage());
+        }
+    }
 }

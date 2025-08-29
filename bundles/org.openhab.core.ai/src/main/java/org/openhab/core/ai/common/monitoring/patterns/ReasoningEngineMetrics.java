@@ -200,6 +200,46 @@ public final class ReasoningEngineMetrics {
     }
 
     /**
+     * Record reasoning learning operation metrics.
+     * 
+     * @param metricsService the metrics service to record with
+     * @param learningType the type of learning operation (interaction-learning, pattern-recognition, feedback-integration, strategy-adaptation, etc.)
+     * @param duration the duration of the learning operation
+     * @param success whether the learning operation was successful
+     */
+    public static void recordLearningOperation(MetricsService metricsService, String learningType, Duration duration, boolean success) {
+        try {
+            metricsService.recordOperation("reasoning-engine", "learning-operation")
+                    .withSuccess(success)
+                    .withDuration(duration.toNanos())
+                    .withData("learningType", learningType)
+                    .record();
+        } catch (Exception e) {
+            // Log error but don't throw to avoid disrupting reasoning operations
+        }
+    }
+
+    /**
+     * Record reasoning event processing metrics.
+     * 
+     * @param metricsService the metrics service to record with
+     * @param eventType the type of event processing (autonomous-event, user-override, pattern-detection, safety-violation, autonomous-action, etc.)
+     * @param duration the duration of the event processing
+     * @param success whether the event processing was successful
+     */
+    public static void recordEventProcessing(MetricsService metricsService, String eventType, Duration duration, boolean success) {
+        try {
+            metricsService.recordOperation("reasoning-engine", "event-processing")
+                    .withSuccess(success)
+                    .withDuration(duration.toNanos())
+                    .withData("eventType", eventType)
+                    .record();
+        } catch (Exception e) {
+            // Log error but don't throw to avoid disrupting reasoning operations
+        }
+    }
+
+    /**
      * Record reasoning error metrics.
      * 
      * @param metricsService the metrics service to record with

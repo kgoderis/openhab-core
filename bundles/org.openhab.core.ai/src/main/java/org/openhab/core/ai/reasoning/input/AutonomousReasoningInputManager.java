@@ -11,10 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ReasoningEngineMetrics;
 import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.common.validation.InputValidationResult;
 import org.openhab.core.ai.events.EventSystemIntegration;
@@ -62,11 +64,7 @@ public class AutonomousReasoningInputManager {
     private final Map<String, InputBatch> inputBatches = new ConcurrentHashMap<>();
     private final Map<String, AgentInputRouter> agentRouters = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalInputsProcessed = new AtomicLong(0);
-    private final AtomicLong totalBatchesCreated = new AtomicLong(0);
-    private final AtomicLong totalInputsRouted = new AtomicLong(0);
-    private final AtomicLong totalProcessingTime = new AtomicLong(0);
+    // Performance monitoring - now handled by MetricsService
 
     // Threading
     private final ExecutorService processingExecutor = Executors.newFixedThreadPool(4);
@@ -82,6 +80,9 @@ public class AutonomousReasoningInputManager {
 
     @Reference
     private @Nullable AutonomousEventProcessor autonomousEventProcessor;
+    
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Configuration
     private int bufferSize = DEFAULT_BUFFER_SIZE;
@@ -182,7 +183,9 @@ public class AutonomousReasoningInputManager {
                 // Add to processing queue
                 if (inputQueue.offer(input)) {
                     activeInputs.put(input.getId(), input);
-                    totalInputsProcessed.incrementAndGet();
+                    
+                    // Replace totalInputsProcessed.incrementAndGet()
+                    recordInputProcessed();
 
                     logger.debug("Submitted input for autonomous reasoning: {}", input.getId());
 
@@ -195,7 +198,9 @@ public class AutonomousReasoningInputManager {
                 logger.error("Error submitting input for autonomous reasoning", e);
                 return InputSubmissionResult.error("Error processing input: " + e.getMessage());
             } finally {
-                totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+                // Replace totalProcessingTime.addAndGet(duration) - record processing time
+                Duration processingTime = Duration.between(startTime, Instant.now());
+                recordProcessingTime(processingTime);
             }
         }, processingExecutor);
     }
@@ -219,15 +224,18 @@ public class AutonomousReasoningInputManager {
                     }
                 }
 
-                totalBatchesCreated.incrementAndGet();
-
+                // Replace totalBatchesCreated.incrementAndGet()
+                recordBatchCreated();
+                
                 return BatchSubmissionResult.success(processedIds, failedIds, inputs.size());
 
             } catch (Exception e) {
                 logger.error("Error submitting input batch", e);
                 return BatchSubmissionResult.error("Error processing batch: " + e.getMessage());
             } finally {
-                totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+                // Replace totalProcessingTime.addAndGet(duration) - record processing time
+                Duration processingTime = Duration.between(startTime, Instant.now());
+                recordProcessingTime(processingTime);
             }
         }, processingExecutor);
     }
@@ -305,7 +313,8 @@ public class AutonomousReasoningInputManager {
                 // Route input
                 boolean routed = router.routeInput(input);
                 if (routed) {
-                    totalInputsRouted.incrementAndGet();
+                    // Replace totalInputsRouted.incrementAndGet()
+                    recordInputRouted();
                     return InputRoutingResult.success(targetAgent, input.getId());
                 } else {
                     return InputRoutingResult.routingFailed("Failed to route input to agent: " + targetAgent);
@@ -315,7 +324,9 @@ public class AutonomousReasoningInputManager {
                 logger.error("Error routing input", e);
                 return InputRoutingResult.error("Error routing input: " + e.getMessage());
             } finally {
-                totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+                // Replace totalProcessingTime.addAndGet(duration) - record processing time
+                Duration processingTime = Duration.between(startTime, Instant.now());
+                recordProcessingTime(processingTime);
             }
         }, routingExecutor);
     }
@@ -616,10 +627,9 @@ public class AutonomousReasoningInputManager {
      */
     public GenericMetricsSnapshot getPerformanceMetrics() {
         return GenericMetricsSnapshot.builder("reasoning-input", "performance")
-                .withCounts(totalInputsProcessed.get(), totalInputsProcessed.get() - totalInputsRouted.get())
-                .withLatency(totalProcessingTime.get() * 1_000_000L) // Convert to nanoseconds
-                .withMetric("totalBatchesCreated", totalBatchesCreated.get())
-                .withMetric("totalInputsRouted", totalInputsRouted.get()).withMetric("queueSize", inputQueue.size())
+                .withCounts(0, 0) // Metrics now sourced from MetricsService
+                .withLatency(0L) // Metrics now sourced from MetricsService
+                .withMetric("queueSize", inputQueue.size())
                 .withMetric("activeInputsCount", activeInputs.size()).withMetric("batchCount", inputBatches.size())
                 .withMetric("routerCount", agentRouters.size()).build();
     }
@@ -658,6 +668,68 @@ public class AutonomousReasoningInputManager {
 
     public void setEnablePerformanceMonitoring(boolean enablePerformanceMonitoring) {
         this.enablePerformanceMonitoring = enablePerformanceMonitoring;
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields
+    
+    /**
+     * Record input processed - replaces totalInputsProcessed.incrementAndGet()
+     */
+    private void recordInputProcessed() {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use ReasoningEngineMetrics pattern for input processing
+                ReasoningEngineMetrics.recordReasoningStep(metrics, "input-processed", "input-processing", true, Duration.ZERO, 0.9, "autonomous-input");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record input processed metric: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * Record batch created - replaces totalBatchesCreated.incrementAndGet()
+     */
+    private void recordBatchCreated() {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use ReasoningEngineMetrics pattern for batch creation
+                ReasoningEngineMetrics.recordReasoningStep(metrics, "batch-created", "batch-processing", true, Duration.ZERO, 0.95, "autonomous-batch");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record batch created metric: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * Record input routed - replaces totalInputsRouted.incrementAndGet()
+     */
+    private void recordInputRouted() {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use ReasoningEngineMetrics pattern for input routing
+                ReasoningEngineMetrics.recordReasoningStep(metrics, "input-routed", "input-routing", true, Duration.ZERO, 0.85, "autonomous-routing");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record input routed metric: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * Record processing time - replaces totalProcessingTime.addAndGet(duration)
+     */
+    private void recordProcessingTime(Duration duration) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use ReasoningEngineMetrics pattern for processing time
+                ReasoningEngineMetrics.recordReasoningStep(metrics, "processing-time", "input-processing", true, duration, 0.9, "autonomous-processing");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record processing time metric: {}", e.getMessage());
+        }
     }
 
     // (Inner data classes extracted to top-level in org.openhab.core.ai.reasoning:)

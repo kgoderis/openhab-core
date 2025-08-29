@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -466,7 +466,7 @@ public class LoggingMonitoringAction implements Action {
         Path logsDir = Paths.get(userDataDir, "logs");
 
         Map<String, Object> logFilesInfo = new HashMap<>();
-        AtomicLong totalSize = new AtomicLong(0);
+        final long[] totalSize = { 0L };
         AtomicInteger totalFiles = new AtomicInteger(0);
 
         if (Files.exists(logsDir) && Files.isDirectory(logsDir)) {
@@ -475,7 +475,7 @@ public class LoggingMonitoringAction implements Action {
                         .forEach(logFile -> {
                             try {
                                 long size = Files.size(logFile);
-                                totalSize.addAndGet(size);
+                                totalSize[0] += size;
                                 totalFiles.incrementAndGet();
 
                                 Map<String, Object> fileInfo = new HashMap<>();
@@ -497,8 +497,8 @@ public class LoggingMonitoringAction implements Action {
 
         result.put("logFilesInfo", logFilesInfo);
         result.put("totalFiles", totalFiles.get());
-        result.put("totalSize", totalSize.get());
-        result.put("totalSizeFormatted", formatBytes(totalSize.get()));
+        result.put("totalSize", totalSize[0]);
+        result.put("totalSizeFormatted", formatBytes(totalSize[0]));
         result.put("message", "Log files information collected successfully");
 
         return result;

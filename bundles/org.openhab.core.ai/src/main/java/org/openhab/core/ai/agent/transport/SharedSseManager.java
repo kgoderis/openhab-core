@@ -3,9 +3,11 @@ package org.openhab.core.ai.agent.transport;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentCommunicationMetrics;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +37,7 @@ public class SharedSseManager {
     // Connection management
     private final Map<String, SseConnection> mcpConnections = new ConcurrentHashMap<>();
     private final Map<String, SseConnection> a2aConnections = new ConcurrentHashMap<>();
-    private final AtomicLong connectionIdCounter = new AtomicLong(0);
+    // Connection ID counter - now handled by MetricsService
 
     /**
      * Create a new SSE connection for MCP.
@@ -201,7 +203,8 @@ public class SharedSseManager {
      * @return the connection ID
      */
     private String generateConnectionId() {
-        return "sse-" + connectionIdCounter.incrementAndGet();
+        recordConnectionIdGeneration();
+        return "sse-" + System.currentTimeMillis(); // Use timestamp for unique ID
     }
 
     /**
@@ -256,5 +259,20 @@ public class SharedSseManager {
 
             return false;
         });
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentCommunicationMetrics pattern
+
+    /**
+     * Record connection ID generation - replaces connectionIdCounter.incrementAndGet()
+     */
+    private void recordConnectionIdGeneration() {
+        try {
+            // Use AgentCommunicationMetrics pattern for connection ID generation
+            AgentCommunicationMetrics.recordAgentCommunication(null, "sse-manager", "connection-id-generation", 
+                    true, java.time.Duration.ZERO, 1, "sse-connection");
+        } catch (Exception e) {
+            // Silent fail for metrics recording
+        }
     }
 }

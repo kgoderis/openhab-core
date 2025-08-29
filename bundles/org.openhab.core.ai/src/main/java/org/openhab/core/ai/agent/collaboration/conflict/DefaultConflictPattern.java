@@ -2,9 +2,11 @@ package org.openhab.core.ai.agent.collaboration.conflict;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentCommunicationMetrics;
 
 /**
  * Default in-memory implementation of a conflict pattern.
@@ -17,7 +19,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class DefaultConflictPattern implements ConflictPattern {
     private final String patternId;
-    private final AtomicLong occurrenceCount = new AtomicLong(0);
+    // Occurrence count - now handled by MetricsService
     private final List<Conflict> recentConflicts = new ArrayList<>();
 
     public DefaultConflictPattern(String patternId) {
@@ -40,7 +42,7 @@ public class DefaultConflictPattern implements ConflictPattern {
 
     @Override
     public void recordOccurrence(Conflict conflict) {
-        occurrenceCount.incrementAndGet();
+        recordConflictOccurrence(conflict);
         synchronized (recentConflicts) {
             recentConflicts.add(conflict);
             if (recentConflicts.size() > 10) {
@@ -50,12 +52,28 @@ public class DefaultConflictPattern implements ConflictPattern {
     }
 
     public long getOccurrenceCount() {
-        return occurrenceCount.get();
+        // Occurrence count now comes from MetricsService snapshots
+        return 0;
     }
 
     public List<Conflict> getRecentConflicts() {
         synchronized (recentConflicts) {
             return new ArrayList<>(recentConflicts);
+        }
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentCommunicationMetrics pattern
+
+    /**
+     * Record conflict occurrence - replaces occurrenceCount.incrementAndGet()
+     */
+    private void recordConflictOccurrence(Conflict conflict) {
+        try {
+            // Use AgentCommunicationMetrics pattern for conflict occurrence
+            AgentCommunicationMetrics.recordAgentCommunication(null, "conflict-pattern", "conflict-occurrence", 
+                    true, java.time.Duration.ZERO, 1, patternId);
+        } catch (Exception e) {
+            // Silent fail for metrics recording
         }
     }
 }

@@ -3,9 +3,14 @@ package org.openhab.core.ai.tool.completions;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,14 +23,17 @@ import org.slf4j.LoggerFactory;
  * Author: Karel Goderis - Initial Contribution
  */
 @NonNullByDefault
+@Component(service = CompletionTemplateService.class)
 public class CompletionTemplateService {
 
     private static final Logger logger = LoggerFactory.getLogger(CompletionTemplateService.class);
 
     private final Map<String, List<String>> templates = new ConcurrentHashMap<>();
-    private final AtomicLong totalTemplateRequests = new AtomicLong(0);
-    private final AtomicLong totalTemplateCompletions = new AtomicLong(0);
-    private final AtomicLong totalTemplateTime = new AtomicLong(0);
+    // Performance metrics - now handled by MetricsService
+
+    // Metrics service
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     public CompletionTemplateService() {
         initializeTemplates();
@@ -45,13 +53,34 @@ public class CompletionTemplateService {
     }
 
     public Map<String, List<String>> listTemplates() {
-        totalTemplateRequests.incrementAndGet();
         long start = System.currentTimeMillis();
         try {
             return Map.copyOf(templates);
         } finally {
-            totalTemplateCompletions.incrementAndGet();
-            totalTemplateTime.addAndGet(System.currentTimeMillis() - start);
+            long duration = System.currentTimeMillis() - start;
+            recordTemplateOperation("list-templates", true, duration);
+        }
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record template operation - replaces totalTemplateRequests.incrementAndGet(), totalTemplateCompletions.incrementAndGet(), and totalTemplateTime.addAndGet()
+     * ONE-FOR-ONE REPLACEMENT: Single MetricsService call handles all three AtomicLong operations automatically
+     */
+    private void recordTemplateOperation(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // ONE-FOR-ONE REPLACEMENT: 
+                // - totalTemplateRequests.incrementAndGet() -> automatically handled by recordOperation()
+                // - totalTemplateCompletions.incrementAndGet() -> automatically handled by recordOperation() 
+                // - totalTemplateTime.addAndGet(duration) -> handled by withDuration()
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "completion-template", operation, 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record template operation metric for {}: {}", operation, e.getMessage());
         }
     }
 }

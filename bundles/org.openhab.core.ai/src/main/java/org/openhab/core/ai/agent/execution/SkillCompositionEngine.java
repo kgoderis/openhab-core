@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -15,6 +15,8 @@ import org.openhab.core.ai.agent.execution.api.AgentSkillManager;
 import org.openhab.core.ai.agent.execution.api.AgentSkillResult;
 import org.openhab.core.ai.agents.SkillExecutionRequest;
 import org.openhab.core.ai.events.EventProcessingAnalytics;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentExecutionMetrics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -47,11 +49,7 @@ public class SkillCompositionEngine {
     private static final Duration DEFAULT_COMPOSITION_TIMEOUT = Duration.ofMinutes(5);
     private static final int DEFAULT_MAX_CONCURRENT_COMPOSITIONS = 3;
 
-    // Performance monitoring
-    private final AtomicLong totalCompositionsProcessed = new AtomicLong(0);
-    private final AtomicLong totalCompositionsSucceeded = new AtomicLong(0);
-    private final AtomicLong totalCompositionsFailed = new AtomicLong(0);
-    private final AtomicLong totalProcessingTime = new AtomicLong(0);
+    // Performance monitoring - now handled by MetricsService
     private final Map<String, CompositionMetric> compositionMetrics = new ConcurrentHashMap<>();
 
     // Dependencies
@@ -60,6 +58,9 @@ public class SkillCompositionEngine {
 
     @Reference
     private @Nullable EventProcessingAnalytics analytics;
+
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Configuration
     private Duration compositionTimeout = DEFAULT_COMPOSITION_TIMEOUT;
@@ -108,10 +109,10 @@ public class SkillCompositionEngine {
 
             } catch (Exception e) {
                 logger.error("Error executing composition {}: {}", compositionId, e.getMessage(), e);
-                totalCompositionsFailed.incrementAndGet();
+                recordCompositionFailure(compositionId);
                 return CompositionResult.error(compositionId, "Error executing composition: " + e.getMessage(), 0);
             } finally {
-                totalProcessingTime.addAndGet(Duration.between(startTime, Instant.now()).toMillis());
+                recordProcessingTime(Duration.between(startTime, Instant.now()));
             }
         });
     }
@@ -149,7 +150,7 @@ public class SkillCompositionEngine {
                 }
             }
 
-            totalCompositionsSucceeded.incrementAndGet();
+            recordCompositionSuccess(compositionId);
             return CompositionResult.success(compositionId, results, totalExecutionTime);
 
         } catch (Exception e) {
@@ -176,7 +177,7 @@ public class SkillCompositionEngine {
      * Record composition metrics
      */
     private void recordCompositionMetrics(String compositionId, CompositionResult result, Duration duration) {
-        totalCompositionsProcessed.incrementAndGet();
+        recordCompositionProcessed(compositionId);
 
         CompositionMetric metric = new CompositionMetric(compositionId, result.isSuccess(), duration,
                 result.getMessage(), Instant.now());
@@ -226,4 +227,70 @@ public class SkillCompositionEngine {
     // Inner class extracted to top-level: org.openhab.core.ai.agent.execution.CompositionResult
 
     // Inner class extracted to top-level: org.openhab.core.ai.agent.execution.CompositionMetric
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentExecutionMetrics pattern
+
+    /**
+     * Record composition processed - replaces totalCompositionsProcessed.incrementAndGet()
+     */
+    private void recordCompositionProcessed(String compositionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for composition processing
+                AgentExecutionMetrics.recordAgentExecution(metrics, "skill-composition", "composition-processed", 
+                        true, java.time.Duration.ZERO, 1, compositionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record composition processed metric for {}: {}", compositionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record composition success - replaces totalCompositionsSucceeded.incrementAndGet()
+     */
+    private void recordCompositionSuccess(String compositionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for composition success
+                AgentExecutionMetrics.recordAgentExecution(metrics, "skill-composition", "composition-success", 
+                        true, java.time.Duration.ZERO, 1, compositionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record composition success metric for {}: {}", compositionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record composition failure - replaces totalCompositionsFailed.incrementAndGet()
+     */
+    private void recordCompositionFailure(String compositionId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for composition failure
+                AgentExecutionMetrics.recordAgentExecution(metrics, "skill-composition", "composition-failure", 
+                        false, java.time.Duration.ZERO, 1, compositionId);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record composition failure metric for {}: {}", compositionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record processing time - replaces totalProcessingTime.addAndGet()
+     */
+    private void recordProcessingTime(Duration duration) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for processing time
+                AgentExecutionMetrics.recordAgentExecution(metrics, "skill-composition", "processing-time", 
+                        true, duration, 1, "composition");
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record processing time metric: {}", e.getMessage());
+        }
+    }
 }

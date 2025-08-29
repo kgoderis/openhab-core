@@ -5,11 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+// import java.util.concurrent.atomic.AtomicLong; // Migrated to MetricsService
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ReasoningEngineMetrics;
 import org.openhab.core.ai.reasoning.config.AgentConfiguration;
 import org.openhab.core.ai.reasoning.config.AgentFullConfiguration;
 import org.openhab.core.ai.reasoning.config.ConfigurationResult;
@@ -24,6 +27,7 @@ import org.openhab.core.ai.reasoning.results.SafetyResult;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,11 +52,14 @@ public class AutonomousBehaviorConfig {
     private final Map<String, ConstraintDefinition> constraintDefinitions = new ConcurrentHashMap<>();
     private final Map<String, SafetyPolicyConfig> safetyPolicies = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalConfigurations = new AtomicLong(0);
-    private final AtomicLong totalPolicyUpdates = new AtomicLong(0);
-    private final AtomicLong totalPreferenceUpdates = new AtomicLong(0);
-    private final AtomicLong totalConstraintUpdates = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalConfigurations = new AtomicLong(0);
+    // private final AtomicLong totalPolicyUpdates = new AtomicLong(0);
+    // private final AtomicLong totalPreferenceUpdates = new AtomicLong(0);
+    // private final AtomicLong totalConstraintUpdates = new AtomicLong(0);
+    
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Thread safety
     private final ReadWriteLock configLock = new ReentrantReadWriteLock();
@@ -93,7 +100,16 @@ public class AutonomousBehaviorConfig {
             }
 
             agentConfigurations.put(agentId, configuration);
-            totalConfigurations.incrementAndGet();
+            // totalConfigurations.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordLearningOperation(metrics, "behavior-configuration", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail configuration
+            }
             logger.debug("Configured autonomous behavior for agent: {}", agentId);
 
             return ConfigurationResult.success(configuration);
@@ -122,7 +138,16 @@ public class AutonomousBehaviorConfig {
             policyLock.writeLock().lock();
 
             behaviorPolicies.put(policyId, policy);
-            totalPolicyUpdates.incrementAndGet();
+            // totalPolicyUpdates.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordLearningOperation(metrics, "policy-update", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail policy update
+            }
             logger.debug("Added behavior policy: {}", policyId);
 
             return PolicyResult.success(policy);
@@ -151,7 +176,16 @@ public class AutonomousBehaviorConfig {
             preferenceLock.writeLock().lock();
 
             userPreferences.put(userId, preferences);
-            totalPreferenceUpdates.incrementAndGet();
+            // totalPreferenceUpdates.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordLearningOperation(metrics, "preference-update", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail preference update
+            }
             logger.debug("Configured user preferences for user: {}", userId);
 
             return PreferenceResult.success(preferences);
@@ -180,7 +214,16 @@ public class AutonomousBehaviorConfig {
             constraintLock.writeLock().lock();
 
             constraintDefinitions.put(constraintId, constraint);
-            totalConstraintUpdates.incrementAndGet();
+            // totalConstraintUpdates.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordLearningOperation(metrics, "constraint-update", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail constraint update
+            }
             logger.debug("Defined constraint: {}", constraintId);
 
             return ConstraintResult.success(constraint);

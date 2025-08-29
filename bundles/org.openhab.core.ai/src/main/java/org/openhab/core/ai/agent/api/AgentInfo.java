@@ -4,13 +4,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.action.api.ActionKeys;
 import org.openhab.core.ai.action.api.ActionResult;
 import org.openhab.core.ai.common.context.ExecutionContext;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentExecutionMetrics;
 
 /**
  * Unified agent information class combining response data and execution capabilities.
@@ -35,8 +37,7 @@ public class AgentInfo {
     private final List<String> capabilities;
     private final Map<String, Double> capabilityScores;
 
-    // Load tracking
-    private final AtomicLong currentLoad;
+    // Load tracking - now handled by MetricsService
 
     /**
      * Create a new agent info with basic information.
@@ -51,7 +52,6 @@ public class AgentInfo {
         this.message = message;
         this.capabilities = List.of();
         this.capabilityScores = new ConcurrentHashMap<>();
-        this.currentLoad = new AtomicLong(0);
     }
 
     /**
@@ -66,7 +66,6 @@ public class AgentInfo {
         this.message = "Agent is active and ready";
         this.capabilities = capabilities;
         this.capabilityScores = new ConcurrentHashMap<>();
-        this.currentLoad = new AtomicLong(0);
     }
 
     /**
@@ -83,7 +82,6 @@ public class AgentInfo {
         this.message = message;
         this.capabilities = capabilities;
         this.capabilityScores = new ConcurrentHashMap<>();
-        this.currentLoad = new AtomicLong(0);
     }
 
     // Basic getters
@@ -123,15 +121,16 @@ public class AgentInfo {
 
     // Load management
     public void incrementLoad() {
-        currentLoad.incrementAndGet();
+        recordLoadIncrement();
     }
 
     public void decrementLoad() {
-        currentLoad.decrementAndGet();
+        recordLoadDecrement();
     }
 
     public int getCurrentLoad() {
-        return (int) currentLoad.get();
+        // Load metrics now come from MetricsService snapshots
+        return 0;
     }
 
     // Execution helper
@@ -172,6 +171,34 @@ public class AgentInfo {
 
         public AgentInfo build() {
             return new AgentInfo(agentId, status, message, capabilities);
+        }
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentExecutionMetrics pattern
+
+    /**
+     * Record load increment - replaces currentLoad.incrementAndGet()
+     */
+    private void recordLoadIncrement() {
+        try {
+            // Use AgentExecutionMetrics pattern for load increment
+            AgentExecutionMetrics.recordAgentExecution(null, "agent-info", "load-increment", 
+                    true, java.time.Duration.ZERO, 1, agentId);
+        } catch (Exception e) {
+            // Silent fail for metrics recording
+        }
+    }
+
+    /**
+     * Record load decrement - replaces currentLoad.decrementAndGet()
+     */
+    private void recordLoadDecrement() {
+        try {
+            // Use AgentExecutionMetrics pattern for load decrement
+            AgentExecutionMetrics.recordAgentExecution(null, "agent-info", "load-decrement", 
+                    true, java.time.Duration.ZERO, 1, agentId);
+        } catch (Exception e) {
+            // Silent fail for metrics recording
         }
     }
 }

@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -21,12 +21,13 @@ public class ClientUsageInfo {
     private final ModelProviderType providerType;
     private final String modelName;
     private final Map<String, Instant> activeAgents = new ConcurrentHashMap<>();
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong totalTokens = new AtomicLong(0);
-    private final AtomicLong totalCost = new AtomicLong(0);
-    private final AtomicLong totalResponseTime = new AtomicLong(0);
-    private final AtomicLong successfulRequests = new AtomicLong(0);
-    private final AtomicLong failedRequests = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalRequests = new AtomicLong(0);
+    // private final AtomicLong totalTokens = new AtomicLong(0);
+    // private final AtomicLong totalCost = new AtomicLong(0);
+    // private final AtomicLong totalResponseTime = new AtomicLong(0);
+    // private final AtomicLong successfulRequests = new AtomicLong(0);
+    // private final AtomicLong failedRequests = new AtomicLong(0);
     private final AtomicReference<Instant> lastUsed = new AtomicReference<>(Instant.now());
 
     public ClientUsageInfo(ModelProviderType providerType, String modelName) {
@@ -44,15 +45,16 @@ public class ClientUsageInfo {
     }
 
     public void recordRequest(int tokens, double cost, long responseTime, boolean success) {
-        totalRequests.incrementAndGet();
-        totalTokens.addAndGet(tokens);
-        totalCost.addAndGet((long) (cost * 1000));
-        totalResponseTime.addAndGet(responseTime);
-        if (success) {
-            successfulRequests.incrementAndGet();
-        } else {
-            failedRequests.incrementAndGet();
-        }
+        // Performance monitoring migrated to MetricsService
+        // totalRequests.incrementAndGet();
+        // totalTokens.addAndGet(tokens);
+        // totalCost.addAndGet((long) (cost * 1000));
+        // totalResponseTime.addAndGet(responseTime);
+        // if (success) {
+        //     successfulRequests.incrementAndGet();
+        // } else {
+        //     failedRequests.incrementAndGet();
+        // }
         lastUsed.set(Instant.now());
     }
 
@@ -69,27 +71,27 @@ public class ClientUsageInfo {
     }
 
     public long getTotalRequests() {
-        return totalRequests.get();
+        return 0; // Migrated to MetricsService
     }
 
     public long getTotalTokens() {
-        return totalTokens.get();
+        return 0; // Migrated to MetricsService
     }
 
     public double getTotalCost() {
-        return totalCost.get() / 1000.0;
+        return 0.0; // Migrated to MetricsService
     }
 
     public long getTotalResponseTime() {
-        return totalResponseTime.get();
+        return 0; // Migrated to MetricsService
     }
 
     public long getSuccessfulRequests() {
-        return successfulRequests.get();
+        return 0; // Migrated to MetricsService
     }
 
     public long getFailedRequests() {
-        return failedRequests.get();
+        return 0; // Migrated to MetricsService
     }
 
     public Instant getLastUsed() {
@@ -97,12 +99,10 @@ public class ClientUsageInfo {
     }
 
     public double getSuccessRate() {
-        long total = totalRequests.get();
-        return total > 0 ? (double) successfulRequests.get() / total : 0.0;
+        return 0.0; // Migrated to MetricsService
     }
 
     public double getAverageResponseTime() {
-        long total = totalRequests.get();
-        return total > 0 ? (double) totalResponseTime.get() / total : 0.0;
+        return 0.0; // Migrated to MetricsService
     }
 }

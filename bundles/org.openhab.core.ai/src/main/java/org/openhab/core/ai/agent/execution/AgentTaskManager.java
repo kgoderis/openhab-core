@@ -12,7 +12,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -23,6 +23,8 @@ import org.openhab.core.ai.action.ActionRegistry;
 import org.openhab.core.ai.action.api.Action;
 import org.openhab.core.ai.action.api.ActionError;
 import org.openhab.core.ai.action.api.ActionResult;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentExecutionMetrics;
 import org.openhab.core.ai.agent.core.AgentMessageType;
 import org.openhab.core.ai.agent.infrastructure.persistence.AgentPersistenceManager;
 import org.openhab.core.ai.agent.infrastructure.synchronization.ConcurrentAgentSynchronizationManager;
@@ -155,10 +157,7 @@ public class AgentTaskManager {
     private final ConcurrentHashMap<String, String> taskAgentAssignments = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, List<String>> taskDependencies = new ConcurrentHashMap<>();
 
-    // Performance tracking
-    private final AtomicLong totalOrchestratedTasks = new AtomicLong(0);
-    private final AtomicLong successfulOrchestrations = new AtomicLong(0);
-    private final AtomicLong failedOrchestrations = new AtomicLong(0);
+    // Performance tracking - now handled by MetricsService
 
     // Enhanced features for section 16.1.5.9
     // Resource locking for concurrent agent access
@@ -503,15 +502,15 @@ public class AgentTaskManager {
                     try {
                         TaskStatusUpdateEvent result = executeTaskWithOrchestration(task);
                         results.add(result);
-                        successfulOrchestrations.incrementAndGet();
+                        recordSuccessfulOrchestration(task.getId());
                     } catch (Exception e) {
                         logger.error("Task orchestration failed for task: {}", task.getId(), e);
                         results.add(createErrorResponse(task, "Orchestration failed: " + e.getMessage()));
-                        failedOrchestrations.incrementAndGet();
+                        recordFailedOrchestration(task.getId());
                     }
                 }
 
-                totalOrchestratedTasks.addAndGet(validatedTasks.size());
+                recordTaskOrchestration(validatedTasks.size());
                 logger.info("Completed orchestration of {} tasks", validatedTasks.size());
 
             } catch (Exception e) {
@@ -2120,5 +2119,55 @@ public class AgentTaskManager {
     // ============================================================================
     // Enhanced Metrics Recording Helper Methods
     // ============================================================================
+
+    // Metrics recording methods - replacing removed AtomicLong fields using AgentExecutionMetrics pattern
+
+    /**
+     * Record task orchestration - replaces totalOrchestratedTasks.addAndGet()
+     */
+    private void recordTaskOrchestration(int taskCount) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for task orchestration
+                AgentExecutionMetrics.recordAgentTaskAssignment(metrics, "orchestration", "task-manager", 
+                        true, java.time.Duration.ZERO, taskCount);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record task orchestration metric for {} tasks: {}", taskCount, e.getMessage());
+        }
+    }
+
+    /**
+     * Record successful orchestration - replaces successfulOrchestrations.incrementAndGet()
+     */
+    private void recordSuccessfulOrchestration(String taskId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for successful orchestration
+                AgentExecutionMetrics.recordAgentTaskAssignment(metrics, taskId, "task-manager", 
+                        true, java.time.Duration.ZERO, 1);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record successful orchestration metric for task {}: {}", taskId, e.getMessage());
+        }
+    }
+
+    /**
+     * Record failed orchestration - replaces failedOrchestrations.incrementAndGet()
+     */
+    private void recordFailedOrchestration(String taskId) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use AgentExecutionMetrics pattern for failed orchestration
+                AgentExecutionMetrics.recordAgentTaskAssignment(metrics, taskId, "task-manager", 
+                        false, java.time.Duration.ZERO, 1);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record failed orchestration metric for task {}: {}", taskId, e.getMessage());
+        }
+    }
 
 }

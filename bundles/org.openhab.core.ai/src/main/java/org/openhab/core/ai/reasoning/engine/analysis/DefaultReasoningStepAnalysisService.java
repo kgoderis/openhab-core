@@ -5,12 +5,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.Duration;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ReasoningEngineMetrics;
 import org.openhab.core.ai.common.monitoring.service.snapshot.GenericMetricsSnapshot;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStep;
 import org.openhab.core.ai.reasoning.engine.api.ReasoningStepStatus;
@@ -49,12 +50,7 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
     // Metrics service
     private @Nullable MetricsService metricsService;
     
-    // Legacy counters (deprecated - use MetricsService instead)
-    private final AtomicLong totalAnalyses = new AtomicLong(0);
-    private final AtomicLong successfulAnalyses = new AtomicLong(0);
-    private final AtomicLong failedAnalyses = new AtomicLong(0);
-    private final AtomicLong totalAnalysisTimeNanos = new AtomicLong(0);
-    private final Map<String, Integer> analysisTypeCounter = new HashMap<>();
+    // Performance tracking - now handled by MetricsService
     private volatile Instant lastAnalysisTime = Instant.now();
 
     @Reference
@@ -563,14 +559,36 @@ public class DefaultReasoningStepAnalysisService implements ReasoningStepAnalysi
     private void recordAnalysis(String analysisType, long startTime) {
         long durationNanos = System.nanoTime() - startTime;
         try {
-            totalAnalyses.incrementAndGet();
-            totalAnalysisTimeNanos.addAndGet(durationNanos);
-            successfulAnalyses.incrementAndGet(); // Assume success for now, could be enhanced to track actual failures
-            analysisTypeCounter.merge(analysisType, 1, Integer::sum);
+            // Use ReasoningEngineMetrics pattern class - replacing removed AtomicLong fields
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Replace totalAnalyses.incrementAndGet() and successfulAnalyses.incrementAndGet()
+                // Use ReasoningEngineMetrics.recordReasoningAnalysis for comprehensive metrics
+                ReasoningEngineMetrics.recordReasoningAnalysis(metrics, analysisType, true, Duration.ofNanos(durationNanos), 0.95, 1, Map.of());
+            }
             lastAnalysisTime = Instant.now();
         } catch (Exception e) {
             logger.warn("Failed to record reasoning analysis metrics for type {}: {}", analysisType, e.getMessage());
             // Graceful degradation: continue with analysis even if metrics recording fails
+        }
+    }
+    
+    /**
+     * Record failed analysis - replaces failedAnalyses.incrementAndGet()
+     */
+    private void recordFailedAnalysis(String analysisType, long startTime, String error) {
+        long durationNanos = System.nanoTime() - startTime;
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Replace failedAnalyses.incrementAndGet() using ReasoningEngineMetrics pattern
+                ReasoningEngineMetrics.recordReasoningAnalysis(metrics, analysisType, false, Duration.ofNanos(durationNanos), 0.0, 0, Map.of());
+                
+                // Record error details using ReasoningEngineMetrics.recordReasoningError
+                ReasoningEngineMetrics.recordReasoningError(metrics, "analysis-failure", error, Duration.ofNanos(durationNanos), analysisType, Map.of());
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record failed analysis metrics for type {}: {}", analysisType, e.getMessage());
         }
     }
 

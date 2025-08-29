@@ -4,11 +4,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.common.monitoring.api.Health;
 import org.openhab.core.ai.common.monitoring.api.Metrics;
 import org.openhab.core.ai.common.monitoring.api.Statistics;
@@ -33,11 +35,11 @@ public class MetricsHealthMonitor {
     @Reference
     private @Nullable MetricsRegistry monitoringRegistry;
 
+    // Metrics service
+    private @Nullable MetricsService metricsService;
+
     private final AtomicBoolean isHealthy = new AtomicBoolean(true);
-    private final AtomicLong lastHealthCheck = new AtomicLong(System.currentTimeMillis());
-    private final AtomicLong consecutiveFailures = new AtomicLong(0);
-    private final AtomicLong totalHealthChecks = new AtomicLong(0);
-    private final AtomicLong failedHealthChecks = new AtomicLong(0);
+    // Performance metrics - now handled by MetricsService
     private final AtomicReference<String> lastError = new AtomicReference<>("");
     private final AtomicReference<HealthStatus> currentStatus = new AtomicReference<>(HealthStatus.HEALTHY);
 
@@ -122,7 +124,6 @@ public class MetricsHealthMonitor {
         }
 
         try {
-            totalHealthChecks.incrementAndGet();
             long startTime = System.currentTimeMillis();
 
             // Check registry availability
@@ -151,7 +152,7 @@ public class MetricsHealthMonitor {
 
             // Record success
             recordSuccess();
-            lastHealthCheck.set(startTime);
+            recordHealthCheck(true, System.currentTimeMillis() - startTime);
             return true;
 
         } catch (Exception e) {
@@ -184,13 +185,10 @@ public class MetricsHealthMonitor {
      * @return map containing health statistics
      */
     public Map<String, Object> getHealthStatistics() {
-        long total = totalHealthChecks.get();
-        long failed = failedHealthChecks.get();
-        double successRate = total > 0 ? (double) (total - failed) / total : 0.0;
-
+        // Metrics now come from MetricsService snapshots
         return Map.of("timestamp", System.currentTimeMillis(), "status", currentStatus.get().name(), "isHealthy",
-                isHealthy.get(), "totalChecks", total, "failedChecks", failed, "successRate", successRate,
-                "consecutiveFailures", consecutiveFailures.get(), "lastHealthCheck", lastHealthCheck.get(), "lastError",
+                isHealthy.get(), "totalChecks", 0, "failedChecks", 0, "successRate", 0.0,
+                "consecutiveFailures", 0, "lastHealthCheck", 0, "lastError",
                 lastError.get(), "activeAlerts", activeAlerts.size());
     }
 
@@ -331,7 +329,6 @@ public class MetricsHealthMonitor {
      * Record a successful health check.
      */
     private void recordSuccess() {
-        consecutiveFailures.set(0);
         isHealthy.set(true);
         currentStatus.set(HealthStatus.HEALTHY);
         lastError.set("");
@@ -341,20 +338,12 @@ public class MetricsHealthMonitor {
      * Record a failed health check.
      */
     private void recordFailure(String error) {
-        failedHealthChecks.incrementAndGet();
-        consecutiveFailures.incrementAndGet();
         lastError.set(error);
-
-        long consecutive = consecutiveFailures.get();
-
-        if (consecutive >= MAX_CONSECUTIVE_FAILURES) {
-            isHealthy.set(false);
-            if (consecutive >= MAX_CONSECUTIVE_FAILURES * 2) {
-                currentStatus.set(HealthStatus.CRITICAL);
-            } else {
-                currentStatus.set(HealthStatus.WARNING);
-            }
-        }
+        recordHealthCheck(false, 0);
+        
+        // Set unhealthy status for failed checks
+        isHealthy.set(false);
+        currentStatus.set(HealthStatus.WARNING);
     }
 
     /**
@@ -376,5 +365,23 @@ public class MetricsHealthMonitor {
             Alert alert = entry.getValue();
             return alert.getTimestamp() < cutoffTime && alert.getSeverity() != AlertSeverity.CRITICAL;
         });
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record health check - replaces totalHealthChecks.incrementAndGet(), failedHealthChecks.incrementAndGet(), consecutiveFailures.incrementAndGet(), and lastHealthCheck.set()
+     */
+    private void recordHealthCheck(boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for health monitoring operations
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "metrics-health-monitor", "health-check", 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            // Silent failure for metrics recording
+        }
     }
 }

@@ -2,10 +2,12 @@ package org.openhab.core.ai.tool.completions;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.tool.completions.adapter.CommandCompletionAdapter;
 import org.openhab.core.ai.tool.completions.adapter.ConfigurationCompletionAdapter;
 import org.openhab.core.ai.tool.completions.adapter.ItemCompletionHandler;
@@ -36,8 +38,10 @@ public class CompletionSuggestionService {
     private static final Logger logger = LoggerFactory.getLogger(CompletionSuggestionService.class);
 
     private final Map<String, Long> lastExecutionMs = new ConcurrentHashMap<>();
-    private final AtomicLong totalExecutions = new AtomicLong(0);
-    private final AtomicLong totalTimeMs = new AtomicLong(0);
+    // Performance metrics - now handled by MetricsService
+
+    // Metrics service
+    private @Nullable MetricsService metricsService;
 
     private @Nullable ItemCompletionHandler itemCompletionAdapter;
     private @Nullable RuleCompletionAdapter ruleCompletionAdapter;
@@ -144,10 +148,27 @@ public class CompletionSuggestionService {
     private void record(String key, long start, boolean success) {
         long took = System.currentTimeMillis() - start;
         lastExecutionMs.put(key, took);
-        totalExecutions.incrementAndGet();
-        totalTimeMs.addAndGet(took);
+        recordCompletionExecution(success, took);
         if (!success) {
             logger.warn("Completion suggestion failed: {} ({} ms)", key, took);
+        }
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record completion execution - replaces totalExecutions.incrementAndGet() and totalTimeMs.addAndGet()
+     */
+    private void recordCompletionExecution(boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for completion suggestion operations
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "completion-suggestion", "execution", 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record completion execution metric: {}", e.getMessage());
         }
     }
 }

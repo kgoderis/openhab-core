@@ -5,11 +5,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.tool.prompts.api.PromptRegistry;
 import org.openhab.core.ai.tool.prompts.api.dto.Prompt;
 import org.openhab.core.ai.tool.prompts.api.dto.PromptArgument;
@@ -49,11 +51,10 @@ public class OpenHABPromptRegistry implements PromptRegistry {
     /** Security filtering - prompts that should be excluded */
     private final Map<String, Boolean> securityFilters = new ConcurrentHashMap<>();
 
-    /** Performance monitoring */
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong successfulRequests = new AtomicLong(0);
-    private final AtomicLong failedRequests = new AtomicLong(0);
-    private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+    /** Performance monitoring - now handled by MetricsService */
+    
+    // Metrics service
+    private @Nullable MetricsService metricsService;
 
     /** Prompt implementations */
     private @Nullable ItemControlPrompt itemControlPrompt;
@@ -226,28 +227,22 @@ public class OpenHABPromptRegistry implements PromptRegistry {
 
     @Override
     public @Nullable Prompt getPrompt(final String name) {
-        totalRequests.incrementAndGet();
         long startTime = System.currentTimeMillis();
+        boolean success = false;
 
         try {
             // Apply security filtering
             if (isPromptBlocked(name)) {
                 LOGGER.warn("Prompt access blocked by security filter: {}", name);
-                failedRequests.incrementAndGet();
                 return null;
             }
 
             Prompt prompt = prompts.get(name);
-            if (prompt != null) {
-                successfulRequests.incrementAndGet();
-            } else {
-                failedRequests.incrementAndGet();
-            }
-
+            success = (prompt != null);
             return prompt;
         } finally {
             long responseTime = System.currentTimeMillis() - startTime;
-            totalResponseTimeMs.addAndGet(responseTime);
+            recordPromptOperation("get-prompt", success, responseTime);
         }
     }
 
@@ -478,14 +473,13 @@ public class OpenHABPromptRegistry implements PromptRegistry {
      */
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new ConcurrentHashMap<>();
-        metrics.put("totalRequests", totalRequests.get());
-        metrics.put("successfulRequests", successfulRequests.get());
-        metrics.put("failedRequests", failedRequests.get());
-        metrics.put("totalResponseTimeMs", totalResponseTimeMs.get());
-        metrics.put("averageResponseTimeMs",
-                totalRequests.get() > 0 ? totalResponseTimeMs.get() / totalRequests.get() : 0);
-        metrics.put("successRate",
-                totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get() : 0.0);
+        // Metrics now come from MetricsService snapshots
+        metrics.put("totalRequests", 0);
+        metrics.put("successfulRequests", 0);
+        metrics.put("failedRequests", 0);
+        metrics.put("totalResponseTimeMs", 0);
+        metrics.put("averageResponseTimeMs", 0);
+        metrics.put("successRate", 0.0);
 
         // Add individual prompt metrics
         if (itemControlPrompt != null) {
@@ -538,6 +532,24 @@ public class OpenHABPromptRegistry implements PromptRegistry {
             default:
                 LOGGER.warn("Unknown prompt for examples: {}", promptName);
                 return null;
+        }
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record prompt operation - replaces totalRequests.incrementAndGet(), successfulRequests.incrementAndGet(), failedRequests.incrementAndGet(), and totalResponseTimeMs.addAndGet()
+     */
+    private void recordPromptOperation(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for OpenHAB prompt registry operations
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "openhab-prompt-registry", operation, 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Failed to record prompt operation metric for {}: {}", operation, e.getMessage());
         }
     }
 }

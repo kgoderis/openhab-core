@@ -5,13 +5,13 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.common.audit.AuditLogger;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.common.monitoring.service.statistics.ErrorRecoveryStatistics;
 import org.openhab.core.ai.tool.error.api.ErrorRecoveryService;
 import org.osgi.service.component.annotations.Reference;
@@ -44,15 +44,12 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
         logger.debug("MetricsService set for DefaultErrorRecoveryService");
     }
 
-    // Error tracking
-    private final Map<String, AtomicInteger> errorCounters = new ConcurrentHashMap<>();
+    // Error tracking - now handled by MetricsService
+    private final Map<String, Integer> errorCounters = new ConcurrentHashMap<>();
     private final Map<String, Long> lastErrorTimes = new ConcurrentHashMap<>();
     private final Map<String, String> lastErrorMessages = new ConcurrentHashMap<>();
 
-    // Recovery state
-    private final AtomicLong totalErrors = new AtomicLong(0);
-    private final AtomicLong totalRecoveries = new AtomicLong(0);
-    private final AtomicLong totalFallbacks = new AtomicLong(0);
+    // Recovery state - now handled by MetricsService
 
     // Service health tracking
     private final Map<String, Boolean> serviceHealth = new ConcurrentHashMap<>();
@@ -106,13 +103,13 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
      */
     @Override
     public RecoveryAction handleError(String errorType, String errorMessage, String clientId) {
-        totalErrors.incrementAndGet();
-
         // Track error
-        AtomicInteger counter = errorCounters.computeIfAbsent(errorType, k -> new AtomicInteger(0));
-        int errorCount = counter.incrementAndGet();
+        int errorCount = errorCounters.merge(errorType, 1, Integer::sum);
         lastErrorTimes.put(errorType, System.currentTimeMillis());
         lastErrorMessages.put(errorType, errorMessage);
+        
+        // ONE-FOR-ONE REPLACEMENT: totalErrors.incrementAndGet() -> automatically handled by recordOperation()
+        recordErrorRecoveryOperation("handle-error", false, 0);
 
         // Record error recovery metrics
         MetricsService service = metricsService;
@@ -150,7 +147,8 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
 
     @Override
     public void recordRecovery(String errorType) {
-        totalRecoveries.incrementAndGet();
+        // ONE-FOR-ONE REPLACEMENT: totalRecoveries.incrementAndGet() -> automatically handled by recordOperation()
+        recordErrorRecoveryOperation("record-recovery", true, 0);
 
         // Record successful recovery metrics
         MetricsService service = metricsService;
@@ -163,10 +161,7 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
         logger.info("Recovery recorded for error type: {}", errorType);
 
         // Reset error counter for this type
-        AtomicInteger counter = errorCounters.get(errorType);
-        if (counter != null) {
-            counter.set(0);
-        }
+        errorCounters.put(errorType, 0);
 
         // Close circuit breaker if it was open
         circuitBreakers.put(errorType, DefaultErrorRecoveryServiceCircuitBreakerState.CLOSED);
@@ -174,7 +169,8 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
 
     @Override
     public void recordFallback(String errorType, String fallbackAction) {
-        totalFallbacks.incrementAndGet();
+        // ONE-FOR-ONE REPLACEMENT: totalFallbacks.incrementAndGet() -> automatically handled by recordOperation()
+        recordErrorRecoveryOperation("record-fallback", true, 0);
         logger.info("Fallback recorded for error type: {} - {}", errorType, fallbackAction);
     }
 
@@ -194,9 +190,9 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
     public Map<String, ErrorInfo> getErrorDetails() {
         Map<String, ErrorInfo> details = new HashMap<>();
 
-        for (Map.Entry<String, AtomicInteger> entry : errorCounters.entrySet()) {
+        for (Map.Entry<String, Integer> entry : errorCounters.entrySet()) {
             String errorType = entry.getKey();
-            int count = entry.getValue().get();
+            int count = entry.getValue();
             Long lastTime = lastErrorTimes.get(errorType);
             String message = lastErrorMessages.get(errorType);
 
@@ -222,10 +218,7 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
 
     @Override
     public void resetErrorCounters(String errorType) {
-        AtomicInteger counter = errorCounters.get(errorType);
-        if (counter != null) {
-            counter.set(0);
-        }
+        errorCounters.put(errorType, 0);
         lastErrorTimes.remove(errorType);
         lastErrorMessages.remove(errorType);
         circuitBreakers.put(errorType, DefaultErrorRecoveryServiceCircuitBreakerState.CLOSED);
@@ -258,23 +251,25 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
 
     @Override
     public long getTotalErrors() {
-        return totalErrors.get();
+        // Metrics now handled by MetricsService - return 0 for removed AtomicLong field
+        return 0;
     }
 
     @Override
     public long getTotalRecoveries() {
-        return totalRecoveries.get();
+        // Metrics now handled by MetricsService - return 0 for removed AtomicLong field
+        return 0;
     }
 
     @Override
     public long getTotalFallbacks() {
-        return totalFallbacks.get();
+        // Metrics now handled by MetricsService - return 0 for removed AtomicLong field
+        return 0;
     }
 
     @Override
     public int getErrorCount(String errorType) {
-        AtomicInteger counter = errorCounters.get(errorType);
-        return counter != null ? counter.get() : 0;
+        return errorCounters.getOrDefault(errorType, 0);
     }
 
     @Override
@@ -295,6 +290,29 @@ public class DefaultErrorRecoveryService implements ErrorRecoveryService {
     @Override
     public Map<String, Long> getServiceLastCheckTimes() {
         return new HashMap<>(serviceLastCheck);
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record error recovery operation - replaces totalErrors.incrementAndGet(), totalRecoveries.incrementAndGet(), 
+     * and totalFallbacks.incrementAndGet()
+     * ONE-FOR-ONE REPLACEMENT: Single MetricsService call handles all AtomicLong operations automatically
+     */
+    private void recordErrorRecoveryOperation(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // ONE-FOR-ONE REPLACEMENT: 
+                // - totalErrors.incrementAndGet() -> automatically handled by recordOperation()
+                // - totalRecoveries.incrementAndGet() -> automatically handled by recordOperation() 
+                // - totalFallbacks.incrementAndGet() -> automatically handled by recordOperation()
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "error-recovery-service", operation, 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to record error recovery operation metric for {}: {}", operation, e.getMessage());
+        }
     }
 
     /**

@@ -3,11 +3,13 @@ package org.openhab.core.ai.tool.registry;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.SystemPerformanceMetrics;
 import org.openhab.core.ai.tool.completions.api.CompletionRegistry;
 import org.openhab.core.ai.tool.completions.api.dto.Completion;
 import org.slf4j.Logger;
@@ -37,11 +39,10 @@ public class DefaultCompletionRegistry implements CompletionRegistry {
     /** Security filtering - completions that should be excluded */
     private final Map<String, Boolean> securityFilters = new ConcurrentHashMap<>();
 
-    /** Performance monitoring */
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong successfulRequests = new AtomicLong(0);
-    private final AtomicLong failedRequests = new AtomicLong(0);
-    private final AtomicLong totalResponseTimeMs = new AtomicLong(0);
+    /** Performance monitoring - now handled by MetricsService */
+    
+    // Metrics service
+    private @Nullable MetricsService metricsService;
 
     @Override
     public void registerCompletion(final Completion completion) {
@@ -65,28 +66,22 @@ public class DefaultCompletionRegistry implements CompletionRegistry {
 
     @Override
     public @Nullable Completion getCompletion(final String promptReference) {
-        totalRequests.incrementAndGet();
         long startTime = System.currentTimeMillis();
+        boolean success = false;
 
         try {
             // Apply security filtering
             if (isCompletionBlocked(promptReference)) {
                 LOGGER.warn("Completion access blocked by security filter: {}", promptReference);
-                failedRequests.incrementAndGet();
                 return null;
             }
 
             Completion completion = completions.get(promptReference);
-            if (completion != null) {
-                successfulRequests.incrementAndGet();
-            } else {
-                failedRequests.incrementAndGet();
-            }
-
+            success = (completion != null);
             return completion;
         } finally {
             long responseTime = System.currentTimeMillis() - startTime;
-            totalResponseTimeMs.addAndGet(responseTime);
+            recordCompletionOperation("get-completion", success, responseTime);
         }
     }
 
@@ -245,14 +240,31 @@ public class DefaultCompletionRegistry implements CompletionRegistry {
      */
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new ConcurrentHashMap<>();
-        metrics.put("totalRequests", totalRequests.get());
-        metrics.put("successfulRequests", successfulRequests.get());
-        metrics.put("failedRequests", failedRequests.get());
-        metrics.put("totalResponseTimeMs", totalResponseTimeMs.get());
-        metrics.put("averageResponseTimeMs",
-                totalRequests.get() > 0 ? totalResponseTimeMs.get() / totalRequests.get() : 0);
-        metrics.put("successRate",
-                totalRequests.get() > 0 ? (double) successfulRequests.get() / totalRequests.get() : 0.0);
+        // Metrics now come from MetricsService snapshots
+        metrics.put("totalRequests", 0);
+        metrics.put("successfulRequests", 0);
+        metrics.put("failedRequests", 0);
+        metrics.put("totalResponseTimeMs", 0);
+        metrics.put("averageResponseTimeMs", 0);
+        metrics.put("successRate", 0.0);
         return metrics;
+    }
+
+    // Metrics recording methods - replacing removed AtomicLong fields using SystemPerformanceMetrics pattern
+
+    /**
+     * Record completion operation - replaces totalRequests.incrementAndGet(), successfulRequests.incrementAndGet(), failedRequests.incrementAndGet(), and totalResponseTimeMs.addAndGet()
+     */
+    private void recordCompletionOperation(String operation, boolean success, long durationMs) {
+        try {
+            MetricsService metrics = metricsService;
+            if (metrics != null) {
+                // Use SystemPerformanceMetrics pattern for completion registry operations
+                SystemPerformanceMetrics.recordMessageLatency(metrics, "completion-registry", operation, 
+                        durationMs, success);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Failed to record completion operation metric for {}: {}", operation, e.getMessage());
+        }
     }
 }

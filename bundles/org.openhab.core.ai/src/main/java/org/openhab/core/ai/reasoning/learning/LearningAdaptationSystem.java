@@ -5,17 +5,21 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+// import java.util.concurrent.atomic.AtomicLong; // Migrated to MetricsService
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.ReasoningEngineMetrics;
 import org.openhab.core.ai.reasoning.patterns.BehaviorPattern;
 import org.openhab.core.ai.reasoning.policies.UserPreferenceModel;
 import org.openhab.core.ai.reasoning.strategies.adaptation.AdaptiveStrategy;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,11 +43,14 @@ public class LearningAdaptationSystem {
     private final Map<String, FeedbackHistory> feedbackHistory = new ConcurrentHashMap<>();
     private final Map<String, AdaptiveStrategy> adaptiveStrategies = new ConcurrentHashMap<>();
 
-    // Performance monitoring
-    private final AtomicLong totalLearningEvents = new AtomicLong(0);
-    private final AtomicLong totalPatternRecognitions = new AtomicLong(0);
-    private final AtomicLong totalFeedbackIntegrations = new AtomicLong(0);
-    private final AtomicLong totalStrategyAdaptations = new AtomicLong(0);
+    // Performance monitoring - migrated to MetricsService
+    // private final AtomicLong totalLearningEvents = new AtomicLong(0);
+    // private final AtomicLong totalPatternRecognitions = new AtomicLong(0);
+    // private final AtomicLong totalFeedbackIntegrations = new AtomicLong(0);
+    // private final AtomicLong totalStrategyAdaptations = new AtomicLong(0);
+    
+    @Reference
+    private @Nullable MetricsService metricsService;
 
     // Thread safety
     private final ReadWriteLock preferenceLock = new ReentrantReadWriteLock();
@@ -98,7 +105,16 @@ public class LearningAdaptationSystem {
                 recognizeBehaviorPatterns(userId, interactionType, interactionData);
             }
 
-            totalLearningEvents.incrementAndGet();
+            // totalLearningEvents.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordLearningOperation(metrics, "interaction-learning", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail learning
+            }
             logger.debug("Learned from interaction: {} for user: {}", interactionType, userId);
 
             return LearningResult.success(preferences.getConfidence());
@@ -124,7 +140,16 @@ public class LearningAdaptationSystem {
             boolean patternDetected = pattern.analyzeInteraction(interactionType, interactionData);
 
             if (patternDetected) {
-                totalPatternRecognitions.incrementAndGet();
+                // totalPatternRecognitions.incrementAndGet(); // Migrated to MetricsService
+                try {
+                    MetricsService metrics = metricsService;
+                    if (metrics != null) {
+                        ReasoningEngineMetrics.recordLearningOperation(metrics, "pattern-recognition", 
+                            java.time.Duration.ofNanos(0), true);
+                    }
+                } catch (Exception e) {
+                    // Graceful degradation - don't fail pattern recognition
+                }
                 logger.debug("Behavior pattern detected for user: {}", userId);
             }
 
@@ -155,7 +180,16 @@ public class LearningAdaptationSystem {
                 preferences.updateFromFeedback(feedbackType, feedbackScore, learningRate);
             }
 
-            totalFeedbackIntegrations.incrementAndGet();
+            // totalFeedbackIntegrations.incrementAndGet(); // Migrated to MetricsService
+            try {
+                MetricsService metrics = metricsService;
+                if (metrics != null) {
+                    ReasoningEngineMetrics.recordLearningOperation(metrics, "feedback-integration", 
+                        java.time.Duration.ofNanos(0), true);
+                }
+            } catch (Exception e) {
+                // Graceful degradation - don't fail feedback integration
+            }
             logger.debug("Integrated feedback for user: {} from agent: {}", userId, agentId);
 
             return FeedbackIntegrationResult.success(history.getFeedbackCount());
@@ -180,7 +214,16 @@ public class LearningAdaptationSystem {
             boolean adapted = strategy.adaptStrategy(strategyType, strategyParameters, learningRate);
 
             if (adapted) {
-                totalStrategyAdaptations.incrementAndGet();
+                // totalStrategyAdaptations.incrementAndGet(); // Migrated to MetricsService
+                try {
+                    MetricsService metrics = metricsService;
+                    if (metrics != null) {
+                        ReasoningEngineMetrics.recordLearningOperation(metrics, "strategy-adaptation", 
+                            java.time.Duration.ofNanos(0), true);
+                    }
+                } catch (Exception e) {
+                    // Graceful degradation - don't fail strategy adaptation
+                }
                 logger.debug("Adapted strategy for agent: {} with user: {}", agentId, userId);
             }
 

@@ -5,11 +5,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.ai.agent.infrastructure.persistence.AgentOpenHABPersistenceManager;
 import org.openhab.core.ai.common.monitoring.api.MetricsService;
+import org.openhab.core.ai.common.monitoring.patterns.AgentCommunicationMetrics;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -47,10 +47,7 @@ public class AgentPushNotificationManager {
     @Reference
     private @Nullable MetricsService metricsService;
 
-    // Business logic capture: Notification effectiveness
-    private final Map<String, AtomicLong> notificationDeliverySuccess = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> notificationUserResponseRates = new ConcurrentHashMap<>();
-    private final Map<String, AtomicLong> notificationEffectivenessMetrics = new ConcurrentHashMap<>();
+    // Business logic capture: Notification effectiveness - now handled by MetricsService
 
     /**
      * Record notification effectiveness for business logic analysis.
@@ -66,24 +63,16 @@ public class AgentPushNotificationManager {
         MetricsService metrics = metricsService;
         if (metrics != null) {
             try {
-                Map<String, Object> context = Map.of("notificationId", notificationId, "notificationType",
-                        notificationType, "deliverySuccess", deliverySuccess, "userResponse", userResponse,
-                        "responseTime", responseTime, "timestamp", System.currentTimeMillis());
-                metrics.recordOperationWithData("notification", "effectiveness", deliverySuccess,
-                        java.time.Duration.ofMillis(responseTime), context);
-
-                // Update local tracking
-                String key = notificationType + ":" + deliverySuccess;
-                notificationDeliverySuccess.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
-
-                String responseKey = notificationType + ":" + userResponse;
-                notificationUserResponseRates.computeIfAbsent(responseKey, k -> new AtomicLong(0)).incrementAndGet();
-
-                String effectivenessKey = notificationType + ":"
-                        + (deliverySuccess && userResponse ? "effective" : "ineffective");
-                notificationEffectivenessMetrics.computeIfAbsent(effectivenessKey, k -> new AtomicLong(0))
-                        .incrementAndGet();
-
+                // Record comprehensive notification effectiveness metrics using AgentCommunicationMetrics pattern
+                AgentCommunicationMetrics.recordAgentCommunicationPerformance(metrics, "notification-delivery", 
+                        deliverySuccess, java.time.Duration.ofMillis(responseTime), 1, notificationType);
+                
+                AgentCommunicationMetrics.recordAgentCommunicationPerformance(metrics, "notification-response", 
+                        userResponse, java.time.Duration.ofMillis(responseTime), 1, notificationType);
+                
+                boolean isEffective = deliverySuccess && userResponse;
+                AgentCommunicationMetrics.recordAgentCommunicationPerformance(metrics, "notification-effectiveness", 
+                        isEffective, java.time.Duration.ofMillis(responseTime), 1, notificationType);
             } catch (Exception e) {
                 logger.warn("Failed to record notification effectiveness metrics: {}", e.getMessage());
             }
